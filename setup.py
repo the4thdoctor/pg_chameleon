@@ -12,4 +12,5 @@ setup(name='pg_chameleon',
       install_requires=[
           'SQLAlchemy ==0.7.9',
           'psycopg2 ==2.4.5',
+          'MySQL-python== 1.2.3',
       ],)
