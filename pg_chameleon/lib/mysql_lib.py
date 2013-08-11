@@ -56,14 +56,14 @@ class my_db_connection:
             print self.t_conn_str
             
 class my_data_def:
-    """class for generating the ddl in the postgresql dialect """
+    """class for aggregating data definition into a list, ready for postgresql transform """
     def __init__(self,l_args):
         """ init function accept the objects initiated in the my_db_connection class  """
         self.ob_engine=l_args[0]
         self.ob_conn = l_args[1]
         self.ob_metadata = l_args[2]
         self.l_tables=[]
-        self.dic_datatype={'integer':'integer','mediumint':'int8','tinyint':'int2','smallint':'int2','int':'int8','varchar':'varchar','bigint':'int8','text':'text','char':'char','datetime':'date','longtext':'text','tinytext':'text','tinyblob':'bytea','mediumblob':'bytea','longblob':'bytea','blob':'bytea'}
+        self.dic_datatype={'integer':'integer','mediumint':'bigint','tinyint':'integer','smallint':'integer','int':'bigint','varchar':'varchar','bigint':'bigint','text':'text','char':'char','datetime':'date','longtext':'text','tinytext':'text','tinyblob':'bytea','mediumblob':'bytea','longblob':'bytea','blob':'bytea'}
 
     
     def clean_type_names(self,t_type):
@@ -71,6 +71,14 @@ class my_data_def:
         t_clean=str(t_type).lower()
         l_clean=t_clean.split('(')
         t_clean=l_clean[0]
+        try:
+                t_clean=self.dic_datatype[t_clean]
+        except:
+                t_clean='text'
+            
+        if t_clean == 'char' or t_clean =='varchar':
+            t_clean=t_clean+'('+l_clean[1]
+        
         return t_clean
     
     def build_column_list(self,ob_table):
@@ -81,7 +89,7 @@ class my_data_def:
             l_args.append(str(column.name))
             l_args.append(str(column.type))
             l_args.append(column.nullable)
-            t_col_def=''
+            l_col_def=[]
             t_name=l_args[0]
             t_type=self.clean_type_names(l_args[1])
             b_null=l_args[2]
@@ -89,12 +97,13 @@ class my_data_def:
                 t_null='NULL'
             else:
                 t_null='NOT NULL'
-            try:
-                t_type=self.dic_datatype[t_type]
-            except:
-                t_type='text'
-            t_col_def=t_name+' '+t_type+' '+t_null
-            l_column.append(t_col_def)
+                
+            if (t_type =='integer' or t_type =='smallint' or t_type =='bigint') and column.autoincrement:
+                t_auto='AUTOINC'
+            else:    
+                t_auto='NOAUTOINC'
+            l_col_def=[t_name,t_type,t_null,t_auto]
+            l_column.append(l_col_def)
         return l_column
    
     def build_tab_list(self):
@@ -103,7 +112,6 @@ class my_data_def:
         for ob_table in self.ob_metadata.sorted_tables:
             l_table=[ob_table.name,self.build_column_list(ob_table)]
             self.l_tables.append(l_table) 
-        print self.l_tables
         
         
         

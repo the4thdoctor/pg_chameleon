@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from pg_chameleon import *
 my_db=my_db_connection('config/my_connection.conf')
 l_args=[
@@ -7,3 +8,5 @@ l_args=[
         ]
 my_ddl=my_data_def(l_args)
 my_ddl.build_tab_list()
+
+pg_ddl=pg_data_def(my_ddl.l_tables)        
