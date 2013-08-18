@@ -1,6 +1,7 @@
 import os
 import sys
 from sqlalchemy  import create_engine,MetaData
+from sqlalchemy.engine import reflection
 
 class my_db_connection:
     """class to manage the mysql connection"""
@@ -63,6 +64,7 @@ class my_data_def:
         self.ob_conn = l_args[1]
         self.ob_metadata = l_args[2]
         self.l_tables=[]
+        self.l_pkeys=[]
         self.dic_datatype={'integer':'integer','mediumint':'bigint','tinyint':'integer','smallint':'integer','int':'bigint','varchar':'varchar','bigint':'bigint','text':'text','char':'char','datetime':'date','longtext':'text','tinytext':'text','tinyblob':'bytea','mediumblob':'bytea','longblob':'bytea','blob':'bytea'}
 
     
@@ -108,10 +110,16 @@ class my_data_def:
    
     def build_tab_list(self):
         """ function to get the tables from the mysql db """
+        ob_inspector = reflection.Inspector.from_engine(self.ob_engine)
         l_table=[]
         for ob_table in self.ob_metadata.sorted_tables:
+            l_pkey=[]
+            d_pkget=ob_inspector.get_pk_constraint(ob_table.name)
+            l_pkey.append(ob_table.name)
+            l_pkey.append(d_pkget)
             l_table=[ob_table.name,self.build_column_list(ob_table)]
-            self.l_tables.append(l_table) 
+            self.l_tables.append(l_table)
+            self.l_pkeys.append(l_pkey) 
         
         
         

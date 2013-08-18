@@ -8,5 +8,10 @@ l_args=[
         ]
 my_ddl=my_data_def(l_args)
 my_ddl.build_tab_list()
+l_args=[
+            my_ddl.l_tables,
+            my_ddl.l_pkeys
+        ]
 
-pg_ddl=pg_data_def(my_ddl.l_tables)        
+pg_ddl=pg_data_def(l_args)
+pg_ddl.save_ddl('/tmp/db_schema.sql')        
