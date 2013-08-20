@@ -14,4 +14,18 @@ l_args=[
         ]
 
 pg_ddl=pg_data_def(l_args)
-pg_ddl.save_ddl('/tmp/db_schema.sql')        
+
+l_args=[
+        '/tmp/db_schema.sql',
+        True
+        ]
+
+pg_ddl.save_ddl(l_args)   
+
+l_args=[
+        '',
+        True
+        ]
+
+pg_ddl.create_objects(l_args)
+     
