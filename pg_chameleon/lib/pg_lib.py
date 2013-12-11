@@ -122,7 +122,7 @@ class pg_data_def:
     def build_tab_ddl(self):
         """ the function iterates over the list l_tables and builds a new list with the statements for tables"""
         for l_table in self.l_tables:
-            print "building the dll for table "+l_table[0]
+            print "building the ddl for table "+l_table[0]
             t_head="CREATE TABLE "+'"'+l_table[0]+'" ('
             t_tail=");"
             l_body=[]

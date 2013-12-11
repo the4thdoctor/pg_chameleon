@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from pg_chameleon import *
+
 my_db=my_db_connection('config/my_connection.conf')
 l_args=[
         my_db.ob_engine,
@@ -28,4 +29,15 @@ l_args=[
         ]
 
 pg_ddl.create_objects(l_args)
+
+l_args=[
+        my_db.ob_engine,
+        my_db.ob_conn,
+        my_db.ob_metadata,
+        my_ddl.l_tables,
+        '/tmp/'
+        ]
+
+my_flow=my_data_flow(l_args)
+my_flow.pull_data()
      

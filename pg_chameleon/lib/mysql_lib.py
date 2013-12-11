@@ -1,8 +1,9 @@
+import csv
 import os
 import sys
 from sqlalchemy  import create_engine,MetaData
 from sqlalchemy.engine import reflection
-
+import sqlalchemy
 class my_db_connection:
     """class to manage the mysql connection"""
     def __init__(self,t_conf_file=''):
@@ -57,7 +58,7 @@ class my_db_connection:
             print self.t_conn_str
             
 class my_data_def:
-    """class for aggregating data definition into a list, ready for postgresql transform """
+    """class for aggregating data definition into a list to feed into the postgresql class """
     def __init__(self,l_args):
         """ init function accept the objects initiated in the my_db_connection class  """
         self.ob_engine=l_args[0]
@@ -122,9 +123,37 @@ class my_data_def:
             self.l_pkeys.append(l_pkey) 
         
         
+class my_data_flow:
+    """class for aggregating data definition into a list to feed into the postgresql class """
+    def __init__(self,l_args):
+        self.ob_engine=l_args[0]
+        self.ob_conn = l_args[1]
+        self.ob_metadata = l_args[2]
+        self.l_tables = l_args[3]
+        self.t_out_dir= l_args[4]
         
+        """ """
+    def pull_data(self):
+        """ function to pull the data in copy format"""
+        """outfile = open('mydump.csv', 'wb')
+        outcsv = csv.writer(outfile)
+        records = session.Query(MyModel).all()
+        [ outcsv.writerow(curr.field_one, curr.field_two)  for curr in records ]
+        # or maybe use outcsv.writerows(records)
         
-        
+        outfile.close()
+        """
+        for l_table in self.l_tables:
+            print l_table[0]
+            ob_table = sqlalchemy.Table(l_table[0], self.ob_metadata, autoload=True)
+            ob_select = sqlalchemy.sql.select([ob_table])
+            ob_result = self.ob_conn.execute(ob_select)
+            t_out_file=self.t_out_dir+'/tmp_out.csv'
+            o_out_file = open(t_out_file, 'wb')
+            o_csv = csv.writer(o_out_file)
+            o_csv.writerows(ob_result)
+            o_out_file.close()
+            
         
         
         
