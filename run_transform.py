@@ -40,4 +40,4 @@ l_args=[
 
 my_flow=my_data_flow(l_args)
 my_flow.pull_data()
-     
+print my_flow.l_tab_file

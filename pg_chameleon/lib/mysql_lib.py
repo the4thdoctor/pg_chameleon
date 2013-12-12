@@ -131,28 +131,25 @@ class my_data_flow:
         self.ob_metadata = l_args[2]
         self.l_tables = l_args[3]
         self.t_out_dir= l_args[4]
+        self.l_tab_file=[]
         
         """ """
     def pull_data(self):
         """ function to pull the data in copy format"""
-        """outfile = open('mydump.csv', 'wb')
-        outcsv = csv.writer(outfile)
-        records = session.Query(MyModel).all()
-        [ outcsv.writerow(curr.field_one, curr.field_two)  for curr in records ]
-        # or maybe use outcsv.writerows(records)
-        
-        outfile.close()
-        """
+        i_sequence=0
         for l_table in self.l_tables:
             print l_table[0]
             ob_table = sqlalchemy.Table(l_table[0], self.ob_metadata, autoload=True)
             ob_select = sqlalchemy.sql.select([ob_table])
             ob_result = self.ob_conn.execute(ob_select)
-            t_out_file=self.t_out_dir+'/tmp_out.csv'
+            t_out_file=self.t_out_dir+'/out_data'+str(i_sequence)+'.csv'
             o_out_file = open(t_out_file, 'wb')
             o_csv = csv.writer(o_out_file)
             o_csv.writerows(ob_result)
             o_out_file.close()
+            l_out=[l_table[0],t_out_file]
+            self.l_tab_file.append(l_out)
+            i_sequence=i_sequence+1
             
         
         
