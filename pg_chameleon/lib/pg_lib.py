@@ -1,7 +1,7 @@
 import os
 import sys
 from sqlalchemy import create_engine
-
+import psycopg2
 class pg_db_connection:
     """class to manage the postgresql connection"""
     def __init__(self,t_conf_file=''):
@@ -53,7 +53,7 @@ class pg_db_connection:
 class pg_data_def:
     """class for building the postgresql ddl statements """
     def __init__(self,l_args):
-        """ init function accept the objects initiated in the my_db_connection class  """
+        """ init function accept the objects initiated in the pg_db_connection class  """
         self.l_tables=l_args[0]
         self.l_pkeys=l_args[1]
         self.l_tables_def=[]
@@ -139,3 +139,62 @@ class pg_data_def:
             t_body=str(',').join(l_body)
             l_table_def=[l_table[0],t_head+t_body+t_tail]
             self.l_tables_def.append(l_table_def)
+            
+            
+class pg_data_flow:
+    """class for managing the data flow into postgresql """
+    def __init__(self,l_args):
+        self.t_conf_file = l_args[0]
+        self.l_tab_file = l_args[1]
+        self.dic_conn={}
+        self.load_conf()
+        self.build_conn_string()
+        self.connect_db()
+        
+    
+    def connect_db(self):
+        """ connect to the database using psycopy2 """
+        self.o_pg_conn=psycopg2.connect(self.t_conn_str)
+        self.o_pg_cur=self.o_pg_conn.cursor()
+        
+        
+    def load_conf(self,):
+        t_conf_file=self.t_conf_file
+        if t_conf_file=='':
+            t_cwd=os.getcwd()
+            t_conf_file=t_cwd+'/config/pg_connection.conf'
+        try:
+            f_conf=open(t_conf_file,'rb')
+        except: 
+            print "Couldn't load the configuration file in "+t_conf_file
+            sys.exit(1) 
+        t_line='x'
+        while t_line:
+            t_line=(f_conf.readline()).strip()
+            try:
+                if str(t_line)[0]!='#':
+                    l_line=[]
+                    if t_line!='':
+                        l_line=t_line.split('=')
+                        self.dic_conn[l_line[0]]=l_line[1]
+            except:
+                continue
+    def build_conn_string(self):
+        """builds the PostgreSQL connection string"""
+        dic_conn=self.dic_conn
+        self.t_conn_str="dbname="+dic_conn["dbname"]+" user="+dic_conn["dbuser"]+" host="+dic_conn["dbhost"]+" password="+dic_conn["dbpass"]+" port="+dic_conn["dbport"]
+   
+    def push_data(self):
+        """ function to pull the data in copy format"""
+        i_sequence=0
+        for l_table in self.l_tab_file:
+            print " starting import for table "+l_table[0]+" from file "+l_table[1]
+            t_sql_copy="COPY "+'"'+l_table[0]+'"'+" FROM STDIN WITH CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' "
+            o_file=open(l_table[1],'rb')
+            #self.o_pg_cur.copy_from(o_file, '"'+l_table[0]+'"', sep=',')
+            self.o_pg_cur.copy_expert(t_sql_copy,o_file)
+            o_file.close()
+            self.o_pg_conn.commit()
+            
+            
+    

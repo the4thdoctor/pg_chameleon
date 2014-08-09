@@ -44,7 +44,7 @@ class my_db_connection:
     def build_conn_string(self):
         """builds the mysql connection string"""
         dic_conn=self.dic_conn
-        self.t_conn_str = "mysql://"+dic_conn["dbuser"]+":"+dic_conn["dbpass"]+"@"+dic_conn["dbhost"]+"/"+dic_conn["dbname"]
+        self.t_conn_str = "mysql://"+dic_conn["dbuser"]+":"+dic_conn["dbpass"]+"@"+dic_conn["dbhost"]+"/"+dic_conn["dbname"]+"?charset=utf8"
         
         
     def start_engine(self):
@@ -85,7 +85,7 @@ class my_data_def:
         return t_clean
     
     def build_column_list(self,ob_table):
-        """ the function build the column definition for postgres """
+        """ the function builds the column definition for postgres """
         l_column=[]
         for column in ob_table.columns:
             l_args=[]
@@ -124,7 +124,7 @@ class my_data_def:
         
         
 class my_data_flow:
-    """class for aggregating data definition into a list to feed into the postgresql class """
+    """class for managing the data flow from mysql """
     def __init__(self,l_args):
         self.ob_engine=l_args[0]
         self.ob_conn = l_args[1]
@@ -138,19 +138,28 @@ class my_data_flow:
         """ function to pull the data in copy format"""
         i_sequence=0
         for l_table in self.l_tables:
-            print l_table[0]
-            ob_table = sqlalchemy.Table(l_table[0], self.ob_metadata, autoload=True)
-            ob_select = sqlalchemy.sql.select([ob_table])
-            ob_result = self.ob_conn.execute(ob_select)
+            print "pulling data from table "+l_table[0]
+            l_fields=[]
+            for l_field in  l_table[1]:
+                t_field="REPLACE("+l_field[0]+", '\"', '\"\"') "
+                l_fields.append(t_field)
+            
+            
+            
+            v_fields="CONCAT('\"',CONCAT_WS('\",\"',"+','.join(l_fields)+"),'\"')"
+            t_sql="SELECT "+v_fields+" FROM "+l_table[0]+";"
+            ob_result = self.ob_conn.execute(t_sql).fetchall()
             t_out_file=self.t_out_dir+'/out_data'+str(i_sequence)+'.csv'
             o_out_file = open(t_out_file, 'wb')
-            o_csv = csv.writer(o_out_file)
-            o_csv.writerows(ob_result)
-            o_out_file.close()
+            for l_row in ob_result:
+                o_out_file.write(l_row[0]+"\n")
+            o_out_file.close() 
+            
+            
             l_out=[l_table[0],t_out_file]
             self.l_tab_file.append(l_out)
             i_sequence=i_sequence+1
-            
+        
         
         
         

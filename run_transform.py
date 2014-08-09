@@ -24,7 +24,7 @@ l_args=[
 pg_ddl.save_ddl(l_args)   
 
 l_args=[
-        '',
+        'config/pg_connection.conf',
         True
         ]
 
@@ -40,4 +40,11 @@ l_args=[
 
 my_flow=my_data_flow(l_args)
 my_flow.pull_data()
-print my_flow.l_tab_file
+
+
+l_args=[
+        'config/pg_connection.conf',
+        my_flow.l_tab_file
+        ]
+pg_flow=pg_data_flow(l_args)
+pg_flow.push_data()
