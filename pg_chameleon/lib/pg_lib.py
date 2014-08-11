@@ -115,9 +115,10 @@ class pg_data_def:
             t_table=l_pkey[0]
             d_pkey=l_pkey[1]
             l_fields=d_pkey["constrained_columns"]
-            t_pkey_name='pk_'+t_table+'_'+str('_').join(l_fields)
-            t_pkey_def='ALTER TABLE "'+t_table+'" ADD CONSTRAINT "'+t_pkey_name+'" PRIMARY KEY ("'+str('","').join(l_fields)+'") ;'
-            self.l_pkeys_def.append(t_pkey_def)
+            if len(l_fields)>0:
+                t_pkey_name='pk_'+t_table+'_'+str('_').join(l_fields)
+                t_pkey_def='ALTER TABLE "'+t_table+'" ADD CONSTRAINT "'+t_pkey_name+'" PRIMARY KEY ("'+str('","').join(l_fields)+'") ;'
+                self.l_pkeys_def.append(t_pkey_def)
         
     def build_tab_ddl(self):
         """ the function iterates over the list l_tables and builds a new list with the statements for tables"""
@@ -189,7 +190,8 @@ class pg_data_flow:
         i_sequence=0
         for l_table in self.l_tab_file:
             print " starting import for table "+l_table[0]+" from file "+l_table[1]
-            t_sql_copy="COPY "+'"'+l_table[0]+'"'+" FROM STDIN WITH CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' "
+            t_sql_copy="COPY "+'"'+l_table[0]+'"'+" FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"'  "
+            #print t_sql_copy
             o_file=open(l_table[1],'rb')
             #self.o_pg_cur.copy_from(o_file, '"'+l_table[0]+'"', sep=',')
             self.o_pg_cur.copy_expert(t_sql_copy,o_file)

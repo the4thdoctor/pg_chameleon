@@ -4,6 +4,7 @@ import sys
 from sqlalchemy  import create_engine,MetaData
 from sqlalchemy.engine import reflection
 import sqlalchemy
+import codecs
 class my_db_connection:
     """class to manage the mysql connection"""
     def __init__(self,t_conf_file=''):
@@ -141,20 +142,25 @@ class my_data_flow:
             print "pulling data from table "+l_table[0]
             l_fields=[]
             for l_field in  l_table[1]:
-                t_field="REPLACE("+l_field[0]+", '\"', '\"\"') "
+                t_field="COALESCE(REPLACE("+l_field[0]+", '\"', '\"\"'),'NULL') "
                 l_fields.append(t_field)
             
             
             
-            v_fields="CONCAT('\"',CONCAT_WS('\",\"',"+','.join(l_fields)+"),'\"')"
+            v_fields="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(l_fields)+"),'\"'),'\"NULL\"','NULL')"
             t_sql="SELECT "+v_fields+" FROM "+l_table[0]+";"
+            #print t_sql
             ob_result = self.ob_conn.execute(t_sql).fetchall()
             t_out_file=self.t_out_dir+'/out_data'+str(i_sequence)+'.csv'
-            o_out_file = open(t_out_file, 'wb')
-            for l_row in ob_result:
-                o_out_file.write(l_row[0]+"\n")
-            o_out_file.close() 
-            
+            with codecs.open(t_out_file,'wb',encoding='utf8') as o_out_file:
+                for l_row in ob_result:
+                    try:
+                        o_out_file.write(l_row[0]+"\n")
+                    except:
+                        print l_row[0]
+                        raise Exception("error")
+                o_out_file.close() 
+                
             
             l_out=[l_table[0],t_out_file]
             self.l_tab_file.append(l_out)
