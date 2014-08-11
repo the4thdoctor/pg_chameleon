@@ -92,13 +92,15 @@ class pg_data_def:
     def create_idx(self):
         print "start index build"    
         for t_idx in self.l_idx_def:
-            self.pg_conn.ob_engine.execute(t_idx)
+            print "creating index "+ t_idx[1]+ " on table "+ t_idx[0]
+            self.pg_conn.ob_engine.execute(t_idx[2])
         print "done"
         
     def create_pkeys(self):
         print "start primary key build"    
         for t_pkey in self.l_pkeys_def:
-            self.pg_conn.ob_engine.execute(t_pkey)
+            print "creating primary key "+ t_pkey[1]+ " on table "+ t_pkey[0]
+            self.pg_conn.ob_engine.execute(t_pkey[2])
         print "done"
         
     def create_tables(self,b_drop):
@@ -134,16 +136,17 @@ class pg_data_def:
             f_sql.write(t_table_def+"\n\n")
             
         for t_pkey in self.l_pkeys_def:
-            f_sql.write(t_pkey+"\n\n")
+            f_sql.write(t_pkey[2]+"\n\n")
             
         for t_idx in self.l_idx_def:
-            f_sql.write(t_idx+"\n\n")
+            f_sql.write(t_idx[2]+"\n\n")
         f_sql.close()
     
     
     def build_indices_ddl(self):
         """ builds the indices ddl """
         for l_index in self.l_indices:
+            l_idx=[]
             t_table=l_index[0]
             d_idx_meta=l_index[1]
             for d_index in d_idx_meta:
@@ -157,19 +160,22 @@ class pg_data_def:
                     t_unique=''
                 
                 t_idx_def='CREATE '+t_unique+' INDEX '+t_idx_name+' ON '+t_table+' ("'+str('","').join(l_fields)+'");'
-                self.l_idx_def.append(t_idx_def)
+                l_idx=[t_table,t_idx_name,t_idx_def]
+                self.l_idx_def.append(l_idx)
             
         
     def build_pkeys_ddl(self):
         """ the function iterates over the list l_pkeys and builds a new list with the statements for pkeys """
         for l_pkey in self.l_pkeys:
+            l_key=[]
             t_table=l_pkey[0]
             d_pkey=l_pkey[1]
             l_fields=d_pkey["constrained_columns"]
             if len(l_fields)>0:
                 t_pkey_name='pk_'+t_table+'_'+str('_').join(l_fields)
                 t_pkey_def='ALTER TABLE "'+t_table+'" ADD CONSTRAINT "'+t_pkey_name+'" PRIMARY KEY ("'+str('","').join(l_fields)+'") ;'
-                self.l_pkeys_def.append(t_pkey_def)
+                l_key=[t_table,t_pkey_name,t_pkey_def]
+                self.l_pkeys_def.append(l_key)
         
     def build_tab_ddl(self):
         """ the function iterates over the list l_tables and builds a new list with the statements for tables"""
