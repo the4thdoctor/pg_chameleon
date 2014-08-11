@@ -5,6 +5,7 @@ from sqlalchemy  import create_engine,MetaData
 from sqlalchemy.engine import reflection
 import sqlalchemy
 import codecs
+import time
 class my_db_connection:
     """class to manage the mysql connection"""
     def __init__(self,t_conf_file=''):
@@ -134,32 +135,47 @@ class my_data_flow:
         self.t_out_dir= l_args[4]
         self.l_tab_file=[]
         
-        """ """
-    def pull_data(self):
+        
+    def pull_data(self,i_limit=1000000):
         """ function to pull the data in copy format"""
         i_sequence=0
         for l_table in self.l_tables:
-            print "pulling data from table "+l_table[0]
+            print "pulling data from table "+l_table[0]+" with chunk size "+str(i_limit)
+            t_sql_count="SELECT count(*) as i_cnt FROM "+l_table[0]+";"
+            ob_res_count = self.ob_conn.execute(t_sql_count).fetchall()
+            i_cnt=ob_res_count[0][0]
+            i_num_read=1
+            rng_num_read=range(1)
+            if i_cnt>0:
+                print "got "+str(i_cnt)+" records"
+                i_num_read=i_cnt/i_limit
+                rng_num_read=range(i_num_read+1)
+                
+            
+            
             l_fields=[]
             for l_field in  l_table[1]:
                 t_field="COALESCE(REPLACE("+l_field[0]+", '\"', '\"\"'),'NULL') "
                 l_fields.append(t_field)
             
-            
-            
             v_fields="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(l_fields)+"),'\"'),'\"NULL\"','NULL')"
-            t_sql="SELECT "+v_fields+" FROM "+l_table[0]+";"
-            #print t_sql
-            ob_result = self.ob_conn.execute(t_sql).fetchall()
             t_out_file=self.t_out_dir+'/out_data'+str(i_sequence)+'.csv'
-            with codecs.open(t_out_file,'wb',encoding='utf8') as o_out_file:
+            o_out_file= codecs.open(t_out_file,'wb',encoding='utf8')
+            for rng_item in rng_num_read:
+                t_sql="SELECT "+v_fields+" FROM "+l_table[0]+" LIMIT "+str(rng_item*i_limit)+", "+str(i_limit)+";"
+                #print t_sql
+                ob_result = self.ob_conn.execute(t_sql).fetchall()
+                
                 for l_row in ob_result:
                     try:
                         o_out_file.write(l_row[0]+"\n")
                     except:
                         print l_row[0]
                         raise Exception("error")
-                o_out_file.close() 
+                print str(time.ctime())+" - "+str(min(i_cnt,(rng_item+1)*i_limit))+" records pulled"
+            
+            
+            o_out_file.close() 
                 
             
             l_out=[l_table[0],t_out_file]
