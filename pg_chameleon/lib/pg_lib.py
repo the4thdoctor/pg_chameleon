@@ -248,6 +248,9 @@ class pg_data_flow:
             self.o_pg_cur.copy_expert(t_sql_copy,o_file)
             o_file.close()
             self.o_pg_conn.commit()
+            print "import successful, removing the file "+l_table[1]
+            os.remove(l_table[1])
+            
             
             
     
