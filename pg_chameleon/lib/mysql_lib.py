@@ -68,6 +68,7 @@ class my_data_def:
         self.ob_metadata = l_args[2]
         self.l_tables=[]
         self.l_pkeys=[]
+        self.l_indices=[]
         self.dic_datatype={'integer':'integer','mediumint':'bigint','tinyint':'integer','smallint':'integer','int':'bigint','varchar':'varchar','bigint':'bigint','text':'text','char':'char','datetime':'date','longtext':'text','tinytext':'text','tinyblob':'bytea','mediumblob':'bytea','longblob':'bytea','blob':'bytea'}
 
     
@@ -117,12 +118,19 @@ class my_data_def:
         l_table=[]
         for ob_table in self.ob_metadata.sorted_tables:
             l_pkey=[]
+            l_idx=[]
             d_pkget=ob_inspector.get_pk_constraint(ob_table.name)
             l_pkey.append(ob_table.name)
             l_pkey.append(d_pkget)
             l_table=[ob_table.name,self.build_column_list(ob_table)]
             self.l_tables.append(l_table)
             self.l_pkeys.append(l_pkey) 
+            l_idx_get=ob_inspector.get_indexes(ob_table.name)
+            l_idx=[ob_table.name,l_idx_get]
+            self.l_indices.append(l_idx)
+        
+        
+            
         
         
 class my_data_flow:

@@ -11,7 +11,8 @@ my_ddl=my_data_def(l_args)
 my_ddl.build_tab_list()
 l_args=[
             my_ddl.l_tables,
-            my_ddl.l_pkeys
+            my_ddl.l_pkeys,
+            my_ddl.l_indices
         ]
 
 pg_ddl=pg_data_def(l_args)
@@ -25,7 +26,8 @@ pg_ddl.save_ddl(l_args)
 
 l_args=[
         'conf/pg_connection.conf',
-        True
+        True,
+        'tables'
         ]
 
 pg_ddl.create_objects(l_args)
@@ -48,3 +50,19 @@ l_args=[
         ]
 pg_flow=pg_data_flow(l_args)
 pg_flow.push_data()
+
+l_args=[
+        'conf/pg_connection.conf',
+        False,
+        'pkeys'
+        ]
+
+pg_ddl.create_objects(l_args)
+
+l_args=[
+        'conf/pg_connection.conf',
+        False,
+        'idx'
+        ]
+
+pg_ddl.create_objects(l_args)

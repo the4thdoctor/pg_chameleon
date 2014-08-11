@@ -56,10 +56,14 @@ class pg_data_def:
         """ init function accept the objects initiated in the pg_db_connection class  """
         self.l_tables=l_args[0]
         self.l_pkeys=l_args[1]
+        self.l_indices=l_args[2]
         self.l_tables_def=[]
         self.l_pkeys_def=[]
+        self.l_idx_def=[]
+        self.build_indices_ddl()
         self.build_tab_ddl()
         self.build_pkeys_ddl()
+        self.pg_conn=None
         
         
     def create_objects(self,l_args):
@@ -72,20 +76,44 @@ class pg_data_def:
             b_drop=l_args[1]
         except:
             b_drop=False
-        pg_conn=pg_db_connection(t_file_conf)
+        try:
+            t_kind=l_args[2]
+        except:
+            t_kind='all'
+        self.pg_conn=pg_db_connection(t_file_conf)
+        if t_kind=='all' or t_kind=='tables':
+            self.create_tables(b_drop)  
+        if t_kind=='all' or t_kind=='pkeys':
+            self.create_pkeys()
+        if t_kind=='all' or t_kind=='idx':
+            self.create_idx()
+        
+    
+    def create_idx(self):
+        print "start index build"    
+        for t_idx in self.l_idx_def:
+            self.pg_conn.ob_engine.execute(t_idx)
+        print "done"
+        
+    def create_pkeys(self):
+        print "start primary key build"    
+        for t_pkey in self.l_pkeys_def:
+            self.pg_conn.ob_engine.execute(t_pkey)
+        print "done"
+        
+    def create_tables(self,b_drop):
+        """ create the tables using the list l_tables_def  """
         for l_table_def in self.l_tables_def:
             t_table_def=l_table_def[1]
             if b_drop:
+                print "dropping table "+l_table_def[0]
                 t_table_drop='DROP TABLE IF EXISTS "'+l_table_def[0]+'" ;'
-                pg_conn.ob_engine.execute(t_table_drop)
+                self.pg_conn.ob_engine.execute(t_table_drop)
             t_table_def=l_table_def[1]
-            pg_conn.ob_engine.execute(t_table_def)
-        
-        for t_pkey in self.l_pkeys_def:
-            pg_conn.ob_engine.execute(t_pkey)
-        
-
-        
+            print "creating table "+l_table_def[0]
+            self.pg_conn.ob_engine.execute(t_table_def)
+            
+            
     def save_ddl(self,l_args):
         """the function writes the table and primary keys ddl in a file"""
         try:
@@ -107,7 +135,30 @@ class pg_data_def:
             
         for t_pkey in self.l_pkeys_def:
             f_sql.write(t_pkey+"\n\n")
+            
+        for t_idx in self.l_idx_def:
+            f_sql.write(t_idx+"\n\n")
         f_sql.close()
+    
+    
+    def build_indices_ddl(self):
+        """ builds the indices ddl """
+        for l_index in self.l_indices:
+            t_table=l_index[0]
+            d_idx_meta=l_index[1]
+            for d_index in d_idx_meta:
+                b_unique=d_index['unique']
+                l_fields=d_index['column_names']
+                t_name=d_index['name']
+                t_idx_name='idx_'+t_table+'_'+str('_').join(l_fields)+'_'+t_name
+                if b_unique:
+                    t_unique=' UNIQUE '
+                else:
+                    t_unique=''
+                
+                t_idx_def='CREATE '+t_unique+' INDEX '+t_idx_name+' ON '+t_table+' ("'+str('","').join(l_fields)+'");'
+                self.l_idx_def.append(t_idx_def)
+            
         
     def build_pkeys_ddl(self):
         """ the function iterates over the list l_pkeys and builds a new list with the statements for pkeys """
