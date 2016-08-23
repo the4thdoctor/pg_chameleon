@@ -4,4 +4,3 @@ mysql-replication==0.9
 psycopg2==2.6.2
 wsgiref==0.1.2
 PyYAML==3.11
-SQLAlchemy ==0.7.9
