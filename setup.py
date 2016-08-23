@@ -2,15 +2,18 @@ from setuptools import setup
 
 setup(name='pg_chameleon',
       version='0.1',
-      description='Migration script from mysql to postgresql',
+      description='Migration and replica extension from mysql to postgresql',
       url='https://github.com/the4thdoctor/pg_chameleon',
       author='Federico Campoli',
       author_email='4thdoctor.gallifrey@gmail.com',
-      license='GNU General Public License v3 (GPLv3)',
+      license='BSD License',
       packages=['pg_chameleon'],
       zip_safe=False,
       install_requires=[
-          'SQLAlchemy ==0.7.9',
-          'psycopg2 ==2.4.5',
-          'MySQL-python== 1.2.3',
+	        'PyMySQL==0.7.6', 
+			'argparse==1.2.1', 
+			'mysql-replication==0.9', 
+			'psycopg2==2.6.2', 
+			'wsgiref==0.1.2', 
+			'PyYAML==3.11'
       ],)

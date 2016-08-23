@@ -1,4 +1,4 @@
 pg_chameleon
 ============
 
-Migration script from mysql to PostgreSQL
+Migration and replica from mysql to PostgreSQL

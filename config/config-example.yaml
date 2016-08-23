@@ -1,0 +1,21 @@
+---
+#global settings
+my_server_id: 100
+replica_batch_size: 1000
+my_database:  db_replica
+pg_database: db_replication
+
+#mysql slave setup
+mysql_conn:
+    host: localhost
+    port: 3306
+    user: replication_username
+    passwd: never_commit_passwords
+
+#postgres connection
+postgres_db:
+    host: localhost
+    port: 5432
+    user: replication_username
+    password: never_commit_passwords
+ 
