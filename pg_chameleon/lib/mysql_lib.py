@@ -52,8 +52,6 @@ class mysql_engine():
 
 	def get_column_metadata(self, table):
 		sql_columns="""SELECT 
-											table_schema,
-											table_name,
 											column_name,
 											column_default,
 											ordinal_position,
@@ -65,13 +63,34 @@ class mysql_engine():
 											information_schema.COLUMNS 
 								WHERE 
 														table_schema=%s
-											AND 	table_name=%s;
+											AND 	table_name=%s
+								ORDER BY 
+												ordinal_position
 								;
 							"""
 		self.mysql_con.my_cursor.execute(sql_columns, (self.mysql_con.my_database, table))
-		column_list=self.mysql_con.my_cursor.fetchall()
-		return column_list
-		
+		column_data=self.mysql_con.my_cursor.fetchall()
+		return column_data
+
+	def get_index_metadata(self, table):
+		sql_index="""SELECT 
+										index_name,
+										GROUP_CONCAT(column_name ORDER BY seq_in_index) as index_columns
+									FROM
+										information_schema.statistics
+									WHERE
+														table_schema=%s
+											AND 	table_name=%s
+											AND	index_type = 'BTREE'
+									GROUP BY 
+										table_name,
+										index_name
+									;
+							"""
+		self.mysql_con.my_cursor.execute(sql_index, (self.mysql_con.my_database, table))
+		index_data=self.mysql_con.my_cursor.fetchall()
+		return index_data
+	
 	def get_table_metadata(self):
 		print "getting tables"
 		sql_tables="""SELECT 
@@ -87,7 +106,8 @@ class mysql_engine():
 		table_list=self.mysql_con.my_cursor.fetchall()
 		for table in table_list:
 			column_data=self.get_column_metadata(table["table_name"])
-			dic_table={table["table_name"]:{'columns':column_data}}
+			index_data=self.get_index_metadata(table["table_name"])
+			dic_table={table["table_name"]:{'columns':column_data,  'indices': index_data}}
 			print dic_table
 	
 	def __del__(self):
