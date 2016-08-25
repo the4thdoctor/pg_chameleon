@@ -1,9 +1,6 @@
-import os
-import sys
-from pg_chameleon import global_config
 import pymysql
 class mysql_connection:
-	def __init__(self):
+	def __init__(self, global_config):
 		self.global_conf=global_config()
 		self.mysql_conn=self.global_conf.mysql_conn
 		self.my_database=self.global_conf.my_database
@@ -26,9 +23,11 @@ class mysql_connection:
 		
 		
 class mysql_engine:
-	def __init__(self, out_dir="/tmp/"):
+	def __init__(self, global_config, out_dir="/tmp/"):
 		self.out_dir=out_dir
 		self.my_tables=[]
+		self.table_file={}
+		
 		self.type_dictionary={
 												'integer':'integer',
 												'mediumint':'bigint',
@@ -47,7 +46,7 @@ class mysql_engine:
 												'longblob':'bytea',
 												'blob':'bytea'
 										}
-		self.mysql_con=mysql_connection()
+		self.mysql_con=mysql_connection(global_config)
 		self.mysql_con.connect_db()
 		self.get_table_metadata()
 
@@ -111,9 +110,9 @@ class mysql_engine:
 			dic_table={'name':table["table_name"], 'columns':column_data,  'indices': index_data}
 			self.my_tables.append(dic_table)
 	
-	def pull_table_data(self, table=None, limit=10000):
-		
+	def pull_table_data(self, table_inc=None, limit=10000):
 		for table in self.my_tables:
+			
 			column_list=[]
 			table_name=table["name"]
 			table_columns=table["columns"]
@@ -136,6 +135,8 @@ class mysql_engine:
 					csv_file.write(csv_row["data"]+"\n")
 				
 			csv_file.close()
+			self.table_file[table_name]=out_file
+		
 			
 			
 	def __del__(self):

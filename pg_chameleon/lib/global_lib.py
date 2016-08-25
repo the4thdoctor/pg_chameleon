@@ -1,3 +1,4 @@
+from pg_chameleon import mysql_engine
 import yaml
 import sys
 import os
@@ -17,3 +18,11 @@ class global_config:
 		self.replica_batch_size=confdic["replica_batch_size"]
 		
 		
+class replica_engine:
+	def __init__(self):
+		config=global_config()
+		self.my_eng=mysql_engine(global_config)
+	
+	def pull_data(self):
+		self.my_eng.pull_table_data()
+		print self.my_eng.table_file
