@@ -27,25 +27,6 @@ class mysql_engine:
 		self.out_dir=out_dir
 		self.my_tables=[]
 		self.table_file={}
-		
-		self.type_dictionary={
-												'integer':'integer',
-												'mediumint':'bigint',
-												'tinyint':'integer',
-												'smallint':'integer',
-												'int':'bigint',
-												'varchar':'varchar',
-												'bigint':'bigint',
-												'text':'text',
-												'char':'char',
-												'datetime':'date',
-												'longtext':'text',
-												'tinytext':'text',
-												'tinyblob':'bytea',
-												'mediumblob':'bytea',
-												'longblob':'bytea',
-												'blob':'bytea'
-										}
 		self.mysql_con=mysql_connection(global_config)
 		self.mysql_con.connect_db()
 		self.get_table_metadata()
@@ -58,7 +39,10 @@ class mysql_engine:
 											data_type,
 											character_maximum_length,
 											extra,
-											column_key
+											column_key,
+											is_nullable,
+											numeric_precision,
+											numeric_scale
 								FROM 
 											information_schema.COLUMNS 
 								WHERE 
@@ -75,6 +59,7 @@ class mysql_engine:
 	def get_index_metadata(self, table):
 		sql_index="""SELECT 
 										index_name,
+										non_unique,
 										GROUP_CONCAT(column_name ORDER BY seq_in_index) as index_columns
 									FROM
 										information_schema.statistics
@@ -84,6 +69,7 @@ class mysql_engine:
 											AND	index_type = 'BTREE'
 									GROUP BY 
 										table_name,
+										non_unique,
 										index_name
 									;
 							"""
@@ -111,8 +97,9 @@ class mysql_engine:
 			self.my_tables.append(dic_table)
 	
 	def pull_table_data(self, table_inc=None, limit=10000):
+		self.lock_tables()
+		print self.master_status
 		for table in self.my_tables:
-			
 			column_list=[]
 			table_name=table["name"]
 			table_columns=table["columns"]
@@ -126,9 +113,9 @@ class mysql_engine:
 			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
 			out_file=self.out_dir+'/out_data'+table_name+'.csv'
 			csv_file=open(out_file, 'wb')
+			print "pulling out data from "+table_name
 			for slice in range_slices:
 				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
-				print "pulling out "+str(slice) + " of "+str(num_slices)
 				self.mysql_con.my_cursor.execute(sql_out)
 				csv_results = self.mysql_con.my_cursor.fetchall()
 				for csv_row in csv_results:
@@ -136,7 +123,24 @@ class mysql_engine:
 				
 			csv_file.close()
 			self.table_file[table_name]=out_file
+		self.unlock_tables()
 		
+		
+	def lock_tables(self):
+		""" lock tables and get the log coords """
+		self.locked_tables=[]
+		for table in self.my_tables:
+			self.locked_tables.append(table["name"])
+		t_sql_lock="FLUSH TABLES "+", ".join(self.locked_tables)+" WITH READ LOCK;"
+		self.mysql_con.my_cursor.execute(t_sql_lock)
+		t_sql_master="SHOW MASTER STATUS;"
+		self.mysql_con.my_cursor.execute(t_sql_master)
+		self.master_status=self.mysql_con.my_cursor.fetchall()		
+	
+	def unlock_tables(self):
+		""" unlock tables previously locked """
+		t_sql_unlock="UNLOCK TABLES;"
+		self.mysql_con.my_cursor.execute(t_sql_unlock)
 			
 			
 	def __del__(self):
