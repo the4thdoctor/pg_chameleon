@@ -1,4 +1,4 @@
 #!/usr/bin/python
 from pg_chameleon import replica_engine
 replica=replica_engine()
-replica.pull_data()
+#replica.pull_data(table_limit=2000000)

@@ -1,4 +1,4 @@
-from pg_chameleon import mysql_engine
+from pg_chameleon import mysql_engine, pg_engine
 import yaml
 import sys
 import os
@@ -12,6 +12,7 @@ class global_config:
 		confdic=yaml.load(conffile.read())
 		conffile.close()
 		self.mysql_conn=confdic["mysql_conn"]
+		self.pg_conn=confdic["pg_conn"]
 		self.my_database=confdic["my_database"]
 		self.pg_database=confdic["pg_database"]
 		self.my_server_id=confdic["my_server_id"]
@@ -20,9 +21,9 @@ class global_config:
 		
 class replica_engine:
 	def __init__(self):
-		config=global_config()
 		self.my_eng=mysql_engine(global_config)
+		self.pg_eng=pg_engine(global_config)
+		self.pg_eng.create_schema()
 	
-	def pull_data(self):
-		self.my_eng.pull_table_data()
-		print self.my_eng.table_file
+	def pull_data(self, table_limit):
+		self.my_eng.pull_table_data(limit=table_limit)
