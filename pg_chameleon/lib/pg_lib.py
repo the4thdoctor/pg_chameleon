@@ -115,7 +115,7 @@ class pg_engine:
 				if column_type=='bit' or column_type=='float':
 					column_type=column_type+"("+str(column["numeric_precision"])+")"
 				if column["extra"]=="auto_increment":
-					column_type="bigint"
+					column_type="bigserial"
 				ddl_columns.append(column["column_name"]+" "+column_type+" "+col_is_null )
 			def_columns=str(',').join(ddl_columns)
 			self.table_ddl[table["name"]]=ddl_head+def_columns+ddl_tail
