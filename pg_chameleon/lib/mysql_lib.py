@@ -47,7 +47,15 @@ class mysql_engine:
 												WHEN data_type="enum"
 											THEN	
 												SUBSTRING(COLUMN_TYPE,5)
-											END AS enum_list
+											END AS enum_list,
+											CASE
+												WHEN data_type IN ('blob','tinyblob','longblob')
+											THEN
+												concat('hex(',column_name,')')
+											ELSE
+												column_name
+											END
+											AS column_select
 								FROM 
 											information_schema.COLUMNS 
 								WHERE 
@@ -114,7 +122,7 @@ class mysql_engine:
 			num_slices=count_rows["i_cnt"]/limit
 			range_slices=range(num_slices+1)
 			for column in table_columns:
-				column_list.append("COALESCE(REPLACE("+column["column_name"]+", '\"', '\"\"'),'NULL') ")
+				column_list.append("COALESCE(REPLACE("+column["column_select"]+", '\"', '\"\"'),'NULL') ")
 			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
 			out_file=self.out_dir+'/out_data'+table_name+'.csv'
 			csv_file=open(out_file, 'wb')
