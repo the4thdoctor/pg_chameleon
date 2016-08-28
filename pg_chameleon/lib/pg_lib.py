@@ -1,6 +1,6 @@
 import psycopg2
 import os
-
+import sys
 class pg_connection:
 	def __init__(self, global_config):
 		self.global_conf=global_config()
@@ -38,7 +38,7 @@ class pg_engine:
 												'varchar':'character varying',
 												'bigint':'bigint',
 												'text':'text',
-												'char':'char',
+												'char':'character',
 												'datetime':'timestamp without time zone',
 												'timestamp':'timestamp without time zone',
 												'longtext':'text',
@@ -49,10 +49,14 @@ class pg_engine:
 												'blob':'bytea', 
 												'decimal':'numeric', 
 												'double':'float', 
-												'bit':'bit'
+												'bit':'bit', 
+												'year':'integer', 
+												'enum':'enum', 
+												'set':'text'
 										}
 		self.table_ddl={}
 		self.idx_ddl={}
+		self.type_ddl={}
 		
 	def create_schema(self):
 		sql_schema=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"
@@ -66,11 +70,17 @@ class pg_engine:
 				if drop_tables:
 					sql_drop='DROP TABLE IF EXISTS "'+table+'" CASCADE ;'
 					self.pg_conn.pgsql_cur.execute(sql_drop)
+				try:
+					sql_type=self.type_ddl[table]
+					self.pg_conn.pgsql_cur.execute(sql_type)
+				except:
+					pass
 				sql_create=self.table_ddl[table]
 				try:
 					self.pg_conn.pgsql_cur.execute(sql_create)
 				except psycopg2.Error as e:
 					print  "SQLCODE: " + e.pgcode+ " - " +e.pgerror
+					print sql_create
 	
 	def create_indices(self):
 		print "creating indices"
@@ -85,7 +95,7 @@ class pg_engine:
 			print "table to file list is empty"
 		else:
 			for table in table_file:
-				table_file[table]
+				print "importing "+table_file[table]
 				sql_copy="COPY "+'"'+table+'"'+" FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"'  "
 				tab_file=open(table_file[table],'rb')
 				self.pg_conn.pgsql_cur.copy_expert(sql_copy,tab_file)
@@ -108,7 +118,12 @@ class pg_engine:
 				else:
 					col_is_null="NULL"
 				column_type=self.type_dictionary[column["data_type"]]
-				if column_type=="character varying":
+				if column_type=="enum":
+					enum_type="enum_"+table["name"]+"_"+column["column_name"]
+					sql_enum="CREATE TYPE "+enum_type+" AS ENUM "+column["enum_list"]+";"
+					self.type_ddl[table["name"]]=sql_enum
+					column_type=enum_type
+				if column_type=="character varying" or column_type=="character":
 					column_type=column_type+"("+str(column["character_maximum_length"])+")"
 				if column_type=='numeric':
 					column_type=column_type+"("+str(column["numeric_precision"])+","+str(column["numeric_scale"])+")"

@@ -42,7 +42,12 @@ class mysql_engine:
 											column_key,
 											is_nullable,
 											numeric_precision,
-											numeric_scale
+											numeric_scale,
+											CASE 
+												WHEN data_type="enum"
+											THEN	
+												SUBSTRING(COLUMN_TYPE,5)
+											END AS enum_list
 								FROM 
 											information_schema.COLUMNS 
 								WHERE 
