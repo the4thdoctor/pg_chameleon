@@ -23,7 +23,7 @@ Copy config-example.yaml in config.yaml and edit the connection settings.
 
 Run the example script init_replica.py. This will copy the mysql schema/data in PostgreSQL. 
 
-** The script init_replica.py drops any schema and object present in PostgreSQL ** use it at your own risk.
+**The script init_replica.py drops any schema and object present in PostgreSQL** use it at your own risk.
 
 # Platform and versions
 
