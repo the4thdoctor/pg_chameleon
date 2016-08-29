@@ -30,7 +30,7 @@ class replica_engine:
 	
 	def push_data(self):
 		print "loading data"
-		self.pg_eng.push_data(self.my_eng.table_file)
+		self.pg_eng.push_data(self.my_eng.table_file, self.my_eng.my_tables)
 		
 	def  create_tables(self, drop_tables=False):
 		self.pg_eng.build_tab_ddl()

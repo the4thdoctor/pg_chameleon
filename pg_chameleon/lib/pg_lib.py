@@ -90,23 +90,45 @@ class pg_engine:
 				print sql_idx
 				self.pg_conn.pgsql_cur.execute(sql_idx)
 	
-	def push_data(self, table_file=[]):
+	def push_data(self, table_file=[], my_tables={}):
+		#print my_tables
+		#sys.exit()
+		
 		if len(table_file)==0:
 			print "table to file list is empty"
 		else:
 			for table in table_file:
-				print "importing "+table_file[table]
-				sql_copy="COPY "+'"'+table+'"'+" FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"'  "
+				tmp_table="tmp_"+table
+				sql_create_temp="CREATE TEMPORARY TABLE "+tmp_table+" (LIKE "+table+");"
+				sql_drop_temp="DROP TABLE "+tmp_table+" ;"
+				self.pg_conn.pgsql_cur.execute(sql_create_temp)
+				column_copy=[]
+				column_import=[]
+				for column in my_tables[table]["columns"]:
+					column_copy.append(column["column_name"])
+					column_import.append(column["column_import"])
+				sql_copy="COPY "+'"'+tmp_table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"'  "
+				sql_insert="INSERT INTO "+table+" ("+','.join(column_copy)+") SELECT "+','.join(column_copy)+" FROM "+'"'+tmp_table+'"'+";"
+				
 				tab_file=open(table_file[table],'rb')
 				self.pg_conn.pgsql_cur.copy_expert(sql_copy,tab_file)
 				tab_file.close()
-				print "import successful, removing the file "+table_file[table]
-				os.remove(table_file[table])
+				try:
+					self.pg_conn.pgsql_cur.execute(sql_insert)
+					print "import successful, removing the file "+table_file[table]
+					os.remove(table_file[table])
+				except psycopg2.Error as e:
+					print  "SQLCODE: " + e.pgcode+ " - " +e.pgerror
+					print sql_insert
+					
+				
+				self.pg_conn.pgsql_cur.execute(sql_drop_temp)
 				
 	def build_tab_ddl(self):
 		""" the function iterates over the list l_tables and builds a new list with the statements for tables"""
 		
-		for table in self.table_metadata:
+		for table_name in self.table_metadata:
+			table=self.table_metadata[table_name]
 			columns=table["columns"]
 			
 			ddl_head="CREATE TABLE "+'"'+table["name"]+'" ('
@@ -138,8 +160,8 @@ class pg_engine:
 	def build_idx_ddl(self):
 		
 		""" the function iterates over the list l_pkeys and builds a new list with the statements for pkeys """
-		for table in self.table_metadata:
-			
+		for table_name in self.table_metadata:
+			table=self.table_metadata[table_name]
 			
 			table_name=table["name"]
 			indices=table["indices"]

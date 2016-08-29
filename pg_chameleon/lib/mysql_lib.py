@@ -25,7 +25,7 @@ class mysql_connection:
 class mysql_engine:
 	def __init__(self, global_config, out_dir="/tmp/"):
 		self.out_dir=out_dir
-		self.my_tables=[]
+		self.my_tables={}
 		self.table_file={}
 		self.mysql_con=mysql_connection(global_config)
 		self.mysql_con.connect_db()
@@ -55,7 +55,15 @@ class mysql_engine:
 											ELSE
 												column_name
 											END
-											AS column_select
+											AS column_select,
+											CASE
+												WHEN data_type IN ('blob','tinyblob','longblob')
+											THEN
+												concat('decode(',column_name,'::text,''hex'')')
+											ELSE
+												column_name
+											END
+											AS column_import
 								FROM 
 											information_schema.COLUMNS 
 								WHERE 
@@ -107,12 +115,13 @@ class mysql_engine:
 			column_data=self.get_column_metadata(table["table_name"])
 			index_data=self.get_index_metadata(table["table_name"])
 			dic_table={'name':table["table_name"], 'columns':column_data,  'indices': index_data}
-			self.my_tables.append(dic_table)
+			self.my_tables[table["table_name"]]=dic_table
 	
 	def pull_table_data(self, table_inc=None, limit=10000):
 		self.lock_tables()
 		print self.master_status
-		for table in self.my_tables:
+		for table_name in self.my_tables:
+			table=self.my_tables[table_name]
 			column_list=[]
 			table_name=table["name"]
 			table_columns=table["columns"]
@@ -142,7 +151,8 @@ class mysql_engine:
 	def lock_tables(self):
 		""" lock tables and get the log coords """
 		self.locked_tables=[]
-		for table in self.my_tables:
+		for table_name in self.my_tables:
+			table=self.my_tables[table_name]
 			self.locked_tables.append(table["name"])
 		t_sql_lock="FLUSH TABLES "+", ".join(self.locked_tables)+" WITH READ LOCK;"
 		self.mysql_con.my_cursor.execute(t_sql_lock)
