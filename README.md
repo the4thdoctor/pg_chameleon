@@ -41,7 +41,7 @@ The databases source and target are:
  * Create primary keys and indices on PostgreSQL
  * Enum support
  * Blob export in hex format
- * Blob import in hex format into bytea fields (need testing)
+ * Blob import in hex format into bytea fields (needs testing)
 
 # What does'n work
 Replica from MySQL

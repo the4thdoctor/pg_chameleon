@@ -55,15 +55,7 @@ class mysql_engine:
 											ELSE
 												column_name
 											END
-											AS column_select,
-											CASE
-												WHEN data_type IN ('blob','tinyblob','longblob')
-											THEN
-												concat('decode(',column_name,'::text,''hex'')')
-											ELSE
-												column_name
-											END
-											AS column_import
+											AS column_select
 								FROM 
 											information_schema.COLUMNS 
 								WHERE 
