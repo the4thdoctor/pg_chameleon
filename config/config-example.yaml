@@ -5,6 +5,9 @@ replica_batch_size: 1000
 my_database:  db_replica
 pg_database: db_replication
 
+#mysql connection's charset. 
+my_charset: ''
+
 #mysql slave setup
 mysql_conn:
     host: localhost

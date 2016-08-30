@@ -34,21 +34,26 @@ class pg_engine:
 												'mediumint':'bigint',
 												'tinyint':'integer',
 												'smallint':'integer',
-												'int':'bigint',
-												'varchar':'character varying',
+												'int':'integer',
 												'bigint':'bigint',
+												'varchar':'character varying',
 												'text':'text',
 												'char':'character',
 												'datetime':'timestamp without time zone',
+												'date':'date',
+												'time':'time without time zone',
 												'timestamp':'timestamp without time zone',
-												'longtext':'text',
 												'tinytext':'text',
+												'mediumtext':'text',
+												'longtext':'text',
 												'tinyblob':'bytea',
 												'mediumblob':'bytea',
 												'longblob':'bytea',
 												'blob':'bytea', 
+												'binary':'bytea', 
 												'decimal':'numeric', 
 												'double':'float', 
+												'float':'float', 
 												'bit':'bit', 
 												'year':'integer', 
 												'enum':'enum', 
@@ -87,7 +92,6 @@ class pg_engine:
 		for index in self.idx_ddl:
 			idx_ddl= self.idx_ddl[index]
 			for sql_idx in idx_ddl:
-				print sql_idx
 				self.pg_conn.pgsql_cur.execute(sql_idx)
 	
 	def push_data(self, table_file=[], my_tables={}):
@@ -112,6 +116,7 @@ class pg_engine:
 		
 		for table_name in self.table_metadata:
 			table=self.table_metadata[table_name]
+			print table["name"]
 			columns=table["columns"]
 			
 			ddl_head="CREATE TABLE "+'"'+table["name"]+'" ('
@@ -136,7 +141,7 @@ class pg_engine:
 					column_type=column_type+"("+str(column["numeric_precision"])+")"
 				if column["extra"]=="auto_increment":
 					column_type="bigserial"
-				ddl_columns.append(column["column_name"]+" "+column_type+" "+col_is_null )
+				ddl_columns.append('"'+column["column_name"]+'" '+column_type+" "+col_is_null )
 			def_columns=str(',').join(ddl_columns)
 			self.table_ddl[table["name"]]=ddl_head+def_columns+ddl_tail
 	

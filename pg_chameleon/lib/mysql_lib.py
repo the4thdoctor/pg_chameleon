@@ -4,6 +4,7 @@ class mysql_connection:
 		self.global_conf=global_config()
 		self.mysql_conn=self.global_conf.mysql_conn
 		self.my_database=self.global_conf.my_database
+		self.my_charset=self.global_conf.my_charset
 		self.my_connection=None
 		self.my_cursor=None
 		
@@ -14,7 +15,7 @@ class mysql_connection:
 									user=self.mysql_conn["user"],
 									password=self.mysql_conn["passwd"],
 									db=self.my_database,
-									charset='utf8mb4',
+									charset=self.my_charset,
 									cursorclass=pymysql.cursors.DictCursor)
 		self.my_cursor=self.my_connection.cursor()
 
@@ -49,11 +50,11 @@ class mysql_engine:
 												SUBSTRING(COLUMN_TYPE,5)
 											END AS enum_list,
 											CASE
-												WHEN data_type IN ('blob','tinyblob','longblob')
+												WHEN data_type IN ('blob','tinyblob','longblob','binary')
 											THEN
-												concat('hex(',column_name,')')
+												concat('hex(`',column_name,'`)')
 											ELSE
-												column_name
+												concat('`',column_name,'`')
 											END
 											AS column_select
 								FROM 
@@ -130,10 +131,18 @@ class mysql_engine:
 			print "pulling out data from "+table_name
 			for slice in range_slices:
 				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
-				self.mysql_con.my_cursor.execute(sql_out)
+				try:
+					self.mysql_con.my_cursor.execute(sql_out)
+				except:
+					print sql_out
 				csv_results = self.mysql_con.my_cursor.fetchall()
 				for csv_row in csv_results:
-					csv_file.write(csv_row["data"]+"\n")
+					try:
+						csv_file.write(csv_row["data"]+"\n")
+					except:
+						print "error in row write,  table" + table_name
+						print csv_row["data"]
+					
 				
 			csv_file.close()
 			self.table_file[table_name]=out_file
