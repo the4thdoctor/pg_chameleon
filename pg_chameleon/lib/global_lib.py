@@ -18,7 +18,7 @@ class global_config:
 		self.pg_database=confdic["pg_database"]
 		self.my_server_id=confdic["my_server_id"]
 		self.replica_batch_size=confdic["replica_batch_size"]
-		
+		self.tables_limit=confdic["tables_limit"]
 		
 class replica_engine:
 	def __init__(self):

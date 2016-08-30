@@ -5,9 +5,10 @@ class mysql_connection:
 		self.mysql_conn=self.global_conf.mysql_conn
 		self.my_database=self.global_conf.my_database
 		self.my_charset=self.global_conf.my_charset
+		self.tables_limit=self.global_conf.tables_limit
 		self.my_connection=None
 		self.my_cursor=None
-		
+		print self.tables_limit
 	
 	def connect_db(self):
 		"""  Establish connection with the database """
@@ -51,8 +52,11 @@ class mysql_engine:
 											END AS enum_list,
 											CASE
 												WHEN data_type IN ('blob','tinyblob','longblob','binary')
-											THEN
-												concat('hex(`',column_name,'`)')
+												THEN
+													concat('hex(`',column_name,'`)')
+												WHEN data_type IN ('bit')
+												THEN
+													concat('cast(`',column_name,'` AS unsigned)')
 											ELSE
 												concat('`',column_name,'`')
 											END
@@ -93,6 +97,10 @@ class mysql_engine:
 	
 	def get_table_metadata(self):
 		print "getting table metadata"
+		table_include=""
+		if self.mysql_con.tables_limit:
+			print "table copy limited to tables: "+','.join(self.mysql_con.tables_limit)
+			table_include="AND table_name IN ('"+"','".join(self.mysql_con.tables_limit)+"')"
 		sql_tables="""SELECT 
 											table_schema,
 											table_name
@@ -100,8 +108,11 @@ class mysql_engine:
 											information_schema.TABLES 
 								WHERE 
 														table_type='BASE TABLE' 
-											AND 	table_schema=%s;
+											AND 	table_schema=%s
+											"""+table_include+"""
+								;
 							"""
+		
 		self.mysql_con.my_cursor.execute(sql_tables, (self.mysql_con.my_database))
 		table_list=self.mysql_con.my_cursor.fetchall()
 		for table in table_list:

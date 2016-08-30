@@ -8,6 +8,10 @@ pg_database: db_replication
 #mysql connection's charset. 
 my_charset: ''
 
+#include tables only
+tables_limit:
+    
+
 #mysql slave setup
 mysql_conn:
     host: localhost

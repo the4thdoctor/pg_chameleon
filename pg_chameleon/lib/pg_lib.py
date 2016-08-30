@@ -16,6 +16,7 @@ class pg_connection:
 		strconn="dbname=%(dbname)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % pg_pars
 		self.pgsql_conn = psycopg2.connect(strconn)
 		self.pgsql_conn .set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+		#self.pgsql_conn .set_client_encoding("")
 		self.pgsql_cur=self.pgsql_conn .cursor()
 		
 	
@@ -54,7 +55,7 @@ class pg_engine:
 												'decimal':'numeric', 
 												'double':'float', 
 												'float':'float', 
-												'bit':'bit', 
+												'bit':'bool', 
 												'year':'integer', 
 												'enum':'enum', 
 												'set':'text'
