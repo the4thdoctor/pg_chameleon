@@ -1,4 +1,6 @@
 import pymysql
+import codecs
+
 class mysql_connection:
 	def __init__(self, global_config):
 		self.global_conf=global_config()
@@ -78,7 +80,7 @@ class mysql_engine:
 		sql_index="""SELECT 
 										index_name,
 										non_unique,
-										GROUP_CONCAT(column_name ORDER BY seq_in_index) as index_columns
+										GROUP_CONCAT(concat('"',column_name,'"') ORDER BY seq_in_index) as index_columns
 									FROM
 										information_schema.statistics
 									WHERE
@@ -138,7 +140,7 @@ class mysql_engine:
 				column_list.append("COALESCE(REPLACE("+column["column_select"]+", '\"', '\"\"'),'NULL') ")
 			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
 			out_file=self.out_dir+'/out_data'+table_name+'.csv'
-			csv_file=open(out_file, 'wb')
+			csv_file=codecs.open(out_file, 'wb', self.mysql_con.my_charset)
 			print "pulling out data from "+table_name
 			for slice in range_slices:
 				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"

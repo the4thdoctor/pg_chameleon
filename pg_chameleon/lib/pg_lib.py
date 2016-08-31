@@ -26,6 +26,7 @@ class pg_connection:
 
 class pg_engine:
 	def __init__(self, global_config, table_metadata, table_file):
+		self.idx_sequence=0
 		self.pg_conn=pg_connection(global_config)
 		self.pg_conn.connect_db()
 		self.table_metadata=table_metadata
@@ -93,6 +94,7 @@ class pg_engine:
 		for index in self.idx_ddl:
 			idx_ddl= self.idx_ddl[index]
 			for sql_idx in idx_ddl:
+				
 				self.pg_conn.pgsql_cur.execute(sql_idx)
 	
 	def push_data(self, table_file=[], my_tables={}):
@@ -106,7 +108,7 @@ class pg_engine:
 				tmp_table="tmp_"+table
 				column_copy=[]
 				for column in my_tables[table]["columns"]:
-					column_copy.append(column["column_name"])
+					column_copy.append('"'+column["column_name"]+'"')
 				sql_copy="COPY "+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"'  "
 				tab_file=open(table_file[table],'rb')
 				self.pg_conn.pgsql_cur.copy_expert(sql_copy,tab_file)
@@ -156,11 +158,11 @@ class pg_engine:
 			indices=table["indices"]
 			table_idx=[]
 			for index in indices:
-				index_name=index["index_name"]
+				indx=index["index_name"]
 				index_columns=index["index_columns"]
 				non_unique=index["non_unique"]
-				if index_name=='PRIMARY':
-					pkey_name="pk_"+table_name
+				if indx=='PRIMARY':
+					pkey_name="pk_"+table_name[0:20]+"_"+str(self.idx_sequence)
 					pkey_def='ALTER TABLE "'+table_name+'" ADD CONSTRAINT "'+pkey_name+'" PRIMARY KEY ('+index_columns+') ;'
 					table_idx.append(pkey_def)
 				else:
@@ -168,8 +170,10 @@ class pg_engine:
 						unique_key='UNIQUE'
 					else:
 						unique_key=''
-					idx_def='CREATE '+unique_key+' INDEX "idx_'+ index_name+'_'+table_name+'" ON '+table_name+' ('+index_columns+');'
+					index_name='"idx_'+indx[0:20]+table_name[0:20]+"_"+str(self.idx_sequence)+'"'
+					idx_def='CREATE '+unique_key+' INDEX '+ index_name+' ON "'+table_name+'" ('+index_columns+');'
 					table_idx.append(idx_def)
+				self.idx_sequence+=1
 					
 			self.idx_ddl[table_name]=table_idx
 	
