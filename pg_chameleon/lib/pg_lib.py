@@ -25,7 +25,8 @@ class pg_connection:
 		
 
 class pg_engine:
-	def __init__(self, global_config, table_metadata, table_file):
+	def __init__(self, global_config, table_metadata, table_file, sql_dir='sql/'):
+		self.sql_dir=sql_dir
 		self.idx_sequence=0
 		self.pg_conn=pg_connection(global_config)
 		self.pg_conn.connect_db()
@@ -177,3 +178,38 @@ class pg_engine:
 					
 			self.idx_ddl[table_name]=table_idx
 	
+	def create_service_schema(self, cleanup=False):
+		if cleanup:
+			self.drop_service_schema()
+			
+		file_schema=open(self.sql_dir+"create_schema.sql", 'rb')
+		sql_schema=file_schema.read()
+		file_schema.close()
+		self.pg_conn.pgsql_cur.execute(sql_schema)
+
+		
+	def drop_service_schema(self):
+		file_schema=open(self.sql_dir+"drop_schema.sql", 'rb')
+		sql_schema=file_schema.read()
+		file_schema.close()
+		self.pg_conn.pgsql_cur.execute(sql_schema)
+	
+	def save_master_status(self, master_status):
+		master_data=master_status[0]
+		binlog_name=master_data["File"]
+		binlog_position=master_data["Position"]
+		sql_master="""
+							INSERT INTO sch_chameleon.t_replica_batch
+															(
+																t_binlog_name, 
+																i_binlog_position
+															)
+												VALUES (
+																%s,
+																%s
+															)
+							ON CONFLICT DO NOTHING
+							;
+						"""
+		self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position))
+

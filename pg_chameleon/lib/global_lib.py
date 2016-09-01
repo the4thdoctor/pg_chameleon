@@ -28,6 +28,8 @@ class replica_engine:
 		
 	def pull_data(self, table_limit):
 		self.my_eng.pull_table_data(limit=table_limit)
+		self.pg_eng.save_master_status(self.my_eng.master_status)
+		
 	
 	def push_data(self):
 		print "loading data"
@@ -40,5 +42,7 @@ class replica_engine:
 	def  create_indices(self, drop_tables=False):
 		self.pg_eng.build_idx_ddl()
 		self.pg_eng.create_indices()
-		
-		
+	
+	def create_service_schema(self, cleanup=False):
+		self.pg_eng.create_service_schema(cleanup)
+
