@@ -212,4 +212,25 @@ class pg_engine:
 							;
 						"""
 		self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position))
-
+		
+	def get_batch_data(self):
+		sql_batch="""SELECT 
+							i_id_batch,
+							t_binlog_name,
+							i_binlog_position 
+						FROM 
+							sch_chameleon.t_replica_batch  
+						WHERE 
+							ts_created = (
+									SELECT 
+										min(ts_created) 
+									FROM 
+										sch_chameleon.t_replica_batch  
+									WHERE 
+												NOT b_started 
+										AND	NOT b_processed
+									)
+						;
+					"""
+		self.pg_conn.pgsql_cur.execute(sql_batch)
+		return self.pg_conn.pgsql_cur.fetchall()

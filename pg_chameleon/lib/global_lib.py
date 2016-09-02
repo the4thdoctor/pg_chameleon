@@ -46,3 +46,5 @@ class replica_engine:
 	def create_service_schema(self, cleanup=False):
 		self.pg_eng.create_service_schema(cleanup)
 
+	def do_stream_data(self):
+		self.my_eng.do_stream_data(self.pg_eng)

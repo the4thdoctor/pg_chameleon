@@ -1,9 +1,17 @@
 import pymysql
 import codecs
+from pymysqlreplication import BinLogStreamReader
+from pymysqlreplication.row_event import (
+    DeleteRowsEvent,
+    UpdateRowsEvent,
+    WriteRowsEvent,
+)
+from pymysqlreplication.event import RotateEvent
 
 class mysql_connection:
 	def __init__(self, global_config):
 		self.global_conf=global_config()
+		self.my_server_id=self.global_conf.my_server_id
 		self.mysql_conn=self.global_conf.mysql_conn
 		self.my_database=self.global_conf.my_database
 		self.my_charset=self.global_conf.my_charset
@@ -34,7 +42,28 @@ class mysql_engine:
 		self.mysql_con=mysql_connection(global_config)
 		self.mysql_con.connect_db()
 		self.get_table_metadata()
+		self.my_streamer=None
 
+	def do_stream_data(self, pg_engine):
+		
+		batch_data=pg_engine.get_batch_data()
+		id_batch=batch_data[0][0]
+		log_file=batch_data[0][1]
+		log_pos=batch_data[0][2]
+		self.my_stream = BinLogStreamReader(
+																connection_settings = self.mysql_con.mysql_conn, 
+																server_id=self.mysql_con.my_server_id, 
+																only_events=[RotateEvent,DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
+																log_file=log_file, 
+																log_pos=log_pos, 
+																resume_stream=True
+														)
+														
+		
+		
+		
+		self.my_stream.close()
+		
 	def get_column_metadata(self, table):
 		sql_columns="""SELECT 
 											column_name,
