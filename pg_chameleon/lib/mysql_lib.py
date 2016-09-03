@@ -29,7 +29,7 @@ class mysql_connection:
 									charset=self.my_charset,
 									cursorclass=pymysql.cursors.DictCursor)
 		self.my_cursor=self.my_connection.cursor()
-
+		
 	def disconnect_db(self):
 		self.my_connection.close()
 		
@@ -45,7 +45,8 @@ class mysql_engine:
 		self.my_streamer=None
 
 	def do_stream_data(self, pg_engine):
-		
+		group_insert=[]
+		num_insert=0
 		batch_data=pg_engine.get_batch_data()
 		id_batch=batch_data[0][0]
 		log_file=batch_data[0][1]
@@ -59,9 +60,33 @@ class mysql_engine:
 																resume_stream=True
 														)
 														
-		
-		
-		
+		for binlogevent in self.my_stream:
+			if isinstance(binlogevent, RotateEvent):
+				binlogfile=binlogevent.next_binlog
+			else:
+				for row in binlogevent.rows:
+					global_data={
+										"binlog":binlogfile, 
+										"logpos":binlogevent.packet.log_pos, 
+										"schema": binlogevent.schema, 
+										"table": binlogevent.table, 
+										"batch_id":id_batch
+									}
+					event_data={}
+					if isinstance(binlogevent, DeleteRowsEvent):
+						global_data["action"] = "delete"
+						event_data = dict(event_data.items() + row["values"].items())
+					elif isinstance(binlogevent, UpdateRowsEvent):
+						global_data["action"] = "update"
+						event_data = dict(event_data.items() + row["after_values"].items())
+					elif isinstance(binlogevent, WriteRowsEvent):
+						global_data["action"] = "insert"
+						event_data = dict(event_data.items() + row["values"].items())
+					event_insert={"global_data":global_data,"event_data":event_data}
+					group_insert.append(event_insert)
+					num_insert+=1
+		if len(group_insert)>0:
+			pg_engine.write_batch(group_insert)
 		self.my_stream.close()
 		
 	def get_column_metadata(self, table):

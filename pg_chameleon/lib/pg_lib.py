@@ -1,6 +1,14 @@
 import psycopg2
 import os
 import sys
+import json
+import datetime
+class pg_encoder(json.JSONEncoder):
+	def default(self, obj):
+		if isinstance(obj, datetime.datetime):
+			return str(obj)
+		return json.JSONEncoder.default(self, obj)
+
 class pg_connection:
 	def __init__(self, global_config):
 		self.global_conf=global_config()
@@ -234,3 +242,36 @@ class pg_engine:
 					"""
 		self.pg_conn.pgsql_cur.execute(sql_batch)
 		return self.pg_conn.pgsql_cur.fetchall()
+	
+	def write_batch(self, group_insert):
+		insert_list=[]
+		for row_data in group_insert:
+			global_data=row_data["global_data"]
+			event_data=row_data["event_data"]
+			insert_list.append(self.pg_conn.pgsql_cur.mogrify("(%s,%s,%s,%s,%s,%s,%s)", (
+																									global_data["batch_id"], 
+																									global_data["table"],  
+																									global_data["schema"], 
+																									global_data["action"], 
+																									global_data["binlog"], 
+																									global_data["logpos"], 
+																									json.dumps(event_data, cls=pg_encoder)
+																								)
+																		)
+											)
+			
+		sql_insert="""
+								INSERT INTO sch_chameleon.t_log_replica
+								(
+									i_id_batch, 
+									v_table_name, 
+									v_schema_name, 
+									v_binlog_event, 
+									t_binlog_name, 
+									i_binlog_position, 
+									jsb_event_data
+								)
+								VALUES
+									"""+ ','.join(insert_list )+"""
+						"""
+		self.pg_conn.pgsql_cur.execute(sql_insert)
