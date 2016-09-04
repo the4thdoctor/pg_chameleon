@@ -16,6 +16,7 @@ class mysql_connection:
 		self.my_database=self.global_conf.my_database
 		self.my_charset=self.global_conf.my_charset
 		self.tables_limit=self.global_conf.tables_limit
+		self.replica_batch_size=self.global_conf.replica_batch_size
 		self.my_connection=None
 		self.my_cursor=None
 		print self.tables_limit
@@ -43,51 +44,79 @@ class mysql_engine:
 		self.mysql_con.connect_db()
 		self.get_table_metadata()
 		self.my_streamer=None
+		self.replica_batch_size=self.mysql_con.replica_batch_size
+		self.master_status=[]
 
 	def do_stream_data(self, pg_engine):
 		group_insert=[]
+		master_data={}
 		num_insert=0
+		if len(self.master_status)==0:
+			print "run a full resync before starting the replica"
+			
 		batch_data=pg_engine.get_batch_data()
-		id_batch=batch_data[0][0]
-		log_file=batch_data[0][1]
-		log_pos=batch_data[0][2]
-		self.my_stream = BinLogStreamReader(
-																connection_settings = self.mysql_con.mysql_conn, 
-																server_id=self.mysql_con.my_server_id, 
-																only_events=[RotateEvent,DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
-																log_file=log_file, 
-																log_pos=log_pos, 
-																resume_stream=True
-														)
-														
-		for binlogevent in self.my_stream:
-			if isinstance(binlogevent, RotateEvent):
-				binlogfile=binlogevent.next_binlog
-			else:
-				for row in binlogevent.rows:
-					global_data={
-										"binlog":binlogfile, 
-										"logpos":binlogevent.packet.log_pos, 
-										"schema": binlogevent.schema, 
-										"table": binlogevent.table, 
-										"batch_id":id_batch
-									}
-					event_data={}
-					if isinstance(binlogevent, DeleteRowsEvent):
-						global_data["action"] = "delete"
-						event_data = dict(event_data.items() + row["values"].items())
-					elif isinstance(binlogevent, UpdateRowsEvent):
-						global_data["action"] = "update"
-						event_data = dict(event_data.items() + row["after_values"].items())
-					elif isinstance(binlogevent, WriteRowsEvent):
-						global_data["action"] = "insert"
-						event_data = dict(event_data.items() + row["values"].items())
-					event_insert={"global_data":global_data,"event_data":event_data}
-					group_insert.append(event_insert)
-					num_insert+=1
-		if len(group_insert)>0:
-			pg_engine.write_batch(group_insert)
-		self.my_stream.close()
+		if len(batch_data)>0:
+			print "start replica stream"+str(batch_data)
+			id_batch=batch_data[0][0]
+			log_file=batch_data[0][1]
+			log_position=batch_data[0][2]
+			self.my_stream = BinLogStreamReader(
+																	connection_settings = self.mysql_con.mysql_conn, 
+																	server_id=self.mysql_con.my_server_id, 
+																	only_events=[RotateEvent,DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
+																	log_file=log_file, 
+																	log_pos=log_position, 
+																	resume_stream=True
+															)
+															
+			for binlogevent in self.my_stream:
+				if isinstance(binlogevent, RotateEvent):
+					binlogfile=binlogevent.next_binlog
+				else:
+					for row in binlogevent.rows:
+						log_file=binlogfile
+						log_position=binlogevent.packet.log_pos
+						global_data={
+											"binlog":log_file, 
+											"logpos":log_position, 
+											"schema": binlogevent.schema, 
+											"table": binlogevent.table, 
+											"batch_id":id_batch
+										}
+						event_data={}
+						if isinstance(binlogevent, DeleteRowsEvent):
+							global_data["action"] = "delete"
+							event_data = dict(event_data.items() + row["values"].items())
+						elif isinstance(binlogevent, UpdateRowsEvent):
+							global_data["action"] = "update"
+							event_data = dict(event_data.items() + row["after_values"].items())
+						elif isinstance(binlogevent, WriteRowsEvent):
+							global_data["action"] = "insert"
+							event_data = dict(event_data.items() + row["values"].items())
+						event_insert={"global_data":global_data,"event_data":event_data}
+						group_insert.append(event_insert)
+						num_insert+=1
+						if num_insert>=self.replica_batch_size:
+							pg_engine.write_batch(group_insert)
+							num_insert=0
+							group_insert=[]
+			if len(group_insert)>0:
+				print group_insert
+				pg_engine.write_batch(group_insert)
+		
+			
+			master_data["File"]=log_file
+			master_data["Position"]=log_position
+			print "working out master data"+str(log_file)+" "+str(log_position)
+			try:
+				self.master_status=[]
+				print log_file+" "+str(log_position)
+				self.master_status.append(master_data)
+				print self.master_status
+				pg_engine.save_master_status(self.master_status)
+			except:
+				pass
+			self.my_stream.close()
 		
 	def get_column_metadata(self, table):
 		sql_columns="""SELECT 
@@ -215,6 +244,10 @@ class mysql_engine:
 			self.table_file[table_name]=out_file
 		self.unlock_tables()
 		
+	def get_master_status(self):
+		t_sql_master="SHOW MASTER STATUS;"
+		self.mysql_con.my_cursor.execute(t_sql_master)
+		self.master_status=self.mysql_con.my_cursor.fetchall()		
 		
 	def lock_tables(self):
 		""" lock tables and get the log coords """
@@ -224,9 +257,7 @@ class mysql_engine:
 			self.locked_tables.append(table["name"])
 		t_sql_lock="FLUSH TABLES "+", ".join(self.locked_tables)+" WITH READ LOCK;"
 		self.mysql_con.my_cursor.execute(t_sql_lock)
-		t_sql_master="SHOW MASTER STATUS;"
-		self.mysql_con.my_cursor.execute(t_sql_master)
-		self.master_status=self.mysql_con.my_cursor.fetchall()		
+		self.get_master_status()
 	
 	def unlock_tables(self):
 		""" unlock tables previously locked """

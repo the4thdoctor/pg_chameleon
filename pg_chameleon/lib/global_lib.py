@@ -2,6 +2,7 @@ from pg_chameleon import mysql_engine, pg_engine
 import yaml
 import sys
 import os
+import time
 class global_config:
 	"""class to manage the mysql connection"""
 	def __init__(self,config_file='config/config.yaml'):
@@ -47,4 +48,7 @@ class replica_engine:
 		self.pg_eng.create_service_schema(cleanup)
 
 	def do_stream_data(self):
-		self.my_eng.do_stream_data(self.pg_eng)
+		while True:
+			self.my_eng.do_stream_data(self.pg_eng)
+			print "stream empty sleeping 10 seconds"
+			time.sleep(10)

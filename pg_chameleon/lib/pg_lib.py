@@ -216,29 +216,32 @@ class pg_engine:
 																%s,
 																%s
 															)
-							ON CONFLICT DO NOTHING
-							;
 						"""
+		print "saving master data"
 		self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position))
+		print "done"
 		
 	def get_batch_data(self):
-		sql_batch="""SELECT 
-							i_id_batch,
-							t_binlog_name,
-							i_binlog_position 
+		sql_batch="""WITH t_created AS
+						(
+							SELECT 
+								max(ts_created) AS ts_created
+							FROM 
+								sch_chameleon.t_replica_batch  
+							WHERE 
+									NOT b_processed
+						)
+					UPDATE sch_chameleon.t_replica_batch
+						SET b_started=True
 						FROM 
-							sch_chameleon.t_replica_batch  
-						WHERE 
-							ts_created = (
-									SELECT 
-										min(ts_created) 
-									FROM 
-										sch_chameleon.t_replica_batch  
-									WHERE 
-												NOT b_started 
-										AND	NOT b_processed
-									)
-						;
+							t_created
+						WHERE
+							t_replica_batch.ts_created=t_created.ts_created
+					RETURNING
+						i_id_batch,
+						t_binlog_name,
+						i_binlog_position 
+					;
 					"""
 		self.pg_conn.pgsql_cur.execute(sql_batch)
 		return self.pg_conn.pgsql_cur.fetchall()
@@ -275,3 +278,5 @@ class pg_engine:
 									"""+ ','.join(insert_list )+"""
 						"""
 		self.pg_conn.pgsql_cur.execute(sql_insert)
+		
+	
