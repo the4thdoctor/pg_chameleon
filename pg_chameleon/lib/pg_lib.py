@@ -80,6 +80,29 @@ class pg_engine:
 		self.pg_conn.pgsql_cur.execute(sql_schema)
 		self.pg_conn.pgsql_cur.execute(sql_path)
 	
+	def store_table(self, table_name):
+		table_data=self.table_metadata[table_name]
+		for index in table_data["indices"]:
+			if index["index_name"]=="PRIMARY":
+				print table_name+" "+self.pg_conn.dest_schema+" "+index["index_columns"]
+				sql_insert=""" INSERT INTO sch_chameleon.t_replica_tables 
+										(
+											v_table_name,
+											v_schema_name,
+											v_table_pkey
+										)
+										VALUES (
+														%s,
+														%s,
+														ARRAY[%s]
+													)
+										ON CONFLICT (v_table_name,v_schema_name)
+											DO UPDATE 
+												SET v_table_pkey=EXCLUDED.v_table_pkey
+										;
+								"""
+				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema, index["index_columns"]))	
+	
 	def create_tables(self, drop_tables=False):
 		
 			for table in self.table_ddl:
@@ -97,6 +120,7 @@ class pg_engine:
 				except psycopg2.Error as e:
 					print  "SQLCODE: " + e.pgcode+ " - " +e.pgerror
 					print sql_create
+				self.store_table(table)
 	
 	def create_indices(self):
 		print "creating indices"
@@ -106,6 +130,17 @@ class pg_engine:
 				
 				self.pg_conn.pgsql_cur.execute(sql_idx)
 	
+	def copy_data(self, table,  csv_file,  my_tables={}):
+		column_copy=[]
+		for column in my_tables[table]["columns"]:
+			column_copy.append('"'+column["column_name"]+'"')
+		sql_copy="COPY "+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"'  "
+		self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
+		print csv_file.getvalue()
+		print "COPY!!!!!!!!!!!!!!!!!!!!!!"
+		
+
+	
 	def push_data(self, table_file=[], my_tables={}):
 		#print my_tables
 		#sys.exit()
@@ -114,7 +149,6 @@ class pg_engine:
 			print "table to file list is empty"
 		else:
 			for table in table_file:
-				tmp_table="tmp_"+table
 				column_copy=[]
 				for column in my_tables[table]["columns"]:
 					column_copy.append('"'+column["column_name"]+'"')
@@ -288,4 +322,8 @@ class pg_engine:
 								;
 							"""
 		self.pg_conn.pgsql_cur.execute(sql_update, (id_batch, ))
+		
+	def process_batch(self):
+		sql_process="""SELECT sch_chameleon.fn_process_batch();"""
+		self.pg_conn.pgsql_cur.execute(sql_process)
 		
