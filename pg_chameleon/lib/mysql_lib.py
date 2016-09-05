@@ -46,6 +46,7 @@ class mysql_engine:
 		self.my_streamer=None
 		self.replica_batch_size=self.mysql_con.replica_batch_size
 		self.master_status=[]
+		self.id_batch=None
 
 	def do_stream_data(self, pg_engine):
 		group_insert=[]
@@ -103,6 +104,7 @@ class mysql_engine:
 			if len(group_insert)>0:
 				print group_insert
 				pg_engine.write_batch(group_insert)
+
 		
 			
 			master_data["File"]=log_file
@@ -114,8 +116,12 @@ class mysql_engine:
 				self.master_status.append(master_data)
 				print self.master_status
 				pg_engine.save_master_status(self.master_status)
+				self.id_batch=id_batch
 			except:
 				pass
+			if self.id_batch:
+				pg_engine.set_batch_processed(id_batch)
+				self.id_batch=None
 			self.my_stream.close()
 		
 	def get_column_metadata(self, table):

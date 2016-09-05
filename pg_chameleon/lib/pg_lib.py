@@ -278,5 +278,14 @@ class pg_engine:
 									"""+ ','.join(insert_list )+"""
 						"""
 		self.pg_conn.pgsql_cur.execute(sql_insert)
-		
 	
+	def set_batch_processed(self, id_batch):
+		sql_update=""" UPDATE sch_chameleon.t_replica_batch
+										SET
+												b_processed=True
+								WHERE
+										i_id_batch=%s
+								;
+							"""
+		self.pg_conn.pgsql_cur.execute(sql_update, (id_batch, ))
+		
