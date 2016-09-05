@@ -19,6 +19,11 @@ WITH (
   OIDS=FALSE
 );
 
+CREATE UNIQUE INDEX idx_t_replica_batch_binlog_name_position 
+	ON sch_chameleon.t_replica_batch (t_binlog_name,i_binlog_position);
+
+CREATE UNIQUE INDEX idx_t_replica_batch_ts_created
+	ON sch_chameleon.t_replica_batch (ts_created);
 
 CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
 (
