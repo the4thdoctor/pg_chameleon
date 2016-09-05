@@ -42,11 +42,14 @@ The databases source and target are:
  * Enum support
  * Blob export in hex format
  * Blob import in hex format into bytea fields (needs testing)
+ * Read replica from MySQL
+ * Write in PostgreSQL frontier table
 
 # What does'n work
-Replica from MySQL
-Materialisation of the MySQL views
-Foreign keys build on PostgreSQL
+  * Reply data change in PostgreSQL
+  * DML propagation 
+  * Materialisation of the MySQL views
+  * Foreign keys build on PostgreSQL
 
 # Test please!
 
