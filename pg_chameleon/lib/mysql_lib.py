@@ -20,7 +20,7 @@ class mysql_connection:
 		self.replica_batch_size=self.global_conf.replica_batch_size
 		self.my_connection=None
 		self.my_cursor=None
-		print self.tables_limit
+		
 	
 	def connect_db(self):
 		"""  Establish connection with the database """
@@ -91,8 +91,6 @@ class mysql_engine:
 							event_data = dict(event_data.items() + row["values"].items())
 						elif isinstance(binlogevent, UpdateRowsEvent):
 							global_data["action"] = "update"
-							#for item in row["after_values"]:
-							#	print item+" "+str(type(row["after_values"][item]))
 							event_data = dict(event_data.items() + row["after_values"].items())
 						elif isinstance(binlogevent, WriteRowsEvent):
 							global_data["action"] = "insert"
@@ -105,7 +103,6 @@ class mysql_engine:
 							num_insert=0
 							group_insert=[]
 			if len(group_insert)>0:
-				#print group_insert
 				pg_engine.write_batch(group_insert)
 
 		
@@ -115,9 +112,7 @@ class mysql_engine:
 			print "working out master data"+str(log_file)+" "+str(log_position)
 			try:
 				self.master_status=[]
-				print log_file+" "+str(log_position)
 				self.master_status.append(master_data)
-				print self.master_status
 				pg_engine.save_master_status(self.master_status)
 				self.id_batch=id_batch
 			except:
@@ -216,10 +211,10 @@ class mysql_engine:
 	
 	def copy_table_data(self, pg_engine,  limit=10000):
 		
-		print "copy table data"
+		print "locking the tables"
 		self.lock_tables()
-		print self.master_status
 		for table_name in self.my_tables:
+			print "copying table "+table_name
 			table=self.my_tables[table_name]
 			column_list=[]
 			table_name=table["name"]
@@ -246,46 +241,10 @@ class mysql_engine:
 					except:
 						print "error in row write,  table" + table_name
 						print csv_row["data"]
+				csv_file.seek(0)
 				pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				csv_file.close()
-		self.unlock_tables()
-	
-	def pull_tables_data(self, table_inc=None, limit=10000):
-		self.lock_tables()
-		print self.master_status
-		for table_name in self.my_tables:
-			table=self.my_tables[table_name]
-			column_list=[]
-			table_name=table["name"]
-			table_columns=table["columns"]
-			sql_count="SELECT count(*) as i_cnt FROM `"+table_name+"` ;"
-			self.mysql_con.my_cursor.execute(sql_count)
-			count_rows=self.mysql_con.my_cursor.fetchone()
-			num_slices=count_rows["i_cnt"]/limit
-			range_slices=range(num_slices+1)
-			for column in table_columns:
-				column_list.append("COALESCE(REPLACE("+column["column_select"]+", '\"', '\"\"'),'NULL') ")
-			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
-			out_file=self.out_dir+'/out_data'+table_name+'.csv'
-			csv_file=codecs.open(out_file, 'wb', self.mysql_con.my_charset)
-			print "pulling out data from "+table_name
-			for slice in range_slices:
-				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
-				try:
-					self.mysql_con.my_cursor.execute(sql_out)
-				except:
-					print sql_out
-				csv_results = self.mysql_con.my_cursor.fetchall()
-				for csv_row in csv_results:
-					try:
-						csv_file.write(csv_row["data"]+"\n")
-					except:
-						print "error in row write,  table" + table_name
-						print csv_row["data"]
-					
-				
-			csv_file.close()
-			self.table_file[table_name]=out_file
+		print "releasing the lock"
 		self.unlock_tables()
 		
 	def get_master_status(self):

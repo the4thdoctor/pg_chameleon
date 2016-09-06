@@ -57,3 +57,4 @@ class replica_engine:
 			
 	def copy_table_data(self):
 		self.my_eng.copy_table_data(self.pg_eng)
+		self.pg_eng.save_master_status(self.my_eng.master_status)

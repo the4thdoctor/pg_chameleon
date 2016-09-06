@@ -84,7 +84,6 @@ class pg_engine:
 		table_data=self.table_metadata[table_name]
 		for index in table_data["indices"]:
 			if index["index_name"]=="PRIMARY":
-				print table_name+" "+self.pg_conn.dest_schema+" "+index["index_columns"]
 				sql_insert=""" INSERT INTO sch_chameleon.t_replica_tables 
 										(
 											v_table_name,
@@ -134,16 +133,12 @@ class pg_engine:
 		column_copy=[]
 		for column in my_tables[table]["columns"]:
 			column_copy.append('"'+column["column_name"]+'"')
-		sql_copy="COPY "+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"'  "
+		sql_copy="COPY "+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' ; "
 		self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
-		print csv_file.getvalue()
-		print "COPY!!!!!!!!!!!!!!!!!!!!!!"
 		
 
 	
 	def push_data(self, table_file=[], my_tables={}):
-		#print my_tables
-		#sys.exit()
 		
 		if len(table_file)==0:
 			print "table to file list is empty"
@@ -162,7 +157,6 @@ class pg_engine:
 		
 		for table_name in self.table_metadata:
 			table=self.table_metadata[table_name]
-			print table["name"]
 			columns=table["columns"]
 			
 			ddl_head="CREATE TABLE "+'"'+table["name"]+'" ('
