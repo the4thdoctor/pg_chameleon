@@ -213,7 +213,18 @@ class mysql_engine:
 		sys.stdout.write("\rProcessed %d slices out of %d" % (iteration, total))
 		sys.stdout.flush()
 			
-	
+	def generate_select(self, table_columns, mode="csv"):
+		column_list=[]
+		columns=""
+		if mode=="csv":
+			for column in table_columns:
+					column_list.append("COALESCE(REPLACE("+column["column_select"]+", '\"', '\"\"'),'NULL') ")
+			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
+		if mode=="insert":
+			for column in table_columns:
+				column_list.append("COALESCE(REPLACE("+column["column_select"]+", \"'\", \"''\"),'NULL')")
+			columns="CONCAT(\"(\",REPLACE(CONCAT(\"'\",CONCAT_WS(\"','\","+','.join(column_list)+"),\"'\"),\"'NULL'\",\"NULL\"),\")\")"
+		return columns
 		
 	def copy_table_data(self, pg_engine,  limit=10000):
 		
@@ -222,7 +233,7 @@ class mysql_engine:
 		for table_name in self.my_tables:
 			print "\ncopying table "+table_name
 			table=self.my_tables[table_name]
-			column_list=[]
+			
 			table_name=table["name"]
 			table_columns=table["columns"]
 			sql_count="SELECT count(*) as i_cnt FROM `"+table_name+"` ;"
@@ -231,9 +242,7 @@ class mysql_engine:
 			num_slices=count_rows["i_cnt"]/limit
 			range_slices=range(num_slices+1)
 			total_slices=len(range_slices)
-			for column in table_columns:
-				column_list.append("COALESCE(REPLACE("+column["column_select"]+", '\"', '\"\"'),'NULL') ")
-			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
+			columns=self.generate_select(table_columns, mode="csv")
 			
 			
 			for slice in range_slices:
@@ -253,7 +262,12 @@ class mysql_engine:
 				try:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
-					print "error in stringio copy "
+					print "error in PostgreSQL copy, fallback to insert statements "
+					columns=self.generate_select(table_columns, mode="insert")
+					sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
+					self.mysql_con.my_cursor.execute(sql_out)
+					insert_body = self.mysql_con.my_cursor.fetchall()
+					pg_engine.insert_data(table_name, insert_body , self.my_tables)
 				self.print_progress(slice+1,total_slices)
 				csv_file.close()
 		print "\nreleasing the lock"

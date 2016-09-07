@@ -74,6 +74,7 @@ class pg_engine:
 		self.table_ddl={}
 		self.idx_ddl={}
 		self.type_ddl={}
+		self.pg_charset=self.pg_conn.pg_charset
 
 	
 	def create_schema(self):
@@ -138,7 +139,31 @@ class pg_engine:
 		sql_copy="COPY "+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' ; "
 		self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
 		
-
+	def insert_data(self, table,  insert_body,  my_tables={}):
+		column_copy=[]
+		for column in my_tables[table]["columns"]:
+			column_copy.append('"'+column["column_name"]+'"')
+		sql_head="INSERT INTO "+'"'+table+'"'+" ("+','.join(column_copy)+") VALUES "
+		for insert in insert_body:
+			sql_body=insert["data"]
+			if isinstance(sql_head, unicode):
+				print "sql_head is unicode"
+				sql_head=sql_head.encode('utf8')
+			elif isinstance(sql_head, str):
+				print "sql_head is string"
+			
+			if isinstance(sql_body, unicode):
+				print "sql_body is unicode"
+			elif isinstance(sql_body, str):
+				sql_body=sql_body.encode('utf8')
+			
+				
+			
+			sql_insert=sql_head+sql_body+u" ;"
+			try:
+				self.pg_conn.pgsql_cur.execute(sql_insert)
+			except psycopg2.Error as e:
+					print  "SQLCODE: " + e.pgcode+ " - " +e.pgerror
 	
 	def push_data(self, table_file=[], my_tables={}):
 		
