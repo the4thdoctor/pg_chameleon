@@ -28,7 +28,7 @@ class replica_engine:
 		self.pg_eng.create_schema()
 		
 	def pull_data(self, table_limit):
-		self.my_eng.pull_table_data(limit=table_limit)
+		self.my_eng.pull_tables_data(limit=table_limit)
 		self.pg_eng.save_master_status(self.my_eng.master_status)
 		
 	
@@ -46,9 +46,15 @@ class replica_engine:
 	
 	def create_service_schema(self, cleanup=False):
 		self.pg_eng.create_service_schema(cleanup)
-
+	
 	def do_stream_data(self):
 		while True:
 			self.my_eng.do_stream_data(self.pg_eng)
-			print "stream empty sleeping 10 seconds"
+			print "stream empty processing batch"
+			self.pg_eng.process_batch()
+			print "sleeping 10 seconds"
 			time.sleep(10)
+			
+	def copy_table_data(self):
+		self.my_eng.copy_table_data(self.pg_eng)
+		self.pg_eng.save_master_status(self.my_eng.master_status)
