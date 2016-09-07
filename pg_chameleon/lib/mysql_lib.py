@@ -1,4 +1,4 @@
-import StringIO
+import cStringIO
 import pymysql
 import codecs
 import sys
@@ -243,8 +243,10 @@ class mysql_engine:
 				except:
 					print sql_out
 				csv_results = self.mysql_con.my_cursor.fetchall()
-				csv_file=StringIO.StringIO()
+				csv_file=cStringIO.StringIO()
 				csv_data="\n".join(d['data'] for d in csv_results )
+				if isinstance(csv_data, unicode):
+					csv_data=csv_data.encode('utf-8')
 				csv_file.write(csv_data)
 				csv_file.seek(0)
 				try:
