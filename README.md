@@ -36,18 +36,20 @@ The databases source and target are:
   
 # What does it work
  * Read the schema specifications from MySQL and replicate the same structure it into PostgreSQL
- * Copy the data from MySQL to PostgreSQL with the copy option 
- * Locks the tables in mysql and gets the master coordinates
+  * Locks the tables in mysql and gets the master coordinates
  * Create primary keys and indices on PostgreSQL
- * Enum support
- * Blob export in hex format
- * Blob import in hex format into bytea fields (needs testing)
- * Read replica from MySQL
  * Write in PostgreSQL frontier table
-
+ 
+ 
+# What seems to work
+ * Enum support
+ * Blob import into bytea (needs testing)
+ * Read replica from MySQL
+ * Copy the data from MySQL to PostgreSQL on the fly
+ 
+ 
 # What does'n work
-  * Reply data change in PostgreSQL
-  * DML propagation 
+  * DDL replica 
   * Materialisation of the MySQL views
   * Foreign keys build on PostgreSQL
 
