@@ -16,6 +16,7 @@ class global_config:
 		self.pg_conn=confdic["pg_conn"]
 		self.my_database=confdic["my_database"]
 		self.my_charset=confdic["my_charset"]
+		self.pg_charset=confdic["pg_charset"]
 		self.pg_database=confdic["pg_database"]
 		self.my_server_id=confdic["my_server_id"]
 		self.replica_batch_size=confdic["replica_batch_size"]

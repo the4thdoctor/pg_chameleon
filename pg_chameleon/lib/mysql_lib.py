@@ -1,6 +1,7 @@
 import StringIO
 import pymysql
 import codecs
+import sys
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import (
     DeleteRowsEvent,
@@ -208,13 +209,17 @@ class mysql_engine:
 			dic_table={'name':table["table_name"], 'columns':column_data,  'indices': index_data}
 			self.my_tables[table["table_name"]]=dic_table
 			
-	
+	def print_progress (self, iteration, total):
+		sys.stdout.write("\rProcessed %d slices out of %d" % (iteration, total))
+		sys.stdout.flush()
+			
+			
 	def copy_table_data(self, pg_engine,  limit=10000):
 		
 		print "locking the tables"
 		self.lock_tables()
 		for table_name in self.my_tables:
-			print "copying table "+table_name
+			print "\ncopying table "+table_name
 			table=self.my_tables[table_name]
 			column_list=[]
 			table_name=table["name"]
@@ -224,9 +229,12 @@ class mysql_engine:
 			count_rows=self.mysql_con.my_cursor.fetchone()
 			num_slices=count_rows["i_cnt"]/limit
 			range_slices=range(num_slices+1)
+			total_slices=len(range_slices)
 			for column in table_columns:
 				column_list.append("COALESCE(REPLACE("+column["column_select"]+", '\"', '\"\"'),'NULL') ")
 			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
+			
+			
 			for slice in range_slices:
 				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
 				try:
@@ -242,9 +250,13 @@ class mysql_engine:
 						print "error in row write,  table" + table_name
 						print csv_row["data"]
 				csv_file.seek(0)
-				pg_engine.copy_data(table_name, csv_file, self.my_tables)
+				try:
+					pg_engine.copy_data(table_name, csv_file, self.my_tables)
+				except:
+					print "error in table copy, fallback to inserts"
+				self.print_progress(slice+1,total_slices)
 				csv_file.close()
-		print "releasing the lock"
+		print "\nreleasing the lock"
 		self.unlock_tables()
 		
 	def get_master_status(self):

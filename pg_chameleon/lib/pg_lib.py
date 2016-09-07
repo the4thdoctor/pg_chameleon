@@ -17,6 +17,7 @@ class pg_connection:
 		self.dest_schema=self.global_conf.my_database
 		self.pg_connection=None
 		self.pg_cursor=None
+		self.pg_charset=self.global_conf.pg_charset
 		
 	
 	def connect_db(self):
@@ -24,7 +25,7 @@ class pg_connection:
 		strconn="dbname=%(dbname)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % pg_pars
 		self.pgsql_conn = psycopg2.connect(strconn)
 		self.pgsql_conn .set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-		#self.pgsql_conn .set_client_encoding("")
+		self.pgsql_conn .set_client_encoding(self.pg_charset)
 		self.pgsql_cur=self.pgsql_conn .cursor()
 		
 	
@@ -73,7 +74,8 @@ class pg_engine:
 		self.table_ddl={}
 		self.idx_ddl={}
 		self.type_ddl={}
-		
+
+	
 	def create_schema(self):
 		sql_schema=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"
 		sql_path=" SET search_path="+self.pg_conn.dest_schema+";"
