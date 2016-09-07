@@ -213,7 +213,8 @@ class mysql_engine:
 		sys.stdout.write("\rProcessed %d slices out of %d" % (iteration, total))
 		sys.stdout.flush()
 			
-			
+	
+		
 	def copy_table_data(self, pg_engine,  limit=10000):
 		
 		print "locking the tables"
@@ -252,7 +253,7 @@ class mysql_engine:
 				try:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
-					print "error in table copy "
+					print "error in stringio copy "
 				self.print_progress(slice+1,total_slices)
 				csv_file.close()
 		print "\nreleasing the lock"
