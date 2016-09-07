@@ -236,6 +236,7 @@ class mysql_engine:
 			
 			
 			for slice in range_slices:
+				csv_data=""
 				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
 				try:
 					self.mysql_con.my_cursor.execute(sql_out)
@@ -243,17 +244,13 @@ class mysql_engine:
 					print sql_out
 				csv_results = self.mysql_con.my_cursor.fetchall()
 				csv_file=StringIO.StringIO()
-				for csv_row in csv_results:
-					try:
-						csv_file.write(csv_row["data"]+"\n")
-					except:
-						print "error in row write,  table" + table_name
-						print csv_row["data"]
+				csv_data="\n".join(d['data'] for d in csv_results )
+				csv_file.write(csv_data)
 				csv_file.seek(0)
 				try:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
-					print "error in table copy, fallback to inserts"
+					print "error in table copy "
 				self.print_progress(slice+1,total_slices)
 				csv_file.close()
 		print "\nreleasing the lock"
