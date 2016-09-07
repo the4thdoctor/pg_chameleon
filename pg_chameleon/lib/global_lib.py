@@ -56,6 +56,6 @@ class replica_engine:
 			print "sleeping 10 seconds"
 			time.sleep(10)
 			
-	def copy_table_data(self):
+	def copy_table_data(self, limit=10000):
 		self.my_eng.copy_table_data(self.pg_eng)
 		self.pg_eng.save_master_status(self.my_eng.master_status)
