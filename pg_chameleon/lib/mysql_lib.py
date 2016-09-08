@@ -210,8 +210,8 @@ class mysql_engine:
 			dic_table={'name':table["table_name"], 'columns':column_data,  'indices': index_data}
 			self.my_tables[table["table_name"]]=dic_table
 			
-	def print_progress (self, iteration, total):
-		sys.stdout.write("\rProcessed %d slices out of %d" % (iteration, total))
+	def print_progress (self, iteration, total, cursor_size=0):
+		sys.stdout.write("\rProcessed %d slices out of %d - cursor size %d" % (iteration, total, cursor_size))
 		sys.stdout.flush()
 			
 	def generate_select(self, table_columns, mode="csv"):
@@ -226,7 +226,7 @@ class mysql_engine:
 				column_list.append(column["column_select"])
 			columns=','.join(column_list)
 		return columns
-		
+	
 	def copy_table_data(self, pg_engine,  limit=10000):
 		
 		print "locking the tables"
@@ -248,18 +248,20 @@ class mysql_engine:
 			
 			for slice in range_slices:
 				csv_data=""
-				sql_out="SELECT "+columns+" as data FROM "+table_name+" ;"
+				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
 				try:
 					self.mysql_con.my_cursor.execute(sql_out)
 				except:
 					print sql_out
-				csv_results = self.mysql_con.my_cursor.fetchmany(limit)
+				csv_results = self.mysql_con.my_cursor.fetchall()
 				csv_file=StringIO.StringIO()
 				csv_data="\n".join(d['data'] for d in csv_results )
+				
 				if isinstance(csv_data, unicode):
 					csv_data=unicode(csv_data)
 				csv_file.write(csv_data)
 				csv_file.seek(0)
+				cursor_size=sys.getsizeof(csv_file)
 				try:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
@@ -269,7 +271,8 @@ class mysql_engine:
 					self.mysql_con.my_cursor_fallback.execute(sql_out)
 					insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
 					pg_engine.insert_data(table_name, insert_data , self.my_tables)
-				self.print_progress(slice+1,total_slices)
+					
+				self.print_progress(slice+1,total_slices, cursor_size)
 				csv_file.close()
 		print "\nreleasing the lock"
 		self.unlock_tables()
