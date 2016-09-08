@@ -14,7 +14,7 @@ Current version: 0.1 DEVEL
 ## Requirements
 * PyMySQL==0.7.6
 * argparse==1.2.1
-* mysql-replication==0.9
+* [mysql-replication==0.9](https://github.com/noplay/python-mysql-replication)
 * psycopg2==2.6.2
 * wsgiref==0.1.2
 * PyYAML==3.11

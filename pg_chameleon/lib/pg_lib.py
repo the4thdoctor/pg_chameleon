@@ -17,6 +17,7 @@ class pg_connection:
 		self.dest_schema=self.global_conf.my_database
 		self.pg_connection=None
 		self.pg_cursor=None
+		self.pg_charset=self.global_conf.pg_charset
 		
 	
 	def connect_db(self):
@@ -24,7 +25,7 @@ class pg_connection:
 		strconn="dbname=%(dbname)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % pg_pars
 		self.pgsql_conn = psycopg2.connect(strconn)
 		self.pgsql_conn .set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-		#self.pgsql_conn .set_client_encoding("")
+		self.pgsql_conn .set_client_encoding(self.pg_charset)
 		self.pgsql_cur=self.pgsql_conn .cursor()
 		
 	
@@ -73,7 +74,9 @@ class pg_engine:
 		self.table_ddl={}
 		self.idx_ddl={}
 		self.type_ddl={}
-		
+		self.pg_charset=self.pg_conn.pg_charset
+
+	
 	def create_schema(self):
 		sql_schema=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"
 		sql_path=" SET search_path="+self.pg_conn.dest_schema+";"
@@ -136,8 +139,25 @@ class pg_engine:
 		sql_copy="COPY "+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' ; "
 		self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
 		
-
-	
+	def insert_data(self, table,  insert_data,  my_tables={}):
+		column_copy=[]
+		column_marker=[]
+		
+		for column in my_tables[table]["columns"]:
+			column_copy.append('"'+column["column_name"]+'"')
+			column_marker.append('%s')
+		sql_head="INSERT INTO "+'"'+table+'"'+" ("+','.join(column_copy)+") VALUES ("+','.join(column_marker)+");"
+		for data_row in insert_data:
+			column_values=[]
+			for column in my_tables[table]["columns"]:
+				column_values.append(data_row[column["column_name"]])
+			try:
+				self.pg_conn.pgsql_cur.execute(sql_head,column_values)	
+			except psycopg2.Error as e:
+					print  "SQLCODE: " + e.pgcode+ " - " +e.pgerror
+					print self.pg_conn.pgsql_cur.mogrify(sql_head,column_values)	
+		
+		
 	def push_data(self, table_file=[], my_tables={}):
 		
 		if len(table_file)==0:

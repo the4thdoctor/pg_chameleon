@@ -1,6 +1,6 @@
 import StringIO
 import pymysql
-import codecs
+import sys
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import (
     DeleteRowsEvent,
@@ -20,6 +20,7 @@ class mysql_connection:
 		self.replica_batch_size=self.global_conf.replica_batch_size
 		self.my_connection=None
 		self.my_cursor=None
+		self.my_cursor_fallback=None
 		
 	
 	def connect_db(self):
@@ -31,6 +32,7 @@ class mysql_connection:
 									charset=self.my_charset,
 									cursorclass=pymysql.cursors.DictCursor)
 		self.my_cursor=self.my_connection.cursor()
+		self.my_cursor_fallback=self.my_connection.cursor()
 		
 	def disconnect_db(self):
 		self.my_connection.close()
@@ -208,15 +210,31 @@ class mysql_engine:
 			dic_table={'name':table["table_name"], 'columns':column_data,  'indices': index_data}
 			self.my_tables[table["table_name"]]=dic_table
 			
-	
+	def print_progress (self, iteration, total):
+		sys.stdout.write("\rProcessed %d slices out of %d " % (iteration, total))
+		sys.stdout.flush()
+			
+	def generate_select(self, table_columns, mode="csv"):
+		column_list=[]
+		columns=""
+		if mode=="csv":
+			for column in table_columns:
+					column_list.append("COALESCE(REPLACE("+column["column_select"]+", '\"', '\"\"'),'NULL') ")
+			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
+		if mode=="insert":
+			for column in table_columns:
+				column_list.append(column["column_select"])
+			columns=','.join(column_list)
+		return columns
+		
 	def copy_table_data(self, pg_engine,  limit=10000):
 		
 		print "locking the tables"
 		self.lock_tables()
 		for table_name in self.my_tables:
-			print "copying table "+table_name
+			print "\ncopying table "+table_name
 			table=self.my_tables[table_name]
-			column_list=[]
+			
 			table_name=table["name"]
 			table_columns=table["columns"]
 			sql_count="SELECT count(*) as i_cnt FROM `"+table_name+"` ;"
@@ -224,10 +242,12 @@ class mysql_engine:
 			count_rows=self.mysql_con.my_cursor.fetchone()
 			num_slices=count_rows["i_cnt"]/limit
 			range_slices=range(num_slices+1)
-			for column in table_columns:
-				column_list.append("COALESCE(REPLACE("+column["column_select"]+", '\"', '\"\"'),'NULL') ")
-			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
+			total_slices=len(range_slices)
+			columns=self.generate_select(table_columns, mode="csv")
+			
+			
 			for slice in range_slices:
+				csv_data=""
 				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
 				try:
 					self.mysql_con.my_cursor.execute(sql_out)
@@ -235,16 +255,23 @@ class mysql_engine:
 					print sql_out
 				csv_results = self.mysql_con.my_cursor.fetchall()
 				csv_file=StringIO.StringIO()
-				for csv_row in csv_results:
-					try:
-						csv_file.write(csv_row["data"]+"\n")
-					except:
-						print "error in row write,  table" + table_name
-						print csv_row["data"]
+				csv_data="\n".join(d['data'] for d in csv_results )
+				if isinstance(csv_data, unicode):
+					csv_data=unicode(csv_data)
+				csv_file.write(csv_data)
 				csv_file.seek(0)
-				pg_engine.copy_data(table_name, csv_file, self.my_tables)
+				try:
+					pg_engine.copy_data(table_name, csv_file, self.my_tables)
+				except:
+					print "error in PostgreSQL copy, fallback to insert statements "
+					columns=self.generate_select(table_columns, mode="insert")
+					sql_out="SELECT "+columns+"  FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
+					self.mysql_con.my_cursor_fallback.execute(sql_out)
+					insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
+					pg_engine.insert_data(table_name, insert_data , self.my_tables)
+				self.print_progress(slice+1,total_slices)
 				csv_file.close()
-		print "releasing the lock"
+		print "\nreleasing the lock"
 		self.unlock_tables()
 		
 	def get_master_status(self):
