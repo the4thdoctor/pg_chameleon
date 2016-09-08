@@ -1,4 +1,4 @@
-import StringIO
+import cStringIO
 import pymysql
 import sys
 from pymysqlreplication import BinLogStreamReader
@@ -142,7 +142,9 @@ class mysql_engine:
 												SUBSTRING(COLUMN_TYPE,5)
 											END AS enum_list,
 											CASE
-												
+												WHEN data_type IN ('blob','tinyblob','longblob','binary')
+												THEN
+													concat('hex(',column_name,')')
 												WHEN data_type IN ('bit')
 												THEN
 													concat('cast(`',column_name,'` AS unsigned)')
@@ -254,10 +256,8 @@ class mysql_engine:
 				except:
 					print sql_out
 				csv_results = self.mysql_con.my_cursor.fetchall()
-				csv_file=StringIO.StringIO()
+				csv_file=cStringIO.StringIO()
 				csv_data="\n".join(d['data'] for d in csv_results )
-				if isinstance(csv_data, unicode):
-					csv_data=unicode(csv_data)
 				csv_file.write(csv_data)
 				csv_file.seek(0)
 				try:
