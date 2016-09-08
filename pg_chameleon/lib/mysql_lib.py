@@ -210,8 +210,8 @@ class mysql_engine:
 			dic_table={'name':table["table_name"], 'columns':column_data,  'indices': index_data}
 			self.my_tables[table["table_name"]]=dic_table
 			
-	def print_progress (self, iteration, total, cursor_size=0):
-		sys.stdout.write("\rProcessed %d slices out of %d - cursor size %d" % (iteration, total, cursor_size))
+	def print_progress (self, iteration, total):
+		sys.stdout.write("\rProcessed %d slices out of %d " % (iteration, total))
 		sys.stdout.flush()
 			
 	def generate_select(self, table_columns, mode="csv"):
