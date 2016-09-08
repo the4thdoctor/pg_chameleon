@@ -139,32 +139,25 @@ class pg_engine:
 		sql_copy="COPY "+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' ; "
 		self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
 		
-	def insert_data(self, table,  insert_body,  my_tables={}):
+	def insert_data(self, table,  insert_data,  my_tables={}):
 		column_copy=[]
+		column_marker=[]
+		
 		for column in my_tables[table]["columns"]:
 			column_copy.append('"'+column["column_name"]+'"')
-		sql_head="INSERT INTO "+'"'+table+'"'+" ("+','.join(column_copy)+") VALUES "
-		for insert in insert_body:
-			sql_body=insert["data"]
-			if isinstance(sql_head, unicode):
-				print "sql_head is unicode"
-				sql_head=sql_head.encode('utf8')
-			elif isinstance(sql_head, str):
-				print "sql_head is string"
-			
-			if isinstance(sql_body, unicode):
-				print "sql_body is unicode"
-			elif isinstance(sql_body, str):
-				sql_body=sql_body.encode('utf8')
-			
-				
-			
-			sql_insert=sql_head+sql_body+u" ;"
+			column_marker.append('%s')
+		sql_head="INSERT INTO "+'"'+table+'"'+" ("+','.join(column_copy)+") VALUES ("+','.join(column_marker)+");"
+		for data_row in insert_data:
+			column_values=[]
+			for column in my_tables[table]["columns"]:
+				column_values.append(data_row[column["column_name"]])
 			try:
-				self.pg_conn.pgsql_cur.execute(sql_insert)
+				self.pg_conn.pgsql_cur.execute(sql_head,column_values)	
 			except psycopg2.Error as e:
 					print  "SQLCODE: " + e.pgcode+ " - " +e.pgerror
-	
+					print self.pg_conn.pgsql_cur.mogrify(sql_head,column_values)	
+		
+		
 	def push_data(self, table_file=[], my_tables={}):
 		
 		if len(table_file)==0:

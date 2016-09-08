@@ -1,6 +1,5 @@
 import StringIO
 import pymysql
-import codecs
 import sys
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import (
@@ -222,8 +221,8 @@ class mysql_engine:
 			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
 		if mode=="insert":
 			for column in table_columns:
-				column_list.append("COALESCE(REPLACE("+column["column_select"]+", \"'\", \"''\"),'NULL')")
-			columns="CONCAT(\"(\",REPLACE(CONCAT(\"'\",CONCAT_WS(\"','\","+','.join(column_list)+"),\"'\"),\"'NULL'\",\"NULL\"),\")\")"
+				column_list.append(column["column_select"])
+			columns=','.join(column_list)
 		return columns
 		
 	def copy_table_data(self, pg_engine,  limit=10000):
@@ -264,10 +263,10 @@ class mysql_engine:
 				except:
 					print "error in PostgreSQL copy, fallback to insert statements "
 					columns=self.generate_select(table_columns, mode="insert")
-					sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
+					sql_out="SELECT "+columns+"  FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
 					self.mysql_con.my_cursor.execute(sql_out)
-					insert_body = self.mysql_con.my_cursor.fetchall()
-					pg_engine.insert_data(table_name, insert_body , self.my_tables)
+					insert_data = self.mysql_con.my_cursor.fetchall()
+					pg_engine.insert_data(table_name, insert_data , self.my_tables)
 				self.print_progress(slice+1,total_slices)
 				csv_file.close()
 		print "\nreleasing the lock"
