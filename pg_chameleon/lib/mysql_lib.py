@@ -226,7 +226,7 @@ class mysql_engine:
 				column_list.append(column["column_select"])
 			columns=','.join(column_list)
 		return columns
-	
+		
 	def copy_table_data(self, pg_engine,  limit=10000):
 		
 		print "locking the tables"
@@ -256,12 +256,10 @@ class mysql_engine:
 				csv_results = self.mysql_con.my_cursor.fetchall()
 				csv_file=StringIO.StringIO()
 				csv_data="\n".join(d['data'] for d in csv_results )
-				
 				if isinstance(csv_data, unicode):
 					csv_data=unicode(csv_data)
 				csv_file.write(csv_data)
 				csv_file.seek(0)
-				cursor_size=sys.getsizeof(csv_file)
 				try:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
@@ -271,8 +269,7 @@ class mysql_engine:
 					self.mysql_con.my_cursor_fallback.execute(sql_out)
 					insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
 					pg_engine.insert_data(table_name, insert_data , self.my_tables)
-					
-				self.print_progress(slice+1,total_slices, cursor_size)
+				self.print_progress(slice+1,total_slices)
 				csv_file.close()
 		print "\nreleasing the lock"
 		self.unlock_tables()
