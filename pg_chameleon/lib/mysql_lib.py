@@ -20,6 +20,7 @@ class mysql_connection:
 		self.replica_batch_size=self.global_conf.replica_batch_size
 		self.my_connection=None
 		self.my_cursor=None
+		self.my_cursor_fallback=None
 		
 	
 	def connect_db(self):
@@ -31,6 +32,7 @@ class mysql_connection:
 									charset=self.my_charset,
 									cursorclass=pymysql.cursors.DictCursor)
 		self.my_cursor=self.my_connection.cursor()
+		self.my_cursor_fallback=self.my_connection.cursor()
 		
 	def disconnect_db(self):
 		self.my_connection.close()
@@ -246,12 +248,12 @@ class mysql_engine:
 			
 			for slice in range_slices:
 				csv_data=""
-				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
+				sql_out="SELECT "+columns+" as data FROM "+table_name+" ;"
 				try:
 					self.mysql_con.my_cursor.execute(sql_out)
 				except:
 					print sql_out
-				csv_results = self.mysql_con.my_cursor.fetchall()
+				csv_results = self.mysql_con.my_cursor.fetchmany(limit)
 				csv_file=StringIO.StringIO()
 				csv_data="\n".join(d['data'] for d in csv_results )
 				if isinstance(csv_data, unicode):
@@ -264,8 +266,8 @@ class mysql_engine:
 					print "error in PostgreSQL copy, fallback to insert statements "
 					columns=self.generate_select(table_columns, mode="insert")
 					sql_out="SELECT "+columns+"  FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
-					self.mysql_con.my_cursor.execute(sql_out)
-					insert_data = self.mysql_con.my_cursor.fetchall()
+					self.mysql_con.my_cursor_fallback.execute(sql_out)
+					insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
 					pg_engine.insert_data(table_name, insert_data , self.my_tables)
 				self.print_progress(slice+1,total_slices)
 				csv_file.close()
