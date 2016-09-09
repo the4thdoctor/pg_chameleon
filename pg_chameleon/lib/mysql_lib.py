@@ -1,4 +1,4 @@
-import cStringIO
+import StringIO
 import pymysql
 import sys
 from pymysqlreplication import BinLogStreamReader
@@ -256,7 +256,7 @@ class mysql_engine:
 				except:
 					print sql_out
 				csv_results = self.mysql_con.my_cursor.fetchall()
-				csv_file=cStringIO.StringIO()
+				csv_file=StringIO.StringIO()
 				csv_data="\n".join(d['data'] for d in csv_results )
 				csv_file.write(csv_data)
 				csv_file.seek(0)
