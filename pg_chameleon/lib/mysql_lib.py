@@ -245,12 +245,13 @@ class mysql_engine:
 			num_slices=count_rows["i_cnt"]/limit
 			range_slices=range(num_slices+1)
 			total_slices=len(range_slices)
-			columns=self.generate_select(table_columns, mode="csv")
+			columns_csv=self.generate_select(table_columns, mode="csv")
+			columns_ins=self.generate_select(table_columns, mode="insert")
 			
 			
 			for slice in range_slices:
 				csv_data=""
-				sql_out="SELECT "+columns+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
+				sql_out="SELECT "+columns_csv+" as data FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
 				try:
 					self.mysql_con.my_cursor.execute(sql_out)
 				except:
@@ -264,8 +265,8 @@ class mysql_engine:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
 					print "error in PostgreSQL copy, fallback to insert statements "
-					columns=self.generate_select(table_columns, mode="insert")
-					sql_out="SELECT "+columns+"  FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
+					
+					sql_out="SELECT "+columns_ins+"  FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
 					self.mysql_con.my_cursor_fallback.execute(sql_out)
 					insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
 					pg_engine.insert_data(table_name, insert_data , self.my_tables)
