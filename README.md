@@ -18,7 +18,7 @@ Current version: 0.1 DEVEL
 * psycopg2==2.6.2
 * wsgiref==0.1.2
 * PyYAML==3.11
-
+* [daemonize==2.4.7](https://pypi.python.org/pypi/daemonize/)
 Copy config-example.yaml in config.yaml and edit the connection settings.
 
 Run the example script init_replica.py. This will copy the mysql schema/data in PostgreSQL. 
