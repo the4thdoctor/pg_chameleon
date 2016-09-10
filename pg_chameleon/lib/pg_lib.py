@@ -251,6 +251,27 @@ class pg_engine:
 		self.pg_conn.pgsql_cur.execute(sql_schema)
 	
 	def save_master_status(self, master_status):
+		sql_tab_log=""" 
+						(
+							SELECT 
+								count(v_log_table) AS i_cnt_tables,
+								v_log_table 
+							FROM 
+								sch_chameleon.t_replica_batch 
+							GROUP BY 
+								v_log_table
+						UNION ALL
+							SELECT 
+								0  AS i_cnt_tables,
+								't_log_replica_1'  AS i_cnt_tables
+						)
+						ORDER BY 1
+						LIMIT 1
+		
+					"""
+		self.pg_conn.pgsql_cur.execute(sql_tab_log)
+		results=self.pg_conn.pgsql_cur.fetchone()
+		table_file=results[1]
 		master_data=master_status[0]
 		binlog_name=master_data["File"]
 		binlog_position=master_data["Position"]
@@ -258,15 +279,17 @@ class pg_engine:
 							INSERT INTO sch_chameleon.t_replica_batch
 															(
 																t_binlog_name, 
-																i_binlog_position
+																i_binlog_position,
+																v_log_table
 															)
 												VALUES (
+																%s,
 																%s,
 																%s
 															)
 						"""
 		print "saving master data"
-		self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position))
+		self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position, table_file))
 		print "done"
 		
 	def get_batch_data(self):

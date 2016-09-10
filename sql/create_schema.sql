@@ -14,6 +14,7 @@ CREATE TABLE sch_chameleon.t_replica_batch
   ts_created timestamp without time zone NOT NULL DEFAULT clock_timestamp(),
   ts_processed timestamp without time zone ,
   ts_replayed timestamp without time zone ,
+  v_log_table character varying(100) NOT NULL,
   CONSTRAINT pk_t_batch PRIMARY KEY (i_id_batch)
 )
 WITH (
@@ -46,6 +47,25 @@ WITH (
   OIDS=FALSE
 );
 
+CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica_1 
+(
+CONSTRAINT pk_log_replica_1 PRIMARY KEY (i_id_event),
+  CONSTRAINT fk_replica_batch_1 FOREIGN KEY (i_id_batch) 
+	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
+	ON UPDATE RESTRICT ON DELETE CASCADE
+)
+INHERITS (sch_chameleon.t_log_replica)
+;
+
+CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica_2
+(
+CONSTRAINT pk_log_replica_2 PRIMARY KEY (i_id_event),
+  CONSTRAINT fk_replica_batch_2 FOREIGN KEY (i_id_batch) 
+	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
+	ON UPDATE RESTRICT ON DELETE CASCADE
+)
+INHERITS (sch_chameleon.t_log_replica)
+;
 
 CREATE TABLE sch_chameleon.t_replica_tables
 (

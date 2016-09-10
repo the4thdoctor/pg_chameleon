@@ -84,3 +84,26 @@ FROM
 		unnest('{id,data,data2,date_test}'::text[]) t_field, 
 		unnest('{1379262,Hello," my friend","2016-09-02 11:30:46"}'::text[]) t_value
 ) t_val
+
+	(
+		SELECT 
+			count(v_log_table) AS i_cnt_tables,
+			v_log_table 
+		FROM 
+			sch_chameleon.t_replica_batch 
+		GROUP BY 
+			v_log_table
+	UNION ALL
+		SELECT 
+			1  AS i_cnt_tables,
+			't_log_replica_1'  AS i_cnt_tables
+	)
+	ORDER BY 1
+	LIMIT 1
+
+	
+	
+	SELECT 
+	*
+		FROM 
+			sch_chameleon.t_replica_batch
