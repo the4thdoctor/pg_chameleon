@@ -16,6 +16,7 @@ class global_config:
 		self.pg_conn=confdic["pg_conn"]
 		self.my_database=confdic["my_database"]
 		self.my_charset=confdic["my_charset"]
+		self.pg_charset=confdic["pg_charset"]
 		self.pg_database=confdic["pg_database"]
 		self.my_server_id=confdic["my_server_id"]
 		self.replica_batch_size=confdic["replica_batch_size"]
@@ -55,6 +56,6 @@ class replica_engine:
 			print "sleeping 10 seconds"
 			time.sleep(10)
 			
-	def copy_table_data(self):
-		self.my_eng.copy_table_data(self.pg_eng)
+	def copy_table_data(self, table_limit=10000):
+		self.my_eng.copy_table_data(self.pg_eng, limit=table_limit)
 		self.pg_eng.save_master_status(self.my_eng.master_status)
