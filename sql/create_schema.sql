@@ -106,6 +106,7 @@ $BODY$
 						WHERE 
 								b_started 
 							AND 	b_processed 
+							AND 	NOT b_replayed
 						ORDER BY 
 							ts_created 
 						LIMIT 1
@@ -261,7 +262,11 @@ $BODY$
 			
 
 		END LOOP;
-		DELETE FROM sch_chameleon.t_replica_batch  
+		UPDATE sch_chameleon.t_replica_batch  
+			SET 
+				b_replayed=True,
+				ts_replayed=clock_timestamp()
+				
 		WHERE
 			i_id_batch=v_r_rows.i_id_batch
 		;

@@ -64,6 +64,7 @@ class mysql_engine:
 			id_batch=batch_data[0][0]
 			log_file=batch_data[0][1]
 			log_position=batch_data[0][2]
+			log_table=batch_data[0][3]
 			self.my_stream = BinLogStreamReader(
 																	connection_settings = self.mysql_con.mysql_conn, 
 																	server_id=self.mysql_con.my_server_id, 
@@ -85,7 +86,8 @@ class mysql_engine:
 											"logpos":log_position, 
 											"schema": binlogevent.schema, 
 											"table": binlogevent.table, 
-											"batch_id":id_batch
+											"batch_id":id_batch, 
+											"log_table":log_table
 										}
 						event_data={}
 						if isinstance(binlogevent, DeleteRowsEvent):

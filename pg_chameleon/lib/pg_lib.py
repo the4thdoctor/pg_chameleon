@@ -252,26 +252,40 @@ class pg_engine:
 	
 	def save_master_status(self, master_status):
 		sql_tab_log=""" 
-						(
-							SELECT 
-								count(v_log_table) AS i_cnt_tables,
-								v_log_table 
-							FROM 
-								sch_chameleon.t_replica_batch 
-							GROUP BY 
-								v_log_table
-						UNION ALL
-							SELECT 
-								0  AS i_cnt_tables,
-								't_log_replica_1'  AS i_cnt_tables
-						)
-						ORDER BY 1
-						LIMIT 1
-		
+						WITH 	t_top_logs AS
+							(
+								(
+									SELECT 
+										v_log_table
+									FROM
+										sch_chameleon.t_replica_batch
+									ORDER BY
+										ts_created
+									LIMIT 10
+								)
+								UNION ALL
+								(
+									SELECT 
+										't_log_replica_1'  AS v_log_table
+								)
+							)
+						SELECT 
+							CASE
+								WHEN
+									count(v_log_table) % 2=0
+								THEN
+									't_log_replica_2'
+							ELSE
+								't_log_replica_1'
+							END AS v_log_table
+							
+						FROM 
+							t_top_logs
+						;
 					"""
 		self.pg_conn.pgsql_cur.execute(sql_tab_log)
 		results=self.pg_conn.pgsql_cur.fetchone()
-		table_file=results[1]
+		table_file=results[0]
 		master_data=master_status[0]
 		binlog_name=master_data["File"]
 		binlog_position=master_data["Position"]
@@ -311,7 +325,8 @@ class pg_engine:
 					RETURNING
 						i_id_batch,
 						t_binlog_name,
-						i_binlog_position 
+						i_binlog_position ,
+						v_log_table
 					;
 					"""
 		self.pg_conn.pgsql_cur.execute(sql_batch)
@@ -322,6 +337,7 @@ class pg_engine:
 		for row_data in group_insert:
 			global_data=row_data["global_data"]
 			event_data=row_data["event_data"]
+			log_table=global_data["log_table"]
 			insert_list.append(self.pg_conn.pgsql_cur.mogrify("(%s,%s,%s,%s,%s,%s,%s)", (
 																									global_data["batch_id"], 
 																									global_data["table"],  
@@ -335,7 +351,7 @@ class pg_engine:
 											)
 			
 		sql_insert="""
-								INSERT INTO sch_chameleon.t_log_replica
+								INSERT INTO sch_chameleon."""+log_table+"""
 								(
 									i_id_batch, 
 									v_table_name, 

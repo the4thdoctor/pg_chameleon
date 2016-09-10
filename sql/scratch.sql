@@ -100,10 +100,26 @@ FROM
 	)
 	ORDER BY 1
 	LIMIT 1
-
+delete from sch_chameleon.t_replica_batch
 	
-	
-	SELECT 
-	*
+WITH t_created AS
+	(
+		SELECT 
+			max(ts_created) AS ts_created
 		FROM 
-			sch_chameleon.t_replica_batch
+			sch_chameleon.t_replica_batch  
+		WHERE 
+				NOT b_processed
+	)
+UPDATE sch_chameleon.t_replica_batch
+	SET b_started=True
+	FROM 
+		t_created
+	WHERE
+		t_replica_batch.ts_created=t_created.ts_created
+RETURNING
+	i_id_batch,
+	t_binlog_name,
+	i_binlog_position,
+	v_log_table
+	
