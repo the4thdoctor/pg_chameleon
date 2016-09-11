@@ -46,6 +46,7 @@ class replica_engine:
 		self.pg_eng.create_indices()
 	
 	def create_service_schema(self, cleanup=False):
+		print "Creating service schema"
 		self.pg_eng.create_service_schema(cleanup)
 	
 	def do_stream_data(self):
