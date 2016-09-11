@@ -129,6 +129,8 @@ Setup the connection parameters in config.yaml
     
 
 Initialise the schema on PostgreSQL with
+
+
     ./pg_chameleon.py init_schema
     getting table metadata
     Creating service schema
@@ -175,7 +177,10 @@ Initialise the replica with
     done
     creating indices
 
+
 Start the replica with
+
+
 
     ./pg_chameleon.py start_replica
     getting table metadata
