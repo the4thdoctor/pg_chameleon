@@ -10,7 +10,7 @@ Current version: 0.1 DEVEL
 * Download the package or git clone
 * Create a virtual environment in the main app
 * Install the required packages listed in requirements.txt 
-* Create a user on mysql for the replica (e.g. usr_replication)
+* Create a user on mysql for the replica (e.g. usr_replica)
 * Grant access to usr on the replicated database (e.g. GRANT ALL ON sakila.* TO 'usr_replica';)
 * Grant RELOAD privilege to the user (e.g. GRANT RELOAD ON \*.\* to 'usr_replica';)
 * Grant REPLICATION CLIENT privilege to the user (e.g. GRANT REPLICATION CLIENT ON \*.\* to 'usr_replica';)
