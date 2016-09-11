@@ -7,7 +7,8 @@ pg_database: db_replication
 
 #mysql connection's charset. 
 my_charset: 'utf8'
-
+#postgresql connection's charset. 
+pg_charset: 'utf8'
 #include tables only
 tables_limit:
     
