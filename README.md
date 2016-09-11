@@ -40,7 +40,7 @@ The library is being developed on Ubuntu 14.04 with python 2.7.6.
 The databases source and target are:
 
 * MySQL: 5.6.30 on FreeBSD 10.3
-* PostgreSQL: 9.5.3 on FreeBSD 10.3
+* PostgreSQL: 9.5.4 on FreeBSD 10.3
   
 # What does it work
 * Read the schema specifications from MySQL and replicate the same structure it into PostgreSQL
