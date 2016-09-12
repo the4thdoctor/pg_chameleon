@@ -66,7 +66,7 @@ class pg_engine:
 												'decimal':'numeric', 
 												'double':'float', 
 												'float':'float', 
-												'bit':'bool', 
+												'bit':'integer', 
 												'year':'integer', 
 												'enum':'enum', 
 												'set':'text'
