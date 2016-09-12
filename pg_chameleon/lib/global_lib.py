@@ -22,6 +22,7 @@ class global_config:
 		self.replica_batch_size=confdic["replica_batch_size"]
 		self.tables_limit=confdic["tables_limit"]
 		self.copy_max_size=confdic["copy_max_size"]
+		self.copy_mode=confdic["copy_mode"]
 		
 class replica_engine:
 	def __init__(self):
@@ -29,15 +30,6 @@ class replica_engine:
 		self.my_eng=mysql_engine(self.global_config)
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file)
 		self.pg_eng.create_schema()
-		
-	def pull_data(self, table_limit):
-		self.my_eng.pull_tables_data(limit=table_limit)
-		self.pg_eng.save_master_status(self.my_eng.master_status)
-		
-	
-	def push_data(self):
-		print "loading data"
-		self.pg_eng.push_data(self.my_eng.table_file, self.my_eng.my_tables)
 		
 	def  create_tables(self, drop_tables=False):
 		self.pg_eng.build_tab_ddl()

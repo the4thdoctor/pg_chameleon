@@ -125,7 +125,7 @@ class pg_engine:
 				self.store_table(table)
 	
 	def create_indices(self):
-		print "creating indices"
+		print "creating the indices"
 		for index in self.idx_ddl:
 			idx_ddl= self.idx_ddl[index]
 			for sql_idx in idx_ddl:

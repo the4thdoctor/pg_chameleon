@@ -1,6 +1,8 @@
 import StringIO
 import pymysql
 import sys
+import codecs
+
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import (
     DeleteRowsEvent,
@@ -18,6 +20,7 @@ class mysql_connection:
 		self.my_charset=self.global_conf.my_charset
 		self.tables_limit=self.global_conf.tables_limit
 		self.replica_batch_size=self.global_conf.replica_batch_size
+		self.copy_mode=self.global_conf.copy_mode
 		self.my_connection=None
 		self.my_cursor=None
 		self.my_cursor_fallback=None
@@ -245,7 +248,7 @@ class mysql_engine:
 		return columns
 		
 	def copy_table_data(self, pg_engine,  limit=10000):
-		
+		out_file='/tmp/output_copy.csv'
 		print "locking the tables"
 		self.lock_tables()
 		for table_name in self.my_tables:
@@ -272,10 +275,21 @@ class mysql_engine:
 				except:
 					print sql_out
 				csv_results = self.mysql_con.my_cursor.fetchall()
-				csv_file=StringIO.StringIO()
+				
 				csv_data="\n".join(d['data'] for d in csv_results )
-				csv_file.write(csv_data)
-				csv_file.seek(0)
+				
+				if self.mysql_con.copy_mode=='direct':
+					csv_file=StringIO.StringIO()
+					csv_file.write(csv_data)
+					csv_file.seek(0)
+
+				if self.mysql_con.copy_mode=='file':
+					csv_file=codecs.open(out_file, 'wb', self.mysql_con.my_charset)
+					csv_file.write(csv_data)
+					csv_file.close()
+					csv_file=open(out_file, 'rb')
+					
+				pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				try:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
