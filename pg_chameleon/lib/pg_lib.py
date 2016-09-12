@@ -301,7 +301,7 @@ class pg_engine:
 																%s,
 																%s
 															)
-							ON CONFLICT DO NOTHING
+							;
 						"""
 		print "saving master data"
 		self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position, table_file))
@@ -315,7 +315,8 @@ class pg_engine:
 							FROM 
 								sch_chameleon.t_replica_batch  
 							WHERE 
-									NOT b_processed
+											NOT b_processed
+								AND 	NOT b_replayed
 						)
 					UPDATE sch_chameleon.t_replica_batch
 						SET b_started=True
@@ -334,6 +335,7 @@ class pg_engine:
 		return self.pg_conn.pgsql_cur.fetchall()
 	
 	def write_batch(self, group_insert):
+		print "saving replica batch data"
 		insert_list=[]
 		for row_data in group_insert:
 			global_data=row_data["global_data"]

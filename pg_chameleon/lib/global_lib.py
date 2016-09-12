@@ -54,7 +54,7 @@ class replica_engine:
 	def do_stream_data(self):
 		while True:
 			self.my_eng.do_stream_data(self.pg_eng)
-			print "stream empty processing batch"
+			print "stream complete. processing any batch present"
 			self.pg_eng.process_batch()
 			print "sleeping 10 seconds"
 			time.sleep(10)
