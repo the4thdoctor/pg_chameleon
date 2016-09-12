@@ -142,12 +142,14 @@ class mysql_engine:
 												SUBSTRING(COLUMN_TYPE,5)
 											END AS enum_list,
 											CASE
-												WHEN data_type IN ('blob','tinyblob','longblob','binary')
+												WHEN 
+													data_type IN ('blob','tinyblob','longblob','binary')
 												THEN
 													concat('hex(',column_name,')')
-												WHEN data_type IN ('bit')
+												WHEN 
+													data_type IN ('bit')
 												THEN
-													concat('cast(`',column_name,'` AS unsigned)')
+													concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
 											ELSE
 												concat('`',column_name,'`')
 											END
