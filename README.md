@@ -69,7 +69,7 @@ Check you can connect to both databases from the replication system.
 
 For MySQL
 
-    mysql -p -h derpy.thezion.net -u usr_replica sakila 
+    mysql -p -h derpy -u usr_replica sakila 
     Enter password: 
     Reading table information for completion of table and column names
     You can turn off this feature to get a quicker startup with -A
@@ -90,7 +90,7 @@ For MySQL
     
 For PostgreSQL
 
-    psql  -h derpy.thezion.net -U usr_replica db_replica
+    psql  -h derpy -U usr_replica db_replica
     Password for user usr_replica: 
     psql (9.5.4)
     Type "help" for help.
@@ -115,14 +115,14 @@ Setup the connection parameters in config.yaml
 
     #mysql slave setup
     mysql_conn:
-        host: derpy.thezion.net
+        host: derpy
         port: 3306
         user: usr_replica
         passwd: replica
 
     #postgres connection
     pg_conn:
-        host: derpy.thezion.net
+        host: derpy
         port: 5432
         user: usr_replica
         password: replica
