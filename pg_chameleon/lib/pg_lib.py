@@ -301,6 +301,7 @@ class pg_engine:
 																%s,
 																%s
 															)
+							ON CONFLICT DO NOTHING
 						"""
 		print "saving master data"
 		self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position, table_file))
