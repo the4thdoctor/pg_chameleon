@@ -149,6 +149,19 @@ class mysql_engine:
 												WHEN 
 													data_type IN ('bit')
 												THEN
+													concat('cast(`',column_name,'` AS unsigned)')
+											ELSE
+												concat('`',column_name,'`')
+											END
+											AS column_csv,
+											CASE
+												WHEN 
+													data_type IN ('blob','tinyblob','longblob','binary')
+												THEN
+													concat('hex(',column_name,')')
+												WHEN 
+													data_type IN ('bit')
+												THEN
 													concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
 											ELSE
 												concat('`',column_name,'`')
@@ -223,7 +236,7 @@ class mysql_engine:
 		columns=""
 		if mode=="csv":
 			for column in table_columns:
-					column_list.append("COALESCE(REPLACE("+column["column_select"]+", '\"', '\"\"'),'NULL') ")
+					column_list.append("COALESCE(REPLACE("+column["column_csv"]+", '\"', '\"\"'),'NULL') ")
 			columns="REPLACE(CONCAT('\"',CONCAT_WS('\",\"',"+','.join(column_list)+"),'\"'),'\"NULL\"','NULL')"
 		if mode=="insert":
 			for column in table_columns:
