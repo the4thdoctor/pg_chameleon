@@ -11,7 +11,7 @@ class pg_encoder(json.JSONEncoder):
 
 class pg_connection:
 	def __init__(self, global_config):
-		self.global_conf=global_config()
+		self.global_conf=global_config
 		self.pg_conn=self.global_conf.pg_conn
 		self.pg_database=self.global_conf.pg_database
 		self.dest_schema=self.global_conf.my_database

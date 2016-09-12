@@ -11,7 +11,7 @@ from pymysqlreplication.event import RotateEvent
 
 class mysql_connection:
 	def __init__(self, global_config):
-		self.global_conf=global_config()
+		self.global_conf=global_config
 		self.my_server_id=self.global_conf.my_server_id
 		self.mysql_conn=self.global_conf.mysql_conn
 		self.my_database=self.global_conf.my_database
@@ -55,8 +55,6 @@ class mysql_engine:
 		group_insert=[]
 		master_data={}
 		num_insert=0
-		if len(self.master_status)==0:
-			print "run a full resync before starting the replica"
 			
 		batch_data=pg_engine.get_batch_data()
 		if len(batch_data)>0:
