@@ -34,7 +34,8 @@ class pg_connection:
 		
 
 class pg_engine:
-	def __init__(self, global_config, table_metadata, table_file, sql_dir='sql/'):
+	def __init__(self, global_config, table_metadata, table_file, logger, sql_dir='sql/'):
+		self.logger=logger
 		self.sql_dir=sql_dir
 		self.idx_sequence=0
 		self.pg_conn=pg_connection(global_config)
@@ -125,7 +126,7 @@ class pg_engine:
 				self.store_table(table)
 	
 	def create_indices(self):
-		print "creating the indices"
+		self.logger.info("creating the indices")
 		for index in self.idx_ddl:
 			idx_ddl= self.idx_ddl[index]
 			for sql_idx in idx_ddl:
@@ -154,23 +155,8 @@ class pg_engine:
 			try:
 				self.pg_conn.pgsql_cur.execute(sql_head,column_values)	
 			except psycopg2.Error as e:
-					print  "SQLCODE: " + e.pgcode+ " - " +e.pgerror
-					print self.pg_conn.pgsql_cur.mogrify(sql_head,column_values)	
-		
-		
-	def push_data(self, table_file=[], my_tables={}):
-		
-		if len(table_file)==0:
-			print "table to file list is empty"
-		else:
-			for table in table_file:
-				column_copy=[]
-				for column in my_tables[table]["columns"]:
-					column_copy.append('"'+column["column_name"]+'"')
-				sql_copy="COPY "+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"'  "
-				tab_file=open(table_file[table],'rb')
-				self.pg_conn.pgsql_cur.copy_expert(sql_copy,tab_file)
-				tab_file.close()
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_head,column_values))
 				
 	def build_tab_ddl(self):
 		""" the function iterates over the list l_tables and builds a new list with the statements for tables"""
@@ -251,6 +237,7 @@ class pg_engine:
 		self.pg_conn.pgsql_cur.execute(sql_schema)
 	
 	def save_master_status(self, master_status):
+		
 		sql_tab_log=""" 
 						WITH 	t_top_logs AS
 							(
@@ -289,6 +276,7 @@ class pg_engine:
 		master_data=master_status[0]
 		binlog_name=master_data["File"]
 		binlog_position=master_data["Position"]
+		self.logger.debug("master data: table file %s, log name: %s, log position: %s " % (table_file, binlog_name, binlog_position))
 		sql_master="""
 							INSERT INTO sch_chameleon.t_replica_batch
 															(
@@ -303,9 +291,13 @@ class pg_engine:
 															)
 							;
 						"""
-		print "saving master data"
-		self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position, table_file))
-		print "done"
+		self.logger.info("saving master data")
+		try:
+			self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position, table_file))
+		except psycopg2.Error as e:
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_master, (binlog_name, binlog_position, table_file)))
+					raise ValueError("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 		
 	def get_batch_data(self):
 		sql_batch="""WITH t_created AS

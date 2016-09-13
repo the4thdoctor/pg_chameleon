@@ -4,9 +4,10 @@ import sys
 import os
 import time
 import logging
+from datetime import datetime
 class global_config:
 	"""class to manage the mysql connection"""
-	def __init__(self,config_file='config/config.yaml'):
+	def __init__(self,command, config_file='config/config.yaml'):
 		if not os.path.isfile(config_file):
 			print "**FATAL - configuration file missing **\ncopy config/config-example.yaml to config/config.yaml and set your connection settings."
 			sys.exit()
@@ -24,22 +25,24 @@ class global_config:
 		self.tables_limit=confdic["tables_limit"]
 		self.copy_max_size=confdic["copy_max_size"]
 		self.copy_mode=confdic["copy_mode"]
-		self.log_file=confdic["log_file"]+'.log'
+		dt=datetime.now()
+		log_sfx=dt.strftime('%Y%m%d-%H%m%S')
+		self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
 		
 		
 class replica_engine:
-	def __init__(self):
-		self.global_config=global_config()
+	def __init__(self, command):
+		self.global_config=global_config(command)
 		self.logger = logging.getLogger(__name__)
 		self.logger.setLevel(logging.DEBUG)
 		self.logger.propagate = False
 		fh = logging.FileHandler(self.global_config.log_file, "w")
 		fh.setLevel(logging.DEBUG)
-		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(message)s", "%b %e %H:%M:%S")
+		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(filename)s: %(message)s", "%b %e %H:%M:%S")
 		fh.setFormatter(formatter)
 		self.logger.addHandler(fh)
 		self.my_eng=mysql_engine(self.global_config, self.logger)
-		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file)
+		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
 		
 	def  create_tables(self, drop_tables=False):
 		self.pg_eng.create_schema()

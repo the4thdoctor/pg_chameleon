@@ -44,6 +44,7 @@ class mysql_connection:
 		
 class mysql_engine:
 	def __init__(self, global_config, logger, out_dir="/tmp/"):
+		self.logger=logger
 		self.out_dir=out_dir
 		self.my_tables={}
 		self.table_file={}
@@ -54,7 +55,7 @@ class mysql_engine:
 		self.replica_batch_size=self.mysql_con.replica_batch_size
 		self.master_status=[]
 		self.id_batch=None
-		self.logger=logger
+		
 
 	def do_stream_data(self, pg_engine):
 		group_insert=[]
@@ -207,10 +208,10 @@ class mysql_engine:
 		return index_data
 	
 	def get_table_metadata(self):
-		print "getting table metadata"
+		self.logger.info("getting table metadata")
 		table_include=""
 		if self.mysql_con.tables_limit:
-			print "table copy limited to tables: "+','.join(self.mysql_con.tables_limit)
+			self.logger.info("table copy limited to tables: %s" % ','.join(self.mysql_con.tables_limit))
 			table_include="AND table_name IN ('"+"','".join(self.mysql_con.tables_limit)+"')"
 		sql_tables="""SELECT 
 											table_schema,
@@ -233,7 +234,10 @@ class mysql_engine:
 			self.my_tables[table["table_name"]]=dic_table
 			
 	def print_progress (self, iteration, total, table_name):
-		self.logger.info("Table %s copied %d %%" % (table_name, 100 * float(iteration)/float(total)))
+		if total>1:
+			self.logger.info("Table %s copied %d %%" % (table_name, 100 * float(iteration)/float(total)))
+		else:
+			self.logger.debug("Table %s copied %d %%" % (table_name, 100 * float(iteration)/float(total)))
 		
 	def generate_select(self, table_columns, mode="csv"):
 		column_list=[]
@@ -304,7 +308,7 @@ class mysql_engine:
 					pg_engine.insert_data(table_name, insert_data , self.my_tables)
 				self.print_progress(slice+1,total_slices, table_name)
 				csv_file.close()
-		print "\nreleasing the lock"
+		self.logger.info("releasing the lock")
 		self.unlock_tables()
 		
 	def get_master_status(self):
