@@ -302,7 +302,6 @@ class mysql_engine:
 					csv_file.close()
 					csv_file=open(out_file, 'rb')
 					
-				pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				try:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
