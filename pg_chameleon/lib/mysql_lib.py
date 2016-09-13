@@ -25,6 +25,7 @@ class mysql_connection:
 		self.my_cursor=None
 		self.my_cursor_fallback=None
 		
+		
 	
 	def connect_db(self):
 		"""  Establish connection with the database """
@@ -42,7 +43,7 @@ class mysql_connection:
 		
 		
 class mysql_engine:
-	def __init__(self, global_config, out_dir="/tmp/"):
+	def __init__(self, global_config, logger, out_dir="/tmp/"):
 		self.out_dir=out_dir
 		self.my_tables={}
 		self.table_file={}
@@ -53,6 +54,7 @@ class mysql_engine:
 		self.replica_batch_size=self.mysql_con.replica_batch_size
 		self.master_status=[]
 		self.id_batch=None
+		self.logger=logger
 
 	def do_stream_data(self, pg_engine):
 		group_insert=[]
@@ -230,10 +232,9 @@ class mysql_engine:
 			dic_table={'name':table["table_name"], 'columns':column_data,  'indices': index_data}
 			self.my_tables[table["table_name"]]=dic_table
 			
-	def print_progress (self, iteration, total):
-		sys.stdout.write("\rProcessed %d slices out of %d " % (iteration, total))
-		sys.stdout.flush()
-			
+	def print_progress (self, iteration, total, table_name):
+		self.logger.info("Table %s copied %d %%" % (table_name, 100 * float(iteration)/float(total)))
+		
 	def generate_select(self, table_columns, mode="csv"):
 		column_list=[]
 		columns=""
@@ -249,20 +250,22 @@ class mysql_engine:
 		
 	def copy_table_data(self, pg_engine,  limit=10000):
 		out_file='/tmp/output_copy.csv'
-		print "locking the tables"
+		self.logger.info("locking the tables")
 		self.lock_tables()
 		for table_name in self.my_tables:
-			print "\ncopying table "+table_name
+			self.logger.info("copying table "+table_name)
 			table=self.my_tables[table_name]
 			
 			table_name=table["name"]
 			table_columns=table["columns"]
+			self.logger.debug("counting rows in "+table_name)
 			sql_count="SELECT count(*) as i_cnt FROM `"+table_name+"` ;"
 			self.mysql_con.my_cursor.execute(sql_count)
 			count_rows=self.mysql_con.my_cursor.fetchone()
 			num_slices=count_rows["i_cnt"]/limit
 			range_slices=range(num_slices+1)
 			total_slices=len(range_slices)
+			self.logger.debug(table_name +" will be copied in "+str(total_slices)+" slices" )
 			columns_csv=self.generate_select(table_columns, mode="csv")
 			columns_ins=self.generate_select(table_columns, mode="insert")
 			
@@ -299,7 +302,7 @@ class mysql_engine:
 					self.mysql_con.my_cursor_fallback.execute(sql_out)
 					insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
 					pg_engine.insert_data(table_name, insert_data , self.my_tables)
-				self.print_progress(slice+1,total_slices)
+				self.print_progress(slice+1,total_slices, table_name)
 				csv_file.close()
 		print "\nreleasing the lock"
 		self.unlock_tables()

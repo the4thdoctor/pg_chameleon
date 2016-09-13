@@ -3,6 +3,7 @@ import yaml
 import sys
 import os
 import time
+import logging
 class global_config:
 	"""class to manage the mysql connection"""
 	def __init__(self,config_file='config/config.yaml'):
@@ -23,15 +24,26 @@ class global_config:
 		self.tables_limit=confdic["tables_limit"]
 		self.copy_max_size=confdic["copy_max_size"]
 		self.copy_mode=confdic["copy_mode"]
+		self.log_file=confdic["log_file"]+'.log'
+		
 		
 class replica_engine:
 	def __init__(self):
 		self.global_config=global_config()
-		self.my_eng=mysql_engine(self.global_config)
+		self.logger = logging.getLogger(__name__)
+		self.logger.setLevel(logging.DEBUG)
+		self.logger.propagate = False
+		fh = logging.FileHandler(self.global_config.log_file, "w")
+		fh.setLevel(logging.DEBUG)
+		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(message)s", "%b %e %H:%M:%S")
+		fh.setFormatter(formatter)
+		self.logger.addHandler(fh)
+		self.my_eng=mysql_engine(self.global_config, self.logger)
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file)
-		self.pg_eng.create_schema()
 		
 	def  create_tables(self, drop_tables=False):
+		self.pg_eng.create_schema()
+		self.logger.info("Importing mysql schema")
 		self.pg_eng.build_tab_ddl()
 		self.pg_eng.create_tables(drop_tables)
 	
@@ -40,15 +52,15 @@ class replica_engine:
 		self.pg_eng.create_indices()
 	
 	def create_service_schema(self, cleanup=False):
-		print "Creating service schema"
+		self.logger.info("Creating service schema")
 		self.pg_eng.create_service_schema(cleanup)
 	
 	def do_stream_data(self):
 		while True:
 			self.my_eng.do_stream_data(self.pg_eng)
-			print "stream complete. processing any batch present"
+			self.logger.info("stream complete. replaying  batch data")
 			self.pg_eng.process_batch()
-			print "sleeping 10 seconds"
+			self.logger.info("sleeping 10 seconds")
 			time.sleep(10)
 			
 	def copy_table_data(self):

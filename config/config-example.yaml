@@ -6,6 +6,8 @@ copy_max_size: 10000
 my_database:  db_replica
 pg_database: db_replication
 copy_mode: 'file'
+log_file: 'logs/pg_chameleon'
+
 #copy_mode: 'direct'
 
 #mysql connection's charset. 
