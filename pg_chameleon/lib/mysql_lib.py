@@ -133,8 +133,8 @@ class mysql_engine:
 				self.logger.debug("updating processed flag for id_batch %s", (id_batch))
 				pg_engine.set_batch_processed(id_batch)
 				self.id_batch=None
-			self.logger.debug("closing replication stream")
-			self.my_stream.close()
+		self.logger.debug("closing replication stream")
+		self.my_stream.close()
 		
 	def get_column_metadata(self, table):
 		sql_columns="""SELECT 
@@ -305,7 +305,8 @@ class mysql_engine:
 				try:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
-					print "error in PostgreSQL copy, fallback to insert statements "
+					self.logger.info("table %s error in PostgreSQL copy, fallback to insert statements ", (table_name, ))
+					
 					
 					sql_out="SELECT "+columns_ins+"  FROM "+table_name+" LIMIT "+str(slice*limit)+", "+str(limit)+";"
 					self.mysql_con.my_cursor_fallback.execute(sql_out)
