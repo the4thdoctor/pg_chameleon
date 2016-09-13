@@ -26,7 +26,7 @@ class global_config:
 		self.copy_max_size=confdic["copy_max_size"]
 		self.copy_mode=confdic["copy_mode"]
 		dt=datetime.now()
-		log_sfx=dt.strftime('%Y%m%d-%H%m%S')
+		log_sfx=dt.strftime('%Y%m%d-%H%M%S')
 		self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
 		
 		
