@@ -64,7 +64,7 @@ class mysql_engine:
 			
 		batch_data=pg_engine.get_batch_data()
 		if len(batch_data)>0:
-			print "start replica stream"+str(batch_data)
+			self.logger.debug("start replica stream: %s", (batch_data, ))
 			id_batch=batch_data[0][0]
 			log_file=batch_data[0][1]
 			log_position=batch_data[0][2]
@@ -117,17 +117,23 @@ class mysql_engine:
 			
 			master_data["File"]=log_file
 			master_data["Position"]=log_position
-			print "working out master data"+str(log_file)+" "+str(log_position)
+			self.logger.debug("master data: logfile %s log position ", (log_file, log_position))
 			try:
 				self.master_status=[]
 				self.master_status.append(master_data)
+				self.logger.debug("trying to save the master data...")
 				pg_engine.save_master_status(self.master_status)
+				self.logger.debug("success, saving id_batch %s in class variable", (id_batch))
 				self.id_batch=id_batch
+				
 			except:
-				pass
+				self.logger.debug("failure, means empty batch. using old id_batch %s", (self.id_batch))
+				
 			if self.id_batch:
+				self.logger.debug("updating processed flag for id_batch %s", (id_batch))
 				pg_engine.set_batch_processed(id_batch)
 				self.id_batch=None
+			self.logger.debug("closing replication stream")
 			self.my_stream.close()
 		
 	def get_column_metadata(self, table):
