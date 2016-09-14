@@ -15,7 +15,7 @@ hexify:
     - 'binary'
 
 log_dir: 'logs/'
-log_level: 'debug'	
+log_level: 'debug'
 log_dest: 'stdout'
 #log_dest: 'file'
 log_level: 'info'
