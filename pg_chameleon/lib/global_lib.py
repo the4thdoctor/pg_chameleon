@@ -36,11 +36,14 @@ class replica_engine:
 		self.logger = logging.getLogger(__name__)
 		self.logger.setLevel(logging.DEBUG)
 		self.logger.propagate = False
+		sout=logging.StreamHandler(sys.stdout)
 		fh = logging.FileHandler(self.global_config.log_file, "w")
 		fh.setLevel(logging.DEBUG)
 		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(filename)s: %(message)s", "%b %e %H:%M:%S")
 		fh.setFormatter(formatter)
+		sout.setFormatter(formatter)
 		self.logger.addHandler(fh)
+		self.logger.addHandler(sout)
 		self.my_eng=mysql_engine(self.global_config, self.logger)
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
 		
