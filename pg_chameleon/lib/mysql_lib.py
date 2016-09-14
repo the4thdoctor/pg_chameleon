@@ -2,6 +2,7 @@ import StringIO
 import pymysql
 import sys
 import codecs
+import binascii
 
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import (
@@ -44,6 +45,7 @@ class mysql_connection:
 		
 class mysql_engine:
 	def __init__(self, global_config, logger, out_dir="/tmp/"):
+		self.hexify=global_config.hexify
 		self.logger=logger
 		self.out_dir=out_dir
 		self.my_tables={}
@@ -56,12 +58,13 @@ class mysql_engine:
 		self.master_status=[]
 		self.id_batch=None
 		
+		
 
 	def do_stream_data(self, pg_engine):
 		group_insert=[]
 		master_data={}
 		num_insert=0
-			
+		table_type_map=self.get_table_type_map()	
 		batch_data=pg_engine.get_batch_data()
 		if len(batch_data)>0:
 			self.logger.debug("start replica stream: %s", (batch_data, ))
@@ -85,24 +88,34 @@ class mysql_engine:
 					for row in binlogevent.rows:
 						log_file=binlogfile
 						log_position=binlogevent.packet.log_pos
+						table_name=binlogevent.table
+						schema_name=binlogevent.schema
+						column_map=table_type_map[table_name]
+						
 						global_data={
 											"binlog":log_file, 
 											"logpos":log_position, 
-											"schema": binlogevent.schema, 
-											"table": binlogevent.table, 
+											"schema": schema_name, 
+											"table": table_name, 
 											"batch_id":id_batch, 
 											"log_table":log_table
 										}
+						self.logger.debug("evaluating table structure: %s.%s " % (schema_name,table_name ))
 						event_data={}
 						if isinstance(binlogevent, DeleteRowsEvent):
 							global_data["action"] = "delete"
-							event_data = dict(event_data.items() + row["values"].items())
+							event_values=row["values"]
 						elif isinstance(binlogevent, UpdateRowsEvent):
 							global_data["action"] = "update"
-							event_data = dict(event_data.items() + row["after_values"].items())
+							event_values=row["after_values"]
 						elif isinstance(binlogevent, WriteRowsEvent):
 							global_data["action"] = "insert"
-							event_data = dict(event_data.items() + row["values"].items())
+							event_values=row["values"]
+						for column_name in event_values:
+							column_type=column_map[column_name]
+							if column_type in self.hexify:
+								event_values[column_name]=binascii.hexlify(event_values[column_name])
+						event_data = dict(event_data.items() +event_values.items())
 						event_insert={"global_data":global_data,"event_data":event_data}
 						group_insert.append(event_insert)
 						num_insert+=1
@@ -117,17 +130,16 @@ class mysql_engine:
 			
 			master_data["File"]=log_file
 			master_data["Position"]=log_position
-			self.logger.debug("master data: logfile %s log position ", (log_file, log_position))
-			try:
-				self.master_status=[]
-				self.master_status.append(master_data)
-				self.logger.debug("trying to save the master data...")
-				pg_engine.save_master_status(self.master_status)
-				self.logger.debug("success, saving id_batch %s in class variable", (id_batch))
+			self.logger.debug("master data: logfile %s log position %s " % (log_file, log_position))
+			self.master_status=[]
+			self.master_status.append(master_data)
+			self.logger.debug("trying to save the master data...")
+			next_id_batch=pg_engine.save_master_status(self.master_status)
+			if next_id_batch:
+				self.logger.debug("success, saving id_batch %s in class variable" % (id_batch))
 				self.id_batch=id_batch
-				
-			except:
-				self.logger.debug("failure, means empty batch. using old id_batch %s", (self.id_batch))
+			else:
+				self.logger.debug("failure, means empty batch. using old id_batch %s" % (self.id_batch))
 				
 			if self.id_batch:
 				self.logger.debug("updating processed flag for id_batch %s", (id_batch))
@@ -135,6 +147,45 @@ class mysql_engine:
 				self.id_batch=None
 		self.logger.debug("closing replication stream")
 		self.my_stream.close()
+		
+	def get_table_type_map(self):
+		table_type_map={}
+		self.logger.debug("collecting table type map")
+		sql_tables="""SELECT 
+											table_schema,
+											table_name
+								FROM 
+											information_schema.TABLES 
+								WHERE 
+														table_type='BASE TABLE' 
+											AND 	table_schema=%s
+								;
+							"""
+		self.mysql_con.my_cursor.execute(sql_tables, (self.mysql_con.my_database))
+		table_list=self.mysql_con.my_cursor.fetchall()
+		for table in table_list:
+			column_type={}
+			sql_columns="""SELECT 
+												column_name,
+												data_type
+												
+									FROM 
+												information_schema.COLUMNS 
+									WHERE 
+															table_schema=%s
+												AND 	table_name=%s
+									ORDER BY 
+													ordinal_position
+									;
+								"""
+			self.mysql_con.my_cursor.execute(sql_columns, (self.mysql_con.my_database, table["table_name"]))
+			column_data=self.mysql_con.my_cursor.fetchall()
+			for column in column_data:
+				column_type[column["column_name"]]=column["data_type"]
+			table_type_map[table["table_name"]]=column_type
+		return table_type_map
+		
+			
 		
 	def get_column_metadata(self, table):
 		sql_columns="""SELECT 
@@ -155,7 +206,7 @@ class mysql_engine:
 											END AS enum_list,
 											CASE
 												WHEN 
-													data_type IN ('blob','tinyblob','longblob','binary')
+													data_type IN ('"""+"','".join(self.hexify)+"""')
 												THEN
 													concat('hex(',column_name,')')
 												WHEN 
@@ -168,7 +219,7 @@ class mysql_engine:
 											AS column_csv,
 											CASE
 												WHEN 
-													data_type IN ('blob','tinyblob','longblob','binary')
+													data_type IN ('"""+"','".join(self.hexify)+"""')
 												THEN
 													concat('hex(',column_name,')')
 												WHEN 

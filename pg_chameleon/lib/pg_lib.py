@@ -121,8 +121,8 @@ class pg_engine:
 				try:
 					self.pg_conn.pgsql_cur.execute(sql_create)
 				except psycopg2.Error as e:
-					print  "SQLCODE: " + e.pgcode+ " - " +e.pgerror
-					print sql_create
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error(sql_create)
 				self.store_table(table)
 	
 	def create_indices(self):
@@ -237,7 +237,7 @@ class pg_engine:
 		self.pg_conn.pgsql_cur.execute(sql_schema)
 	
 	def save_master_status(self, master_status):
-		
+		next_batch_id=None
 		sql_tab_log=""" 
 						WITH 	t_top_logs AS
 							(
@@ -289,15 +289,21 @@ class pg_engine:
 																%s,
 																%s
 															)
+							ON CONFLICT DO NOTHING
+							RETURNING i_id_batch
 							;
 						"""
 		self.logger.info("saving master data")
 		try:
 			self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position, table_file))
+			results=self.pg_conn.pgsql_cur.fetchone()
+			next_batch_id=results[0]
 		except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_master, (binlog_name, binlog_position, table_file)))
-					raise ValueError("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+		except:
+			pass
+		return next_batch_id
 		
 	def get_batch_data(self):
 		sql_batch="""WITH t_created AS
@@ -327,7 +333,7 @@ class pg_engine:
 		return self.pg_conn.pgsql_cur.fetchall()
 	
 	def write_batch(self, group_insert):
-		print "saving replica batch data"
+		self.logger.debug("saving replica batch data")
 		insert_list=[]
 		for row_data in group_insert:
 			global_data=row_data["global_data"]

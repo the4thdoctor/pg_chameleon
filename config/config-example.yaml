@@ -5,10 +5,22 @@ replica_batch_size: 1000
 copy_max_size: 10000
 my_database:  db_replica
 pg_database: db_replication
-copy_mode: 'file'
-log_dir: 'logs/'
-
+copy_mode: 'file' 
 #copy_mode: 'direct'
+
+hexify: 
+    - 'blob'
+    - 'tinyblob'
+    - 'longblob'
+    - 'binary'
+
+log_dir: 'logs/'
+log_level: 'debug'	
+log_dest: 'stdout'
+#log_dest: 'file'
+log_level: 'info'
+#log_level: 'debug'
+
 
 #mysql connection's charset. 
 my_charset: 'utf8'

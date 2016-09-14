@@ -25,6 +25,9 @@ class global_config:
 		self.tables_limit=confdic["tables_limit"]
 		self.copy_max_size=confdic["copy_max_size"]
 		self.copy_mode=confdic["copy_mode"]
+		self.hexify=confdic["hexify"]
+		self.log_level=confdic["log_level"]
+		self.log_dest=confdic["log_dest"]
 		dt=datetime.now()
 		log_sfx=dt.strftime('%Y%m%d-%H%M%S')
 		self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
@@ -36,14 +39,22 @@ class replica_engine:
 		self.logger = logging.getLogger(__name__)
 		self.logger.setLevel(logging.DEBUG)
 		self.logger.propagate = False
-		sout=logging.StreamHandler(sys.stdout)
-		fh = logging.FileHandler(self.global_config.log_file, "w")
-		fh.setLevel(logging.DEBUG)
 		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(filename)s: %(message)s", "%b %e %H:%M:%S")
+		
+		if self.global_config.log_dest=='stdout':
+			fh=logging.StreamHandler(sys.stdout)
+			
+		elif self.global_config.log_dest=='file':
+			fh = logging.FileHandler(self.global_config.log_file, "w")
+		
+		if self.global_config.log_level=='debug':
+			fh.setLevel(logging.DEBUG)
+		elif self.global_config.log_level=='info':
+			fh.setLevel(logging.INFO)
+			
 		fh.setFormatter(formatter)
-		sout.setFormatter(formatter)
 		self.logger.addHandler(fh)
-		self.logger.addHandler(sout)
+
 		self.my_eng=mysql_engine(self.global_config, self.logger)
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
 		
