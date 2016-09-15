@@ -3,8 +3,10 @@ import pymysql
 import sys
 import codecs
 import binascii
+import sqlparse
 
 from pymysqlreplication import BinLogStreamReader
+from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import (
     DeleteRowsEvent,
     UpdateRowsEvent,
@@ -75,7 +77,7 @@ class mysql_engine:
 			self.my_stream = BinLogStreamReader(
 																	connection_settings = self.mysql_con.mysql_conn, 
 																	server_id=self.mysql_con.my_server_id, 
-																	only_events=[RotateEvent,DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
+																	only_events=[RotateEvent, QueryEvent,DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
 																	log_file=log_file, 
 																	log_pos=log_position, 
 																	resume_stream=True
@@ -84,6 +86,12 @@ class mysql_engine:
 			for binlogevent in self.my_stream:
 				if isinstance(binlogevent, RotateEvent):
 					binlogfile=binlogevent.next_binlog
+				elif isinstance(binlogevent, QueryEvent):
+					log_file=binlogfile
+					log_position=binlogevent.packet.log_pos
+					self.logger.debug(binlogevent.query)
+					parsed=sqlparse.parse(binlogevent.query)
+					print parsed[0].tokens
 				else:
 					for row in binlogevent.rows:
 						log_file=binlogfile
@@ -100,7 +108,6 @@ class mysql_engine:
 											"batch_id":id_batch, 
 											"log_table":log_table
 										}
-						self.logger.debug("evaluating table structure: %s.%s " % (schema_name,table_name ))
 						event_data={}
 						if isinstance(binlogevent, DeleteRowsEvent):
 							global_data["action"] = "delete"
