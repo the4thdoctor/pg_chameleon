@@ -179,14 +179,18 @@ Setup the connection parameters in config.yaml
         password: replica
     
 
+
 Initialise the schema and the replica with
+
 
 ..code-block:: none
 
     ./pg_chameleon.py init_schema
     ./pg_chameleon.py init_replica
-	
+
+
 Start the replica with
+
 
 ..code-block:: none
      
