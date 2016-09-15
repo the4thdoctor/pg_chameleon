@@ -114,6 +114,7 @@ In PostgreSQL create a user for the replica and a database owned by the user
 Check you can connect to both databases from the replication system.
 
 For MySQL
+
 .. code-block:: none 
 
     mysql -p -h derpy -u usr_replica sakila 
@@ -136,6 +137,7 @@ For MySQL
     mysql> 
     
 For PostgreSQL
+
 .. code-block:: none
 
     psql  -h derpy -U usr_replica db_replica
