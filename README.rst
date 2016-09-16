@@ -6,6 +6,8 @@ Migration and replica from MySQL to PostgreSQL
 
 Current version: 0.1 DEVEL
 
+`Documentation available at readthedocs <http://pg-chameleon.readthedocs.io/en/latest/>`_
+
 Setup 
 **********
 
