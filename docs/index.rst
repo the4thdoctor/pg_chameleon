@@ -10,14 +10,26 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   
+README
+===============
 
 .. include:: ../README.rst
+
+API Docs 
+==================================
+
+
+.. automodule:: mysql_lib
+    :members:
+    :undoc-members:
+    :inherited-members:
+    :show-inheritance:
+	
+.. automodule:: pg_lib
+    :members:
+    :undoc-members:
+    :inherited-members:
+    :show-inheritance:
+
+
