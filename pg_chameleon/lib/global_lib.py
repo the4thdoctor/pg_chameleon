@@ -6,10 +6,24 @@ import time
 import logging
 from datetime import datetime
 class global_config:
-	"""class to manage the mysql connection"""
-	def __init__(self,command, config_file='config/config.yaml'):
+	"""
+		This class parses the configuration file which is in config/config.yaml and sets 
+		the class variables used by the other libraries. 
+		The constructor checks if the configuration file is present and if is missing emits an error message followed by
+		the sys.exit() command. If the configuration file is successful parsed the class variables are set from the
+		configuration values.
+		The class sets the log output file from the parameter command.  If the log destination is stdout then the logfile is ignored
+		
+		:param command: the command specified on the pg_chameleon.py command line
+	
+	"""
+	def __init__(self,command):
+		"""
+			Class  constructor.
+		"""
+		config_file='config/config.yaml'
 		if not os.path.isfile(config_file):
-			print "**FATAL - configuration file missing **\ncopy config/config-example.yaml to config/config.yaml and set your connection settings."
+			print "**FATAL - configuration file missing **\ncopy config/config-example.yaml to "+config_file+" and set your connection settings."
 			sys.exit()
 		conffile=open(config_file, 'rb')
 		confdic=yaml.load(conffile.read())
@@ -34,6 +48,16 @@ class global_config:
 		
 		
 class replica_engine:
+	"""
+		This class acts as bridge between the mysql and postgresql engines. The constructor inits the global configuration
+		class  and setup the mysql and postgresql engines as class objects. 
+		The class setup the logging using the configuration parameter (e.g. log level debug on stdout).
+		
+		:param command: the command specified on the pg_chameleon.py command line
+		
+		
+		
+	"""
 	def __init__(self, command):
 		self.global_config=global_config(command)
 		self.logger = logging.getLogger(__name__)
@@ -58,17 +82,31 @@ class replica_engine:
 		self.my_eng=mysql_engine(self.global_config, self.logger)
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
 		
-	def  create_tables(self, drop_tables=False):
+	def  create_schema(self, drop_tables=False):
+		"""
+			Creates the database schema on PostgreSQL using the metadata extracted from MySQL.
+			
+			:param drop_tables=False:  specifies whether the existing tables should be dropped before creating it.  The default setting is False.
+		"""
 		self.pg_eng.create_schema()
 		self.logger.info("Importing mysql schema")
 		self.pg_eng.build_tab_ddl()
 		self.pg_eng.create_tables(drop_tables)
 	
-	def  create_indices(self, drop_tables=False):
+	def  create_indices(self):
+		"""
+			Creates the indices on the PostgreSQL schema using the metadata extracted from MySQL.
+			
+		"""
 		self.pg_eng.build_idx_ddl()
 		self.pg_eng.create_indices()
 	
 	def create_service_schema(self, cleanup=False):
+		"""
+			Creates the service schema sch_chameleon on the PostgreSQL database. The service schema is required for having the replica working correctly.
+			
+			:param cleanup=False: specifies whether the existing schema should be dropped before loading the new schema.
+		"""
 		self.logger.info("Creating service schema")
 		self.pg_eng.create_service_schema(cleanup)
 	

@@ -19,7 +19,12 @@ README
 API Docs 
 ==================================
 
-
+.. automodule:: global_lib
+    :members:
+    :undoc-members:
+    :inherited-members:
+    :show-inheritance:
+	
 .. automodule:: mysql_lib
     :members:
     :undoc-members:
@@ -31,5 +36,6 @@ API Docs
     :undoc-members:
     :inherited-members:
     :show-inheritance:
+
 
 

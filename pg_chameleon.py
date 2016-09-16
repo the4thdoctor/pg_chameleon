@@ -12,7 +12,7 @@ if args.command in commands:
 	if args.command == commands[0]:
 		replica.create_service_schema(cleanup=True)
 	elif args.command == commands[1]:
-		replica.create_tables(drop_tables=True)
+		replica.create_schema(drop_tables=True)
 		replica.copy_table_data()
 		replica.create_indices()
 	elif args.command == commands[2]:

@@ -59,6 +59,16 @@ class mysql_engine:
 		self.replica_batch_size=self.mysql_con.replica_batch_size
 		self.master_status=[]
 		self.id_batch=None
+		self.replica_verbs=[
+										'CREATE', 
+										'DROP', 
+										'ALTER'
+									]
+		self.replica_relations=[
+												'TABLE', 
+												'INDEX'
+									]
+		
 		
 		
 
@@ -89,9 +99,14 @@ class mysql_engine:
 				elif isinstance(binlogevent, QueryEvent):
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
-					self.logger.debug(binlogevent.query)
+					self.logger.info(binlogevent.query)
 					parsed=sqlparse.parse(binlogevent.query)
-					print parsed[0].tokens
+					for query_ddl in parsed:
+						query_tokens=query_ddl.tokens
+						self.logger.info(query_tokens)
+						query_verb=query_tokens[0]
+						query_relation=query_tokens[1]
+						self.logger.info("VERB: %s RELATION: %s" % (query_verb, query_relation))
 				else:
 					for row in binlogevent.rows:
 						log_file=binlogfile
