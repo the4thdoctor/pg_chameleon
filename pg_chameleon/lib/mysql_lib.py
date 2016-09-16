@@ -70,7 +70,20 @@ class mysql_engine:
 									]
 		
 		
-		
+	def normalise_query(self, query):
+		"""
+			Normalises the query using sqlparser in order to have a standard way to replicate the DDL on PostgreSQL
+			
+			:param query: the query string to normalise
+		"""
+		parsed=sqlparse.parse(query)
+		for query_ddl in parsed:
+			query_tokens=query_ddl.tokens
+			self.logger.info(query_tokens)
+			query_verb=query_tokens[0]
+			query_relation=query_tokens[1]
+			if query_verb in self.replica_verbs:
+				self.logger.info("VERB: %s RELATION: %s" % (query_verb, query_relation))
 
 	def do_stream_data(self, pg_engine):
 		group_insert=[]
@@ -100,13 +113,8 @@ class mysql_engine:
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
 					self.logger.info(binlogevent.query)
-					parsed=sqlparse.parse(binlogevent.query)
-					for query_ddl in parsed:
-						query_tokens=query_ddl.tokens
-						self.logger.info(query_tokens)
-						query_verb=query_tokens[0]
-						query_relation=query_tokens[1]
-						self.logger.info("VERB: %s RELATION: %s" % (query_verb, query_relation))
+					self.normalise_query(binlogevent.query)
+					
 				else:
 					for row in binlogevent.rows:
 						log_file=binlogfile
