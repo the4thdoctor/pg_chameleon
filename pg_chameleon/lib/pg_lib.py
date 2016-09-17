@@ -220,10 +220,7 @@ class pg_engine:
 					
 			self.idx_ddl[table_name]=table_idx
 	
-	def create_service_schema(self, cleanup=False):
-		if cleanup:
-			self.drop_service_schema()
-			
+	def create_service_schema(self):
 		file_schema=open(self.sql_dir+"create_schema.sql", 'rb')
 		sql_schema=file_schema.read()
 		file_schema.close()

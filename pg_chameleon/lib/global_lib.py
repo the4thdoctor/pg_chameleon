@@ -93,12 +93,7 @@ class replica_engine:
 		self.pg_eng.build_tab_ddl()
 		self.pg_eng.create_tables(drop_tables)
 	
-	def upgrade_service_schema(self):
-		"""
-			Upgrade the service schema to the latest version.
-			
-			:todo: everything!
-		"""
+
 	
 	def  create_indices(self):
 		"""
@@ -108,14 +103,27 @@ class replica_engine:
 		self.pg_eng.build_idx_ddl()
 		self.pg_eng.create_indices()
 	
-	def create_service_schema(self, cleanup=False):
+	def create_service_schema(self):
 		"""
 			Creates the service schema sch_chameleon on the PostgreSQL database. The service schema is required for having the replica working correctly.
-			
-			:param cleanup=False: specifies whether the existing schema should be dropped before loading the new schema.
+	
 		"""
-		self.logger.info("Creating service schema")
-		self.pg_eng.create_service_schema(cleanup)
+		self.logger.info("Creating the service schema")
+		self.pg_eng.create_service_schema()
+		
+	def upgrade_service_schema(self):
+		"""
+			Upgrade the service schema to the latest version.
+			
+			:todo: everything!
+		"""
+	def drop_service_schema(self):
+		"""
+			Drops the service schema. The action discards any information relative to the replica.
+
+		"""
+		self.logger.info("Dropping the service schema")
+		self.pg_eng.drop_service_schema()
 	
 	def do_stream_data(self):
 		"""

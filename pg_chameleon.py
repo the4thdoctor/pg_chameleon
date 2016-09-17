@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 from pg_chameleon import replica_engine
 commands=[
-						'init_schema',
+						'create_schema',
 						'init_replica',
 						'start_replica', 
-						'upgrade_schema'
+						'upgrade_schema', 
+						'drop_schema'
 					]
 command_help='Available commands, '+','.join(commands)
 import argparse
@@ -15,7 +16,7 @@ args = parser.parse_args()
 if args.command in commands:
 	replica=replica_engine(args.command)
 	if args.command == commands[0]:
-		replica.create_service_schema(cleanup=True)
+		replica.create_service_schema()
 	elif args.command == commands[1]:
 		replica.create_schema(drop_tables=True)
 		replica.copy_table_data()
@@ -24,5 +25,7 @@ if args.command in commands:
 		replica.do_stream_data()
 	elif args.command == commands[3]:
 		replica.upgrade_service_schema()
-	else:
-		print command_help
+	elif args.command == commands[4]:
+		replica.drop_service_schema()
+else:
+	print command_help
