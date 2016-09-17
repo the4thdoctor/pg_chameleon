@@ -7,8 +7,8 @@ Migration and replica from MySQL to PostgreSQL
 Current version: 0.1 DEVEL
 
 .. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
-:target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
-:alt: Documentation Status
+    :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
 
 `Documentation available at readthedocs <http://pg-chameleon.readthedocs.io/en/latest/>`_
 
