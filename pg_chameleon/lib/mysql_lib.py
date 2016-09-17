@@ -79,10 +79,10 @@ class mysql_engine:
 		parsed=sqlparse.parse(query)
 		for query_ddl in parsed:
 			query_tokens=query_ddl.tokens
-			self.logger.info(query_tokens)
+			self.logger.debug(query_tokens)
 			query_verb=query_tokens[0]
-			query_relation=query_tokens[1]
 			if query_verb in self.replica_verbs:
+				query_relation=query_tokens[1]
 				self.logger.info("VERB: %s RELATION: %s" % (query_verb, query_relation))
 
 	def do_stream_data(self, pg_engine):
@@ -112,7 +112,7 @@ class mysql_engine:
 				elif isinstance(binlogevent, QueryEvent):
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
-					self.logger.info(binlogevent.query)
+					self.logger.debug(binlogevent.query)
 					self.normalise_query(binlogevent.query)
 					
 				else:

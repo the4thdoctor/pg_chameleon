@@ -108,7 +108,6 @@ class replica_engine:
 			Creates the service schema sch_chameleon on the PostgreSQL database. The service schema is required for having the replica working correctly.
 	
 		"""
-		self.logger.info("Creating the service schema")
 		self.pg_eng.create_service_schema()
 		
 	def upgrade_service_schema(self):
@@ -117,6 +116,8 @@ class replica_engine:
 			
 			:todo: everything!
 		"""
+		self.pg_eng.upgrade_service_schema()
+		
 	def drop_service_schema(self):
 		"""
 			Drops the service schema. The action discards any information relative to the replica.

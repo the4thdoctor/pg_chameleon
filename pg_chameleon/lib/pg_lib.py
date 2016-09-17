@@ -76,7 +76,11 @@ class pg_engine:
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-
+		self.cat_version='0.1'
+		self.cat_sql=[
+									{'version':'base','script': 'create_schema.sql'}, 
+									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
+							]
 	
 	def create_schema(self):
 		sql_schema=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"
@@ -219,13 +223,70 @@ class pg_engine:
 				self.idx_sequence+=1
 					
 			self.idx_ddl[table_name]=table_idx
-	
+			
+	def upgrade_service_schema(self):
+		"""
+			Upgrade the service schema to the latest version using the upgrade files
+		"""
+		
+		self.logger.info("Upgrading the service schema")
+		install_script=False
+		sql_check="""
+							SELECT 
+											t_version
+							FROM 
+											sch_chameleon.v_version 
+							;
+						"""
+		try:
+			self.pg_conn.pgsql_cur.execute(sql_check)
+			value_check=self.pg_conn.pgsql_cur.fetchone()
+			sch_ver=value_check[0]
+		except:
+			sch_ver='base'
+			
+		for install in self.cat_sql:
+				script_ver=install["version"]
+				script_schema=install["script"]
+				self.logger.info("script schema %s, detected schema version %s - install_script:%s " % (script_ver, sch_ver, install_script))
+				if install_script==True:
+					self.logger.info("Installing file version %s" % (script_ver, ))
+					file_schema=open(self.sql_dir+script_schema, 'rb')
+					sql_schema=file_schema.read()
+					file_schema.close()
+					self.pg_conn.pgsql_cur.execute(sql_schema)
+				
+				
+				if script_ver==sch_ver and not install_script:
+					self.logger.info("enabling install script")
+					install_script=True
+					
+			
 	def create_service_schema(self):
-		file_schema=open(self.sql_dir+"create_schema.sql", 'rb')
-		sql_schema=file_schema.read()
-		file_schema.close()
-		self.pg_conn.pgsql_cur.execute(sql_schema)
-
+		sql_check="""
+								SELECT 
+									count(*)
+								FROM 
+									information_schema.schemata  
+								WHERE 
+									schema_name='sch_chameleon'
+						"""
+		self.logger.info("Checking if the service schema exists")
+		
+		self.pg_conn.pgsql_cur.execute(sql_check)
+		num_schema=self.pg_conn.pgsql_cur.fetchone()
+		if num_schema[0]==0:
+			for install in self.cat_sql:
+				script_ver=install["version"]
+				script_schema=install["script"]
+				self.logger.info("Installing file version %s" % (script_ver, ))
+				file_schema=open(self.sql_dir+script_schema, 'rb')
+				sql_schema=file_schema.read()
+				file_schema.close()
+				self.pg_conn.pgsql_cur.execute(sql_schema)
+		else:
+			self.logger.error("The service schema is already created")
+			
 		
 	def drop_service_schema(self):
 		file_schema=open(self.sql_dir+"drop_schema.sql", 'rb')
@@ -354,7 +415,7 @@ class pg_engine:
 									i_id_batch, 
 									v_table_name, 
 									v_schema_name, 
-									v_binlog_event, 
+									enm_binlog_event, 
 									t_binlog_name, 
 									i_binlog_position, 
 									jsb_event_data
