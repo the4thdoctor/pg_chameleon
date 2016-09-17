@@ -93,6 +93,13 @@ class replica_engine:
 		self.pg_eng.build_tab_ddl()
 		self.pg_eng.create_tables(drop_tables)
 	
+	def upgrade_service_schema(self):
+		"""
+			Upgrade the service schema to the latest version.
+			
+			:todo: everything!
+		"""
+	
 	def  create_indices(self):
 		"""
 			Creates the indices on the PostgreSQL schema using the metadata extracted from MySQL.
@@ -111,6 +118,11 @@ class replica_engine:
 		self.pg_eng.create_service_schema(cleanup)
 	
 	def do_stream_data(self):
+		"""
+			Start the replication stream and process the batch when the stream is empty
+			
+			:todo: need to rethink this logic as quite inefficient on large replication batches
+		"""
 		while True:
 			self.my_eng.do_stream_data(self.pg_eng)
 			self.logger.info("stream complete. replaying  batch data")
@@ -119,5 +131,10 @@ class replica_engine:
 			time.sleep(10)
 			
 	def copy_table_data(self):
+		"""
+			Copy the data for the replicated tables from mysql to postgres.
+			
+			After the copy the master's coordinates are saved in postgres.
+		"""
 		self.my_eng.copy_table_data(self.pg_eng, limit=self.global_config.copy_max_size)
 		self.pg_eng.save_master_status(self.my_eng.master_status)
