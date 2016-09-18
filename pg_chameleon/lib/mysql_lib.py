@@ -88,7 +88,7 @@ class mysql_engine:
 				
 	def read_replica(self, batch_data):
 		"""
-		Stream the replica usingthe batch data.
+		Stream the replica using the batch data.
 		:param batch_data: The list with the master's batch data.
 		"""
 		table_type_map=self.get_table_type_map()	
@@ -107,6 +107,7 @@ class mysql_engine:
 																log_pos=log_position, 
 																resume_stream=True
 														)
+		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		for binlogevent in my_stream:
 				if isinstance(binlogevent, RotateEvent):
 					binlogfile=binlogevent.next_binlog
@@ -165,7 +166,6 @@ class mysql_engine:
 		
 		:param pg_engine: The postgresql engine object required for storing the master coordinates and replaying the batches
 		"""
-		process_batch=False
 		batch_data=pg_engine.get_batch_data()
 		self.logger.debug('batch data: %s' % (batch_data, ))
 		if len(batch_data)>0:
@@ -182,7 +182,6 @@ class mysql_engine:
 				if next_id_batch:
 					self.logger.debug("success, saving id_batch %s in class variable" % (id_batch))
 					self.id_batch=id_batch
-					process_batch=True
 				else:
 					self.logger.debug("failure, means empty batch. using old id_batch %s" % (self.id_batch))
 					
@@ -190,10 +189,9 @@ class mysql_engine:
 					self.logger.debug("updating processed flag for id_batch %s", (id_batch))
 					pg_engine.set_batch_processed(id_batch)
 					self.id_batch=None
-				if process_batch:
-					self.logger.debug("replaying batch.")
-					pg_engine.process_batch()
-			
+		self.logger.debug("replaying batch.")
+		#pg_engine.process_batch()
+
 	def do_stream_data(self, pg_engine):
 		group_insert=[]
 		master_data={}

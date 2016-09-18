@@ -187,6 +187,7 @@ $BODY$
 			
 
 		END LOOP;
+
 		UPDATE sch_chameleon.t_replica_batch  
 			SET 
 				b_replayed=True,

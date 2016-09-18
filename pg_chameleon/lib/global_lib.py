@@ -132,8 +132,8 @@ class replica_engine:
 		"""
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
-			self.logger.info("batch complete. sleeping 10 seconds")
-			time.sleep(10)
+			self.logger.info("batch complete. sleeping 1 second")
+			time.sleep(1)
 		
 	
 	def do_stream_data(self):
