@@ -126,6 +126,16 @@ class replica_engine:
 		self.logger.info("Dropping the service schema")
 		self.pg_eng.drop_service_schema()
 	
+	def run_replica(self):
+		"""
+			Runs the replica loop. 
+		"""
+		while True:
+			self.my_eng.run_replica(self.pg_eng)
+			self.logger.info("batch complete. sleeping 10 seconds")
+			time.sleep(10)
+		
+	
 	def do_stream_data(self):
 		"""
 			Start the replication stream and process the batch when the stream is empty

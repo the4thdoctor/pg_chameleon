@@ -22,7 +22,7 @@ if args.command in commands:
 		replica.copy_table_data()
 		replica.create_indices()
 	elif args.command == commands[2]:
-		replica.do_stream_data()
+		replica.run_replica()
 	elif args.command == commands[3]:
 		replica.upgrade_service_schema()
 	elif args.command == commands[4]:

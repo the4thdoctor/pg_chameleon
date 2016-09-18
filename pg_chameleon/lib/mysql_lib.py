@@ -79,12 +79,121 @@ class mysql_engine:
 		parsed=sqlparse.parse(query)
 		for query_ddl in parsed:
 			query_tokens=query_ddl.tokens
-			self.logger.debug(query_tokens)
-			query_verb=query_tokens[0]
+			query_verb=str(query_tokens[0])
 			if query_verb in self.replica_verbs:
 				query_relation=query_tokens[1]
 				self.logger.info("VERB: %s RELATION: %s" % (query_verb, query_relation))
+				tokens=[tok.value for tok in query_tokens if str(tok.value).strip()!='']
+				print tokens
+				
+	def read_replica(self, batch_data):
+		"""
+		Stream the replica usingthe batch data.
+		:param batch_data: The list with the master's batch data.
+		"""
+		table_type_map=self.get_table_type_map()	
+		master_data={}
+		group_insert=[]
+		num_insert=0
+		id_batch=batch_data[0][0]
+		log_file=batch_data[0][1]
+		log_position=batch_data[0][2]
+		log_table=batch_data[0][3]
+		my_stream = BinLogStreamReader(
+																connection_settings = self.mysql_con.mysql_conn, 
+																server_id=self.mysql_con.my_server_id, 
+																only_events=[RotateEvent, QueryEvent,DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
+																log_file=log_file, 
+																log_pos=log_position, 
+																resume_stream=True
+														)
+		for binlogevent in my_stream:
+				if isinstance(binlogevent, RotateEvent):
+					binlogfile=binlogevent.next_binlog
+				elif isinstance(binlogevent, QueryEvent):
+					log_file=binlogfile
+					log_position=binlogevent.packet.log_pos
+					#self.logger.debug(binlogevent.query)
+				else:
+					for row in binlogevent.rows:
+						log_file=binlogfile
+						log_position=binlogevent.packet.log_pos
+						table_name=binlogevent.table
+						schema_name=binlogevent.schema
+						column_map=table_type_map[table_name]
+						
+						global_data={
+											"binlog":log_file, 
+											"logpos":log_position, 
+											"schema": schema_name, 
+											"table": table_name, 
+											"batch_id":id_batch, 
+											"log_table":log_table
+										}
+						event_data={}
+						if isinstance(binlogevent, DeleteRowsEvent):
+							global_data["action"] = "delete"
+							event_values=row["values"]
+						elif isinstance(binlogevent, UpdateRowsEvent):
+							global_data["action"] = "update"
+							event_values=row["after_values"]
+						elif isinstance(binlogevent, WriteRowsEvent):
+							global_data["action"] = "insert"
+							event_values=row["values"]
+						for column_name in event_values:
+							column_type=column_map[column_name]
+							if column_type in self.hexify:
+								event_values[column_name]=binascii.hexlify(event_values[column_name])
+						event_data = dict(event_data.items() +event_values.items())
+						event_insert={"global_data":global_data,"event_data":event_data}
+						group_insert.append(event_insert)
+						num_insert+=1
+					if num_insert>=self.replica_batch_size and len(group_insert)>0:
+						self.logger.debug("Batch size %s. Group insert length %s. Breaking the loop. " % (num_insert, len(group_insert)))
+						master_data["File"]=log_file
+						master_data["Position"]=log_position
+						print master_data
+						break
+						
+		my_stream.close()
+		return [master_data, group_insert]
 
+	def run_replica(self, pg_engine):
+		"""
+		Reads the MySQL replica and stores the data in postgres. When a max_batch_size is reached the replica disconnects and
+		the changes are replayed on PostgreSQL.
+		
+		:param pg_engine: The postgresql engine object required for storing the master coordinates and replaying the batches
+		"""
+		process_batch=False
+		batch_data=pg_engine.get_batch_data()
+		self.logger.debug('batch data: %s' % (batch_data, ))
+		if len(batch_data)>0:
+			id_batch=batch_data[0][0]
+			replica_data=self.read_replica(batch_data)
+			master_data=replica_data[0]
+			group_insert=replica_data[1]
+			if len(group_insert)>0:
+				pg_engine.write_batch(group_insert)
+				self.master_status=[]
+				self.master_status.append(master_data)
+				self.logger.debug("trying to save the master data...")
+				next_id_batch=pg_engine.save_master_status(self.master_status)
+				if next_id_batch:
+					self.logger.debug("success, saving id_batch %s in class variable" % (id_batch))
+					self.id_batch=id_batch
+					process_batch=True
+				else:
+					self.logger.debug("failure, means empty batch. using old id_batch %s" % (self.id_batch))
+					
+				if self.id_batch:
+					self.logger.debug("updating processed flag for id_batch %s", (id_batch))
+					pg_engine.set_batch_processed(id_batch)
+					self.id_batch=None
+				if process_batch:
+					self.logger.debug("replaying batch.")
+					pg_engine.process_batch()
+			
 	def do_stream_data(self, pg_engine):
 		group_insert=[]
 		master_data={}
