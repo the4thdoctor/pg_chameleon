@@ -81,10 +81,9 @@ class mysql_engine:
 			query_tokens=query_ddl.tokens
 			query_verb=str(query_tokens[0])
 			if query_verb in self.replica_verbs:
-				query_relation=query_tokens[1]
-				self.logger.info("VERB: %s RELATION: %s" % (query_verb, query_relation))
-				tokens=[tok.value for tok in query_tokens if str(tok.value).strip()!='']
-				print tokens
+				tokens=[(tok.value).replace('`', '"') for tok in query_tokens if str(tok.value).strip()!='']
+				self.logger.info(tokens)
+				
 				
 	def read_replica(self, batch_data):
 		"""
@@ -115,6 +114,7 @@ class mysql_engine:
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
 					#self.logger.debug(binlogevent.query)
+					self.normalise_query(binlogevent.query)
 				else:
 					for row in binlogevent.rows:
 						log_file=binlogfile

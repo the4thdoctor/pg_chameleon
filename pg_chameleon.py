@@ -23,7 +23,6 @@ if args.command in commands:
 		replica.create_indices()
 	elif args.command == commands[2]:
 		replica.run_replica()
-		#replica.do_stream_data()
 	elif args.command == commands[3]:
 		replica.upgrade_service_schema()
 	elif args.command == commands[4]:
