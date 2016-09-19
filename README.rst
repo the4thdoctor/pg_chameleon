@@ -27,14 +27,14 @@ Setup
 
 Requirements
 ******************
-* PyMySQL==0.7.6 
-* argparse==1.2.1
+* `PyMySQL==0.7.6 <https://github.com/PyMySQL/PyMySQL>`_ 
+* `argparse==1.2.1 <https://github.com/bewest/argparse>`_
 * `mysql-replication==0.9 <https://github.com/noplay/python-mysql-replication>`_
-* psycopg2==2.6.2
-* wsgiref==0.1.2
-* PyYAML==3.11
+* `psycopg2==2.6.2 <https://github.com/psycopg/psycopg2>`_
+* `PyYAML==3.11 <https://github.com/yaml/pyyaml>`_
 * `daemonize==2.4.7 <https://pypi.python.org/pypi/daemonize/>`_
-
+* `sphinx==1.4.6 <http://www.sphinx-doc.org/en/stable/>`_
+* `sphinx-autobuild==0.6.0 <https://github.com/GaretJax/sphinx-autobuild>`_
 
 Configuration parameters
 ********************************
