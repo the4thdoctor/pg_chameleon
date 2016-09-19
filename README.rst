@@ -42,7 +42,6 @@ The configuration file is a yaml file. Each parameter controls the
 way the program acts.
 
 * my_server_id the server id for the mysql replica. must be unique among the replica cluster
-* replica_batch_size the number of row replicated in each replica run
 * copy_max_size the max rows pulled out in each slice when copying the table in PostgreSQL
 * my_database mysql database to replicate. a schema with the same name will be initialised in the postgres database
 * pg_database destination database in PostgreSQL. 
@@ -81,7 +80,9 @@ Usage
 **********************
 The script pg_chameleon.py have a very basic command line interface. Accepts three commands
 
-* init_schema Initialises the PostgreSQL service schema sch_chameleon.  **Warning!! It drops the existing schema**
+* drop_schema Drops the schema sch_chameleon with cascade option
+* create_schema Create the schema sch_chameleon
+* upgrade_schema Upgrade an existing schema sch_chameleon
 * init_replica Creates the table structure and copy the data from mysql locking the tables in read only mode. It saves the master status in sch_chameleon.t_replica_batch.
 * start_replica Starts the replication from mysql to PostgreSQL using the master data stored in sch_chameleon.t_replica_batch and update the master position every time an new batch is processed.
 
@@ -191,7 +192,7 @@ Initialise the schema and the replica with
 
 .. code-block:: none
     
-    ./pg_chameleon.py init_schema
+    ./pg_chameleon.py create_schema
     ./pg_chameleon.py init_replica
 
 
@@ -210,7 +211,7 @@ The library is being developed on Ubuntu 14.04 with python 2.7.6.
 
 The databases source and target are:
 
-* MySQL: 5.6.30 on FreeBSD 10.3
+* MySQL: 5.6.32 on FreeBSD 10.3
 * PostgreSQL: 9.5.4 on FreeBSD 10.3
   
 What does it work
