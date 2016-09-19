@@ -148,7 +148,7 @@ class mysql_engine:
 						event_data = dict(event_data.items() +event_values.items())
 						event_insert={"global_data":global_data,"event_data":event_data}
 						group_insert.append(event_insert)
-						self.logger.debug("Action: %s Num Inserts: %s replica batch size: %s" % (global_data["action"],  num_insert , self.replica_batch_size))
+						self.logger.debug("Action: %s Num Inserts: %s " % (global_data["action"],  num_insert ))
 						master_data["File"]=log_file
 						master_data["Position"]=log_position
 						

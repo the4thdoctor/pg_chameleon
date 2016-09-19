@@ -82,7 +82,8 @@ class pg_engine:
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
 							]
 		cat_version=self.get_schema_version()
-		if cat_version!=self.cat_version:
+		num_schema=(self.check_service_schema())[0]
+		if cat_version!=self.cat_version and int(num_schema)>0:
 			self.upgrade_service_schema()
 	
 	def create_schema(self):
@@ -271,8 +272,7 @@ class pg_engine:
 					self.logger.info("enabling install script")
 					install_script=True
 					
-			
-	def create_service_schema(self):
+	def check_service_schema(self):
 		sql_check="""
 								SELECT 
 									count(*)
@@ -281,19 +281,24 @@ class pg_engine:
 								WHERE 
 									schema_name='sch_chameleon'
 						"""
-		self.logger.info("Checking if the service schema exists")
-		
+			
 		self.pg_conn.pgsql_cur.execute(sql_check)
 		num_schema=self.pg_conn.pgsql_cur.fetchone()
+		return num_schema
+	
+	def create_service_schema(self):
+		
+		num_schema=self.check_service_schema()
 		if num_schema[0]==0:
 			for install in self.cat_sql:
 				script_ver=install["version"]
 				script_schema=install["script"]
-				self.logger.info("Installing file version %s" % (script_ver, ))
-				file_schema=open(self.sql_dir+script_schema, 'rb')
-				sql_schema=file_schema.read()
-				file_schema.close()
-				self.pg_conn.pgsql_cur.execute(sql_schema)
+				if script_ver=='base':
+					self.logger.info("Installing service schema %s" % (script_ver, ))
+					file_schema=open(self.sql_dir+script_schema, 'rb')
+					sql_schema=file_schema.read()
+					file_schema.close()
+					self.pg_conn.pgsql_cur.execute(sql_schema)
 		else:
 			self.logger.error("The service schema is already created")
 			

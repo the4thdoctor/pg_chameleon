@@ -1,7 +1,13 @@
 --create schema
 CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 
+CREATE OR REPLACE VIEW sch_chameleon.v_version 
+ AS
+	SELECT '0.1'::TEXT t_version
+;
 
+CREATE TYPE sch_chameleon.en_binlog_event 
+	AS ENUM ('delete', 'update', 'insert','ddl');
 
 CREATE TABLE sch_chameleon.t_replica_batch
 (
@@ -33,7 +39,7 @@ CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
   i_id_batch bigserial NOT NULL,
   v_table_name character varying(100) NOT NULL,
   v_schema_name character varying(100) NOT NULL,
-  v_binlog_event character varying(100) NOT NULL,
+  enm_binlog_event sch_chameleon.en_binlog_event NOT NULL,
   t_binlog_name text,
   i_binlog_position integer,
   ts_event_datetime timestamp without time zone NOT NULL DEFAULT clock_timestamp(),
@@ -117,7 +123,7 @@ $BODY$
 							bat.i_id_batch,
 							log.v_table_name,
 							log.v_schema_name,
-							log.v_binlog_event,
+							log.enm_binlog_event,
 							log.jsb_event_data,
 							replace(array_to_string(tab.v_table_pkey,','),'"','') as t_pkeys,
 							array_length(tab.v_table_pkey,1) as i_pkeys
@@ -136,7 +142,7 @@ $BODY$
 					i_id_batch,
 					v_table_name,
 					v_schema_name,
-					v_binlog_event,
+					enm_binlog_event,
 					jsb_event_data,
 					string_to_array(t_pkeys,',') as v_table_pkey,
 					t_pkeys,
@@ -189,8 +195,8 @@ $BODY$
 			RAISE DEBUG '% % % % % %',v_r_rows.v_table_name,
 					v_r_rows.v_schema_name,
 					v_r_rows.v_table_pkey,
-					v_r_rows.v_binlog_event,v_t_fields,v_t_values;
-			IF v_r_rows.v_binlog_event='delete'
+					v_r_rows.enm_binlog_event,v_t_fields,v_t_values;
+			IF v_r_rows.enm_binlog_event='delete'
 			THEN
 				v_t_sql_rep=format('DELETE FROM %I.%I WHERE (%I)=(%s) ;',
 							v_r_rows.v_schema_name,
@@ -199,7 +205,7 @@ $BODY$
 							v_t_vals
 						);
 				RAISE DEBUG '%',v_t_sql_rep;
-			ELSEIF v_r_rows.v_binlog_event='update'
+			ELSEIF v_r_rows.enm_binlog_event='update'
 			THEN 
 				SELECT 
 					array_to_string(array_agg(format('%I=%L',t_field,t_value)),',') 
@@ -224,7 +230,7 @@ $BODY$
 							v_t_vals
 						);
 				RAISE DEBUG '%',v_t_sql_rep;
-			ELSEIF v_r_rows.v_binlog_event='insert'
+			ELSEIF v_r_rows.enm_binlog_event='insert'
 			THEN
 				SELECT 
 					array_to_string(array_agg(format('%I',t_field)),',') t_field,
@@ -262,6 +268,7 @@ $BODY$
 			
 
 		END LOOP;
+
 		UPDATE sch_chameleon.t_replica_batch  
 			SET 
 				b_replayed=True,
@@ -270,10 +277,10 @@ $BODY$
 		WHERE
 			i_id_batch=v_r_rows.i_id_batch
 		;
-		DELETE FROM sch_chameleon.t_log_replica
-		WHERE
-			i_id_batch=v_r_rows.i_id_batch
-		;
+		--DELETE FROM sch_chameleon.t_log_replica
+		--WHERE
+		--	i_id_batch=v_r_rows.i_id_batch
+		--;
 	END;
 $BODY$
 LANGUAGE plpgsql;
