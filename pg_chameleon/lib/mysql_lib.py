@@ -187,7 +187,7 @@ class mysql_engine:
 					pg_engine.set_batch_processed(id_batch)
 					self.id_batch=None
 		self.logger.debug("replaying batch.")
-		#pg_engine.process_batch()
+		pg_engine.process_batch()
 
 	def do_stream_data(self, pg_engine):
 		group_insert=[]
