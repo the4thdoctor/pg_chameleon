@@ -22,7 +22,7 @@ class mysql_connection:
 		self.my_database=self.global_conf.my_database
 		self.my_charset=self.global_conf.my_charset
 		self.tables_limit=self.global_conf.tables_limit
-		self.replica_batch_size=self.global_conf.replica_batch_size
+		#self.replica_batch_size=self.global_conf.replica_batch_size
 		self.copy_mode=self.global_conf.copy_mode
 		self.my_connection=None
 		self.my_cursor=None
@@ -56,7 +56,7 @@ class mysql_engine:
 		self.mysql_con.connect_db()
 		self.get_table_metadata()
 		self.my_streamer=None
-		self.replica_batch_size=self.mysql_con.replica_batch_size
+		#self.replica_batch_size=self.mysql_con.replica_batch_size
 		self.master_status=[]
 		self.id_batch=None
 		self.replica_verbs=[
@@ -122,7 +122,7 @@ class mysql_engine:
 						table_name=binlogevent.table
 						schema_name=binlogevent.schema
 						column_map=table_type_map[table_name]
-						
+						num_insert+=1
 						global_data={
 											"binlog":log_file, 
 											"logpos":log_position, 
@@ -148,13 +148,9 @@ class mysql_engine:
 						event_data = dict(event_data.items() +event_values.items())
 						event_insert={"global_data":global_data,"event_data":event_data}
 						group_insert.append(event_insert)
-						num_insert+=1
-					if num_insert>=self.replica_batch_size and len(group_insert)>0:
-						self.logger.debug("Batch size %s. Group insert length %s. Breaking the loop. " % (num_insert, len(group_insert)))
+						self.logger.debug("Action: %s Num Inserts: %s replica batch size: %s" % (global_data["action"],  num_insert , self.replica_batch_size))
 						master_data["File"]=log_file
 						master_data["Position"]=log_position
-						print master_data
-						break
 						
 		my_stream.close()
 		return [master_data, group_insert]
@@ -174,6 +170,7 @@ class mysql_engine:
 			master_data=replica_data[0]
 			group_insert=replica_data[1]
 			if len(group_insert)>0:
+				self.logger.info("writing batch. Total rows %s" % (len(group_insert), ))
 				pg_engine.write_batch(group_insert)
 				self.master_status=[]
 				self.master_status.append(master_data)
@@ -219,7 +216,7 @@ class mysql_engine:
 				elif isinstance(binlogevent, QueryEvent):
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
-					self.logger.debug(binlogevent.query)
+					#self.logger.debug(binlogevent.query)
 					self.normalise_query(binlogevent.query)
 					
 				else:

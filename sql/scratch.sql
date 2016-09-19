@@ -122,4 +122,61 @@ RETURNING
 	t_binlog_name,
 	i_binlog_position,
 	v_log_table
+
+
+select count(*) from sch_chameleon.t_log_replica  
+select * from sch_chameleon.t_log_replica  where enm_binlog_event='delete';
+select * from sch_chameleon.t_log_replica  where enm_binlog_event='insert' ;
+--delete from sch_chameleon.t_log_replica  
+select * from sch_chameleon.t_replica_batch  order by ts_Created
+set client_min_messages='debug'
+select sch_chameleon.fn_process_batch()
+
+select count(*) from sakila.test_table  
+WITH t_batch AS
+					(
+						SELECT 
+							i_id_batch 
+						FROM 
+							sch_chameleon.t_replica_batch  
+						WHERE 
+								b_started 
+							AND 	b_processed 
+							AND 	NOT b_replayed
+						ORDER BY 
+							ts_created 
+						LIMIT 1
+					),
+				t_events AS
+					(
+						SELECT 
+							bat.i_id_batch,
+							log.v_table_name,
+							log.v_schema_name,
+							log.enm_binlog_event,
+							log.jsb_event_data,
+							replace(array_to_string(tab.v_table_pkey,','),'"','') as t_pkeys,
+							array_length(tab.v_table_pkey,1) as i_pkeys
+						FROM 
+							sch_chameleon.t_log_replica  log
+							INNER JOIN sch_chameleon.t_replica_tables tab
+								ON
+										tab.v_table_name=log.v_table_name
+									AND 	tab.v_schema_name=log.v_schema_name
+								INNER JOIN t_batch bat
+								ON	bat.i_id_batch=log.i_id_batch
+							
+						ORDER BY ts_event_datetime
+					)
+				SELECT
+					i_id_batch,
+					v_table_name,
+					v_schema_name,
+					enm_binlog_event,
+					jsb_event_data,
+					string_to_array(t_pkeys,',') as v_table_pkey,
+					t_pkeys,
+					i_pkeys
+				FROM
+					t_events
 	

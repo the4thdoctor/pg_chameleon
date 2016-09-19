@@ -35,7 +35,7 @@ class global_config:
 		self.pg_charset=confdic["pg_charset"]
 		self.pg_database=confdic["pg_database"]
 		self.my_server_id=confdic["my_server_id"]
-		self.replica_batch_size=confdic["replica_batch_size"]
+		#self.replica_batch_size=confdic["replica_batch_size"]
 		self.tables_limit=confdic["tables_limit"]
 		self.copy_max_size=confdic["copy_max_size"]
 		self.copy_mode=confdic["copy_mode"]

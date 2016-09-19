@@ -196,10 +196,10 @@ $BODY$
 		WHERE
 			i_id_batch=v_r_rows.i_id_batch
 		;
-		DELETE FROM sch_chameleon.t_log_replica
-		WHERE
-			i_id_batch=v_r_rows.i_id_batch
-		;
+		--DELETE FROM sch_chameleon.t_log_replica
+		--WHERE
+		--	i_id_batch=v_r_rows.i_id_batch
+		--;
 	END;
 $BODY$
 LANGUAGE plpgsql;
