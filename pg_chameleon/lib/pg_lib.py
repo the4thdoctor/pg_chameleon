@@ -81,6 +81,9 @@ class pg_engine:
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
 							]
+		cat_version=self.get_schema_version()
+		if cat_version!=self.cat_version:
+			self.upgrade_service_schema()
 	
 	def create_schema(self):
 		sql_schema=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"
@@ -224,13 +227,10 @@ class pg_engine:
 					
 			self.idx_ddl[table_name]=table_idx
 			
-	def upgrade_service_schema(self):
+	def get_schema_version(self):
 		"""
-			Upgrade the service schema to the latest version using the upgrade files
+			Gets the service schema version.
 		"""
-		
-		self.logger.info("Upgrading the service schema")
-		install_script=False
 		sql_check="""
 							SELECT 
 											t_version
@@ -241,14 +241,24 @@ class pg_engine:
 		try:
 			self.pg_conn.pgsql_cur.execute(sql_check)
 			value_check=self.pg_conn.pgsql_cur.fetchone()
-			sch_ver=value_check[0]
+			cat_version=value_check[0]
 		except:
-			sch_ver='base'
+			cat_version='base'
+		return cat_version
+		
+	def upgrade_service_schema(self):
+		"""
+			Upgrade the service schema to the latest version using the upgrade files
+		"""
+		
+		self.logger.info("Upgrading the service schema")
+		install_script=False
+		cat_version=self.get_schema_version()
 			
 		for install in self.cat_sql:
 				script_ver=install["version"]
 				script_schema=install["script"]
-				self.logger.info("script schema %s, detected schema version %s - install_script:%s " % (script_ver, sch_ver, install_script))
+				self.logger.info("script schema %s, detected schema version %s - install_script:%s " % (script_ver, cat_version, install_script))
 				if install_script==True:
 					self.logger.info("Installing file version %s" % (script_ver, ))
 					file_schema=open(self.sql_dir+script_schema, 'rb')
@@ -257,7 +267,7 @@ class pg_engine:
 					self.pg_conn.pgsql_cur.execute(sql_schema)
 				
 				
-				if script_ver==sch_ver and not install_script:
+				if script_ver==cat_version and not install_script:
 					self.logger.info("enabling install script")
 					install_script=True
 					
