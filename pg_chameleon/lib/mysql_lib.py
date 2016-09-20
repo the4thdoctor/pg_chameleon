@@ -143,7 +143,7 @@ class mysql_engine:
 							event_values=row["values"]
 						for column_name in event_values:
 							column_type=column_map[column_name]
-							if column_type in self.hexify:
+							if column_type in self.hexify and event_values[column_name]:
 								event_values[column_name]=binascii.hexlify(event_values[column_name])
 						event_data = dict(event_data.items() +event_values.items())
 						event_insert={"global_data":global_data,"event_data":event_data}
@@ -247,7 +247,7 @@ class mysql_engine:
 							event_values=row["values"]
 						for column_name in event_values:
 							column_type=column_map[column_name]
-							if column_type in self.hexify:
+							if column_type in self.hexify and event_values[column_name]:
 								event_values[column_name]=binascii.hexlify(event_values[column_name])
 						event_data = dict(event_data.items() +event_values.items())
 						event_insert={"global_data":global_data,"event_data":event_data}
