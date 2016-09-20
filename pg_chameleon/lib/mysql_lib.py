@@ -40,7 +40,7 @@ class mysql_connection:
 									cursorclass=pymysql.cursors.DictCursor)
 		self.my_cursor=self.my_connection.cursor()
 		self.my_cursor_fallback=self.my_connection.cursor()
-		
+	
 	def disconnect_db(self):
 		self.my_connection.close()
 		
@@ -68,22 +68,31 @@ class mysql_engine:
 												'TABLE', 
 												'INDEX'
 									]
-		
-		
-	def normalise_query(self, query):
+	
+	def normalise_query(self, parsed_query):
 		"""
-			Normalises the query using sqlparser in order to have a standard way to replicate the DDL on PostgreSQL
+			Normalise a query the parsed query in in order to have a standard way to replicate the DDL on PostgreSQL
+			The relation's medatada is extracted from mysql's information schema
+			:param query: the query string to normalise
+		"""
+		
+	
+	def parse_query(self, query):
+		"""
+			Parses a query using sqlparser in order to have a standard way to replicate the DDL on PostgreSQL
 			
 			:param query: the query string to normalise
 		"""
 		parsed=sqlparse.parse(query)
+		parsed_query=[]
 		for query_ddl in parsed:
 			query_tokens=query_ddl.tokens
 			query_verb=str(query_tokens[0])
 			if query_verb in self.replica_verbs:
-				tokens=[(tok.value).replace('`', '"') for tok in query_tokens if str(tok.value).strip()!='']
-				self.logger.info(tokens)
-				
+				tokens=[(tok.value) for tok in query_tokens if str(tok.value).strip()!='']
+				parsed_query.append(tokens)
+		self.logger.info('Parsed query: %s' %(parsed_query, ))
+		return parsed_query
 				
 	def read_replica(self, batch_data):
 		"""
@@ -114,7 +123,7 @@ class mysql_engine:
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
 					#self.logger.debug(binlogevent.query)
-					self.normalise_query(binlogevent.query)
+					parsed_query=self.parse_query(binlogevent.query)
 				else:
 					for row in binlogevent.rows:
 						log_file=binlogfile
