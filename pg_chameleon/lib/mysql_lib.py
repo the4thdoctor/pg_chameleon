@@ -3,7 +3,6 @@ import pymysql
 import sys
 import codecs
 import binascii
-import sqlparse
 
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.event import QueryEvent
@@ -77,22 +76,6 @@ class mysql_engine:
 		"""
 		
 	
-	def parse_query(self, query):
-		"""
-			Parses a query using sqlparser in order to have a standard way to replicate the DDL on PostgreSQL
-			
-			:param query: the query string to normalise
-		"""
-		parsed=sqlparse.parse(query)
-		parsed_query=[]
-		for query_ddl in parsed:
-			query_tokens=query_ddl.tokens
-			query_verb=str(query_tokens[0])
-			if query_verb in self.replica_verbs:
-				tokens=[(tok.value) for tok in query_tokens if str(tok.value).strip()!='']
-				parsed_query.append(tokens)
-		self.logger.info('Parsed query: %s' %(parsed_query, ))
-		return parsed_query
 				
 	def read_replica(self, batch_data):
 		"""
@@ -123,7 +106,6 @@ class mysql_engine:
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
 					#self.logger.debug(binlogevent.query)
-					parsed_query=self.parse_query(binlogevent.query)
 				else:
 					for row in binlogevent.rows:
 						log_file=binlogfile
