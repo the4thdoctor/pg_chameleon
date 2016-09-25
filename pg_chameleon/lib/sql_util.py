@@ -1,5 +1,6 @@
 import re
-class sql_utility:
+import json
+class sql_json:
 	"""
 	Class sql_utility. Tokenise the sql statements captured by the mysql replication.
 	Each statement is converted in dictionary being used by pg_engine.
@@ -21,6 +22,14 @@ class sql_utility:
 		self.statements=sql_string.split(';')
 		for statement in self.statements:
 			token_list=re.sub("[^\w][(][)]", " ",  statement).split()
-			self.tokens.append(token_list)
-		print self.tokens
+			if len(token_list)>0:
+				self.tokens.append(token_list)
+		
+		
+		def jsonify(self):
+			"""
+				Jsonify the 
+			
+			"""
+	
 	
