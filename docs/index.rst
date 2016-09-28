@@ -37,5 +37,10 @@ API Docs
     :inherited-members:
     :show-inheritance:
 
+.. automodule:: sql_util
+    :members:
+    :undoc-members:
+    :inherited-members:
+    :show-inheritance:
 
 

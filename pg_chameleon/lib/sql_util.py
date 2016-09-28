@@ -1,5 +1,9 @@
 import re
 import json
+import sqlparse
+from sqlparse.sql import IdentifierList, Identifier
+from sqlparse.tokens import Keyword, DML
+
 class sql_json:
 	"""
 	Class sql_utility. Tokenise the sql statements captured by the mysql replication.
@@ -7,9 +11,19 @@ class sql_json:
 	"""
 	def __init__(self):
 		self.statements=[]
-		self.tokens=[]
+		self.token_list=[]
+	
+	def print_tokens(self, tokens):
+		for token in tokens:
+			if token.is_whitespace():
+				pass
+			elif token.is_group():
+				print self.print_tokens(token)
+			else:
+				print token.value+" "+str(token.ttype)
 		
-	def tokenise(self, sql_string):
+	
+	def parse_sql(self, sql_string):
 		"""
 			Splits the sql string in statements using the conventional end of statement marker ;
 			A regular expression greps the words and parentesis and a split converts them in
@@ -18,18 +32,14 @@ class sql_json:
 			:param sql_string: The sql string with the sql statements.
 		"""
 		token_list=[]
-		
-		self.statements=sql_string.split(';')
+		self.statements=sqlparse.split(sql_string)
 		for statement in self.statements:
-			token_list=re.sub("[^\w][(][)]", " ",  statement).split()
-			if len(token_list)>0:
-				self.tokens.append(token_list)
-		
-		
-		def jsonify(self):
-			"""
-				Jsonify the 
-			
-			"""
-	
-	
+			stat_cleanup=re.sub(r'/\*.*?\*/', '', statement, re.DOTALL)
+			stat_cleanup=re.sub(r'--.*?\n', '', stat_cleanup)
+			stat_cleanup=re.sub(r'[\b)\b]', ' ) ', stat_cleanup)
+			stat_cleanup=re.sub(r'[\b(\b]', ' ( ', stat_cleanup)
+			stat_cleanup=re.sub(r'[\b,\b]', ' ', stat_cleanup)
+			sql_clean=re.sub("[^\w][(][)]", " ",  stat_cleanup)
+			parsed = sqlparse.parse(sql_clean)
+			if len(parsed)>0:
+				self.print_tokens(parsed[0])
