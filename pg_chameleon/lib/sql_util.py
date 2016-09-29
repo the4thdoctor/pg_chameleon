@@ -13,17 +13,28 @@ class sql_json:
 		self.statements=[]
 		self.token_list=[]
 		self.stopwords=['TEMPORARY']
+		
 	
-	def build_tokens(self, tokens):
+	def collect_tokens(self, tokens):
 		token_dic={}
+		group_list=[]
+		keyword_list=[]
 		for token in tokens:
 			if token.is_whitespace():
 				pass
 			elif token.ttype is DDL:
 				token_dic["command"]=token.value.upper()
-			else:
-				print " Type: "+str(token.ttype)+" Value: "+token.value
+			elif token.ttype is Keyword:
+				pass
+			elif token.ttype==None:
+				if isinstance(token, Identifier):
+					token_dic["identifier"]=token.value
+				elif token.is_group():
+					group_list.append(token.value)
+		token_dic["group"]=group_list
 		print token_dic
+		print len(group_list)
+		print group_list[0]
 	
 	def parse_sql(self, sql_string):
 		"""
@@ -40,8 +51,8 @@ class sql_json:
 			stat_cleanup=re.sub(r'--.*?\n', '', stat_cleanup)
 			stat_cleanup=re.sub(r'[\b)\b]', ' ) ', stat_cleanup)
 			stat_cleanup=re.sub(r'[\b(\b]', ' ( ', stat_cleanup)
-			stat_cleanup=re.sub(r'[\b,\b]', ' ', stat_cleanup)
+			stat_cleanup=re.sub(r'[\b,\b]', ', ', stat_cleanup)
 			sql_clean=re.sub("[^\w][(][)]", " ",  stat_cleanup)
 			parsed = sqlparse.parse(sql_clean)
 			if len(parsed)>0:
-				self.build_tokens(parsed[0])
+				self.collect_tokens(parsed[0])
