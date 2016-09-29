@@ -2,7 +2,7 @@ import re
 import json
 import sqlparse
 from sqlparse.sql import IdentifierList, Identifier
-from sqlparse.tokens import Keyword, DML
+from sqlparse.tokens import Keyword, DDL
 
 class sql_json:
 	"""
@@ -12,16 +12,18 @@ class sql_json:
 	def __init__(self):
 		self.statements=[]
 		self.token_list=[]
+		self.stopwords=['TEMPORARY']
 	
-	def print_tokens(self, tokens):
+	def build_tokens(self, tokens):
+		token_dic={}
 		for token in tokens:
 			if token.is_whitespace():
 				pass
-			elif token.is_group():
-				print self.print_tokens(token)
+			elif token.ttype is DDL:
+				token_dic["command"]=token.value.upper()
 			else:
-				print token.value+" "+str(token.ttype)
-		
+				print " Type: "+str(token.ttype)+" Value: "+token.value
+		print token_dic
 	
 	def parse_sql(self, sql_string):
 		"""
@@ -42,4 +44,4 @@ class sql_json:
 			sql_clean=re.sub("[^\w][(][)]", " ",  stat_cleanup)
 			parsed = sqlparse.parse(sql_clean)
 			if len(parsed)>0:
-				self.print_tokens(parsed[0])
+				self.build_tokens(parsed[0])

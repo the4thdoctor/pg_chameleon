@@ -9,7 +9,7 @@ statement="""
 -- Table structure for table `store`
 --
 
-CREATE  TABLE `store` (
+CREATE temporary TABLE if exists `store` (
   store_id TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
   manager_staff_id TINYINT UNSIGNED NOT NULL,
   address_id SMALLINT UNSIGNED NOT NULL,
