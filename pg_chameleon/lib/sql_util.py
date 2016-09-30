@@ -1,10 +1,10 @@
 import re
 import json
 import sqlparse
-from sqlparse.sql import IdentifierList, Identifier
+from sqlparse.sql import Identifier
 from sqlparse.tokens import Keyword, DDL
 
-class sql_json:
+class sql_utility:
 	"""
 	Class sql_utility. Tokenise the sql statements captured by the mysql replication.
 	Each statement is converted in dictionary being used by pg_engine.
@@ -12,9 +12,22 @@ class sql_json:
 	def __init__(self):
 		self.statements=[]
 		self.token_list=[]
-		self.stopwords=['TEMPORARY']
+		self.match_keys=re.compile(r'\w?(primary|unique)\s?key|(key)|(unique)?\s?(index)', re.IGNORECASE)
+		#self.match_keys=re.compile(r'PRIMARY KEY', re.IGNORECASE)
 		
-	
+	def parse_columns(self, token_dic):
+		column_group=token_dic["group"]
+		for column in column_group:
+			column=re.sub(r'[\n]', '', column)
+			column_list=column.split(',')
+			for col_def in column_list:
+				col_def =re.sub(r'[(]', '', col_def )
+				col_def =re.sub(r'[)]', '', col_def )
+				col_def=col_def.strip()
+				m=self.match_keys.match(col_def)
+				print m
+				print col_def
+		
 	def collect_tokens(self, tokens):
 		token_dic={}
 		group_list=[]
@@ -32,9 +45,8 @@ class sql_json:
 				elif token.is_group():
 					group_list.append(token.value)
 		token_dic["group"]=group_list
-		print token_dic
-		print len(group_list)
-		print group_list[0]
+		self.parse_columns(token_dic)
+		
 	
 	def parse_sql(self, sql_string):
 		"""
