@@ -24,21 +24,22 @@ class sql_utility:
 			column=re.sub(r'[\n]', '', column)
 			column_list=column.split(',')
 			for col_def in column_list:
-				col_def =re.sub(r'[(]', '', col_def )
-				col_def =re.sub(r'[)]', '', col_def )
-				col_def=col_def.strip()
+				col_def=col_def.strip('(').strip()
 				pkey=self.match_pkeys.match(col_def)
 				ukey=self.match_ukeys.match(col_def)
 				fkey=self.match_fkeys.match(col_def)
 				idx=self.match_idx.match(col_def)
 				if pkey:
-					print "matched primary key "+col_def
+					print "matched primary key: "+col_def
 				elif ukey:
-					print "matched unique key "+col_def
+					print "matched unique key: "+col_def
 				elif fkey:
-					print "matched foreign key "+col_def
+					print "matched foreign key: "+col_def
 				elif idx:
-					print "matched index key "+col_def
+					print "matched index key: "+col_def
+				else:
+					print "column definition: "+col_def
+				
 
 	def collect_tokens(self, tokens):
 		token_dic={}
