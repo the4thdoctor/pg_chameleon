@@ -12,7 +12,10 @@ class sql_utility:
 	def __init__(self):
 		self.statements=[]
 		self.token_list=[]
-		self.match_keys=re.compile(r'\w?(primary|unique)\s?key|(key)|(unique)?\s?(index)', re.IGNORECASE)
+		self.match_pkeys=re.compile(r'\w*(primary)\s*key', re.IGNORECASE)
+		self.match_ukeys=re.compile(r'\w*(unique)\s*key', re.IGNORECASE)
+		self.match_idx=re.compile(r'(key)|(unique)?\s*(index)', re.IGNORECASE)
+		self.match_fkeys=re.compile(r'(constraint)?\n*\s*\w*\s*foreign key', re.IGNORECASE)
 		#self.match_keys=re.compile(r'PRIMARY KEY', re.IGNORECASE)
 		
 	def parse_columns(self, token_dic):
@@ -24,10 +27,19 @@ class sql_utility:
 				col_def =re.sub(r'[(]', '', col_def )
 				col_def =re.sub(r'[)]', '', col_def )
 				col_def=col_def.strip()
-				m=self.match_keys.match(col_def)
-				print m
-				print col_def
-		
+				pkey=self.match_pkeys.match(col_def)
+				ukey=self.match_ukeys.match(col_def)
+				fkey=self.match_fkeys.match(col_def)
+				idx=self.match_idx.match(col_def)
+				if pkey:
+					print "matched primary key "+col_def
+				elif ukey:
+					print "matched unique key "+col_def
+				elif fkey:
+					print "matched foreign key "+col_def
+				elif idx:
+					print "matched index key "+col_def
+
 	def collect_tokens(self, tokens):
 		token_dic={}
 		group_list=[]
