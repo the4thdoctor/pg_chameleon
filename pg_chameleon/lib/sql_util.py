@@ -16,10 +16,30 @@ class sql_utility:
 		self.match_ukeys=re.compile(r'\w*(unique)\s*key', re.IGNORECASE)
 		self.match_idx=re.compile(r'(key)|(unique)?\s*(index)', re.IGNORECASE)
 		self.match_fkeys=re.compile(r'(constraint)?\n*\s*\w*\s*foreign key', re.IGNORECASE)
-		#self.match_keys=re.compile(r'PRIMARY KEY', re.IGNORECASE)
+		self.match_nullcons=re.compile(r'(not)?\s*(null)', re.IGNORECASE|re.MULTILINE)
+		self.match_autoinc=re.compile(r'(auto_increment)', re.IGNORECASE|re.MULTILINE)
+		self.match_autoinc=re.compile(r'(auto_increment)', re.IGNORECASE|re.MULTILINE)
+		self.match_cr_table=re.compile(r'\s*(create)\s*(table)\s*', re.IGNORECASE)
 		
-	def parse_columns(self, token_dic):
+		
+	
+	def parse_column(self, col_def):
+		col_dic={}
+		col_list=col_def.split()
+		if len(col_list)>1:
+			col_dic["name"]=col_list[0]
+			col_dic["type"]=col_list[1]
+			nullcons=self.match_nullcons.search(col_def)
+			autoinc=self.match_autoinc.search(col_def)
+			if nullcons:
+				col_dic["null"]=nullcons.group(0)
+			if autoinc:
+				col_dic["autoinc"]=nullcons.group(0)
+		return col_dic
+		
+	def parse_group(self, token_dic):
 		column_group=token_dic["group"]
+		column_parsed=[]
 		for column in column_group:
 			column=re.sub(r'[\n]', '', column)
 			column_list=column.split(',')
@@ -38,13 +58,16 @@ class sql_utility:
 				elif idx:
 					print "matched index key: "+col_def
 				else:
-					print "column definition: "+col_def
+					#print "column definition: "+col_def
+					col_dic=self.parse_column(col_def)
+					if len(col_dic)>0:
+						column_parsed.append(col_dic)
+		return column_parsed
 				
 
 	def collect_tokens(self, tokens):
 		token_dic={}
 		group_list=[]
-		keyword_list=[]
 		for token in tokens:
 			if token.is_whitespace():
 				pass
@@ -58,7 +81,8 @@ class sql_utility:
 				elif token.is_group():
 					group_list.append(token.value)
 		token_dic["group"]=group_list
-		self.parse_columns(token_dic)
+		token_dic["group"]=self.parse_group(token_dic)
+		print token_dic
 		
 	
 	def parse_sql(self, sql_string):
@@ -80,4 +104,6 @@ class sql_utility:
 			sql_clean=re.sub("[^\w][(][)]", " ",  stat_cleanup)
 			parsed = sqlparse.parse(sql_clean)
 			if len(parsed)>0:
+				createtab=self.match_cr_table.match(sql_clean)
+				print createtab
 				self.collect_tokens(parsed[0])

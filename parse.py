@@ -9,8 +9,8 @@ statement="""
 -- Table structure for table `store`
 --
 
-CREATE temporary TABLE if exists `store` (
-  store_id TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
+CREATE   TABLE if exists `store` (
+  store_id TINYINT UNSIGNED NULL AUTO_INCREMENT,
   manager_staff_id TINYINT UNSIGNED NOT NULL,
   address_id SMALLINT UNSIGNED NOT NULL,
   last_update TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
