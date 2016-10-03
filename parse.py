@@ -14,7 +14,7 @@ CREATE   TABLE if exists `store` (
   manager_staff_id TINYINT UNSIGNED NOT NULL,
   address_id SMALLINT UNSIGNED NOT NULL,
   last_update TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY  (store_id),
+  PRIMARY KEY  (store_id,address_id),
   UNIQUE KEY idx_unique_manager (manager_staff_id),
   KEY idx_fk_address_id (address_id),
   index
@@ -28,3 +28,4 @@ CREATE   TABLE if exists `store` (
 
 parsesql=sql_utility()
 parsesql.parse_sql(statement)
+#print parsesql.query_list
