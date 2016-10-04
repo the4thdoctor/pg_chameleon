@@ -23,7 +23,6 @@ CREATE   TABLE if exists `store` (
   CONSTRAINT fk_store_address FOREIGN KEY (address_id) REFERENCES address (address_id) ON DELETE RESTRICT ON UPDATE CASCADE
 )ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-
 				"""
 
 parsesql=sql_utility()

@@ -1,8 +1,8 @@
 import re
-import json
-import sqlparse
-from sqlparse.sql import Identifier
-from sqlparse.tokens import Keyword, DDL
+#import json
+#import sqlparse
+#from sqlparse.sql import Identifier
+#from sqlparse.tokens import Keyword, DDL
 
 class sql_utility:
 	"""
@@ -21,12 +21,13 @@ class sql_utility:
 		self.m_autoinc=re.compile(r'(auto_increment)', re.IGNORECASE)
 		
 		#re for query type
-		self.m_create=re.compile(r'\s*(create\s*table|index)\s*', re.IGNORECASE)
+		self.m_create=re.compile(r'\s*(create\s*(table|index))\s*', re.IGNORECASE)
 		
 		
 	
 	def parse_column(self, col_def):
 		col_dic={}
+		stop_types=[')', '(']
 		col_list=col_def.split()
 		if len(col_list)>1:
 			col_dic["name"]=col_list[0]
@@ -37,6 +38,8 @@ class sql_utility:
 				col_dic["null"]=nullcons.group(0)
 			if autoinc:
 				col_dic["autoinc"]="true"
+		if col_dic["type"] in stop_types:
+			return None
 		return col_dic
 		
 	def parse_group(self, token_dic):
@@ -85,8 +88,40 @@ class sql_utility:
 		token_dic["group"]=group_list
 		token_dic["group"]=self.parse_group(token_dic)
 		return token_dic
-		
 	
+	def build_column_dic(self, inner_stat):
+		cols_parse=[]
+		column_list=inner_stat.split(',')
+		for col_def in column_list:
+			col_def=col_def.strip()
+			pkey=self.m_pkeys.match(col_def)
+			ukey=self.m_ukeys.match(col_def)
+			fkey=self.m_fkeys.match(col_def)
+			idx=self.m_idx.match(col_def)
+			if pkey or ukey or idx or fkey:
+				pass 
+			else:
+				print "column definition: "+col_def
+				col_dic=self.parse_column(col_def)
+				if col_dic:
+					cols_parse.append(col_dic)
+		return cols_parse
+	
+	def parse_create_table(self, sql_create):
+		cnt_open=0
+		cnt_close=0
+		stat_buffer=[]
+		for char in sql_create:
+			if char=='(':
+				cnt_open+=1
+			if char==')':
+				cnt_close+=1
+			if cnt_open-cnt_close>0:
+				stat_buffer.append(char)
+			inner_stat=''.join(stat_buffer[1:]).strip()
+		return self.build_column_dic(inner_stat)
+			
+		
 	def parse_sql(self, sql_string):
 		"""
 			Splits the sql string in statements using the conventional end of statement marker ;
@@ -95,7 +130,7 @@ class sql_utility:
 			
 			:param sql_string: The sql string with the sql statements.
 		"""
-		self.statements=sqlparse.split(sql_string)
+		self.statements=sql_string.split(';')
 		for statement in self.statements:
 			token_dic={}
 			stat_cleanup=re.sub(r'/\*.*?\*/', '', statement, re.DOTALL)
@@ -104,20 +139,13 @@ class sql_utility:
 			stat_cleanup=re.sub(r'[\b(\b]', ' ( ', stat_cleanup)
 			stat_cleanup=re.sub(r'[\b,\b]', ', ', stat_cleanup)
 			stat_cleanup=re.sub(r'\n*', '', stat_cleanup)
-			sql_clean=re.sub("\([\w*\s*]\)", " ",  stat_cleanup)
-			parsed = sqlparse.parse(sql_clean)
-			print sql_clean
-			m=re.match(r'[^\w][(][)]', sql_clean, re.IGNORECASE)
-			print m.groups()
-			"""
-			if len(parsed)>0:
-				try:
-					mcreate=self.m_create.match(sql_clean)
-					command=mcreate.group(0)
-					token_dic=self.collect_tokens(parsed[0])
-					token_dic["command"]=command
-					self.query_list.append(token_dic)
-				except:
-					pass
-			"""
-				
+			stat_cleanup=re.sub("\([\w*\s*]\)", " ",  stat_cleanup)
+			print stat_cleanup
+			mcreate=self.m_create.match(stat_cleanup)
+			if mcreate:
+				command=' '.join(mcreate.group(0).split()).upper().strip()
+				token_dic["command"]=command
+				print command
+				if command=='CREATE TABLE':
+					token_dic["columns"]=self.parse_create_table(stat_cleanup)
+					print token_dic
