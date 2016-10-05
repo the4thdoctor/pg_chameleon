@@ -1,22 +1,18 @@
 import re
-#import json
-#import sqlparse
-#from sqlparse.sql import Identifier
-#from sqlparse.tokens import Keyword, DDL
 
-class sql_utility:
+class sql_token:
 	"""
-	Class sql_utility. Tokenise the sql statements captured by the mysql replication.
+	Class sql_token. Tokenise the sql statements captured by the mysql replication.
 	Each statement is converted in dictionary being used by pg_engine.
 	"""
 	def __init__(self):
 		self.statements=[]
 		self.query_list=[]
 		#re for query elements
-		self.m_pkeys=re.compile(r'\w*(primary)\s*key', re.IGNORECASE)
-		self.m_ukeys=re.compile(r'\w*(unique)\s*key', re.IGNORECASE)
-		self.m_idx=re.compile(r'(key)|(unique)?\s*(index)', re.IGNORECASE)
-		self.m_fkeys=re.compile(r'(constraint)?\n*\s*\w*\s*foreign key', re.IGNORECASE)
+		self.m_pkeys=re.compile(r',\s*PRIMARY\s*KEY\s*\((.*?)\)\s*', re.IGNORECASE)
+		self.m_ukeys=re.compile(r',\s*UNIQUE\s*KEY\s*\w*\s*\((.*?)\)\s*', re.IGNORECASE)
+		self.m_idx=re.compile(r',\s*(KEY|INDEX)\s*\w*\s*\((.*?)\)\s*', re.IGNORECASE)
+		self.m_fkeys=re.compile(r',\s*CONSTRAINT\s*\w*\s*FOREIGN\s*KEY.*,', re.IGNORECASE)
 		self.m_nulls=re.compile(r'(not)?\s*(null)', re.IGNORECASE)
 		self.m_autoinc=re.compile(r'(auto_increment)', re.IGNORECASE)
 		
@@ -27,7 +23,6 @@ class sql_utility:
 	
 	def parse_column(self, col_def):
 		col_dic={}
-		stop_types=[')', '(']
 		col_list=col_def.split()
 		if len(col_list)>1:
 			col_dic["name"]=col_list[0]
@@ -38,56 +33,8 @@ class sql_utility:
 				col_dic["null"]=nullcons.group(0)
 			if autoinc:
 				col_dic["autoinc"]="true"
-		if col_dic["type"] in stop_types:
-			return None
 		return col_dic
 		
-	def parse_group(self, token_dic):
-		column_group=token_dic["group"]
-		column_parsed=[]
-		key_list=[]
-		for column in column_group:
-			column=re.sub(r'[\n]', '', column)
-			column_list=column.split(',')
-			for col_def in column_list:
-				col_def=col_def.strip('(').strip()
-				pkey=self.m_pkeys.match(col_def)
-				ukey=self.m_ukeys.match(col_def)
-				fkey=self.m_fkeys.match(col_def)
-				idx=self.m_idx.match(col_def)
-				"""if pkey:
-					print "matched primary key: "+col_def
-					print col_def
-				elif ukey:
-					print "matched unique key: "+col_def
-				elif fkey:
-					print "matched foreign key: "+col_def
-				elif idx:
-					print "matched index key: "+col_def
-				else:"""
-					#print "column definition: "+col_def
-				col_dic=self.parse_column(col_def)
-				if len(col_dic)>0:
-					column_parsed.append(col_dic)
-		return column_parsed
-				
-
-	def collect_tokens(self, tokens):
-		token_dic={}
-		group_list=[]
-		for token in tokens:
-			if token.is_whitespace():
-				pass
-			elif token.ttype is Keyword:
-				pass
-			elif token.ttype==None:
-				if isinstance(token, Identifier):
-					token_dic["identifier"]=token.value
-				elif token.is_group():
-					group_list.append(token.value)
-		token_dic["group"]=group_list
-		token_dic["group"]=self.parse_group(token_dic)
-		return token_dic
 	
 	def build_column_dic(self, inner_stat):
 		cols_parse=[]
@@ -118,8 +65,15 @@ class sql_utility:
 				cnt_close+=1
 			if cnt_open-cnt_close>0:
 				stat_buffer.append(char)
-			inner_stat=''.join(stat_buffer[1:]).strip()
-		return self.build_column_dic(inner_stat)
+		stat_buffer.append(',')
+		inner_stat=''.join(stat_buffer[1:]).strip()
+		column_list=self.m_pkeys.sub( '', inner_stat)
+		column_list=self.m_ukeys.sub( '', column_list)
+		column_list=self.m_idx.sub( '', column_list)
+		column_list=self.m_fkeys.sub( '', column_list)
+		
+		print column_list
+		return self.build_column_dic(column_list)
 			
 		
 	def parse_sql(self, sql_string):

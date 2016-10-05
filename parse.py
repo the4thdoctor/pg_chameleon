@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from pg_chameleon import sql_utility
+from pg_chameleon import sql_token
 
 statement=""" 
 
@@ -25,6 +25,6 @@ CREATE   TABLE if exists `store` (
 
 				"""
 
-parsesql=sql_utility()
-parsesql.parse_sql(statement)
+token_sql=sql_token()
+token_sql.parse_sql(statement)
 #print parsesql.query_list
