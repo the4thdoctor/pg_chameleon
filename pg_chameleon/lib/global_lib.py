@@ -35,7 +35,7 @@ class global_config:
 		self.pg_charset=confdic["pg_charset"]
 		self.pg_database=confdic["pg_database"]
 		self.my_server_id=confdic["my_server_id"]
-		#self.replica_batch_size=confdic["replica_batch_size"]
+		self.replica_batch_size=confdic["replica_batch_size"]
 		self.tables_limit=confdic["tables_limit"]
 		self.copy_max_size=confdic["copy_max_size"]
 		self.copy_mode=confdic["copy_mode"]
@@ -132,8 +132,8 @@ class replica_engine:
 		"""
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
-			self.logger.info("batch complete. sleeping 1 second")
-			time.sleep(1)
+			self.logger.info("batch complete. sleeping 10 second")
+			time.sleep(10)
 		
 	
 	def do_stream_data(self):

@@ -21,7 +21,7 @@ class mysql_connection:
 		self.my_database=self.global_conf.my_database
 		self.my_charset=self.global_conf.my_charset
 		self.tables_limit=self.global_conf.tables_limit
-		#self.replica_batch_size=self.global_conf.replica_batch_size
+		self.replica_batch_size=self.global_conf.replica_batch_size
 		self.copy_mode=self.global_conf.copy_mode
 		self.my_connection=None
 		self.my_cursor=None
@@ -55,7 +55,7 @@ class mysql_engine:
 		self.mysql_con.connect_db()
 		self.get_table_metadata()
 		self.my_streamer=None
-		#self.replica_batch_size=self.mysql_con.replica_batch_size
+		self.replica_batch_size=self.mysql_con.replica_batch_size
 		self.master_status=[]
 		self.id_batch=None
 		self.replica_verbs=[
@@ -82,10 +82,10 @@ class mysql_engine:
 		Stream the replica using the batch data.
 		:param batch_data: The list with the master's batch data.
 		"""
+		total_events=0
 		table_type_map=self.get_table_type_map()	
 		master_data={}
 		group_insert=[]
-		num_insert=0
 		id_batch=batch_data[0][0]
 		log_file=batch_data[0][1]
 		log_position=batch_data[0][2]
@@ -93,57 +93,63 @@ class mysql_engine:
 		my_stream = BinLogStreamReader(
 																connection_settings = self.mysql_con.mysql_conn, 
 																server_id=self.mysql_con.my_server_id, 
-																only_events=[RotateEvent, QueryEvent,DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
+																only_events=[RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
 																log_file=log_file, 
 																log_pos=log_position, 
 																resume_stream=True
 														)
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		for binlogevent in my_stream:
-				if isinstance(binlogevent, RotateEvent):
-					binlogfile=binlogevent.next_binlog
-				elif isinstance(binlogevent, QueryEvent):
+			total_events+=1
+			self.logger.debug("log_file %s, log_position %s. id_batch: %s replica_batch_size:%s total_events:%s " % (log_file, log_position, id_batch, self.replica_batch_size, total_events))
+			if isinstance(binlogevent, RotateEvent):
+				binlogfile=binlogevent.next_binlog
+			else:
+				for row in binlogevent.rows:
+					total_events+=1
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
-					#self.logger.debug(binlogevent.query)
-				else:
-					for row in binlogevent.rows:
-						log_file=binlogfile
-						log_position=binlogevent.packet.log_pos
-						table_name=binlogevent.table
-						schema_name=binlogevent.schema
-						column_map=table_type_map[table_name]
-						num_insert+=1
-						global_data={
-											"binlog":log_file, 
-											"logpos":log_position, 
-											"schema": schema_name, 
-											"table": table_name, 
-											"batch_id":id_batch, 
-											"log_table":log_table
-										}
-						event_data={}
-						if isinstance(binlogevent, DeleteRowsEvent):
-							global_data["action"] = "delete"
-							event_values=row["values"]
-						elif isinstance(binlogevent, UpdateRowsEvent):
-							global_data["action"] = "update"
-							event_values=row["after_values"]
-						elif isinstance(binlogevent, WriteRowsEvent):
-							global_data["action"] = "insert"
-							event_values=row["values"]
-						for column_name in event_values:
-							column_type=column_map[column_name]
-							if column_type in self.hexify and event_values[column_name]:
-								event_values[column_name]=binascii.hexlify(event_values[column_name])
-						event_data = dict(event_data.items() +event_values.items())
-						event_insert={"global_data":global_data,"event_data":event_data}
-						group_insert.append(event_insert)
-						self.logger.debug("Action: %s Num Inserts: %s " % (global_data["action"],  num_insert ))
-						master_data["File"]=log_file
-						master_data["Position"]=log_position
+					table_name=binlogevent.table
+					schema_name=binlogevent.schema
+					column_map=table_type_map[table_name]
+					global_data={
+										"binlog":log_file, 
+										"logpos":log_position, 
+										"schema": schema_name, 
+										"table": table_name, 
+										"batch_id":id_batch, 
+										"log_table":log_table
+									}
+					event_data={}
+					if isinstance(binlogevent, DeleteRowsEvent):
+						global_data["action"] = "delete"
+						event_values=row["values"]
+					elif isinstance(binlogevent, UpdateRowsEvent):
+						global_data["action"] = "update"
+						event_values=row["after_values"]
+					elif isinstance(binlogevent, WriteRowsEvent):
+						global_data["action"] = "insert"
+						event_values=row["values"]
+					for column_name in event_values:
+						column_type=column_map[column_name]
+						if column_type in self.hexify and event_values[column_name]:
+							event_values[column_name]=binascii.hexlify(event_values[column_name])
+					event_data = dict(event_data.items() +event_values.items())
+					event_insert={"global_data":global_data,"event_data":event_data}
+					group_insert.append(event_insert)
+					self.logger.debug("Action: %s Total events: %s " % (global_data["action"],  total_events))
+					master_data["File"]=log_file
+					master_data["Position"]=log_position
+					if total_events>=self.replica_batch_size:
+						self.logger.debug("total events exceeded. Master data: %s  " % (master_data,  ))
+						total_events=0
+					
+			if total_events>=self.replica_batch_size:
+				self.logger.debug("total events exceeded. Master data: %s  " % (master_data,  ))
+				total_events=0
 						
 		my_stream.close()
+		#self.logger.debug("Master data: %s group insert: %s " % (master_data,  group_insert))
 		return [master_data, group_insert]
 
 	def run_replica(self, pg_engine):
