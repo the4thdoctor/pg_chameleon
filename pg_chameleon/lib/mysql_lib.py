@@ -77,7 +77,7 @@ class mysql_engine:
 		
 	
 				
-	def read_replica(self, batch_data):
+	def read_replica(self, batch_data, pg_engine):
 		"""
 		Stream the replica using the batch data.
 		:param batch_data: The list with the master's batch data.
@@ -106,6 +106,7 @@ class mysql_engine:
 				binlogfile=binlogevent.next_binlog
 			else:
 				for row in binlogevent.rows:
+					#binlogevent.dump()
 					total_events+=1
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
@@ -143,10 +144,8 @@ class mysql_engine:
 					if total_events>=self.replica_batch_size:
 						self.logger.debug("total events exceeded. Master data: %s  " % (master_data,  ))
 						total_events=0
-					
-			if total_events>=self.replica_batch_size:
-				self.logger.debug("total events exceeded. Master data: %s  " % (master_data,  ))
-				total_events=0
+						pg_engine.write_batch(group_insert)
+						group_insert=[]
 						
 		my_stream.close()
 		#self.logger.debug("Master data: %s group insert: %s " % (master_data,  group_insert))
@@ -154,8 +153,7 @@ class mysql_engine:
 
 	def run_replica(self, pg_engine):
 		"""
-		Reads the MySQL replica and stores the data in postgres. When a max_batch_size is reached the replica disconnects and
-		the changes are replayed on PostgreSQL.
+		Reads the MySQL replica and stores the data in postgres. 
 		
 		:param pg_engine: The postgresql engine object required for storing the master coordinates and replaying the batches
 		"""
@@ -163,7 +161,7 @@ class mysql_engine:
 		self.logger.debug('batch data: %s' % (batch_data, ))
 		if len(batch_data)>0:
 			id_batch=batch_data[0][0]
-			replica_data=self.read_replica(batch_data)
+			replica_data=self.read_replica(batch_data, pg_engine)
 			master_data=replica_data[0]
 			group_insert=replica_data[1]
 			if len(group_insert)>0:
@@ -174,10 +172,10 @@ class mysql_engine:
 				self.logger.debug("trying to save the master data...")
 				next_id_batch=pg_engine.save_master_status(self.master_status)
 				if next_id_batch:
-					self.logger.debug("success, saving id_batch %s in class variable" % (id_batch))
+					self.logger.debug("new batch created, saving id_batch %s in class variable" % (id_batch))
 					self.id_batch=id_batch
 				else:
-					self.logger.debug("failure, means empty batch. using old id_batch %s" % (self.id_batch))
+					self.logger.debug("batch not saved. using old id_batch %s" % (self.id_batch))
 					
 				if self.id_batch:
 					self.logger.debug("updating processed flag for id_batch %s", (id_batch))

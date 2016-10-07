@@ -1,7 +1,7 @@
 ---
 #global settings
 my_server_id: 100
-#replica_batch_size: 1000
+replica_batch_size: 1000
 copy_max_size: 10000
 my_database:  db_replica
 pg_database: db_replication
