@@ -142,7 +142,7 @@ class mysql_engine:
 					master_data["File"]=log_file
 					master_data["Position"]=log_position
 					if total_events>=self.replica_batch_size:
-						self.logger.debug("total events exceeded. Master data: %s  " % (master_data,  ))
+						self.logger.debug("total events exceeded. Writing batch.: %s  " % (master_data,  ))
 						total_events=0
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
@@ -184,99 +184,6 @@ class mysql_engine:
 		self.logger.debug("replaying batch.")
 		pg_engine.process_batch()
 
-	def do_stream_data(self, pg_engine):
-		group_insert=[]
-		master_data={}
-		num_insert=0
-		table_type_map=self.get_table_type_map()	
-		batch_data=pg_engine.get_batch_data()
-		if len(batch_data)>0:
-			self.logger.debug("start replica stream: %s", (batch_data, ))
-			id_batch=batch_data[0][0]
-			log_file=batch_data[0][1]
-			log_position=batch_data[0][2]
-			log_table=batch_data[0][3]
-			self.my_stream = BinLogStreamReader(
-																	connection_settings = self.mysql_con.mysql_conn, 
-																	server_id=self.mysql_con.my_server_id, 
-																	only_events=[RotateEvent, QueryEvent,DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
-																	log_file=log_file, 
-																	log_pos=log_position, 
-																	resume_stream=True
-															)
-															
-			for binlogevent in self.my_stream:
-				if isinstance(binlogevent, RotateEvent):
-					binlogfile=binlogevent.next_binlog
-				elif isinstance(binlogevent, QueryEvent):
-					log_file=binlogfile
-					log_position=binlogevent.packet.log_pos
-					#self.logger.debug(binlogevent.query)
-					self.normalise_query(binlogevent.query)
-					
-				else:
-					for row in binlogevent.rows:
-						log_file=binlogfile
-						log_position=binlogevent.packet.log_pos
-						table_name=binlogevent.table
-						schema_name=binlogevent.schema
-						column_map=table_type_map[table_name]
-						
-						global_data={
-											"binlog":log_file, 
-											"logpos":log_position, 
-											"schema": schema_name, 
-											"table": table_name, 
-											"batch_id":id_batch, 
-											"log_table":log_table
-										}
-						event_data={}
-						if isinstance(binlogevent, DeleteRowsEvent):
-							global_data["action"] = "delete"
-							event_values=row["values"]
-						elif isinstance(binlogevent, UpdateRowsEvent):
-							global_data["action"] = "update"
-							event_values=row["after_values"]
-						elif isinstance(binlogevent, WriteRowsEvent):
-							global_data["action"] = "insert"
-							event_values=row["values"]
-						for column_name in event_values:
-							column_type=column_map[column_name]
-							if column_type in self.hexify and event_values[column_name]:
-								event_values[column_name]=binascii.hexlify(event_values[column_name])
-						event_data = dict(event_data.items() +event_values.items())
-						event_insert={"global_data":global_data,"event_data":event_data}
-						group_insert.append(event_insert)
-						num_insert+=1
-						if num_insert>=self.replica_batch_size:
-							pg_engine.write_batch(group_insert)
-							num_insert=0
-							group_insert=[]
-			if len(group_insert)>0:
-				pg_engine.write_batch(group_insert)
-
-		
-			
-			master_data["File"]=log_file
-			master_data["Position"]=log_position
-			self.logger.debug("master data: logfile %s log position %s " % (log_file, log_position))
-			self.master_status=[]
-			self.master_status.append(master_data)
-			self.logger.debug("trying to save the master data...")
-			next_id_batch=pg_engine.save_master_status(self.master_status)
-			if next_id_batch:
-				self.logger.debug("success, saving id_batch %s in class variable" % (id_batch))
-				self.id_batch=id_batch
-			else:
-				self.logger.debug("failure, means empty batch. using old id_batch %s" % (self.id_batch))
-				
-			if self.id_batch:
-				self.logger.debug("updating processed flag for id_batch %s", (id_batch))
-				pg_engine.set_batch_processed(id_batch)
-				self.id_batch=None
-		self.logger.debug("closing replication stream")
-		self.my_stream.close()
-		
 	def get_table_type_map(self):
 		table_type_map={}
 		self.logger.debug("collecting table type map")

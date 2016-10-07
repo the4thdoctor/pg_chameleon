@@ -135,19 +135,7 @@ class replica_engine:
 			self.logger.info("batch complete. sleeping 1 second")
 			time.sleep(1)
 		
-	
-	def do_stream_data(self):
-		"""
-			Start the replication stream and process the batch when the stream is empty
-			
-			:todo: need to rethink this logic as quite inefficient on large replication batches
-		"""
-		while True:
-			self.my_eng.do_stream_data(self.pg_eng)
-			self.logger.info("stream complete. replaying  batch data")
-			self.pg_eng.process_batch()
-			self.logger.info("sleeping 10 seconds")
-			time.sleep(10)
+
 			
 	def copy_table_data(self):
 		"""
