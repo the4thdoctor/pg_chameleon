@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import datetime
+import time
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
 		if isinstance(obj, datetime.datetime):
@@ -76,10 +77,11 @@ class pg_engine:
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.1'
+		self.cat_version='0.2'
 		self.cat_sql=[
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
+									{'version':'0.2','script': 'upgrade/cat_0.2.sql'}, 
 							]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -441,16 +443,24 @@ class pg_engine:
 		self.pg_conn.pgsql_cur.execute(sql_insert)
 	
 	def set_batch_processed(self, id_batch):
+		self.logger.debug("updating batch %s to processed" % (id_batch, ))
 		sql_update=""" UPDATE sch_chameleon.t_replica_batch
 										SET
-												b_processed=True
+												b_processed=True,
+												ts_processed=now()
 								WHERE
 										i_id_batch=%s
 								;
 							"""
 		self.pg_conn.pgsql_cur.execute(sql_update, (id_batch, ))
 		
-	def process_batch(self):
-		sql_process="""SELECT sch_chameleon.fn_process_batch();"""
-		self.pg_conn.pgsql_cur.execute(sql_process)
+	def process_batch(self, replica_batch_size):
+		batch_loop=True
+		sql_process="""SELECT sch_chameleon.fn_process_batch(%s);"""
+		while batch_loop:
+			self.pg_conn.pgsql_cur.execute(sql_process, (replica_batch_size, ))
+			batch_result=self.pg_conn.pgsql_cur.fetchone()
+			batch_loop=batch_result[0]
+			self.logger.debug("Batch loop value %s" % (batch_loop))
+			#time.sleep(5)
 		

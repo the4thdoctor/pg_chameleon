@@ -12,9 +12,9 @@ $BODY$
 		v_t_update	    text;
 		v_t_ins_fld	    text;
 		v_t_ins_val	    text;
-		v_b_closed	    boolean;
+		v_b_loop	    boolean;
 	BEGIN
-	    v_b_closed:=False;
+	    v_b_loop:=True;
 		FOR v_r_rows IN WITH t_batch AS
 					(
 						SELECT 
@@ -189,7 +189,7 @@ $BODY$
 		IF v_r_rows IS NULL
 		THEN 
 		    RAISE DEBUG 'v_r_rows: %',v_r_rows.i_id_event; 
-		    v_b_closed=True;
+		    v_b_loop=False;
 		    
 		
 		UPDATE sch_chameleon.t_replica_batch  
@@ -213,10 +213,12 @@ $BODY$
 						)
 		;
 		END IF;
-        RETURN v_b_closed	;
+        RETURN v_b_loop	;
 	END;
 $BODY$
 LANGUAGE plpgsql;
+
+DROP FUNCTION IF EXISTS  sch_chameleon.fn_process_batch();
 
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS

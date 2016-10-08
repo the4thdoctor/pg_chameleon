@@ -82,6 +82,7 @@ class mysql_engine:
 		Stream the replica using the batch data.
 		:param batch_data: The list with the master's batch data.
 		"""
+		close_batch=False
 		total_events=0
 		table_type_map=self.get_table_type_map()	
 		master_data={}
@@ -106,7 +107,6 @@ class mysql_engine:
 				binlogfile=binlogevent.next_binlog
 			else:
 				for row in binlogevent.rows:
-					#binlogevent.dump()
 					total_events+=1
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
@@ -146,10 +146,13 @@ class mysql_engine:
 						total_events=0
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
+						close_batch=True
 						
 		my_stream.close()
-		#self.logger.debug("Master data: %s group insert: %s " % (master_data,  group_insert))
-		return [master_data, group_insert]
+		if len(group_insert)>0:
+			pg_engine.write_batch(group_insert)
+			close_batch=True
+		return [master_data, close_batch]
 
 	def run_replica(self, pg_engine):
 		"""
@@ -163,10 +166,8 @@ class mysql_engine:
 			id_batch=batch_data[0][0]
 			replica_data=self.read_replica(batch_data, pg_engine)
 			master_data=replica_data[0]
-			group_insert=replica_data[1]
-			if len(group_insert)>0:
-				self.logger.info("writing batch. Total rows %s" % (len(group_insert), ))
-				pg_engine.write_batch(group_insert)
+			close_batch=replica_data[1]
+			if close_batch:
 				self.master_status=[]
 				self.master_status.append(master_data)
 				self.logger.debug("trying to save the master data...")
@@ -176,13 +177,12 @@ class mysql_engine:
 					self.id_batch=id_batch
 				else:
 					self.logger.debug("batch not saved. using old id_batch %s" % (self.id_batch))
-					
 				if self.id_batch:
 					self.logger.debug("updating processed flag for id_batch %s", (id_batch))
 					pg_engine.set_batch_processed(id_batch)
 					self.id_batch=None
 		self.logger.debug("replaying batch.")
-		#pg_engine.process_batch()
+		pg_engine.process_batch(self.replica_batch_size)
 
 	def get_table_type_map(self):
 		table_type_map={}

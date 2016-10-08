@@ -3,7 +3,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '0.1'::TEXT t_version
+	SELECT '0.2'::TEXT t_version
 ;
 
 CREATE TYPE sch_chameleon.en_binlog_event 
@@ -88,21 +88,23 @@ WITH (
 CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
 	ON sch_chameleon.t_replica_tables (v_table_name,v_schema_name);
 
-
-CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch()
-RETURNS VOID AS
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer)
+RETURNS BOOLEAN AS
 $BODY$
 	DECLARE
-		v_r_rows	record;
-		v_t_fields	text[];
-		v_t_values	text[];
-		v_t_sql_rep	text;
-		v_t_pkey	text;
-		v_t_vals	text;
-		v_t_update	text;
-		v_t_ins_fld	text;
-		v_t_ins_val	text;
+	    p_max_events   ALIAS FOR $1;
+		v_r_rows	    record;
+		v_t_fields	    text[];
+		v_t_values	    text[];
+		v_t_sql_rep	    text;
+		v_t_pkey	    text;
+		v_t_vals	    text;
+		v_t_update	    text;
+		v_t_ins_fld	    text;
+		v_t_ins_val	    text;
+		v_b_loop	    boolean;
 	BEGIN
+	    v_b_loop:=True;
 		FOR v_r_rows IN WITH t_batch AS
 					(
 						SELECT 
@@ -110,9 +112,9 @@ $BODY$
 						FROM 
 							sch_chameleon.t_replica_batch  
 						WHERE 
-								b_started 
+								    b_started 
 							AND 	b_processed 
-							AND 	NOT b_replayed
+							AND     NOT b_replayed
 						ORDER BY 
 							ts_created 
 						LIMIT 1
@@ -120,6 +122,7 @@ $BODY$
 				t_events AS
 					(
 						SELECT 
+						    log.i_id_event,
 							bat.i_id_batch,
 							log.v_table_name,
 							log.v_schema_name,
@@ -137,8 +140,10 @@ $BODY$
 								ON	bat.i_id_batch=log.i_id_batch
 							
 						ORDER BY ts_event_datetime
+						LIMIT p_max_events
 					)
 				SELECT
+				    i_id_event,
 					i_id_batch,
 					v_table_name,
 					v_schema_name,
@@ -265,22 +270,40 @@ $BODY$
 			END IF;
 			EXECUTE v_t_sql_rep;
 			
-			
+			DELETE FROM sch_chameleon.t_log_replica
+		    WHERE
+			    i_id_event=v_r_rows.i_id_event
+		    ;
 
 		END LOOP;
-
+		IF v_r_rows IS NULL
+		THEN 
+		    RAISE DEBUG 'v_r_rows: %',v_r_rows.i_id_event; 
+		    v_b_loop=False;
+		    
+		
 		UPDATE sch_chameleon.t_replica_batch  
 			SET 
 				b_replayed=True,
 				ts_replayed=clock_timestamp()
 				
 		WHERE
-			i_id_batch=v_r_rows.i_id_batch
+			i_id_batch=(
+    			            SELECT 
+    							i_id_batch 
+    						FROM 
+    							sch_chameleon.t_replica_batch  
+    						WHERE 
+    								    b_started 
+    							AND 	b_processed 
+    							AND     NOT b_replayed
+    						ORDER BY 
+    							ts_created 
+    						LIMIT 1
+						)
 		;
-		DELETE FROM sch_chameleon.t_log_replica
-		WHERE
-			i_id_batch=v_r_rows.i_id_batch
-		;
+		END IF;
+        RETURN v_b_loop	;
 	END;
 $BODY$
 LANGUAGE plpgsql;
