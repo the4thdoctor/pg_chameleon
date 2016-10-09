@@ -11,36 +11,16 @@ Contents:
 .. toctree::
    :maxdepth: 2
    
+    Module global_lib <./global_lib.rst>
+    Module mysql_lib <./mysql_lib.rst>
+    Module pg_lib <./pg_lib.rst>
+	Module sql_util <./sql_util.rst>
+   
+   
 README
 ===============
 
 .. include:: ../README.rst
 
-API Docs 
-==================================
-
-.. automodule:: global_lib
-    :members:
-    :undoc-members:
-    :inherited-members:
-    :show-inheritance:
 	
-.. automodule:: mysql_lib
-    :members:
-    :undoc-members:
-    :inherited-members:
-    :show-inheritance:
-	
-.. automodule:: pg_lib
-    :members:
-    :undoc-members:
-    :inherited-members:
-    :show-inheritance:
-
-.. automodule:: sql_util
-    :members:
-    :undoc-members:
-    :inherited-members:
-    :show-inheritance:
-
 
