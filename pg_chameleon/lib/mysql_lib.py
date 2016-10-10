@@ -12,6 +12,7 @@ from pymysqlreplication.row_event import (
     WriteRowsEvent,
 )
 from pymysqlreplication.event import RotateEvent
+from pg_chameleon import sql_token
 
 class mysql_connection:
 	def __init__(self, global_config):
@@ -67,6 +68,7 @@ class mysql_engine:
 												'TABLE', 
 												'INDEX'
 									]
+		self.sql_token=sql_token()
 	
 	def normalise_query(self, parsed_query):
 		"""
@@ -94,7 +96,7 @@ class mysql_engine:
 		my_stream = BinLogStreamReader(
 																connection_settings = self.mysql_con.mysql_conn, 
 																server_id=self.mysql_con.my_server_id, 
-																only_events=[RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent], 
+																only_events=[RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent], 
 																log_file=log_file, 
 																log_pos=log_position, 
 																resume_stream=True
@@ -105,6 +107,12 @@ class mysql_engine:
 			self.logger.debug("log_file %s, log_position %s. id_batch: %s replica_batch_size:%s total_events:%s " % (log_file, log_position, id_batch, self.replica_batch_size, total_events))
 			if isinstance(binlogevent, RotateEvent):
 				binlogfile=binlogevent.next_binlog
+			elif isinstance(binlogevent, QueryEvent):
+				log_file=binlogfile
+				log_position=binlogevent.packet.log_pos
+				self.sql_token.parse_sql(binlogevent.query)
+				for token in self.sql_token.tokenised:
+					print token
 			else:
 				for row in binlogevent.rows:
 					total_events+=1

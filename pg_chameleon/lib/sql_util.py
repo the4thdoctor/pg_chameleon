@@ -19,7 +19,8 @@ class sql_token:
 		self.m_autoinc=re.compile(r'(AUTO_INCREMENT)', re.IGNORECASE)
 		
 		#re for query type
-		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
+		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
+		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		
 		
 	
@@ -27,14 +28,16 @@ class sql_token:
 		col_dic={}
 		col_list=col_def.split()
 		if len(col_list)>1:
-			col_dic["name"]=col_list[0]
-			col_dic["type"]=col_list[1]
+			col_dic["name"]=col_list[0].strip("`").strip()
+			col_dic["type"]=col_list[1].lower().strip()
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			if nullcons:
 				col_dic["null"]=nullcons.group(0)
 			if autoinc:
 				col_dic["autoinc"]="true"
+			else :
+				col_dic["autoinc"]="false"
 		return col_dic
 	
 	def build_key_dic(self, inner_stat):
@@ -51,12 +54,12 @@ class sql_token:
 		if idx:
 			key_dic["idx"]=idx
 		return key_dic
+		
 	def build_column_dic(self, inner_stat):
 		cols_parse=[]
 		column_list=inner_stat.split(',')
 		for col_def in column_list:
 			col_def=col_def.strip()
-			#print "column definition: "+col_def
 			col_dic=self.parse_column(col_def)
 			if col_dic:
 				cols_parse.append(col_dic)
@@ -83,7 +86,6 @@ class sql_token:
 		column_list=self.m_ukeys.sub( '', column_list)
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
-		print column_list
 		table_dic["keys"]=self.build_key_dic(inner_stat)
 		table_dic["columns"]=self.build_column_dic(column_list)
 		return table_dic	
@@ -108,15 +110,16 @@ class sql_token:
 			stat_cleanup=re.sub(r'\n*', '', stat_cleanup)
 			stat_cleanup=re.sub("\([\w*\s*]\)", " ",  stat_cleanup)
 			stat_cleanup=stat_cleanup.strip()
-			#print stat_cleanup
 			mcreate_table=self.m_create_table.match(stat_cleanup)
-			#print mcreate_table
+			mdrop_table=self.m_drop_table.match(stat_cleanup)
 			if mcreate_table:
-				
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
 				stat_dic["identifier"]=mcreate_table.group(2)
-				#print command
-				if command=='CREATE TABLE':
-					stat_dic["definition"]=self.parse_create_table(stat_cleanup)
-					self.tokenised.append(stat_dic)
+				stat_dic["definition"]=self.parse_create_table(stat_cleanup)
+					
+			elif mdrop_table:
+				command=' '.join(mdrop_table.group(1).split()).upper().strip()
+				stat_dic["command"]=command
+				stat_dic["identifier"]=mdrop_table.group(2)
+			self.tokenised.append(stat_dic)
