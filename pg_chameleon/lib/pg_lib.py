@@ -88,6 +88,9 @@ class pg_engine:
 		if cat_version!=self.cat_version and int(num_schema)>0:
 			self.upgrade_service_schema()
 	
+			
+		
+	
 	def create_schema(self):
 		sql_schema=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"
 		sql_path=" SET search_path="+self.pg_conn.dest_schema+";"
@@ -201,35 +204,18 @@ class pg_engine:
 			def_columns=str(',').join(ddl_columns)
 			self.table_ddl[table["name"]]=ddl_head+def_columns+ddl_tail
 	
-	def build_idx_ddl(self):
+	def gen_query(self, token):
+		""" the function generates the ddl"""
+		query=""
+		if token["command"]=="DROP TABLE":
+			query=" %(command)s \"%(identifier)s \";" % token
+		elif token["command"]=="CREATE TABLE":
+			print "create table"
+		return query 
 		
-		""" the function iterates over the list l_pkeys and builds a new list with the statements for pkeys """
-		for table_name in self.table_metadata:
-			table=self.table_metadata[table_name]
-			
-			table_name=table["name"]
-			indices=table["indices"]
-			table_idx=[]
-			for index in indices:
-				indx=index["index_name"]
-				index_columns=index["index_columns"]
-				non_unique=index["non_unique"]
-				if indx=='PRIMARY':
-					pkey_name="pk_"+table_name[0:20]+"_"+str(self.idx_sequence)
-					pkey_def='ALTER TABLE "'+table_name+'" ADD CONSTRAINT "'+pkey_name+'" PRIMARY KEY ('+index_columns+') ;'
-					table_idx.append(pkey_def)
-				else:
-					if non_unique==0:
-						unique_key='UNIQUE'
-					else:
-						unique_key=''
-					index_name='"idx_'+indx[0:20]+table_name[0:20]+"_"+str(self.idx_sequence)+'"'
-					idx_def='CREATE '+unique_key+' INDEX '+ index_name+' ON "'+table_name+'" ('+index_columns+');'
-					table_idx.append(idx_def)
-				self.idx_sequence+=1
-					
-			self.idx_ddl[table_name]=table_idx
-			
+	def write_ddl(self, token):
+		print self.gen_query(token)
+	
 	def get_schema_version(self):
 		"""
 			Gets the service schema version.

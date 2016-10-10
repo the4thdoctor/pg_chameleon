@@ -108,11 +108,16 @@ class mysql_engine:
 			if isinstance(binlogevent, RotateEvent):
 				binlogfile=binlogevent.next_binlog
 			elif isinstance(binlogevent, QueryEvent):
-				log_file=binlogfile
-				log_position=binlogevent.packet.log_pos
+				master_data["File"]=binlogfile
+				master_data["Position"]=binlogevent.packet.log_pos
 				self.sql_token.parse_sql(binlogevent.query)
 				for token in self.sql_token.tokenised:
-					print token
+					if len(token)>0:
+						pg_engine.write_ddl(token)
+						close_batch=True
+				self.sql_token.reset_lists()
+				
+				
 			else:
 				for row in binlogevent.rows:
 					total_events+=1

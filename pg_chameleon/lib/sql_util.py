@@ -23,7 +23,10 @@ class sql_token:
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		
 		
-	
+	def reset_lists(self):
+		self.tokenised=[]
+		self.query_list=[]
+		
 	def parse_column(self, col_def):
 		col_dic={}
 		col_list=col_def.split()
