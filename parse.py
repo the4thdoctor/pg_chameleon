@@ -11,6 +11,8 @@ CREATE   TABLE `test` (
   store_id TINYINT UNSIGNED NULL AUTO_INCREMENT,
   manager_staff_id TINYINT UNSIGNED NOT NULL,
   address_id SMALLINT UNSIGNED NOT NULL,
+  `address_txt` `varchar` (30) NOT NULL,
+  `address_dp` double precision (30,2) NOT NULL,
   last_update TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY  (store_id,address_id),
   UNIQUE KEY idx_unique_manager (manager_staff_id),

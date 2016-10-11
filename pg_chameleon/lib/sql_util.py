@@ -8,12 +8,19 @@ class sql_token:
 	def __init__(self):
 		self.tokenised=[]
 		self.query_list=[]
+		
+		#re for column definitions
+		self.m_columns=re.compile(r'\((.*)\)', re.IGNORECASE)
+		#[^,]+[,\s\d\)]+[\w\s]+[,]
+		#[^,](\([\d\s,]+\))?
 		#re for keys and indices
 		self.m_pkeys=re.compile(r',\s*PRIMARY\s*KEY\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_ukeys=re.compile(r',\s*UNIQUE\s*KEY\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_idx=re.compile(r',\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_fkeys=re.compile(r',\s*CONSTRAINT\s*`?\w*`?\s*FOREIGN\s*KEY.*,', re.IGNORECASE)
 		
+		#re for fields
+		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
 		#re for column constraint and auto incremental
 		self.m_nulls=re.compile(r'(NOT)?\s*(NULL)', re.IGNORECASE)
 		self.m_autoinc=re.compile(r'(AUTO_INCREMENT)', re.IGNORECASE)
@@ -28,11 +35,14 @@ class sql_token:
 		self.query_list=[]
 		
 	def parse_column(self, col_def):
+		
+		colmatch=self.m_field.search(col_def)
+		#print col_def
+		#print colmatch.groups()
 		col_dic={}
-		col_list=col_def.split()
-		if len(col_list)>1:
-			col_dic["name"]=col_list[0].strip("`").strip()
-			col_dic["type"]=col_list[1].lower().strip()
+		if colmatch:
+			col_dic["name"]=colmatch.group(1).strip("`").strip()
+			col_dic["type"]=colmatch.group(2).lower().strip()
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			if nullcons:
@@ -70,27 +80,18 @@ class sql_token:
 		
 	
 	def parse_create_table(self, sql_create):
+		m_columns=self.m_columns.search(sql_create)
+		inner_stat=m_columns.group(1).strip()
 		table_dic={}
-		cnt_open=0
-		cnt_close=0
-		inner_buffer=[]
-		for char in sql_create:
-			if char=='(':
-				cnt_open+=1
-			if char==')':
-				cnt_close+=1
-			if cnt_open-cnt_close>0:
-				inner_buffer.append(char)
-
-		#final comma needed to group the constraint definition
-		inner_buffer.append(',')
-		inner_stat=''.join(inner_buffer[1:]).strip()
 		column_list=self.m_pkeys.sub( '', inner_stat)
 		column_list=self.m_ukeys.sub( '', column_list)
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
 		table_dic["keys"]=self.build_key_dic(inner_stat)
 		table_dic["columns"]=self.build_column_dic(column_list)
+		for item in table_dic["columns"]:
+			print item
+		print column_list
 		return table_dic	
 		
 	def parse_sql(self, sql_string):
