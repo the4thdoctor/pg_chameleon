@@ -13,6 +13,9 @@ class sql_token:
 		self.m_columns=re.compile(r'\((.*)\)', re.IGNORECASE)
 		#[^,]+[,\s\d\)]+[\w\s]+[,]
 		#[^,](\([\d\s,]+\))?
+		#transform comma in pipe for dimensions like (30,20) so is safe to split using the comma search
+		#((\(\s?\d+\s?),(\s?\d+\s?\)))
+		#r.sub(r"\2|\3",sql)
 		#re for keys and indices
 		self.m_pkeys=re.compile(r',\s*PRIMARY\s*KEY\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_ukeys=re.compile(r',\s*UNIQUE\s*KEY\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
