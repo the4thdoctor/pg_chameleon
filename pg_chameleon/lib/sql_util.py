@@ -24,6 +24,8 @@ class sql_token:
 		
 		#re for fields
 		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
+		self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
+		
 		#re for column constraint and auto incremental
 		self.m_nulls=re.compile(r'(NOT)?\s*(NULL)', re.IGNORECASE)
 		self.m_autoinc=re.compile(r'(AUTO_INCREMENT)', re.IGNORECASE)
@@ -41,11 +43,12 @@ class sql_token:
 		
 		colmatch=self.m_field.search(col_def)
 		#print col_def
-		#print colmatch.groups()
+		print colmatch.groups()
 		col_dic={}
 		if colmatch:
 			col_dic["name"]=colmatch.group(1).strip("`").strip()
 			col_dic["type"]=colmatch.group(2).lower().strip()
+			col_dic["length"]=colmatch.group(3).lower().strip()
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			if nullcons:
@@ -91,10 +94,12 @@ class sql_token:
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
 		table_dic["keys"]=self.build_key_dic(inner_stat)
+		column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
 		table_dic["columns"]=self.build_column_dic(column_list)
 		for item in table_dic["columns"]:
 			print item
-		print column_list
+		
+		
 		return table_dic	
 		
 	def parse_sql(self, sql_string):
