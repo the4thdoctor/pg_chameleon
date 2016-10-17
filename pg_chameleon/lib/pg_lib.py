@@ -202,7 +202,7 @@ class pg_engine:
 
 	def build_tab_ddl(self):
 		""" the function iterates over the list l_tables and builds a new list with the statements for tables"""
-		print self.table_metadata["test1"]
+		
 		for table_name in self.table_metadata:
 			table=self.table_metadata[table_name]
 			columns=table["columns"]
@@ -237,9 +237,9 @@ class pg_engine:
 		""" the function generates the ddl"""
 		query=""
 		if token["command"]=="DROP TABLE":
-			query=" %(command)s \"%(identifier)s \";" % token
+			query=" %(command)s \"%(name)s \";" % token
 		elif token["command"]=="CREATE TABLE":
-			print "create table"
+			print token
 		return query 
 		
 	def write_ddl(self, token):

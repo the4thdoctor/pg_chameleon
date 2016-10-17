@@ -28,6 +28,7 @@ class sql_token:
 		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
 		self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
 		self.m_dimension=re.compile(r'\((.*)\)', re.IGNORECASE)
+		self.m_enum=re.compile(r'\s*enum\s*\((.*?)\)', re.IGNORECASE|re.DOTALL)
 		self.m_fields=re.compile(r'(.*?),', re.IGNORECASE)
 		#re for column constraint and auto incremental
 		self.m_nulls=re.compile(r'(NOT)?\s*(NULL)', re.IGNORECASE)
@@ -45,22 +46,30 @@ class sql_token:
 	def parse_column(self, col_def):
 		colmatch=self.m_field.search(col_def)
 		dimmatch=self.m_dimension.search(col_def)
+		enmatch=self.m_enum.search(col_def)
 		#print col_def
 		
 		col_dic={}
 		if colmatch:
 			col_dic["name"]=colmatch.group(1).strip("`").strip()
-			col_dic["type"]=colmatch.group(2).lower().strip()
+			col_dic["data_type"]=colmatch.group(2).lower().strip()
+			if col_dic["data_type"]=='enum':
+				print col_def
+			if enmatch:
+				col_dic["enum_list"]=enmatch.group(1).strip().replace('|', ',')
 			if dimmatch:
-				col_dic["length"]=dimmatch.group(1).strip().replace('|', ',')
+				col_dic["character_maximum_length"]=dimmatch.group(1).strip().replace('|', ',')
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			if nullcons:
-				col_dic["null"]=nullcons.group(0)
+				if nullcons.group(0)=="NOT NULL":
+					col_dic["is_nullable"]="NO"
+				else:
+					col_dic["is_nullable"]="YES"
 			if autoinc:
-				col_dic["autoinc"]="true"
+				col_dic["extra"]="auto_increment"
 			else :
-				col_dic["autoinc"]="false"
+				col_dic["autoinc"]=""
 		return col_dic
 	
 	def build_key_dic(self, inner_stat):
@@ -127,14 +136,16 @@ class sql_token:
 			stat_cleanup=stat_cleanup.strip()
 			mcreate_table=self.m_create_table.match(stat_cleanup)
 			mdrop_table=self.m_drop_table.match(stat_cleanup)
+			print stat_cleanup
 			if mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
-				stat_dic["identifier"]=mcreate_table.group(2)
-				stat_dic["definition"]=self.parse_create_table(stat_cleanup)
-					
+				stat_dic["name"]=mcreate_table.group(2)
+				create_parsed=self.parse_create_table(stat_cleanup)
+				stat_dic["columns"]=create_parsed["columns"]
+				
 			elif mdrop_table:
 				command=' '.join(mdrop_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
-				stat_dic["identifier"]=mdrop_table.group(2)
+				stat_dic["name"]=mdrop_table.group(2)
 			self.tokenised.append(stat_dic)
