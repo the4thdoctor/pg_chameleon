@@ -11,6 +11,7 @@ class sql_token:
 		
 		#re for column definitions
 		self.m_columns=re.compile(r'\((.*)\)', re.IGNORECASE)
+		self.m_inner=re.compile(r'\((.*)\)', re.IGNORECASE)
 		#[^,]+[,\s\d\)]+[\w\s]+[,]
 		#[^,](\([\d\s,]+\))?
 		#transform comma in pipe for dimensions like (30,20) so is safe to split using the comma search
@@ -19,13 +20,15 @@ class sql_token:
 		#re for keys and indices
 		self.m_pkeys=re.compile(r',\s*PRIMARY\s*KEY\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_ukeys=re.compile(r',\s*UNIQUE\s*KEY\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
+		self.m_keys=re.compile(r',\s*(?:UNIQUE)?\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((?:.*?)\)\s*', re.IGNORECASE)
 		self.m_idx=re.compile(r',\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
-		self.m_fkeys=re.compile(r',\s*CONSTRAINT\s*`?\w*`?\s*FOREIGN\s*KEY.*,', re.IGNORECASE)
+		self.m_fkeys=re.compile(r',\s*CONSTRAINT\s*`?\w*`?\s*FOREIGN\s*KEY(?:.*?)(?:ON\s*(?:DELETE|UPDATE)\s*(?:RESTRICT|CASCADE)\s*)+', re.IGNORECASE)
 		
 		#re for fields
 		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
 		self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
-		
+		self.m_dimension=re.compile(r'\((.*)\)', re.IGNORECASE)
+		self.m_fields=re.compile(r'(.*?),', re.IGNORECASE)
 		#re for column constraint and auto incremental
 		self.m_nulls=re.compile(r'(NOT)?\s*(NULL)', re.IGNORECASE)
 		self.m_autoinc=re.compile(r'(AUTO_INCREMENT)', re.IGNORECASE)
@@ -40,15 +43,16 @@ class sql_token:
 		self.query_list=[]
 		
 	def parse_column(self, col_def):
-		
 		colmatch=self.m_field.search(col_def)
+		dimmatch=self.m_dimension.search(col_def)
 		#print col_def
-		print colmatch.groups()
+		
 		col_dic={}
 		if colmatch:
 			col_dic["name"]=colmatch.group(1).strip("`").strip()
 			col_dic["type"]=colmatch.group(2).lower().strip()
-			col_dic["length"]=colmatch.group(3).lower().strip()
+			if dimmatch:
+				col_dic["length"]=dimmatch.group(1).strip().replace('|', ',')
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			if nullcons:
@@ -75,8 +79,8 @@ class sql_token:
 		return key_dic
 		
 	def build_column_dic(self, inner_stat):
+		column_list=self.m_fields.findall(inner_stat)
 		cols_parse=[]
-		column_list=inner_stat.split(',')
 		for col_def in column_list:
 			col_def=col_def.strip()
 			col_dic=self.parse_column(col_def)
@@ -86,20 +90,19 @@ class sql_token:
 		
 	
 	def parse_create_table(self, sql_create):
-		m_columns=self.m_columns.search(sql_create)
-		inner_stat=m_columns.group(1).strip()
+		m_inner=self.m_inner.search(sql_create)
+		inner_stat=m_inner.group(1).strip()
 		table_dic={}
 		column_list=self.m_pkeys.sub( '', inner_stat)
-		column_list=self.m_ukeys.sub( '', column_list)
+		column_list=self.m_keys.sub( '', column_list)
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
 		table_dic["keys"]=self.build_key_dic(inner_stat)
 		column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
+		column_list=column_list+","
 		table_dic["columns"]=self.build_column_dic(column_list)
-		for item in table_dic["columns"]:
-			print item
-		
-		
+		#for item in table_dic["columns"]:
+		#	print item
 		return table_dic	
 		
 	def parse_sql(self, sql_string):
