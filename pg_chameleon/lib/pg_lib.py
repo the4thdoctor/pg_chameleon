@@ -170,10 +170,39 @@ class pg_engine:
 			except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_head,column_values))
-				
+	
+	def build_idx_ddl(self):
+		
+		""" the function iterates over the list l_pkeys and builds a new list with the statements for pkeys """
+		for table_name in self.table_metadata:
+			table=self.table_metadata[table_name]
+			
+			table_name=table["name"]
+			indices=table["indices"]
+			table_idx=[]
+			for index in indices:
+				indx=index["index_name"]
+				index_columns=index["index_columns"]
+				non_unique=index["non_unique"]
+				if indx=='PRIMARY':
+					pkey_name="pk_"+table_name[0:20]+"_"+str(self.idx_sequence)
+					pkey_def='ALTER TABLE "'+table_name+'" ADD CONSTRAINT "'+pkey_name+'" PRIMARY KEY ('+index_columns+') ;'
+					table_idx.append(pkey_def)
+				else:
+					if non_unique==0:
+						unique_key='UNIQUE'
+					else:
+						unique_key=''
+					index_name='"idx_'+indx[0:20]+table_name[0:20]+"_"+str(self.idx_sequence)+'"'
+					idx_def='CREATE '+unique_key+' INDEX '+ index_name+' ON "'+table_name+'" ('+index_columns+');'
+					table_idx.append(idx_def)
+				self.idx_sequence+=1
+					
+			self.idx_ddl[table_name]=table_idx
+
 	def build_tab_ddl(self):
 		""" the function iterates over the list l_tables and builds a new list with the statements for tables"""
-		
+		print self.table_metadata["test1"]
 		for table_name in self.table_metadata:
 			table=self.table_metadata[table_name]
 			columns=table["columns"]
