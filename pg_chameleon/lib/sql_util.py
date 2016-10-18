@@ -28,6 +28,7 @@ class sql_token:
 		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
 		self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
 		self.m_dimension=re.compile(r'\((.*)\)', re.IGNORECASE)
+		self.m_pars=re.compile(r'(\((:?.*?)\))', re.IGNORECASE)
 		self.m_enum=re.compile(r'\s*enum\s*\((.*?)\)', re.IGNORECASE|re.DOTALL)
 		self.m_fields=re.compile(r'(.*?),', re.IGNORECASE)
 		#re for column constraint and auto incremental
@@ -89,6 +90,7 @@ class sql_token:
 		
 	def build_column_dic(self, inner_stat):
 		column_list=self.m_fields.findall(inner_stat)
+		#print inner_stat
 		cols_parse=[]
 		for col_def in column_list:
 			col_def=col_def.strip()
@@ -107,8 +109,13 @@ class sql_token:
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
 		table_dic["keys"]=self.build_key_dic(inner_stat)
-		column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
+		#column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
+		mpars=self.m_pars.findall(column_list)
+		for match in mpars:
+			new_group=str(match[0]).replace(',', '|')
+			column_list=column_list.replace(match[0], new_group)
 		column_list=column_list+","
+		print column_list
 		table_dic["columns"]=self.build_column_dic(column_list)
 		#for item in table_dic["columns"]:
 		#	print item
@@ -136,7 +143,7 @@ class sql_token:
 			stat_cleanup=stat_cleanup.strip()
 			mcreate_table=self.m_create_table.match(stat_cleanup)
 			mdrop_table=self.m_drop_table.match(stat_cleanup)
-			print stat_cleanup
+			#print stat_cleanup
 			if mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
