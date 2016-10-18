@@ -338,7 +338,7 @@ class mysql_engine:
 			index_data=self.get_index_metadata(table["table_name"])
 			dic_table={'name':table["table_name"], 'columns':column_data,  'indices': index_data}
 			self.my_tables[table["table_name"]]=dic_table
-			
+	
 	def print_progress (self, iteration, total, table_name):
 		if total>1:
 			self.logger.info("Table %s copied %d %%" % (table_name, 100 * float(iteration)/float(total)))

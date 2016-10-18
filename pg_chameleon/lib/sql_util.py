@@ -29,7 +29,7 @@ class sql_token:
 		self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
 		self.m_dimension=re.compile(r'\((.*)\)', re.IGNORECASE)
 		self.m_pars=re.compile(r'(\((:?.*?)\))', re.IGNORECASE)
-		self.m_enum=re.compile(r'\s*enum\s*\((.*?)\)', re.IGNORECASE|re.DOTALL)
+		#self.m_enum=re.compile(r'\s*enum\s*\((.*?)\)', re.IGNORECASE|re.DOTALL)
 		self.m_fields=re.compile(r'(.*?),', re.IGNORECASE)
 		#re for column constraint and auto incremental
 		self.m_nulls=re.compile(r'(NOT)?\s*(NULL)', re.IGNORECASE)
@@ -39,7 +39,6 @@ class sql_token:
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		
-		
 	def reset_lists(self):
 		self.tokenised=[]
 		self.query_list=[]
@@ -47,19 +46,18 @@ class sql_token:
 	def parse_column(self, col_def):
 		colmatch=self.m_field.search(col_def)
 		dimmatch=self.m_dimension.search(col_def)
-		enmatch=self.m_enum.search(col_def)
+		#enmatch=self.m_enum.search(col_def)
 		#print col_def
 		
 		col_dic={}
 		if colmatch:
-			col_dic["name"]=colmatch.group(1).strip("`").strip()
+			col_dic["column_name"]=colmatch.group(1).strip("`").strip()
 			col_dic["data_type"]=colmatch.group(2).lower().strip()
-			if col_dic["data_type"]=='enum':
-				print col_def
-			if enmatch:
-				col_dic["enum_list"]=enmatch.group(1).strip().replace('|', ',')
+			col_dic["is_nullable"]="YES"
 			if dimmatch:
+				col_dic["enum_list"]=dimmatch.group(1).strip().replace('|', ',')
 				col_dic["character_maximum_length"]=dimmatch.group(1).strip().replace('|', ',')
+				col_dic["numeric_precision"]=dimmatch.group(1).strip().replace('|', ',')
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			if nullcons:
@@ -70,7 +68,7 @@ class sql_token:
 			if autoinc:
 				col_dic["extra"]="auto_increment"
 			else :
-				col_dic["autoinc"]=""
+				col_dic["extra"]=""
 		return col_dic
 	
 	def build_key_dic(self, inner_stat):
