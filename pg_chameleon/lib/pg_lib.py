@@ -3,12 +3,14 @@ import os
 import sys
 import json
 import datetime
+import decimal
 import time
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
-		if isinstance(obj, datetime.datetime):
+		if isinstance(obj, datetime.datetime) or isinstance(obj, decimal.Decimal):
 			return str(obj)
 		return json.JSONEncoder.default(self, obj)
+
 
 class pg_connection:
 	def __init__(self, global_config):
