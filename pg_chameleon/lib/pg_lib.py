@@ -227,7 +227,7 @@ class pg_engine:
 				if column_type=="character varying" or column_type=="character":
 					column_type=column_type+"("+str(column["character_maximum_length"])+")"
 				if column_type=='numeric':
-					column_type=column_type+"("+str(columtable_metadatatan["numeric_precision"])+","+str(column["numeric_scale"])+")"
+					column_type=column_type+"("+str(column["numeric_precision"])+","+str(column["numeric_scale"])+")"
 				if column_type=='bit' or column_type=='float':
 					column_type=column_type+"("+str(column["numeric_precision"])+")"
 				if column["extra"]=="auto_increment":
@@ -246,12 +246,14 @@ class pg_engine:
 			table_metadata={}
 			table_metadata["columns"]=token["columns"]
 			table_metadata["name"]=token["name"]
+			table_metadata["indices"]=token["indices"]
 			self.table_metadata={}
 			self.table_metadata[token["name"]]=table_metadata
 			print self.table_metadata[token["name"]]
 			#print self.table_metadata["test1"]
 			self.build_tab_ddl()
-			print self.table_ddl[token["name"]]
+			self.build_idx_ddl()
+			print self.idx_ddl
 		return query 
 		
 	def write_ddl(self, token):

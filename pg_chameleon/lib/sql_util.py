@@ -71,20 +71,39 @@ class sql_token:
 				col_dic["extra"]=""
 		return col_dic
 	
-	def build_key_dic(self, inner_stat):
+	def build_key_dic(self, inner_stat, table_name):
 		key_dic={}
+		idx_list=[]
+		idx_counter=0
 		inner_stat=inner_stat.strip()
 		#print inner_stat
+
 		pkey=self.m_pkeys.findall(inner_stat)
 		ukey=self.m_ukeys.findall(inner_stat)
 		idx=self.m_idx.findall(inner_stat)
 		if pkey:
-			key_dic["pkey"]=pkey
+			key_dic["index_name"]='PRIMARY'
+			key_dic["index_columns"]=pkey[0]
+			key_dic["non_unique"]=0
+			idx_list.append(dict(key_dic.items()))
+			key_dic={}
 		if ukey:
-			key_dic["ukey"]=ukey
+			for cols in ukey:
+				key_dic["index_name"]='ukidx_'+table_name[0:20]+'_'+str(idx_counter)
+				key_dic["index_columns"]=cols
+				key_dic["non_unique"]=0
+				idx_list.append(dict(key_dic.items()))
+				key_dic={}
+				idx_counter+=1
 		if idx:
-			key_dic["idx"]=idx
-		return key_dic
+			for cols in idx:
+				key_dic["index_name"]='idx_'+table_name[0:20]+'_'+str(idx_counter)
+				key_dic["index_columns"]=cols
+				key_dic["non_unique"]=1
+				idx_list.append(dict(key_dic.items()))
+				key_dic={}
+				idx_counter+=1
+		return idx_list
 		
 	def build_column_dic(self, inner_stat):
 		column_list=self.m_fields.findall(inner_stat)
@@ -98,7 +117,7 @@ class sql_token:
 		return cols_parse
 		
 	
-	def parse_create_table(self, sql_create):
+	def parse_create_table(self, sql_create, table_name):
 		m_inner=self.m_inner.search(sql_create)
 		inner_stat=m_inner.group(1).strip()
 		table_dic={}
@@ -106,7 +125,7 @@ class sql_token:
 		column_list=self.m_keys.sub( '', column_list)
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
-		table_dic["keys"]=self.build_key_dic(inner_stat)
+		table_dic["indices"]=self.build_key_dic(inner_stat, table_name)
 		#column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
 		mpars=self.m_pars.findall(column_list)
 		for match in mpars:
@@ -146,8 +165,9 @@ class sql_token:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
 				stat_dic["name"]=mcreate_table.group(2)
-				create_parsed=self.parse_create_table(stat_cleanup)
+				create_parsed=self.parse_create_table(stat_cleanup, stat_dic["name"])
 				stat_dic["columns"]=create_parsed["columns"]
+				stat_dic["indices"]=create_parsed["indices"]
 				
 			elif mdrop_table:
 				command=' '.join(mdrop_table.group(1).split()).upper().strip()
