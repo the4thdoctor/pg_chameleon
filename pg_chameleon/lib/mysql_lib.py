@@ -99,7 +99,8 @@ class mysql_engine:
 																only_events=[RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent], 
 																log_file=log_file, 
 																log_pos=log_position, 
-																resume_stream=True
+																resume_stream=True, 
+																only_schemas=[self.mysql_con.my_database]
 														)
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		for binlogevent in my_stream:

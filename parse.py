@@ -10,7 +10,7 @@ CREATE   TABLE `test` (
   store_id TINYINT UNSIGNED NULL AUTO_INCREMENT,
   manager_staff_id TINYINT UNSIGNED NOT NULL,
   address_id SMALLINT UNSIGNED NOT NULL,
-  `address_txt` varchar (30) NOT NULL,
+  `address_txt` varchar (30) NOT NULL default 'default_t;ext',
   `address_dp` double precision (30,2) NOT NULL,
   `test_enum` enum ('a','b'),
   size ENUM('x-small', 'small', 'medium', 'large', 'x-large'),
@@ -28,5 +28,8 @@ CREATE   TABLE `test` (
 token_sql=sql_token()
 token_sql.parse_sql(statement)
 for token in token_sql.tokenised:
-	print token
+	try:
+		print token["columns"]
+	except:
+		pass
 #print parsesql.query_list

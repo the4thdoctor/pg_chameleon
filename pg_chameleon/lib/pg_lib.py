@@ -74,7 +74,8 @@ class pg_engine:
 												'bit':'integer', 
 												'year':'integer', 
 												'enum':'enum', 
-												'set':'text'
+												'set':'text', 
+												'json':'text'
 										}
 		self.table_ddl={}
 		self.idx_ddl={}

@@ -132,7 +132,7 @@ class sql_token:
 			new_group=str(match[0]).replace(',', '|')
 			column_list=column_list.replace(match[0], new_group)
 		column_list=column_list+","
-		print column_list
+		#print column_list
 		table_dic["columns"]=self.build_column_dic(column_list)
 		#for item in table_dic["columns"]:
 		#	print item
@@ -146,7 +146,7 @@ class sql_token:
 			
 			:param sql_string: The sql string with the sql statements.
 		"""
-		
+		sql_string=re.sub(r'\s+default(.*?),', ' ', sql_string, re.IGNORECASE)
 		statements=sql_string.split(';')
 		for statement in statements:
 			stat_dic={}
