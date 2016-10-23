@@ -114,7 +114,16 @@ class mysql_engine:
 				self.sql_token.parse_sql(binlogevent.query)
 				for token in self.sql_token.tokenised:
 					if len(token)>0:
-						pg_engine.write_ddl(token)
+						schema_name=binlogevent.schema
+						
+						query_data={
+												"binlog":log_file, 
+												"logpos":log_position, 
+												"schema": schema_name, 
+												"batch_id":id_batch, 
+												"log_table":log_table
+						}
+						pg_engine.write_ddl(token, query_data)
 						close_batch=True
 				self.sql_token.reset_lists()
 				

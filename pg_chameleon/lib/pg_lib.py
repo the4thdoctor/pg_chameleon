@@ -256,9 +256,8 @@ class pg_engine:
 			self.build_idx_ddl()
 			print self.idx_ddl
 		return query 
-		
-	def write_ddl(self, token):
-		print self.gen_query(token)
+
+
 	
 	def get_schema_version(self):
 		"""
@@ -471,7 +470,41 @@ class pg_engine:
 									"""+ ','.join(insert_list )+"""
 						"""
 		self.pg_conn.pgsql_cur.execute(sql_insert)
-	
+		
+	def write_ddl(self, token, query_data):
+		pg_ddl=self.gen_query(token)
+		log_table=query_data["log_table"]
+		insert_vals=(	query_data["batch_id"], 
+								token["name"],  
+								query_data["schema"], 
+								query_data["binlog"], 
+								query_data["logpos"], 
+								pg_ddl
+							)
+		sql_insert="""
+								INSERT INTO sch_chameleon."""+log_table+"""
+								(
+									i_id_batch, 
+									v_table_name, 
+									v_schema_name, 
+									enm_binlog_event, 
+									t_binlog_name, 
+									i_binlog_position, 
+									t_query
+								)
+								VALUES
+								(
+									%s,
+									%s,
+									%s,
+									'ddl',
+									%s,
+									%s,
+									%s
+								)
+						"""
+		print self.pg_conn.pgsql_cur.mogrify(sql_insert, insert_vals)
+		
 	def set_batch_processed(self, id_batch):
 		self.logger.debug("updating batch %s to processed" % (id_batch, ))
 		sql_update=""" UPDATE sch_chameleon.t_replica_batch
