@@ -1,4 +1,5 @@
 import re
+import re
 
 class sql_token:
 	"""
@@ -55,7 +56,7 @@ class sql_token:
 			col_dic["data_type"]=colmatch.group(2).lower().strip()
 			col_dic["is_nullable"]="YES"
 			if dimmatch:
-				col_dic["enum_list"]=dimmatch.group(1).strip().replace('|', ',')
+				col_dic["enum_list"]='('+dimmatch.group(1).strip().replace('|', ',')+')'
 				col_dic["character_maximum_length"]=dimmatch.group(1).strip().replace('|', ',')
 				col_dic["numeric_precision"]=dimmatch.group(1).strip().replace('|', ',')
 			nullcons=self.m_nulls.search(col_def)

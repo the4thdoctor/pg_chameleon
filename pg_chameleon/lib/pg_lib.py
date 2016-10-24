@@ -123,18 +123,19 @@ class pg_engine:
 								"""
 				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema, index["index_columns"]))	
 	
-	def create_tables(self, drop_tables=False):
+	def create_tables(self):
 		
 			for table in self.table_ddl:
-				if drop_tables:
-					sql_drop='DROP TABLE IF EXISTS "'+table+'" CASCADE ;'
-					self.pg_conn.pgsql_cur.execute(sql_drop)
+				sql_drop='DROP TABLE IF EXISTS "'+table+'" CASCADE ;'
+				self.pg_conn.pgsql_cur.execute(sql_drop)
 				try:
 					ddl_enum=self.type_ddl[table]
 					for sql_type in ddl_enum:
 						self.pg_conn.pgsql_cur.execute(sql_type)
-				except:
-					pass
+				except psycopg2.Error as e:
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error(sql_type)
+					
 				sql_create=self.table_ddl[table]
 				try:
 					self.pg_conn.pgsql_cur.execute(sql_create)
@@ -224,8 +225,10 @@ class pg_engine:
 				column_type=self.type_dictionary[column["data_type"]]
 				if column_type=="enum":
 					enum_type="enum_"+table["name"]+"_"+column["column_name"]
-					sql_enum="CREATE TYPE "+enum_type+" AS ENUM "+column["enum_list"]+";"
-					ddl_enum.append(sql_enum)
+					sql_drop_enum='DROP TYPE IF EXISTS '+enum_type+' CASCADE;'
+					sql_create_enum="CREATE TYPE "+enum_type+" AS ENUM "+column["enum_list"]+";"
+					ddl_enum.append(sql_drop_enum)
+					ddl_enum.append(sql_create_enum)
 					column_type=enum_type
 				if column_type=="character varying" or column_type=="character":
 					column_type=column_type+"("+str(column["character_maximum_length"])+")"
@@ -240,25 +243,6 @@ class pg_engine:
 			self.type_ddl[table["name"]]=ddl_enum
 			self.table_ddl[table["name"]]=ddl_head+def_columns+ddl_tail
 	
-	def gen_query(self, token):
-		""" the function generates the ddl"""
-		query=""
-		
-		if token["command"]=="DROP TABLE":
-			query=" %(command)s \"%(name)s \";" % token
-		elif token["command"]=="CREATE TABLE":
-			table_metadata={}
-			table_metadata["columns"]=token["columns"]
-			table_metadata["name"]=token["name"]
-			table_metadata["indices"]=token["indices"]
-			self.table_metadata={}
-			self.table_metadata[token["name"]]=table_metadata
-			print self.table_metadata[token["name"]]
-			#print self.table_metadata["test1"]
-			self.build_tab_ddl()
-			self.build_idx_ddl()
-			print self.idx_ddl
-		return query 
 
 
 	
@@ -474,8 +458,55 @@ class pg_engine:
 						"""
 		self.pg_conn.pgsql_cur.execute(sql_insert)
 		
+		
+	def set_batch_processed(self, id_batch):
+		self.logger.debug("updating batch %s to processed" % (id_batch, ))
+		sql_update=""" UPDATE sch_chameleon.t_replica_batch
+										SET
+												b_processed=True,
+												ts_processed=now()
+								WHERE
+										i_id_batch=%s
+								;
+							"""
+		self.pg_conn.pgsql_cur.execute(sql_update, (id_batch, ))
+		
+	def process_batch(self, replica_batch_size):
+		batch_loop=True
+		sql_process="""SELECT sch_chameleon.fn_process_batch(%s);"""
+		while batch_loop:
+			self.pg_conn.pgsql_cur.execute(sql_process, (replica_batch_size, ))
+			batch_result=self.pg_conn.pgsql_cur.fetchone()
+			batch_loop=batch_result[0]
+			self.logger.debug("Batch loop value %s" % (batch_loop))
+			#time.sleep(5)
+
+	def gen_query(self, token):
+		""" the function generates the ddl"""
+		query=""
+		
+		if token["command"]=="DROP TABLE":
+			query=" %(command)s \"%(name)s \";" % token
+		elif token["command"]=="CREATE TABLE":
+			table_metadata={}
+			table_metadata["columns"]=token["columns"]
+			table_metadata["name"]=token["name"]
+			table_metadata["indices"]=token["indices"]
+			self.table_metadata={}
+			self.table_metadata[token["name"]]=table_metadata
+			self.build_tab_ddl()
+			self.build_idx_ddl()
+			query_type=' '.join(self.type_ddl[token["name"]])
+			query_table=self.table_ddl[token["name"]]
+			query_idx=' '.join(self.idx_ddl[token["name"]])
+			query=query_type+query_table+query_idx
+			self.store_table(token["name"])
+		return query 
+
+
 	def write_ddl(self, token, query_data):
-		pg_ddl=self.gen_query(token)
+		sql_path=" SET search_path="+self.pg_conn.dest_schema+";"
+		pg_ddl=sql_path+self.gen_query(token)
 		log_table=query_data["log_table"]
 		insert_vals=(	query_data["batch_id"], 
 								token["name"],  
@@ -506,27 +537,4 @@ class pg_engine:
 									%s
 								)
 						"""
-		print self.pg_conn.pgsql_cur.mogrify(sql_insert, insert_vals)
-		
-	def set_batch_processed(self, id_batch):
-		self.logger.debug("updating batch %s to processed" % (id_batch, ))
-		sql_update=""" UPDATE sch_chameleon.t_replica_batch
-										SET
-												b_processed=True,
-												ts_processed=now()
-								WHERE
-										i_id_batch=%s
-								;
-							"""
-		self.pg_conn.pgsql_cur.execute(sql_update, (id_batch, ))
-		
-	def process_batch(self, replica_batch_size):
-		batch_loop=True
-		sql_process="""SELECT sch_chameleon.fn_process_batch(%s);"""
-		while batch_loop:
-			self.pg_conn.pgsql_cur.execute(sql_process, (replica_batch_size, ))
-			batch_result=self.pg_conn.pgsql_cur.fetchone()
-			batch_loop=batch_result[0]
-			self.logger.debug("Batch loop value %s" % (batch_loop))
-			#time.sleep(5)
-		
+		print self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)

@@ -73,7 +73,7 @@ $BODY$
 			IF v_r_rows.enm_binlog_event='ddl'
 			THEN
 			    RAISE NOTICE 'DDL: %',v_r_rows.t_query;
-			    PERFORM  v_r_rows.t_query;
+			    EXECUTE  v_r_rows.t_query;
             ELSE
     			SELECT 
     				array_agg(key) evt_fields,

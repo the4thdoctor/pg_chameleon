@@ -82,16 +82,14 @@ class replica_engine:
 		self.my_eng=mysql_engine(self.global_config, self.logger)
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
 		
-	def  create_schema(self, drop_tables=False):
+	def  create_schema(self):
 		"""
 			Creates the database schema on PostgreSQL using the metadata extracted from MySQL.
-			
-			:param drop_tables=False:  specifies whether the existing tables should be dropped before creating it.  The default setting is False.
 		"""
 		self.pg_eng.create_schema()
 		self.logger.info("Importing mysql schema")
 		self.pg_eng.build_tab_ddl()
-		self.pg_eng.create_tables(drop_tables)
+		self.pg_eng.create_tables()
 	
 
 	
