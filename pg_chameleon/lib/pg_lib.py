@@ -130,8 +130,9 @@ class pg_engine:
 					sql_drop='DROP TABLE IF EXISTS "'+table+'" CASCADE ;'
 					self.pg_conn.pgsql_cur.execute(sql_drop)
 				try:
-					sql_type=self.type_ddl[table]
-					self.pg_conn.pgsql_cur.execute(sql_type)
+					ddl_enum=self.type_ddl[table]
+					for sql_type in ddl_enum:
+						self.pg_conn.pgsql_cur.execute(sql_type)
 				except:
 					pass
 				sql_create=self.table_ddl[table]
@@ -214,6 +215,7 @@ class pg_engine:
 			ddl_head="CREATE TABLE "+'"'+table["name"]+'" ('
 			ddl_tail=");"
 			ddl_columns=[]
+			ddl_enum=[]
 			for column in columns:
 				if column["is_nullable"]=="NO":
 					col_is_null="NOT NULL"
@@ -223,7 +225,7 @@ class pg_engine:
 				if column_type=="enum":
 					enum_type="enum_"+table["name"]+"_"+column["column_name"]
 					sql_enum="CREATE TYPE "+enum_type+" AS ENUM "+column["enum_list"]+";"
-					self.type_ddl[table["name"]]=sql_enum
+					ddl_enum.append(sql_enum)
 					column_type=enum_type
 				if column_type=="character varying" or column_type=="character":
 					column_type=column_type+"("+str(column["character_maximum_length"])+")"
@@ -235,6 +237,7 @@ class pg_engine:
 					column_type="bigserial"
 				ddl_columns.append('"'+column["column_name"]+'" '+column_type+" "+col_is_null )
 			def_columns=str(',').join(ddl_columns)
+			self.type_ddl[table["name"]]=ddl_enum
 			self.table_ddl[table["name"]]=ddl_head+def_columns+ddl_tail
 	
 	def gen_query(self, token):
