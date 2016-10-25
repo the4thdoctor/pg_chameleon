@@ -70,7 +70,7 @@ class pg_engine:
 												'decimal':'numeric', 
 												'double':'double precision', 
 												'double precision':'double precision', 
-												'float':'numeric', 
+												'float':'float', 
 												'bit':'integer', 
 												'year':'integer', 
 												'enum':'enum', 
@@ -81,11 +81,12 @@ class pg_engine:
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.2'
+		self.cat_version='0.3'
 		self.cat_sql=[
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
 									{'version':'0.2','script': 'upgrade/cat_0.2.sql'}, 
+									{'version':'0.3','script': 'upgrade/cat_0.3.sql'}, 
 							]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -123,7 +124,7 @@ class pg_engine:
 												SET v_table_pkey=EXCLUDED.v_table_pkey
 										;
 								"""
-				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema, index["index_columns"]))	
+				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema, index["index_columns"].strip()))	
 	
 	def create_tables(self):
 		

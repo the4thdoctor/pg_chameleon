@@ -14,6 +14,7 @@ $BODY$
 		v_t_update	    text;
 		v_t_ins_fld	    text;
 		v_t_ins_val	    text;
+		v_t_ddl		    text;
 		v_b_loop	    boolean;
 	BEGIN
 	    v_b_loop:=True;
@@ -72,8 +73,9 @@ $BODY$
 			
 			IF v_r_rows.enm_binlog_event='ddl'
 			THEN
-			    RAISE NOTICE 'DDL: %',v_r_rows.t_query;
-			    EXECUTE  v_r_rows.t_query;
+				v_t_ddl=format('SET search_path=%I;%s',v_r_rows.v_schema_name,v_r_rows.t_query);
+			    RAISE DEBUG 'DDL: %',v_t_ddl;
+			    EXECUTE  v_t_ddl;
 			    DELETE FROM sch_chameleon.t_log_replica
 			    WHERE
 				    i_id_event=v_r_rows.i_id_event
@@ -234,5 +236,5 @@ LANGUAGE plpgsql;
 
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '0.2'::TEXT t_version
+	SELECT '0.3'::TEXT t_version
 ;
