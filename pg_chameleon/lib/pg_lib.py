@@ -96,9 +96,11 @@ class pg_engine:
 		
 	
 	def create_schema(self):
-		sql_schema=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"
+		sql_drop="DROP SCHEMA IF EXISTS "+self.pg_conn.dest_schema+" CASCADE;"
+		sql_create=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"
 		sql_path=" SET search_path="+self.pg_conn.dest_schema+";"
-		self.pg_conn.pgsql_cur.execute(sql_schema)
+		self.pg_conn.pgsql_cur.execute(sql_drop)
+		self.pg_conn.pgsql_cur.execute(sql_create)
 		self.pg_conn.pgsql_cur.execute(sql_path)
 	
 	def store_table(self, table_name):
@@ -126,8 +128,8 @@ class pg_engine:
 	def create_tables(self):
 		
 			for table in self.table_ddl:
-				sql_drop='DROP TABLE IF EXISTS "'+table+'" CASCADE ;'
-				self.pg_conn.pgsql_cur.execute(sql_drop)
+				#sql_drop='DROP TABLE IF EXISTS "'+table+'" CASCADE ;'
+				#self.pg_conn.pgsql_cur.execute(sql_drop)
 				try:
 					ddl_enum=self.type_ddl[table]
 					for sql_type in ddl_enum:
@@ -486,7 +488,7 @@ class pg_engine:
 		query=""
 		
 		if token["command"]=="DROP TABLE":
-			query=" %(command)s \"%(name)s \";" % token
+			query=" %(command)s \"%(name)s\";" % token
 		elif token["command"]=="CREATE TABLE":
 			table_metadata={}
 			table_metadata["columns"]=token["columns"]

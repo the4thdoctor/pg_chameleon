@@ -74,6 +74,10 @@ $BODY$
 			THEN
 			    RAISE NOTICE 'DDL: %',v_r_rows.t_query;
 			    EXECUTE  v_r_rows.t_query;
+			    DELETE FROM sch_chameleon.t_log_replica
+			    WHERE
+				    i_id_event=v_r_rows.i_id_event
+			    ;
             ELSE
     			SELECT 
     				array_agg(key) evt_fields,
@@ -213,7 +217,7 @@ $BODY$
     						FROM 
     							sch_chameleon.t_replica_batch  
     						WHERE 
-    								    b_started 
+    								b_started 
     							AND 	b_processed 
     							AND     NOT b_replayed
     						ORDER BY 

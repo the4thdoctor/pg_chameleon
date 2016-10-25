@@ -84,14 +84,14 @@ class sql_token:
 		idx=self.m_idx.findall(inner_stat)
 		if pkey:
 			key_dic["index_name"]='PRIMARY'
-			key_dic["index_columns"]=pkey[0]
+			key_dic["index_columns"]=pkey[0].replace('`', '"')
 			key_dic["non_unique"]=0
 			idx_list.append(dict(key_dic.items()))
 			key_dic={}
 		if ukey:
 			for cols in ukey:
 				key_dic["index_name"]='ukidx_'+table_name[0:20]+'_'+str(idx_counter)
-				key_dic["index_columns"]=cols
+				key_dic["index_columns"]=cols.replace('`', '"')
 				key_dic["non_unique"]=0
 				idx_list.append(dict(key_dic.items()))
 				key_dic={}
@@ -99,7 +99,7 @@ class sql_token:
 		if idx:
 			for cols in idx:
 				key_dic["index_name"]='idx_'+table_name[0:20]+'_'+str(idx_counter)
-				key_dic["index_columns"]=cols
+				key_dic["index_columns"]=cols.replace('`', '"')
 				key_dic["non_unique"]=1
 				idx_list.append(dict(key_dic.items()))
 				key_dic={}
