@@ -39,6 +39,7 @@ class sql_token:
 		#re for query type
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
+		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(\b.*?\b))\s((?:ADD|DROP)\s+column.*,?)', re.IGNORECASE)
 		
 	def reset_lists(self):
 		self.tokenised=[]
