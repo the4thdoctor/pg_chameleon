@@ -23,13 +23,23 @@ CREATE   TABLE `test` (
 )ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
+ALTER TABLE test
+ADD COLUMN `count` SMALLINT(6) NOT NULL AFTER `lastname`,
+ADD COLUMN `log` VARCHAR(12) NOT NULL AFTER `count`,
+ADD COLUMN status INT(10) UNSIGNED NOT NULL AFTER `log`;
+
+ALTER TABLE `test`
+DROP COLUMN `count` SMALLINT(6) NOT NULL AFTER `lastname`,
+ADD COLUMN `newstatus` INT(10) UNSIGNED NOT NULL AFTER `log`;
+
+
 				"""
 
 token_sql=sql_token()
 token_sql.parse_sql(statement)
-for token in token_sql.tokenised:
-	try:
-		print token["columns"]
-	except:
-		pass
+#for token in token_sql.tokenised:
+#	try:
+#		print token["columns"]
+#	except:
+#		pass
 #print parsesql.query_list

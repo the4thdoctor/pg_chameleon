@@ -1,5 +1,4 @@
 import re
-import re
 
 class sql_token:
 	"""
@@ -39,7 +38,8 @@ class sql_token:
 		#re for query type
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
-		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(\b.*?\b))\s((?:ADD|DROP)\s+column.*,?)', re.IGNORECASE)
+		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+column.*,?)', re.IGNORECASE)
+		self.m_alter=re.compile(r'((?:(?:ADD|DROP)\s+COLUMN))(.*?,)', re.IGNORECASE)
 		
 	def reset_lists(self):
 		self.tokenised=[]
@@ -157,11 +157,12 @@ class sql_token:
 			stat_cleanup=re.sub(r'[\b)\b]', ' ) ', stat_cleanup)
 			stat_cleanup=re.sub(r'[\b(\b]', ' ( ', stat_cleanup)
 			stat_cleanup=re.sub(r'[\b,\b]', ', ', stat_cleanup)
-			stat_cleanup=re.sub(r'\n*', '', stat_cleanup)
+			stat_cleanup=stat_cleanup.replace('\n', ' ')
 			stat_cleanup=re.sub("\([\w*\s*]\)", " ",  stat_cleanup)
 			stat_cleanup=stat_cleanup.strip()
 			mcreate_table=self.m_create_table.match(stat_cleanup)
 			mdrop_table=self.m_drop_table.match(stat_cleanup)
+			malter_table=self.m_alter_table.match(stat_cleanup)
 			#print stat_cleanup
 			if mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
@@ -169,10 +170,15 @@ class sql_token:
 				stat_dic["name"]=mcreate_table.group(2)
 				create_parsed=self.parse_create_table(stat_cleanup, stat_dic["name"])
 				stat_dic["columns"]=create_parsed["columns"]
-				stat_dic["indices"]=create_parsed["indices"]
-				
+				stat_dic["indices"]=create_parsed["indices"]				
 			elif mdrop_table:
 				command=' '.join(mdrop_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
 				stat_dic["name"]=mdrop_table.group(2)
-			self.tokenised.append(stat_dic)
+			elif malter_table:
+				alter_stat=malter_table.group(0) + ','
+				malter_col=self.m_alter.findall(alter_stat)
+				if malter_col:
+					print malter_col
+			if stat_dic!={}:
+				self.tokenised.append(stat_dic)
