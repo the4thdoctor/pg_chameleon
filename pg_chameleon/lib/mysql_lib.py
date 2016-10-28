@@ -396,7 +396,7 @@ class mysql_engine:
 				try:
 					self.mysql_con.my_cursor.execute(sql_out)
 				except:
-					print sql_out
+					self.logger.debug("an error occurred when pulling out the data from the table %s - sql executed: %s" % (table_name, sql_out))
 				csv_results = self.mysql_con.my_cursor.fetchall()
 				
 				csv_data="\n".join(d['data'] for d in csv_results )

@@ -27,8 +27,8 @@ class sql_token:
 		#re for fields
 		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
 		self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
-		self.m_dimension=re.compile(r'\((.*)\)', re.IGNORECASE)
 		self.m_pars=re.compile(r'(\((:?.*?)\))', re.IGNORECASE)
+		self.m_dimension=re.compile(r'\((.*)\)', re.IGNORECASE)
 		#self.m_enum=re.compile(r'\s*enum\s*\((.*?)\)', re.IGNORECASE|re.DOTALL)
 		self.m_fields=re.compile(r'(.*?),', re.IGNORECASE)
 		#re for column constraint and auto incremental
@@ -39,7 +39,8 @@ class sql_token:
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+column.*,?)', re.IGNORECASE)
-		self.m_alter=re.compile(r'((?:(?:ADD|DROP)\s+COLUMN))(.*?,)', re.IGNORECASE)
+		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP)\s+COLUMN))(.*?,)', re.IGNORECASE)
+		self.m_alter_column=re.compile(r'\s*(?:`)?(\w*)(?:`)?\s*(\w*)\s*', re.IGNORECASE)
 		
 	def reset_lists(self):
 		self.tokenised=[]
@@ -176,9 +177,17 @@ class sql_token:
 				stat_dic["command"]=command
 				stat_dic["name"]=mdrop_table.group(2)
 			elif malter_table:
+				alter_dic={}
 				alter_stat=malter_table.group(0) + ','
-				malter_col=self.m_alter.findall(alter_stat)
-				if malter_col:
-					print malter_col
+				stat_dic["command"]=malter_table.group(1)
+				stat_dic["name"]=malter_table.group(2).strip().strip('`')
+				alter_list=self.m_alter_list.findall(alter_stat)
+				for alter_item in alter_list:
+					alter_column=self.m_alter_column.search(alter_item[1])
+					if alter_column:
+						alter_dic["command"]=alter_item[0]
+						alter_dic["name"]=alter_column.group(1)
+						print alter_column.groups()
+					print alter_dic
 			if stat_dic!={}:
 				self.tokenised.append(stat_dic)
