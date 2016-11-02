@@ -37,7 +37,6 @@ class global_config:
 		self.my_server_id=confdic["my_server_id"]
 		self.replica_batch_size=confdic["replica_batch_size"]
 		self.tables_limit=confdic["tables_limit"]
-		self.copy_max_size=confdic["copy_max_size"]
 		self.copy_mode=confdic["copy_mode"]
 		self.hexify=confdic["hexify"]
 		self.log_level=confdic["log_level"]
@@ -45,7 +44,24 @@ class global_config:
 		dt=datetime.now()
 		log_sfx=dt.strftime('%Y%m%d-%H%M%S')
 		self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
-		
+		copy_max_memory=str(confdic["copy_max_memory"])[:-1]
+		copy_scale=str(confdic["copy_max_memory"])[-1]
+		try:
+			int(copy_scale)
+			copy_max_memory=confdic["copy_max_memory"]
+		except:
+			if copy_scale=='k':
+				copy_max_memory=str(int(copy_max_memory)*1024)
+			elif copy_scale=='M':
+				copy_max_memory=str(int(copy_max_memory)*1024*1024)
+			elif copy_scale=='G':
+				copy_max_memory=str(int(copy_max_memory)*1024*1024*1024)
+			else:
+				print "**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes."
+				sys.exit()
+		self.copy_max_memory=copy_max_memory
+	
+
 		
 class replica_engine:
 	"""
@@ -141,5 +157,5 @@ class replica_engine:
 			
 			After the copy the master's coordinates are saved in postgres.
 		"""
-		self.my_eng.copy_table_data(self.pg_eng, limit=self.global_config.copy_max_size)
+		self.my_eng.copy_table_data(self.pg_eng, self.global_config.copy_max_memory)
 		self.pg_eng.save_master_status(self.my_eng.master_status)
