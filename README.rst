@@ -42,7 +42,7 @@ The configuration file is a yaml file. Each parameter controls the
 way the program acts.
 
 * my_server_id the server id for the mysql replica. must be unique among the replica cluster
-* copy_max_size the max rows pulled out in each slice when copying the table in PostgreSQL
+* copy_max_memory the max amount of memory to use when copying the table in PostgreSQL. Is possible to specify the value in (k)ilobytes, (M)egabytes, (G)igabytes adding the suffix (e.g. 300M)
 * my_database mysql database to replicate. a schema with the same name will be initialised in the postgres database
 * pg_database destination database in PostgreSQL. 
 * copy_mode the allowed values are 'file'  and 'direct'. With direct the copy happens on the fly. With file the table is first dumped in a csv file then reloaded in PostgreSQL.
