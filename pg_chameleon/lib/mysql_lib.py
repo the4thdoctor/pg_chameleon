@@ -379,7 +379,6 @@ class mysql_engine:
 			table_name=table["name"]
 			table_columns=table["columns"]
 			self.logger.debug("counting rows in "+table_name)
-			#sql_count="SELECT count(*) as i_cnt FROM `"+table_name+"` ;"
 			sql_count=""" 
 								SELECT 
 										table_rows,
@@ -406,7 +405,7 @@ class mysql_engine:
 				num_slices=total_rows/copy_limit
 				range_slices=range(num_slices+1)
 				total_slices=len(range_slices)
-				self.logger.debug(table_name +" will be copied in "+str(total_slices)+" slices" )
+				self.logger.debug("%s will be copied in %s slices of %s rows"  % (table_name, total_slices, copy_limit))
 				columns_csv=self.generate_select(table_columns, mode="csv")
 				columns_ins=self.generate_select(table_columns, mode="insert")
 				
