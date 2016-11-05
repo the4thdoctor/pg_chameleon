@@ -378,7 +378,7 @@ class mysql_engine:
 			
 			table_name=table["name"]
 			table_columns=table["columns"]
-			self.logger.debug("counting rows in "+table_name)
+			self.logger.debug("estimating rows in "+table_name)
 			sql_count=""" 
 								SELECT 
 										table_rows,
@@ -405,18 +405,21 @@ class mysql_engine:
 				num_slices=total_rows/copy_limit
 				range_slices=range(num_slices+1)
 				total_slices=len(range_slices)
+				slice=range_slices[0]
 				self.logger.debug("%s will be copied in %s slices of %s rows"  % (table_name, total_slices, copy_limit))
 				columns_csv=self.generate_select(table_columns, mode="csv")
 				columns_ins=self.generate_select(table_columns, mode="insert")
-				
-				for slice in range_slices:
+				while True:
 					csv_data=""
 					sql_out="SELECT "+columns_csv+" as data FROM "+table_name+" LIMIT "+str(slice*copy_limit)+", "+str(copy_limit)+";"
 					try:
 						self.mysql_con.my_cursor.execute(sql_out)
 					except:
-						self.logger.debug("an error occurred when pulling out the data from the table %s - sql executed: %s" % (table_name, sql_out))
+						self.logger.error("error when pulling data from %s. sql executed: " % (table_name, sql_out))
+					if self.mysql_con.my_cursor.rowcount == 0:
+						break
 					csv_results = self.mysql_con.my_cursor.fetchall()
+					
 					
 					csv_data="\n".join(d['data'] for d in csv_results )
 					
@@ -442,6 +445,7 @@ class mysql_engine:
 						insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
 						pg_engine.insert_data(table_name, insert_data , self.my_tables)
 					self.print_progress(slice+1,total_slices, table_name)
+					slice+=1
 					csv_file.close()
 		self.logger.info("releasing the lock")
 		self.unlock_tables()
