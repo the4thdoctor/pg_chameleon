@@ -39,9 +39,4 @@ ADD COLUMN newstatus INT(10) UNSIGNED NOT NULL AFTER `log`;
 
 token_sql=sql_token()
 token_sql.parse_sql(statement)
-#for token in token_sql.tokenised:
-#	try:
-#		print token["columns"]
-#	except:
-#		pass
-#print parsesql.query_list
+print token_sql.tokenised

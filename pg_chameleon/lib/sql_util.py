@@ -179,6 +179,7 @@ class sql_token:
 				stat_dic["name"]=mdrop_table.group(2)
 			elif malter_table:
 				alter_dic={}
+				alter_cmd=[]
 				alter_stat=malter_table.group(0) + ','
 				stat_dic["command"]=malter_table.group(1)
 				stat_dic["name"]=malter_table.group(2).strip().strip('`')
@@ -189,7 +190,7 @@ class sql_token:
 				alter_list=self.m_alter_list.findall(alter_stat)
 				#print alter_list
 				for alter_item in alter_list:
-					print alter_item
+					#print alter_item
 					alter_column=self.m_alter_column.search(alter_item[1])
 					if alter_column:
 						alter_dic["command"]=alter_item[0]
@@ -197,6 +198,7 @@ class sql_token:
 						alter_dic["type"]=alter_column.group(2)
 						alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 						#print alter_column.groups()
-					print alter_dic
+					alter_cmd.append(alter_dic)
+				stat_dic["alter_cmd"]=alter_cmd
 			if stat_dic!={}:
 				self.tokenised.append(stat_dic)
