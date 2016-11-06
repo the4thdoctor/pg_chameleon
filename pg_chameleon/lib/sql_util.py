@@ -40,7 +40,7 @@ class sql_token:
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+column.*,?)', re.IGNORECASE)
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP)\s+COLUMN))(.*?,)', re.IGNORECASE)
-		self.m_alter_column=re.compile(r'\s*(?:`)?(\w*)(?:`)?\s*(\w*)\s*', re.IGNORECASE)
+		self.m_alter_column=re.compile(r'\s*(\w*)\s*\(\s*(\d+(?:\s*,\s*\d)?)\s*\)', re.IGNORECASE)
 		
 	def reset_lists(self):
 		self.tokenised=[]
@@ -181,13 +181,16 @@ class sql_token:
 				alter_stat=malter_table.group(0) + ','
 				stat_dic["command"]=malter_table.group(1)
 				stat_dic["name"]=malter_table.group(2).strip().strip('`')
+				
 				alter_list=self.m_alter_list.findall(alter_stat)
+				print alter_list
 				for alter_item in alter_list:
 					alter_column=self.m_alter_column.search(alter_item[1])
 					if alter_column:
 						alter_dic["command"]=alter_item[0]
 						alter_dic["name"]=alter_column.group(1)
-						print alter_column.groups()
+						alter_dic["dimension"]=alter_column.group(2)
+						#print alter_column.groups()
 					print alter_dic
 			if stat_dic!={}:
 				self.tokenised.append(stat_dic)
