@@ -53,10 +53,9 @@ class mysql_connection:
 	
 	def disconnect_db(self):
 		self.my_connection.close()
-		try:
-			self.my_connection_ubf.close()
-		except:
-			pass
+	
+	def disconnect_db_ubf(self):
+		self.my_connection_ubf.close()
 		
 		
 class mysql_engine:
@@ -381,9 +380,12 @@ class mysql_engine:
 				column_list.append(column["column_select"])
 			columns=','.join(column_list)
 		return columns
-		
+	
+
+	def insert_table_data(self, pg_engine, table_name, slices):
+		"""fallback to inserts for table and slices """
+
 	def copy_table_data(self, pg_engine,  copy_max_memory):
-		self.mysql_con.connect_db_ubf()
 		out_file='/tmp/output_copy.csv'
 		self.logger.info("locking the tables")
 		self.lock_tables()
@@ -418,7 +420,6 @@ class mysql_engine:
 			copy_limit=count_rows["copy_limit"]
 			if copy_limit == 0:
 				copy_limit=1000000
-			
 			num_slices=total_rows/copy_limit
 			range_slices=range(num_slices+1)
 			total_slices=len(range_slices)
@@ -428,6 +429,7 @@ class mysql_engine:
 			columns_ins=self.generate_select(table_columns, mode="insert")
 			csv_data=""
 			sql_out="SELECT "+columns_csv+" as data FROM "+table_name+";"
+			self.mysql_con.connect_db_ubf()
 			try:
 				self.logger.debug("Executing query for table %s"  % (table_name, ))
 				self.mysql_con.my_cursor_ubf.execute(sql_out)
@@ -465,6 +467,7 @@ class mysql_engine:
 				self.print_progress(slice+1,total_slices, table_name)
 				slice+=1
 				csv_file.close()
+			self.mysql_con.disconnect_db_ubf()
 		self.logger.info("releasing the lock")
 		self.unlock_tables()
 		
