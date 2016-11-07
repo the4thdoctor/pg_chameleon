@@ -28,21 +28,35 @@ class mysql_connection:
 		self.my_cursor=None
 		self.my_cursor_fallback=None
 		
+	def connect_db_ubf(self):
+		"""  Establish connection with the database """
+		self.my_connection_ubf=pymysql.connect(host=self.mysql_conn["host"],
+							user=self.mysql_conn["user"],
+							password=self.mysql_conn["passwd"],
+							db=self.my_database,
+							charset=self.my_charset,
+							cursorclass=pymysql.cursors.SSCursor)
+		self.my_cursor_ubf=self.my_connection_ubf.cursor()
+
 		
 	
 	def connect_db(self):
 		"""  Establish connection with the database """
 		self.my_connection=pymysql.connect(host=self.mysql_conn["host"],
-									user=self.mysql_conn["user"],
-									password=self.mysql_conn["passwd"],
-									db=self.my_database,
-									charset=self.my_charset,
-									cursorclass=pymysql.cursors.DictCursor)
+							user=self.mysql_conn["user"],
+							password=self.mysql_conn["passwd"],
+							db=self.my_database,
+							charset=self.my_charset,
+							cursorclass=pymysql.cursors.DictCursor)
 		self.my_cursor=self.my_connection.cursor()
 		self.my_cursor_fallback=self.my_connection.cursor()
 	
 	def disconnect_db(self):
 		self.my_connection.close()
+		try:
+			self.my_connection_ubf.close()
+		except:
+			pass
 		
 		
 class mysql_engine:
@@ -369,6 +383,7 @@ class mysql_engine:
 		return columns
 		
 	def copy_table_data(self, pg_engine,  copy_max_memory):
+		self.mysql_con.connect_db_ubf()
 		out_file='/tmp/output_copy.csv'
 		self.logger.info("locking the tables")
 		self.lock_tables()
@@ -401,52 +416,55 @@ class mysql_engine:
 			count_rows=self.mysql_con.my_cursor.fetchone()
 			total_rows=count_rows["table_rows"]
 			copy_limit=count_rows["copy_limit"]
-			if copy_limit>0:
-				num_slices=total_rows/copy_limit
-				range_slices=range(num_slices+1)
-				total_slices=len(range_slices)
-				slice=range_slices[0]
-				self.logger.debug("%s will be copied in %s slices of %s rows"  % (table_name, total_slices, copy_limit))
-				columns_csv=self.generate_select(table_columns, mode="csv")
-				columns_ins=self.generate_select(table_columns, mode="insert")
-				while True:
-					csv_data=""
-					sql_out="SELECT "+columns_csv+" as data FROM "+table_name+" LIMIT "+str(slice*copy_limit)+", "+str(copy_limit)+";"
-					try:
-						self.mysql_con.my_cursor.execute(sql_out)
-					except:
-						self.logger.error("error when pulling data from %s. sql executed: " % (table_name, sql_out))
-					if self.mysql_con.my_cursor.rowcount == 0:
-						break
-					csv_results = self.mysql_con.my_cursor.fetchall()
-					
-					
-					csv_data="\n".join(d['data'] for d in csv_results )
-					
-					if self.mysql_con.copy_mode=='direct':
-						csv_file=StringIO.StringIO()
-						csv_file.write(csv_data)
-						csv_file.seek(0)
+			if copy_limit == 0:
+				copy_limit=1000000
+			
+			num_slices=total_rows/copy_limit
+			range_slices=range(num_slices+1)
+			total_slices=len(range_slices)
+			slice=range_slices[0]
+			self.logger.debug("%s will be copied in %s slices of %s rows"  % (table_name, total_slices, copy_limit))
+			columns_csv=self.generate_select(table_columns, mode="csv")
+			columns_ins=self.generate_select(table_columns, mode="insert")
+			csv_data=""
+			sql_out="SELECT "+columns_csv+" as data FROM "+table_name+";"
+			try:
+				self.logger.debug("Executing query for table %s"  % (table_name, ))
+				self.mysql_con.my_cursor_ubf.execute(sql_out)
+			except:
+				self.logger.error("error when pulling data from %s. sql executed: " % (table_name, sql_out))
+			
+			self.logger.debug("Starting extraction loop for table %s"  % (table_name, ))
+			while True:
+				csv_results = self.mysql_con.my_cursor_ubf.fetchmany(copy_limit)
+				if len(csv_results) == 0:
+					break
+				csv_data="\n".join(d[0] for d in csv_results )
+				
+				if self.mysql_con.copy_mode=='direct':
+					csv_file=StringIO.StringIO()
+					csv_file.write(csv_data)
+					csv_file.seek(0)
 
-					if self.mysql_con.copy_mode=='file':
-						csv_file=codecs.open(out_file, 'wb', self.mysql_con.my_charset)
-						csv_file.write(csv_data)
-						csv_file.close()
-						csv_file=open(out_file, 'rb')
-						
-					try:
-						pg_engine.copy_data(table_name, csv_file, self.my_tables)
-					except:
-						self.logger.info("table %s error in PostgreSQL copy, fallback to insert statements ", (table_name, ))
-						
-						
-						sql_out="SELECT "+columns_ins+"  FROM "+table_name+" LIMIT "+str(slice*copy_limit)+", "+str(copy_limit)+";"
-						self.mysql_con.my_cursor_fallback.execute(sql_out)
-						insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
-						pg_engine.insert_data(table_name, insert_data , self.my_tables)
-					self.print_progress(slice+1,total_slices, table_name)
-					slice+=1
+				if self.mysql_con.copy_mode=='file':
+					csv_file=codecs.open(out_file, 'wb', self.mysql_con.my_charset)
+					csv_file.write(csv_data)
 					csv_file.close()
+					csv_file=open(out_file, 'rb')
+					
+				try:
+					pg_engine.copy_data(table_name, csv_file, self.my_tables)
+				except:
+					self.logger.info("table %s error in PostgreSQL copy, fallback to insert statements " % (table_name, ))
+					
+					
+					sql_out="SELECT "+columns_ins+"  FROM "+table_name+" LIMIT "+str(slice*copy_limit)+", "+str(copy_limit)+";"
+					self.mysql_con.my_cursor_fallback.execute(sql_out)
+					insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
+					pg_engine.insert_data(table_name, insert_data , self.my_tables)
+				self.print_progress(slice+1,total_slices, table_name)
+				slice+=1
+				csv_file.close()
 		self.logger.info("releasing the lock")
 		self.unlock_tables()
 		
