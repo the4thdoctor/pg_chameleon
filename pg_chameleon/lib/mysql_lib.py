@@ -382,14 +382,24 @@ class mysql_engine:
 		return columns
 	
 
-	def insert_table_data(self, pg_engine, table_name, slices):
+	def insert_table_data(self, pg_engine, ins_arg):
 		"""fallback to inserts for table and slices """
+		slice_insert=ins_arg[0]
+		table_name=ins_arg[1]
+		columns_ins=ins_arg[2]
+		copy_limit=ins_arg[3]
+		for slice in slice_insert:
+			sql_out="SELECT "+columns_ins+"  FROM "+table_name+" LIMIT "+str(slice*copy_limit)+", "+str(copy_limit)+";"
+			self.mysql_con.my_cursor_fallback.execute(sql_out)
+			insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
+			pg_engine.insert_data(table_name, insert_data , self.my_tables)
 
 	def copy_table_data(self, pg_engine,  copy_max_memory):
 		out_file='/tmp/output_copy.csv'
 		self.logger.info("locking the tables")
 		self.lock_tables()
 		for table_name in self.my_tables:
+			slice_insert=[]
 			self.logger.info("copying table "+table_name)
 			table=self.my_tables[table_name]
 			
@@ -457,17 +467,20 @@ class mysql_engine:
 				try:
 					pg_engine.copy_data(table_name, csv_file, self.my_tables)
 				except:
-					self.logger.info("table %s error in PostgreSQL copy, fallback to insert statements " % (table_name, ))
+					self.logger.info("table %s error in PostgreSQL copy, saving slice number for the fallback to insert statements " % (table_name, ))
+					slice_insert.append(slice)
 					
-					
-					sql_out="SELECT "+columns_ins+"  FROM "+table_name+" LIMIT "+str(slice*copy_limit)+", "+str(copy_limit)+";"
-					self.mysql_con.my_cursor_fallback.execute(sql_out)
-					insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
-					pg_engine.insert_data(table_name, insert_data , self.my_tables)
 				self.print_progress(slice+1,total_slices, table_name)
 				slice+=1
 				csv_file.close()
 			self.mysql_con.disconnect_db_ubf()
+			if len(slice_insert)>0:
+				ins_arg=[]
+				ins_arg[0]=slice_insert
+				ins_arg[1]=table_name
+				ins_arg[2]=columns_ins
+				ins_arg[3]=copy_limit
+				self.insert_table_data(pg_engine, ins_arg)
 		self.logger.info("releasing the lock")
 		self.unlock_tables()
 		
