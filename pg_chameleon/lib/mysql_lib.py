@@ -476,10 +476,10 @@ class mysql_engine:
 			self.mysql_con.disconnect_db_ubf()
 			if len(slice_insert)>0:
 				ins_arg=[]
-				ins_arg[0]=slice_insert
-				ins_arg[1]=table_name
-				ins_arg[2]=columns_ins
-				ins_arg[3]=copy_limit
+				ins_arg.append(slice_insert)
+				ins_arg.append(table_name)
+				ins_arg.append(columns_ins)
+				ins_arg.append(copy_limit)
 				self.insert_table_data(pg_engine, ins_arg)
 		self.logger.info("releasing the lock")
 		self.unlock_tables()
