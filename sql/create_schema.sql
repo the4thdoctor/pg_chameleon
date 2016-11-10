@@ -203,7 +203,7 @@ $BODY$
 					v_r_rows.enm_binlog_event,v_t_fields,v_t_values;
 			IF v_r_rows.enm_binlog_event='delete'
 			THEN
-				v_t_sql_rep=format('DELETE FROM %I.%I WHERE (%I)=(%s) ;',
+				v_t_sql_rep=format('DELETE FROM %I.%I WHERE (%s)=(%s) ;',
 							v_r_rows.v_schema_name,
 							v_r_rows.v_table_name,
 							v_t_pkey,
@@ -227,7 +227,7 @@ $BODY$
 				v_t_sql_rep=format('UPDATE  %I.%I 
 								SET
 									%s
-							WHERE (%I)=(%s) ;',
+							WHERE (%s)=(%s) ;',
 							v_r_rows.v_schema_name,
 							v_r_rows.v_table_name,
 							v_t_update,
