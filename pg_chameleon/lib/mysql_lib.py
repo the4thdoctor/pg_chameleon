@@ -121,6 +121,17 @@ class mysql_engine:
 			self.logger.debug("log_file %s, log_position %s. id_batch: %s replica_batch_size:%s total_events:%s " % (log_file, log_position, id_batch, self.replica_batch_size, total_events))
 			if isinstance(binlogevent, RotateEvent):
 				binlogfile=binlogevent.next_binlog
+				position=binlogevent.position
+				self.logger.debug("rotate event. binlogfile %s, position %s. " % (binlogfile, position))
+				if close_batch:
+					if log_file!=binlogfile:
+						master_data["File"]=binlogfile
+						master_data["Position"]=position
+					if len(group_insert)>0:
+						pg_engine.write_batch(group_insert)
+						group_insert=[]
+					my_stream.close()
+					return [master_data, close_batch]
 			elif isinstance(binlogevent, QueryEvent):
 				master_data["File"]=binlogfile
 				master_data["Position"]=binlogevent.packet.log_pos
