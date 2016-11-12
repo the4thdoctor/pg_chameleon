@@ -7,7 +7,7 @@ import decimal
 import time
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
-		if isinstance(obj, datetime.datetime) or  isinstance(obj, datetime.date) or isinstance(obj, decimal.Decimal):
+		if isinstance(obj, datetime.time) or isinstance(obj, datetime.datetime) or  isinstance(obj, datetime.date) or isinstance(obj, decimal.Decimal):
 			return str(obj)
 		return json.JSONEncoder.default(self, obj)
 
