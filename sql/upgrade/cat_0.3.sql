@@ -1,5 +1,10 @@
 ALTER TABLE sch_chameleon.t_log_replica ADD COLUMN t_query TEXT NULL;
 
+CREATE OR REPLACE VIEW sch_chameleon.v_version 
+ AS
+	SELECT '0.3'::TEXT t_version
+;
+
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer)
 RETURNS BOOLEAN AS
 $BODY$
@@ -42,6 +47,7 @@ $BODY$
 							log.enm_binlog_event,
 							log.jsb_event_data,
 							log.t_query,
+							tab.v_table_pkey as v_pkey_where,
 							replace(array_to_string(tab.v_table_pkey,','),'"','') as t_pkeys,
 							array_length(tab.v_table_pkey,1) as i_pkeys
 						FROM 
@@ -65,6 +71,7 @@ $BODY$
 					jsb_event_data,
 					t_query,
 					string_to_array(t_pkeys,',') as v_table_pkey,
+					array_to_string(v_pkey_where,',') as v_pkey_where,
 					t_pkeys,
 					i_pkeys
 				FROM
@@ -112,7 +119,7 @@ $BODY$
     				)
     			SELECT 
     				array_to_string(v_table_pkey,','),
-    				array_to_string(array_agg((jsb_event_data->>v_table_pkey[sub])::text),',') as pk_value
+    				''''||array_to_string(array_agg((jsb_event_data->>v_table_pkey[sub])::text),''',''')||'''' as pk_value
     				INTO 
     					v_t_pkey,
     					v_t_vals
@@ -131,7 +138,7 @@ $BODY$
     				v_t_sql_rep=format('DELETE FROM %I.%I WHERE (%s)=(%s) ;',
     							v_r_rows.v_schema_name,
     							v_r_rows.v_table_name,
-    							v_t_pkey,
+    							v_r_rows.v_pkey_where,
     							v_t_vals
     						);
     				RAISE DEBUG '%',v_t_sql_rep;
@@ -156,7 +163,7 @@ $BODY$
     							v_r_rows.v_schema_name,
     							v_r_rows.v_table_name,
     							v_t_update,
-    							v_t_pkey,
+    							v_r_rows.v_pkey_where,
     							v_t_vals
     						);
     				RAISE DEBUG '%',v_t_sql_rep;
@@ -232,9 +239,3 @@ $BODY$
 	END;
 $BODY$
 LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE VIEW sch_chameleon.v_version 
- AS
-	SELECT '0.3'::TEXT t_version
-;
