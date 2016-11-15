@@ -334,35 +334,34 @@ class pg_engine:
 	def save_master_status(self, master_status):
 		next_batch_id=None
 		sql_tab_log=""" 
-						WITH 	t_top_logs AS
-							(
+							SELECT 
+								CASE
+									WHEN v_log_table='t_log_replica_2'
+									THEN 
+										't_log_replica_1'
+									ELSE
+										't_log_replica_2'
+								END AS v_log_table
+							FROM
 								(
-									SELECT 
-										v_log_table
+									(
+									SELECT
+											v_log_table,
+											ts_created
+											
 									FROM
-										sch_chameleon.t_replica_batch
-									ORDER BY
-										ts_created
-									LIMIT 10
-								)
-								UNION ALL
-								(
-									SELECT 
-										't_log_replica_1'  AS v_log_table
-								)
-							)
-						SELECT 
-							CASE
-								WHEN
-									count(v_log_table) % 2=0
-								THEN
-									't_log_replica_2'
-							ELSE
-								't_log_replica_1'
-							END AS v_log_table
-							
-						FROM 
-							t_top_logs
+											sch_chameleon.t_replica_batch
+									)
+									UNION ALL
+									(
+										SELECT
+											't_log_replica_2'  AS v_log_table,
+											'1970-01-01'::timestamp as ts_created
+									)
+									ORDER BY 
+										ts_created DESC
+									LIMIT 1
+								) tab
 						;
 					"""
 		self.pg_conn.pgsql_cur.execute(sql_tab_log)
