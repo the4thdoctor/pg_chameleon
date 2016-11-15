@@ -81,12 +81,13 @@ class pg_engine:
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.3'
+		self.cat_version='0.4'
 		self.cat_sql=[
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
 									{'version':'0.2','script': 'upgrade/cat_0.2.sql'}, 
 									{'version':'0.3','script': 'upgrade/cat_0.3.sql'}, 
+									{'version':'0.4','script': 'upgrade/cat_0.4.sql'}, 
 							]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -482,7 +483,7 @@ class pg_engine:
 			batch_result=self.pg_conn.pgsql_cur.fetchone()
 			batch_loop=batch_result[0]
 			self.logger.debug("Batch loop value %s" % (batch_loop))
-			#time.sleep(5)
+			
 
 	def gen_query(self, token):
 		""" the function generates the ddl"""
