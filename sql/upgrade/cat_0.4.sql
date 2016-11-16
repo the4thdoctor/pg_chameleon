@@ -1,6 +1,6 @@
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '0.'::TEXT t_version
+	SELECT '0.4'::TEXT t_version
 ;
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer)
 RETURNS BOOLEAN AS

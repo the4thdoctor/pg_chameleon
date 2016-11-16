@@ -81,13 +81,14 @@ class pg_engine:
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.4'
+		self.cat_version='0.5'
 		self.cat_sql=[
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
 									{'version':'0.2','script': 'upgrade/cat_0.2.sql'}, 
 									{'version':'0.3','script': 'upgrade/cat_0.3.sql'}, 
 									{'version':'0.4','script': 'upgrade/cat_0.4.sql'}, 
+									{'version':'0.5','script': 'upgrade/cat_0.5.sql'}, 
 							]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -432,15 +433,17 @@ class pg_engine:
 		for row_data in group_insert:
 			global_data=row_data["global_data"]
 			event_data=row_data["event_data"]
+			event_update=row_data["event_update"]
 			log_table=global_data["log_table"]
-			insert_list.append(self.pg_conn.pgsql_cur.mogrify("(%s,%s,%s,%s,%s,%s,%s)", (
+			insert_list.append(self.pg_conn.pgsql_cur.mogrify("(%s,%s,%s,%s,%s,%s,%s,%s)", (
 																									global_data["batch_id"], 
 																									global_data["table"],  
 																									global_data["schema"], 
 																									global_data["action"], 
 																									global_data["binlog"], 
 																									global_data["logpos"], 
-																									json.dumps(event_data, cls=pg_encoder)
+																									json.dumps(event_data, cls=pg_encoder), 
+																									json.dumps(event_update, cls=pg_encoder)
 																								)
 																		)
 											)
@@ -454,7 +457,8 @@ class pg_engine:
 									enm_binlog_event, 
 									t_binlog_name, 
 									i_binlog_position, 
-									jsb_event_data
+									jsb_event_data,
+									jsb_event_update
 								)
 								VALUES
 									"""+ ','.join(insert_list )+"""

@@ -169,21 +169,22 @@ class mysql_engine:
 										"log_table":log_table
 									}
 					event_data={}
+					event_update={}
 					if isinstance(binlogevent, DeleteRowsEvent):
 						global_data["action"] = "delete"
-						event_values=row["values"]
+						event_data=row["values"]
 					elif isinstance(binlogevent, UpdateRowsEvent):
 						global_data["action"] = "update"
-						event_values=row["after_values"]
+						event_data=row["after_values"]
+						event_update=row["before_values"]
 					elif isinstance(binlogevent, WriteRowsEvent):
 						global_data["action"] = "insert"
-						event_values=row["values"]
-					for column_name in event_values:
+						event_data=row["values"]
+					for column_name in event_data:
 						column_type=column_map[column_name]
-						if column_type in self.hexify and event_values[column_name]:
-							event_values[column_name]=binascii.hexlify(event_values[column_name])
-					event_data = dict(event_data.items() +event_values.items())
-					event_insert={"global_data":global_data,"event_data":event_data}
+						if column_type in self.hexify and event_data[column_name]:
+							event_data[column_name]=binascii.hexlify(event_data[column_name])
+					event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
 					group_insert.append(event_insert)
 					self.logger.debug("Action: %s Total events: %s " % (global_data["action"],  total_events))
 					master_data["File"]=log_file
