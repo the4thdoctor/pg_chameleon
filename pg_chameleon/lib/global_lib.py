@@ -41,6 +41,7 @@ class global_config:
 		self.hexify=confdic["hexify"]
 		self.log_level=confdic["log_level"]
 		self.log_dest=confdic["log_dest"]
+		self.sleep_loop=confdic["sleep_loop"]
 		dt=datetime.now()
 		log_sfx=dt.strftime('%Y%m%d-%H%M%S')
 		self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
@@ -97,6 +98,7 @@ class replica_engine:
 
 		self.my_eng=mysql_engine(self.global_config, self.logger)
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
+		self.sleep_loop=self.global_config.sleep_loop
 		
 	def  create_schema(self):
 		"""
@@ -146,8 +148,8 @@ class replica_engine:
 		"""
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
-			self.logger.info("batch complete. sleeping 1 second")
-			time.sleep(1)
+			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
+			time.sleep(self.sleep_loop)
 		
 
 			

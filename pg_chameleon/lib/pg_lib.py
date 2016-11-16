@@ -488,13 +488,21 @@ class pg_engine:
 			self.logger.debug("Batch loop value %s" % (batch_loop))
 			
 
+	def build_alter_table(self, token):
+		""" the function builds the alter table statement from the token idata"""
+		query_cmd=token["command"]
+		for alter_cmd in token["alter_cmd"]:
+			print alter_cmd
+		
+		return "SELECT 1;"
+
 	def gen_query(self, token):
 		""" the function generates the ddl"""
 		query=""
 		
-		if token["command"]=="DROP TABLE":
+		if token["command"] =="DROP TABLE":
 			query=" %(command)s \"%(name)s\";" % token
-		elif token["command"]=="CREATE TABLE":
+		elif token["command"] =="CREATE TABLE":
 			table_metadata={}
 			table_metadata["columns"]=token["columns"]
 			table_metadata["name"]=token["name"]
@@ -508,6 +516,8 @@ class pg_engine:
 			query_idx=' '.join(self.idx_ddl[token["name"]])
 			query=query_type+query_table+query_idx
 			self.store_table(token["name"])
+		elif token["command"] == "ALTER TABLE":
+			query=self.build_alter_table(token)
 		return query 
 
 

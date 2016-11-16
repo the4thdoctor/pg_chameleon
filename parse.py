@@ -15,7 +15,7 @@ CREATE   TABLE `test` (
   `test_enum` enum ('a','b'),
   size ENUM('x-small', 'small', 'medium', 'large', 'x-large'),
   last_update TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY  (store_id),
+  PRIMARY KEY  (store_id,address_id),
   UNIQUE KEY idx_unique_manager (manager_staff_id),
   KEY idx_fk_address_id2 (address_id),
   index
@@ -39,4 +39,9 @@ ADD COLUMN newstatus INT(10) UNSIGNED NOT NULL AFTER `log`;
 
 token_sql=sql_token()
 token_sql.parse_sql(statement)
-print token_sql.tokenised
+#print token_sql.tokenised
+for token in token_sql.tokenised:
+	if   token["command"]=="ALTER TABLE":
+		print token["alter_cmd"]
+	elif token["command"]=="CREATE TABLE":	
+		print token

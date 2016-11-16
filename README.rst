@@ -53,6 +53,7 @@ way the program acts.
 * my_charset mysql charset for the copy (please note the replica is always in utf8)
 * pg_charset PostgreSQL connection's charset. 
 * tables_limit yaml list with the tables to replicate. if empty the entire mysql database is replicated.
+* sleep_loop seconds between a new replica  batch attempt
 
 MySQL connection parameters
     
@@ -83,10 +84,8 @@ The script pg_chameleon.py have a very basic command line interface. Accepts thr
 * drop_schema Drops the schema sch_chameleon with cascade option
 * create_schema Create the schema sch_chameleon
 * upgrade_schema Upgrade an existing schema sch_chameleon
-* init_replica Creates the table structure and copy the data from mysql locking the tables in read only mode. It saves the master status in sch_chameleon.t_replica_batch.
+* init_replica Creates the table structure and copy the data from mysql locking the tables in read only mode. It saves the master status in sch_chameleon.t_replica_batch. The command drops and recreate the service schema.
 * start_replica Starts the replication from mysql to PostgreSQL using the master data stored in sch_chameleon.t_replica_batch and update the master position every time an new batch is processed.
-
-After running init_schema and init_replica start replica will initiate the mysql to PostgreSQL replication.
 
 Example
 **********************
@@ -192,7 +191,6 @@ Initialise the schema and the replica with
 
 .. code-block:: none
     
-    ./pg_chameleon.py create_schema
     ./pg_chameleon.py init_replica
 
 
@@ -207,12 +205,12 @@ Start the replica with
 Platform and versions
 ****************************
 
-The library is being developed on Ubuntu 14.04 with python 2.7.6.
+The library is being developed on Linux Slackware 14.2 with python 2.7.6.
 
-The databases source and target are:
+The databases source and target are tested on FreeBSD 10.3
 
-* MySQL: 5.6.32 on FreeBSD 10.3
-* PostgreSQL: 9.5.4 on FreeBSD 10.3
+* MySQL: 5.6.33 
+* PostgreSQL: 9.5.5 
   
 What does it work
 ..............................
@@ -229,12 +227,12 @@ What does seems to work
 * Read replica from MySQL
 * Copy the data from MySQL to PostgreSQL on the fly
 * Replay of the replicated data in PostgreSQL
- 
+* Create and drop table replica
+
 What does'n work
 ..............................
-* DDL replica 
-* Materialisation of the MySQL views
-* Foreign keys build on PostgreSQL
+* Full DDL replica 
+* Replica monitoring 
 
 Test please!
 ..............................

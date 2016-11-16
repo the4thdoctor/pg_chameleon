@@ -8,6 +8,9 @@ pg_database: db_replication
 copy_mode: 'file' 
 #copy_mode: 'direct'
 
+#seconds between each replica loop
+sleep_loop: 10 
+
 hexify: 
     - 'blob'
     - 'tinyblob'

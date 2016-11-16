@@ -8,7 +8,7 @@ class sql_token:
 	def __init__(self):
 		self.tokenised=[]
 		self.query_list=[]
-		
+		self.pkey_cols=[]
 		#re for column definitions
 		self.m_columns=re.compile(r'\((.*)\)', re.IGNORECASE)
 		self.m_inner=re.compile(r'\((.*)\)', re.IGNORECASE)
@@ -64,10 +64,10 @@ class sql_token:
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			if nullcons:
-				if nullcons.group(0)=="NOT NULL":
-					col_dic["is_nullable"]="NO"
-				else:
+				if nullcons.group(0)=="NULL" and col_dic["column_name"] not in self.pkey_cols:
 					col_dic["is_nullable"]="YES"
+				else:
+					col_dic["is_nullable"]="NO"
 			if autoinc:
 				col_dic["extra"]="auto_increment"
 			else :
@@ -89,6 +89,7 @@ class sql_token:
 			key_dic["index_name"]='PRIMARY'
 			key_dic["index_columns"]=pkey[0].replace('`', '"')
 			key_dic["non_unique"]=0
+			self.pkey_cols=pkey[0].replace('`', '"').split(',')
 			idx_list.append(dict(key_dic.items()))
 			key_dic={}
 		if ukey:
@@ -130,6 +131,7 @@ class sql_token:
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
 		table_dic["indices"]=self.build_key_dic(inner_stat, table_name)
+		#print table_dic["indices"]
 		#column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
 		mpars=self.m_pars.findall(column_list)
 		for match in mpars:
@@ -178,7 +180,7 @@ class sql_token:
 				stat_dic["command"]=command
 				stat_dic["name"]=mdrop_table.group(2)
 			elif malter_table:
-				alter_dic={}
+				
 				alter_cmd=[]
 				alter_stat=malter_table.group(0) + ','
 				stat_dic["command"]=malter_table.group(1)
@@ -190,9 +192,11 @@ class sql_token:
 				alter_list=self.m_alter_list.findall(alter_stat)
 				#print alter_list
 				for alter_item in alter_list:
+					alter_dic={}
 					#print alter_item
 					alter_column=self.m_alter_column.search(alter_item[1])
 					if alter_column:
+						#print alter_column.groups()
 						alter_dic["command"]=alter_item[0]
 						alter_dic["name"]=alter_column.group(1)
 						alter_dic["type"]=alter_column.group(2)
