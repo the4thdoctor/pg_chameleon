@@ -19,6 +19,8 @@ if args.command in commands:
 	if args.command == commands[0]:
 		replica.create_service_schema()
 	elif args.command == commands[1]:
+		replica.drop_service_schema()
+		replica.create_service_schema()
 		replica.create_schema()
 		replica.copy_table_data()
 		replica.create_indices()

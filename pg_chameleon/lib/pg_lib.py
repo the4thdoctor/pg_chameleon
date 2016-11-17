@@ -7,7 +7,7 @@ import decimal
 import time
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
-		if isinstance(obj, datetime.datetime) or isinstance(obj, decimal.Decimal):
+		if isinstance(obj, datetime.time) or isinstance(obj, datetime.datetime) or  isinstance(obj, datetime.date) or isinstance(obj, decimal.Decimal):
 			return str(obj)
 		return json.JSONEncoder.default(self, obj)
 
@@ -81,12 +81,14 @@ class pg_engine:
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.3'
+		self.cat_version='0.5'
 		self.cat_sql=[
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
 									{'version':'0.2','script': 'upgrade/cat_0.2.sql'}, 
 									{'version':'0.3','script': 'upgrade/cat_0.3.sql'}, 
+									{'version':'0.4','script': 'upgrade/cat_0.4.sql'}, 
+									{'version':'0.5','script': 'upgrade/cat_0.5.sql'}, 
 							]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -333,35 +335,34 @@ class pg_engine:
 	def save_master_status(self, master_status):
 		next_batch_id=None
 		sql_tab_log=""" 
-						WITH 	t_top_logs AS
-							(
+							SELECT 
+								CASE
+									WHEN v_log_table='t_log_replica_2'
+									THEN 
+										't_log_replica_1'
+									ELSE
+										't_log_replica_2'
+								END AS v_log_table
+							FROM
 								(
-									SELECT 
-										v_log_table
+									(
+									SELECT
+											v_log_table,
+											ts_created
+											
 									FROM
-										sch_chameleon.t_replica_batch
-									ORDER BY
-										ts_created
-									LIMIT 10
-								)
-								UNION ALL
-								(
-									SELECT 
-										't_log_replica_1'  AS v_log_table
-								)
-							)
-						SELECT 
-							CASE
-								WHEN
-									count(v_log_table) % 2=0
-								THEN
-									't_log_replica_2'
-							ELSE
-								't_log_replica_1'
-							END AS v_log_table
-							
-						FROM 
-							t_top_logs
+											sch_chameleon.t_replica_batch
+									)
+									UNION ALL
+									(
+										SELECT
+											't_log_replica_2'  AS v_log_table,
+											'1970-01-01'::timestamp as ts_created
+									)
+									ORDER BY 
+										ts_created DESC
+									LIMIT 1
+								) tab
 						;
 					"""
 		self.pg_conn.pgsql_cur.execute(sql_tab_log)
@@ -432,15 +433,17 @@ class pg_engine:
 		for row_data in group_insert:
 			global_data=row_data["global_data"]
 			event_data=row_data["event_data"]
+			event_update=row_data["event_update"]
 			log_table=global_data["log_table"]
-			insert_list.append(self.pg_conn.pgsql_cur.mogrify("(%s,%s,%s,%s,%s,%s,%s)", (
+			insert_list.append(self.pg_conn.pgsql_cur.mogrify("(%s,%s,%s,%s,%s,%s,%s,%s)", (
 																									global_data["batch_id"], 
 																									global_data["table"],  
 																									global_data["schema"], 
 																									global_data["action"], 
 																									global_data["binlog"], 
 																									global_data["logpos"], 
-																									json.dumps(event_data, cls=pg_encoder)
+																									json.dumps(event_data, cls=pg_encoder), 
+																									json.dumps(event_update, cls=pg_encoder)
 																								)
 																		)
 											)
@@ -454,7 +457,8 @@ class pg_engine:
 									enm_binlog_event, 
 									t_binlog_name, 
 									i_binlog_position, 
-									jsb_event_data
+									jsb_event_data,
+									jsb_event_update
 								)
 								VALUES
 									"""+ ','.join(insert_list )+"""
@@ -482,7 +486,7 @@ class pg_engine:
 			batch_result=self.pg_conn.pgsql_cur.fetchone()
 			batch_loop=batch_result[0]
 			self.logger.debug("Batch loop value %s" % (batch_loop))
-			#time.sleep(5)
+			
 
 	def gen_query(self, token):
 		""" the function generates the ddl"""

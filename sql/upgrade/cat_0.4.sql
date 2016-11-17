@@ -1,10 +1,7 @@
-ALTER TABLE sch_chameleon.t_log_replica ADD COLUMN t_query TEXT NULL;
-
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '0.3'::TEXT t_version
+	SELECT '0.4'::TEXT t_version
 ;
-
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer)
 RETURNS BOOLEAN AS
 $BODY$
@@ -21,6 +18,7 @@ $BODY$
 		v_t_ins_val	    text;
 		v_t_ddl		    text;
 		v_b_loop	    boolean;
+		v_i_id_batch	integer;
 	BEGIN
 	    v_b_loop:=True;
 		FOR v_r_rows IN WITH t_batch AS
@@ -233,8 +231,26 @@ $BODY$
     							ts_created 
     						LIMIT 1
 						)
+		RETURNING i_id_batch INTO v_i_id_batch
 		;
+		DELETE FROM sch_chameleon.t_log_replica
+    		    WHERE
+    			    i_id_batch=v_i_id_batch
+    		    ;
+		SELECT 
+			count(*)>0 
+			INTO
+				v_b_loop
+		FROM 
+			sch_chameleon.t_replica_batch  
+		WHERE 
+				b_started 
+			AND 	b_processed 
+			AND     NOT b_replayed
+		;
+
 		END IF;
+		
         RETURN v_b_loop	;
 	END;
 $BODY$

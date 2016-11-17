@@ -1,9 +1,9 @@
-ALTER TABLE sch_chameleon.t_log_replica ADD COLUMN t_query TEXT NULL;
-
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '0.3'::TEXT t_version
+	SELECT '0.5'::TEXT t_version
 ;
+
+ALTER TABLE sch_chameleon.t_log_replica ADD COLUMN jsb_event_update jsonb NULL;
 
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer)
 RETURNS BOOLEAN AS
@@ -21,6 +21,7 @@ $BODY$
 		v_t_ins_val	    text;
 		v_t_ddl		    text;
 		v_b_loop	    boolean;
+		v_i_id_batch	integer;
 	BEGIN
 	    v_b_loop:=True;
 		FOR v_r_rows IN WITH t_batch AS
@@ -46,6 +47,7 @@ $BODY$
 							log.v_schema_name,
 							log.enm_binlog_event,
 							log.jsb_event_data,
+							log.jsb_event_update,
 							log.t_query,
 							tab.v_table_pkey as v_pkey_where,
 							replace(array_to_string(tab.v_table_pkey,','),'"','') as t_pkeys,
@@ -69,6 +71,7 @@ $BODY$
 					v_schema_name,
 					enm_binlog_event,
 					jsb_event_data,
+					jsb_event_update,
 					t_query,
 					string_to_array(t_pkeys,',') as v_table_pkey,
 					array_to_string(v_pkey_where,',') as v_pkey_where,
@@ -107,7 +110,13 @@ $BODY$
     			WITH 	t_jsb AS
     				(
     					SELECT 
-    						v_r_rows.jsb_event_data jsb_event_data,
+							CASE
+								WHEN v_r_rows.enm_binlog_event='update'
+								THEN 
+									v_r_rows.jsb_event_update
+							ELSE
+								v_r_rows.jsb_event_data 
+							END jsb_event_data ,
     						v_r_rows.v_table_pkey v_table_pkey
     				),
     				t_subscripts AS
@@ -233,8 +242,26 @@ $BODY$
     							ts_created 
     						LIMIT 1
 						)
+		RETURNING i_id_batch INTO v_i_id_batch
 		;
+		DELETE FROM sch_chameleon.t_log_replica
+    		    WHERE
+    			    i_id_batch=v_i_id_batch
+    		    ;
+		SELECT 
+			count(*)>0 
+			INTO
+				v_b_loop
+		FROM 
+			sch_chameleon.t_replica_batch  
+		WHERE 
+				b_started 
+			AND 	b_processed 
+			AND     NOT b_replayed
+		;
+
 		END IF;
+		
         RETURN v_b_loop	;
 	END;
 $BODY$

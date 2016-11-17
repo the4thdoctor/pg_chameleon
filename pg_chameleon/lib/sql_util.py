@@ -1,5 +1,4 @@
 import re
-import re
 
 class sql_token:
 	"""
@@ -28,8 +27,8 @@ class sql_token:
 		#re for fields
 		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
 		self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
-		self.m_dimension=re.compile(r'\((.*)\)', re.IGNORECASE)
 		self.m_pars=re.compile(r'(\((:?.*?)\))', re.IGNORECASE)
+		self.m_dimension=re.compile(r'(\(.*?\))', re.IGNORECASE)
 		#self.m_enum=re.compile(r'\s*enum\s*\((.*?)\)', re.IGNORECASE|re.DOTALL)
 		self.m_fields=re.compile(r'(.*?),', re.IGNORECASE)
 		#re for column constraint and auto incremental
@@ -39,6 +38,9 @@ class sql_token:
 		#re for query type
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
+		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+column.*,?)', re.IGNORECASE)
+		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP)\s+COLUMN))(.*?,)', re.IGNORECASE)
+		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*\((.*?)\)', re.IGNORECASE)
 		
 	def reset_lists(self):
 		self.tokenised=[]
@@ -56,9 +58,9 @@ class sql_token:
 			col_dic["data_type"]=colmatch.group(2).lower().strip()
 			col_dic["is_nullable"]="YES"
 			if dimmatch:
-				col_dic["enum_list"]='('+dimmatch.group(1).strip().replace('|', ',')+')'
-				col_dic["character_maximum_length"]=dimmatch.group(1).strip().replace('|', ',')
-				col_dic["numeric_precision"]=dimmatch.group(1).strip().replace('|', ',')
+				col_dic["enum_list"]=dimmatch.group(1).replace('|', ',').strip()
+				col_dic["character_maximum_length"]=dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
+				col_dic["numeric_precision"]=dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			if nullcons:
@@ -71,6 +73,7 @@ class sql_token:
 			else :
 				col_dic["extra"]=""
 		return col_dic
+		
 	
 	def build_key_dic(self, inner_stat, table_name):
 		key_dic={}
@@ -156,11 +159,12 @@ class sql_token:
 			stat_cleanup=re.sub(r'[\b)\b]', ' ) ', stat_cleanup)
 			stat_cleanup=re.sub(r'[\b(\b]', ' ( ', stat_cleanup)
 			stat_cleanup=re.sub(r'[\b,\b]', ', ', stat_cleanup)
-			stat_cleanup=re.sub(r'\n*', '', stat_cleanup)
+			stat_cleanup=stat_cleanup.replace('\n', ' ')
 			stat_cleanup=re.sub("\([\w*\s*]\)", " ",  stat_cleanup)
 			stat_cleanup=stat_cleanup.strip()
 			mcreate_table=self.m_create_table.match(stat_cleanup)
 			mdrop_table=self.m_drop_table.match(stat_cleanup)
+			malter_table=self.m_alter_table.match(stat_cleanup)
 			#print stat_cleanup
 			if mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
@@ -168,10 +172,33 @@ class sql_token:
 				stat_dic["name"]=mcreate_table.group(2)
 				create_parsed=self.parse_create_table(stat_cleanup, stat_dic["name"])
 				stat_dic["columns"]=create_parsed["columns"]
-				stat_dic["indices"]=create_parsed["indices"]
-				
+				stat_dic["indices"]=create_parsed["indices"]				
 			elif mdrop_table:
 				command=' '.join(mdrop_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
 				stat_dic["name"]=mdrop_table.group(2)
-			self.tokenised.append(stat_dic)
+			elif malter_table:
+				alter_dic={}
+				alter_cmd=[]
+				alter_stat=malter_table.group(0) + ','
+				stat_dic["command"]=malter_table.group(1)
+				stat_dic["name"]=malter_table.group(2).strip().strip('`')
+				dim_groups=self.m_dimension.findall(alter_stat)
+				for dim_group in dim_groups:
+					alter_stat=alter_stat.replace(dim_group, dim_group.replace(',','|'))
+				
+				alter_list=self.m_alter_list.findall(alter_stat)
+				#print alter_list
+				for alter_item in alter_list:
+					#print alter_item
+					alter_column=self.m_alter_column.search(alter_item[1])
+					if alter_column:
+						alter_dic["command"]=alter_item[0]
+						alter_dic["name"]=alter_column.group(1)
+						alter_dic["type"]=alter_column.group(2)
+						alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
+						#print alter_column.groups()
+					alter_cmd.append(alter_dic)
+				stat_dic["alter_cmd"]=alter_cmd
+			if stat_dic!={}:
+				self.tokenised.append(stat_dic)

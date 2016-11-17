@@ -3,7 +3,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '0.2'::TEXT t_version
+	SELECT '0.5'::TEXT t_version
 ;
 
 CREATE TYPE sch_chameleon.en_binlog_event 
@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
   i_binlog_position integer,
   ts_event_datetime timestamp without time zone NOT NULL DEFAULT clock_timestamp(),
   jsb_event_data jsonb,
+  jsb_event_update jsonb,
+   t_query TEXT NULL,
   CONSTRAINT pk_log_replica PRIMARY KEY (i_id_event),
   CONSTRAINT fk_replica_batch FOREIGN KEY (i_id_batch) 
 	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
@@ -88,6 +90,7 @@ WITH (
 CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
 	ON sch_chameleon.t_replica_tables (v_table_name,v_schema_name);
 
+	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer)
 RETURNS BOOLEAN AS
 $BODY$
@@ -102,7 +105,9 @@ $BODY$
 		v_t_update	    text;
 		v_t_ins_fld	    text;
 		v_t_ins_val	    text;
+		v_t_ddl		    text;
 		v_b_loop	    boolean;
+		v_i_id_batch	integer;
 	BEGIN
 	    v_b_loop:=True;
 		FOR v_r_rows IN WITH t_batch AS
@@ -128,6 +133,9 @@ $BODY$
 							log.v_schema_name,
 							log.enm_binlog_event,
 							log.jsb_event_data,
+							log.jsb_event_update,
+							log.t_query,
+							tab.v_table_pkey as v_pkey_where,
 							replace(array_to_string(tab.v_table_pkey,','),'"','') as t_pkeys,
 							array_length(tab.v_table_pkey,1) as i_pkeys
 						FROM 
@@ -149,132 +157,151 @@ $BODY$
 					v_schema_name,
 					enm_binlog_event,
 					jsb_event_data,
+					jsb_event_update,
+					t_query,
 					string_to_array(t_pkeys,',') as v_table_pkey,
+					array_to_string(v_pkey_where,',') as v_pkey_where,
 					t_pkeys,
 					i_pkeys
 				FROM
 					t_events
 			LOOP
-
-			SELECT 
-				array_agg(key) evt_fields,
-				array_agg(value) evt_values
-				INTO
-					v_t_fields,
-					v_t_values
-			FROM (
-				SELECT 
-					key ,
-					value
-				FROM 
-					jsonb_each_text(v_r_rows.jsb_event_data) js_event
-			     ) js_dat
-			;
-
 			
-			WITH 	t_jsb AS
-				(
-					SELECT 
-						v_r_rows.jsb_event_data jsb_event_data,
-						v_r_rows.v_table_pkey v_table_pkey
-				),
-				t_subscripts AS
-				(
-					SELECT 
-						generate_subscripts(v_table_pkey,1) sub
-					FROM 
-						t_jsb
-				)
-			SELECT 
-				array_to_string(v_table_pkey,','),
-				array_to_string(array_agg((jsb_event_data->>v_table_pkey[sub])::text),',') as pk_value
-				INTO 
-					v_t_pkey,
-					v_t_vals
-
-			FROM
-				t_subscripts,t_jsb
-			GROUP BY v_table_pkey
-			;
-			
-			RAISE DEBUG '% % % % % %',v_r_rows.v_table_name,
-					v_r_rows.v_schema_name,
-					v_r_rows.v_table_pkey,
-					v_r_rows.enm_binlog_event,v_t_fields,v_t_values;
-			IF v_r_rows.enm_binlog_event='delete'
+			IF v_r_rows.enm_binlog_event='ddl'
 			THEN
-				v_t_sql_rep=format('DELETE FROM %I.%I WHERE (%I)=(%s) ;',
-							v_r_rows.v_schema_name,
-							v_r_rows.v_table_name,
-							v_t_pkey,
-							v_t_vals
-						);
-				RAISE DEBUG '%',v_t_sql_rep;
-			ELSEIF v_r_rows.enm_binlog_event='update'
-			THEN 
-				SELECT 
-					array_to_string(array_agg(format('%I=%L',t_field,t_value)),',') 
-					INTO
-						v_t_update
-				FROM
-				(
-					SELECT 
-						unnest(v_t_fields) t_field, 
-						unnest(v_t_values) t_value
-				) t_val
-				;
-
-				v_t_sql_rep=format('UPDATE  %I.%I 
-								SET
-									%s
-							WHERE (%I)=(%s) ;',
-							v_r_rows.v_schema_name,
-							v_r_rows.v_table_name,
-							v_t_update,
-							v_t_pkey,
-							v_t_vals
-						);
-				RAISE DEBUG '%',v_t_sql_rep;
-			ELSEIF v_r_rows.enm_binlog_event='insert'
-			THEN
-				SELECT 
-					array_to_string(array_agg(format('%I',t_field)),',') t_field,
-					array_to_string(array_agg(format('%L',t_value)),',') t_value
-					INTO
-						v_t_ins_fld,
-						v_t_ins_val
-				FROM
-				(
-					SELECT 
-						unnest(v_t_fields) t_field, 
-						unnest(v_t_values) t_value
-				) t_val
-				;
-				v_t_sql_rep=format('INSERT INTO  %I.%I 
-								(
-									%s
-								)
-							VALUES
-								(
-									%s
-								)
-							;',
-							v_r_rows.v_schema_name,
-							v_r_rows.v_table_name,
-							v_t_ins_fld,
-							v_t_ins_val
-							
-						);
-
-				RAISE DEBUG '%',v_t_sql_rep;
-			END IF;
-			EXECUTE v_t_sql_rep;
-			
-			DELETE FROM sch_chameleon.t_log_replica
-		    WHERE
-			    i_id_event=v_r_rows.i_id_event
-		    ;
-
+				v_t_ddl=format('SET search_path=%I;%s',v_r_rows.v_schema_name,v_r_rows.t_query);
+			    RAISE DEBUG 'DDL: %',v_t_ddl;
+			    EXECUTE  v_t_ddl;
+			    DELETE FROM sch_chameleon.t_log_replica
+			    WHERE
+				    i_id_event=v_r_rows.i_id_event
+			    ;
+            ELSE
+    			SELECT 
+    				array_agg(key) evt_fields,
+    				array_agg(value) evt_values
+    				INTO
+    					v_t_fields,
+    					v_t_values
+    			FROM (
+    				SELECT 
+    					key ,
+    					value
+    				FROM 
+    					jsonb_each_text(v_r_rows.jsb_event_data) js_event
+    			     ) js_dat
+    			;
+    
+    			
+    			WITH 	t_jsb AS
+    				(
+    					SELECT 
+							CASE
+								WHEN v_r_rows.enm_binlog_event='update'
+								THEN 
+									v_r_rows.jsb_event_update
+							ELSE
+								v_r_rows.jsb_event_data 
+							END jsb_event_data ,
+    						v_r_rows.v_table_pkey v_table_pkey
+    				),
+    				t_subscripts AS
+    				(
+    					SELECT 
+    						generate_subscripts(v_table_pkey,1) sub
+    					FROM 
+    						t_jsb
+    				)
+    			SELECT 
+    				array_to_string(v_table_pkey,','),
+    				''''||array_to_string(array_agg((jsb_event_data->>v_table_pkey[sub])::text),''',''')||'''' as pk_value
+    				INTO 
+    					v_t_pkey,
+    					v_t_vals
+    
+    			FROM
+    				t_subscripts,t_jsb
+    			GROUP BY v_table_pkey
+    			;
+    			
+    			RAISE DEBUG '% % % % % %',v_r_rows.v_table_name,
+    					v_r_rows.v_schema_name,
+    					v_r_rows.v_table_pkey,
+    					v_r_rows.enm_binlog_event,v_t_fields,v_t_values;
+    			IF v_r_rows.enm_binlog_event='delete'
+    			THEN
+    				v_t_sql_rep=format('DELETE FROM %I.%I WHERE (%s)=(%s) ;',
+    							v_r_rows.v_schema_name,
+    							v_r_rows.v_table_name,
+    							v_r_rows.v_pkey_where,
+    							v_t_vals
+    						);
+    				RAISE DEBUG '%',v_t_sql_rep;
+    			ELSEIF v_r_rows.enm_binlog_event='update'
+    			THEN 
+    				SELECT 
+    					array_to_string(array_agg(format('%I=%L',t_field,t_value)),',') 
+    					INTO
+    						v_t_update
+    				FROM
+    				(
+    					SELECT 
+    						unnest(v_t_fields) t_field, 
+    						unnest(v_t_values) t_value
+    				) t_val
+    				;
+    
+    				v_t_sql_rep=format('UPDATE  %I.%I 
+    								SET
+    									%s
+    							WHERE (%s)=(%s) ;',
+    							v_r_rows.v_schema_name,
+    							v_r_rows.v_table_name,
+    							v_t_update,
+    							v_r_rows.v_pkey_where,
+    							v_t_vals
+    						);
+    				RAISE DEBUG '%',v_t_sql_rep;
+    			ELSEIF v_r_rows.enm_binlog_event='insert'
+    			THEN
+    				SELECT 
+    					array_to_string(array_agg(format('%I',t_field)),',') t_field,
+    					array_to_string(array_agg(format('%L',t_value)),',') t_value
+    					INTO
+    						v_t_ins_fld,
+    						v_t_ins_val
+    				FROM
+    				(
+    					SELECT 
+    						unnest(v_t_fields) t_field, 
+    						unnest(v_t_values) t_value
+    				) t_val
+    				;
+    				v_t_sql_rep=format('INSERT INTO  %I.%I 
+    								(
+    									%s
+    								)
+    							VALUES
+    								(
+    									%s
+    								)
+    							;',
+    							v_r_rows.v_schema_name,
+    							v_r_rows.v_table_name,
+    							v_t_ins_fld,
+    							v_t_ins_val
+    							
+    						);
+    
+    				RAISE DEBUG '%',v_t_sql_rep;
+    			END IF;
+    			EXECUTE v_t_sql_rep;
+    			
+    			DELETE FROM sch_chameleon.t_log_replica
+    		    WHERE
+    			    i_id_event=v_r_rows.i_id_event
+    		    ;
+            END IF;
 		END LOOP;
 		IF v_r_rows IS NULL
 		THEN 
@@ -294,15 +321,33 @@ $BODY$
     						FROM 
     							sch_chameleon.t_replica_batch  
     						WHERE 
-    								    b_started 
+    								b_started 
     							AND 	b_processed 
     							AND     NOT b_replayed
     						ORDER BY 
     							ts_created 
     						LIMIT 1
 						)
+		RETURNING i_id_batch INTO v_i_id_batch
 		;
+		DELETE FROM sch_chameleon.t_log_replica
+    		    WHERE
+    			    i_id_batch=v_i_id_batch
+    		    ;
+		SELECT 
+			count(*)>0 
+			INTO
+				v_b_loop
+		FROM 
+			sch_chameleon.t_replica_batch  
+		WHERE 
+				b_started 
+			AND 	b_processed 
+			AND     NOT b_replayed
+		;
+
 		END IF;
+		
         RETURN v_b_loop	;
 	END;
 $BODY$
