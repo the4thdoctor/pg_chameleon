@@ -64,10 +64,12 @@ class sql_token:
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			if nullcons:
-				if nullcons.group(0)=="NULL" and col_dic["column_name"] not in self.pkey_cols:
-					col_dic["is_nullable"]="YES"
-				else:
+				pkey_list=self.pkey_cols.split(',')
+				pkey_list=[cln.strip() for cln in pkey_list]
+				if nullcons.group(0)=="NOT NULL" or col_dic["column_name"] in pkey_list:
 					col_dic["is_nullable"]="NO"
+				else:
+					col_dic["is_nullable"]="YES"
 			if autoinc:
 				col_dic["extra"]="auto_increment"
 			else :
@@ -89,7 +91,7 @@ class sql_token:
 			key_dic["index_name"]='PRIMARY'
 			key_dic["index_columns"]=pkey[0].replace('`', '"')
 			key_dic["non_unique"]=0
-			self.pkey_cols=pkey[0].replace('`', '"').split(',')
+			self.pkey_cols=key_dic["index_columns"]
 			idx_list.append(dict(key_dic.items()))
 			key_dic={}
 		if ukey:
