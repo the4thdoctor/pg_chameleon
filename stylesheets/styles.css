@@ -791,6 +791,18 @@ header p {
   background: url(../images/octocat-logo.png);
 }
 
+#chameleon_logo {
+  position: relative;
+  height: 357px;
+  width: 232px;
+  right: 0px;
+  top: 0px;
+  display: block;
+  margin: auto;
+  background: url(../images/logo.png);
+}
+
+
 section {
   width: 590px;
   padding: 30px 30px 50px 30px;
