@@ -1,6 +1,9 @@
 pg_chameleon
 ##############
 
+.. image:: images/pgchameleon.png
+
+
 
 Migration and replica from MySQL to PostgreSQL
 
