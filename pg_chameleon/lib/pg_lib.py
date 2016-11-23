@@ -519,8 +519,8 @@ class pg_engine:
 			query_idx=' '.join(self.idx_ddl[token["name"]])
 			query=query_type+query_table+query_idx
 			self.store_table(token["name"])
-		elif token["command"] == "ALTER TABLE":
-			query=self.build_alter_table(token)
+		#elif token["command"] == "ALTER TABLE":
+		#	query=self.build_alter_table(token)
 		return query 
 
 
