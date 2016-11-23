@@ -490,10 +490,13 @@ class pg_engine:
 
 	def build_alter_table(self, token):
 		""" the function builds the alter table statement from the token idata"""
+		alter_list=[]
 		query_cmd=token["command"]
-		for alter_cmd in token["alter_cmd"]:
-			print alter_cmd
-		
+		for alter_dic in token["alter_cmd"]:
+			if alter_dic["command"] == 'DROP COLUMN':
+				alter_cmd="%(command)s %(name)s" % alter_dic
+				if alter_cmd:
+					print alter_cmd
 		return "SELECT 1;"
 
 	def gen_query(self, token):

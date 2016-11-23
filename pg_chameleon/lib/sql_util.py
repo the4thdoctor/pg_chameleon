@@ -193,15 +193,19 @@ class sql_token:
 				#print alter_list
 				for alter_item in alter_list:
 					alter_dic={}
-					#print alter_item
-					alter_column=self.m_alter_column.search(alter_item[1])
-					if alter_column:
-						#print alter_column.groups()
+					if alter_item[0] == 'DROP COLUMN':
 						alter_dic["command"]=alter_item[0]
-						alter_dic["name"]=alter_column.group(1)
-						alter_dic["type"]=alter_column.group(2)
-						alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
-						#print alter_column.groups()
+						alter_dic["name"]=alter_item[1].strip().strip(',')
+
+					elif alter_item[0] == 'ADD COLUMN':
+						alter_column=self.m_alter_column.search(alter_item[1])
+						if alter_column:
+							#print alter_column.groups()
+							alter_dic["command"]=alter_item[0]
+							alter_dic["name"]=alter_column.group(1)
+							alter_dic["type"]=alter_column.group(2)
+							alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
+							#print alter_column.groups()
 					alter_cmd.append(alter_dic)
 				stat_dic["alter_cmd"]=alter_cmd
 			if stat_dic!={}:
