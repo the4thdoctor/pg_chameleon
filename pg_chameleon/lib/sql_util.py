@@ -38,7 +38,8 @@ class sql_token:
 		#re for query type
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
-		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+column.*,?)', re.IGNORECASE)
+		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+COLUMN.*,?)', re.IGNORECASE)
+		self.m_drop_primary=re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP)\s+COLUMN))(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*\((.*?)\)', re.IGNORECASE)
 		
@@ -169,7 +170,11 @@ class sql_token:
 			mcreate_table=self.m_create_table.match(stat_cleanup)
 			mdrop_table=self.m_drop_table.match(stat_cleanup)
 			malter_table=self.m_alter_table.match(stat_cleanup)
-			#print stat_cleanup
+			mdrop_primary=self.m_drop_primary.match(stat_cleanup)
+			print mdrop_primary
+			print " DDDD "+stat_cleanup
+			if mdrop_primary:
+				print mdrop_primary.groups()
 			if mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
