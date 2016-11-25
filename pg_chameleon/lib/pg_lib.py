@@ -490,14 +490,30 @@ class pg_engine:
 
 	def build_alter_table(self, token):
 		""" the function builds the alter table statement from the token idata"""
-		alter_list=[]
+		alter_cmd=[]
+		ddl_enum=[]
 		query_cmd=token["command"]
+		table_name=token["name"]
 		for alter_dic in token["alter_cmd"]:
 			if alter_dic["command"] == 'DROP COLUMN':
-				alter_cmd="%(command)s %(name)s" % alter_dic
-				if alter_cmd:
-					print alter_cmd
-		return "SELECT 1;"
+				alter_cmd.append("%(command)s %(name)s CASCADE" % alter_dic)
+			elif alter_dic["command"] == 'ADD COLUMN':
+				column_type=self.type_dictionary[alter_dic["type"]]
+				if column_type=="enum":
+					enum_name="enum_"+table_name+"_"+alter_dic["name"]
+					column_type=enum_name
+					sql_drop_enum='DROP TYPE IF EXISTS '+column_type+' CASCADE;'
+					sql_create_enum="CREATE TYPE "+column_type+" AS ENUM ("+alter_dic["dimension"]+");"
+					ddl_enum.append(sql_drop_enum)
+					ddl_enum.append(sql_create_enum)
+				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
+						column_type=column_type+"("+str(alter_dic["dimension"])+")"
+				alter_cmd.append("%s \"%s\" %s NULL" % (alter_dic["command"], alter_dic["name"], column_type))	
+				print ddl_enum
+				print alter_cmd
+		query=' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
+		print query
+		return query
 
 	def gen_query(self, token):
 		""" the function generates the ddl"""
@@ -519,8 +535,8 @@ class pg_engine:
 			query_idx=' '.join(self.idx_ddl[token["name"]])
 			query=query_type+query_table+query_idx
 			self.store_table(token["name"])
-		#elif token["command"] == "ALTER TABLE":
-		#	query=self.build_alter_table(token)
+		elif token["command"] == "ALTER TABLE":
+			query=self.build_alter_table(token)
 		return query 
 
 
