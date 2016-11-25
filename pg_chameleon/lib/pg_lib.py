@@ -106,8 +106,9 @@ class pg_engine:
 		self.pg_conn.pgsql_cur.execute(sql_create)
 		self.pg_conn.pgsql_cur.execute(sql_path)
 	
-	def store_table(self, table_name):
+	def register_table(self, table_name):
 		table_data=self.table_metadata[table_name]
+		self.logger.info("Registering table %s for replica" % (table_name,))
 		for index in table_data["indices"]:
 			if index["index_name"]=="PRIMARY":
 				sql_insert=""" INSERT INTO sch_chameleon.t_replica_tables 
@@ -128,6 +129,42 @@ class pg_engine:
 								"""
 				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema, index["index_columns"].strip()))	
 	
+	def unregister_table(self, table_name):
+		table_data=self.table_metadata[table_name]
+		self.logger.info("unregistering table %s for replica" % (table_name,))
+		for index in table_data["indices"]:
+			if index["index_name"]=="PRIMARY":
+				sql_insert=""" DELETE FROMsch_chameleon.t_replica_tables 
+											WHERE
+													v_table_name=%s
+												AND	v_schema_name %s
+										;
+								"""
+				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema))	
+	
+	def drop_primary_key(self, token):
+		self.logger.info("dropping primary key for table %s" % (token["name"],))
+		sql_gen="""
+						SELECT 
+							format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I;',
+							table_schema,
+							table_name,
+							constraint_name
+							),
+							table_name,
+							table_schema,
+							constraint_schema,
+							constraint_name
+						FROM 
+							information_schema.key_column_usage 
+						WHERE 
+								table_schema=%s 
+							AND table_name=%s;
+					"""
+		self.pg_conn.pgsql_cur.execute(sql_gen, (self.dest_schema, token["name"]))
+		value_check=self.pg_conn.pgsql_cur.fetchone()
+		cat_version=value_check[0]
+	
 	def create_tables(self):
 		
 			for table in self.table_ddl:
@@ -147,7 +184,7 @@ class pg_engine:
 				except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(sql_create)
-				self.store_table(table)
+				self.register_table(table)
 	
 	def create_indices(self):
 		self.logger.info("creating the indices")
@@ -509,10 +546,8 @@ class pg_engine:
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
 				alter_cmd.append("%s \"%s\" %s NULL" % (alter_dic["command"], alter_dic["name"], column_type))	
-				print ddl_enum
-				print alter_cmd
+				
 		query=' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
-		print query
 		return query
 
 	def gen_query(self, token):
@@ -534,9 +569,11 @@ class pg_engine:
 			query_table=self.table_ddl[token["name"]]
 			query_idx=' '.join(self.idx_ddl[token["name"]])
 			query=query_type+query_table+query_idx
-			self.store_table(token["name"])
+			self.register_table(token["name"])
 		elif token["command"] == "ALTER TABLE":
 			query=self.build_alter_table(token)
+		elif token["command"] == "DROP PRIMARY KEY":
+			self.drop_primary_key(token)
 		return query 
 
 
@@ -573,4 +610,4 @@ class pg_engine:
 									%s
 								)
 						"""
-		print self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
+		

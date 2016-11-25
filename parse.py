@@ -18,3 +18,4 @@ for token in token_sql.tokenised:
 		print token["alter_cmd"]
 	elif token["command"]=="CREATE TABLE":	
 		print token
+	print token

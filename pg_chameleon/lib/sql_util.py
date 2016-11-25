@@ -171,11 +171,11 @@ class sql_token:
 			mdrop_table=self.m_drop_table.match(stat_cleanup)
 			malter_table=self.m_alter_table.match(stat_cleanup)
 			mdrop_primary=self.m_drop_primary.match(stat_cleanup)
-			print mdrop_primary
-			print " DDDD "+stat_cleanup
+			
 			if mdrop_primary:
-				print mdrop_primary.groups()
-			if mcreate_table:
+				stat_dic["command"]="DROP PRIMARY KEY"
+				stat_dic["name"]=mdrop_primary.group(1).strip()
+			elif mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
 				stat_dic["name"]=mcreate_table.group(2)
