@@ -128,6 +128,23 @@ class pg_engine:
 								"""
 				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema, index["index_columns"].strip()))	
 	
+	def unregister_table(self, table_name):
+		self.logger.info("unregistering table %s from the replica catalog" % (table_name,))
+		sql_delete=""" DELETE FROM sch_chameleon.t_replica_tables 
+									WHERE
+											v_table_name=%s
+										AND	v_schema_name=%s
+								RETURNING i_id_table
+								;
+						"""
+		self.pg_conn.pgsql_cur.execute(sql_delete, (table_name, self.pg_conn.dest_schema))	
+		removed_id=self.pg_conn.pgsql_cur.fetchone()
+		table_id=removed_id[0]
+		self.logger.info("renaming table %s to %s_%s" % (table_name, table_name, table_id))
+		sql_rename="""ALTER TABLE IF EXISTS "%s"."%s" rename to "%s_%s"; """ % (self.pg_conn.dest_schema, table_name, table_name, table_id)
+		self.logger.debug(sql_rename)
+		self.pg_conn.pgsql_cur.execute(sql_rename)	
+	
 	def create_tables(self):
 		
 			for table in self.table_ddl:
@@ -509,11 +526,32 @@ class pg_engine:
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
 				alter_cmd.append("%s \"%s\" %s NULL" % (alter_dic["command"], alter_dic["name"], column_type))	
-				print ddl_enum
-				print alter_cmd
+				
 		query=' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
-		print query
 		return query
+
+	def drop_primary_key(self, token):
+		self.logger.info("dropping primary key for table %s" % (token["name"],))
+		sql_gen="""
+						SELECT  DISTINCT
+							format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I;',
+							table_schema,
+							table_name,
+							constraint_name
+							)
+						FROM 
+							information_schema.key_column_usage 
+						WHERE 
+								table_schema=%s 
+							AND table_name=%s;
+					"""
+		self.pg_conn.pgsql_cur.execute(sql_gen, (self.pg_conn.dest_schema, token["name"]))
+		value_check=self.pg_conn.pgsql_cur.fetchone()
+		if value_check:
+			sql_drop=value_check[0]
+			self.pg_conn.pgsql_cur.execute(sql_drop)
+			self.unregister_table(token["name"])
+		
 
 	def gen_query(self, token):
 		""" the function generates the ddl"""
@@ -537,6 +575,8 @@ class pg_engine:
 			self.store_table(token["name"])
 		elif token["command"] == "ALTER TABLE":
 			query=self.build_alter_table(token)
+		elif token["command"] == "DROP PRIMARY KEY":
+			self.drop_primary_key(token)
 		return query 
 
 

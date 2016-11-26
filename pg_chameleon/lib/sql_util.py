@@ -41,6 +41,7 @@ class sql_token:
 		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+column.*,?)', re.IGNORECASE)
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP)\s+COLUMN))(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*\((.*?)\)', re.IGNORECASE)
+		self.m_drop_primary=re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
 		
 	def reset_lists(self):
 		self.tokenised=[]
@@ -169,6 +170,8 @@ class sql_token:
 			mcreate_table=self.m_create_table.match(stat_cleanup)
 			mdrop_table=self.m_drop_table.match(stat_cleanup)
 			malter_table=self.m_alter_table.match(stat_cleanup)
+			mdrop_primary=self.m_drop_primary.match(stat_cleanup)
+			
 			#print stat_cleanup
 			if mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
@@ -182,7 +185,6 @@ class sql_token:
 				stat_dic["command"]=command
 				stat_dic["name"]=mdrop_table.group(2)
 			elif malter_table:
-				
 				alter_cmd=[]
 				alter_stat=malter_table.group(0) + ','
 				stat_dic["command"]=malter_table.group(1)
@@ -197,7 +199,7 @@ class sql_token:
 					command = ' '.join(alter_item[0].split())
 					if command == 'DROP COLUMN':
 						alter_dic["command"]=command
-						alter_dic["name"]=alter_item[1].strip().strip(',').strip('`')
+						alter_dic["name"]=alter_item[1].strip().strip(',').replace('`', '').strip()
 
 					elif command == 'ADD COLUMN':
 						alter_column=self.m_alter_column.search(alter_item[1])
@@ -209,6 +211,11 @@ class sql_token:
 							alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 							#print alter_column.groups()
 					alter_cmd.append(alter_dic)
-				stat_dic["alter_cmd"]=alter_cmd
+					stat_dic["alter_cmd"]=alter_cmd
+			elif mdrop_primary:
+				stat_dic["command"]="DROP PRIMARY KEY"
+				stat_dic["name"]=mdrop_primary.group(1).strip().strip(',').replace('`', '').strip()
+			
+				
 			if stat_dic!={}:
 				self.tokenised.append(stat_dic)
