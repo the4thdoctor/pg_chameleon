@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(name='pg_chameleon',
-	version='0.1',
-	description='Migration and replica extension from mysql to postgresql',
+	version='1.0 ALPHA1',
+	description='MySql to PostgreSQL replication system',
 	url='https://github.com/the4thdoctor/pg_chameleon',
 	author='Federico Campoli',
 	author_email='4thdoctor.gallifrey@gmail.com',
