@@ -4,7 +4,7 @@
 
 
 
-Current version: 0.1 DEVEL
+Current version: 1.0 ALPHA1
 
 .. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
     :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
@@ -32,7 +32,6 @@ Requirements
 * `mysql-replication==0.9 <https://github.com/noplay/python-mysql-replication>`_
 * `psycopg2==2.6.2 <https://github.com/psycopg/psycopg2>`_
 * `PyYAML==3.11 <https://github.com/yaml/pyyaml>`_
-* `daemonize==2.4.7 <https://pypi.python.org/pypi/daemonize/>`_
 * `sphinx==1.4.6 <http://www.sphinx-doc.org/en/stable/>`_
 * `sphinx-autobuild==0.6.0 <https://github.com/GaretJax/sphinx-autobuild>`_
 
@@ -107,6 +106,7 @@ Add the configuration for the replica to my.cnf (requires mysql restart)
 .. code-block:: none
     
     binlog_format= ROW
+    binlog_row_image=full
     log-bin = mysql-bin
     server-id = 1
 
@@ -228,6 +228,8 @@ What does seems to work
 * Copy the data from MySQL to PostgreSQL on the fly
 * Replay of the replicated data in PostgreSQL
 * Create and drop table replica
+* Alter table, add drop column
+* Alter table drop primary key (the table is renamed on postgres)
 
 What does'n work
 ..............................
@@ -237,7 +239,6 @@ What does'n work
 Test please!
 ..............................
 
-This software is in a very early stage of development. 
 Please submit the issues you find and please **do not use it in production** unless you know what you're doing.
 
 
