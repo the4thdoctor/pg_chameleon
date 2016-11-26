@@ -130,40 +130,21 @@ class pg_engine:
 				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema, index["index_columns"].strip()))	
 	
 	def unregister_table(self, table_name):
-		table_data=self.table_metadata[table_name]
-		self.logger.info("unregistering table %s for replica" % (table_name,))
-		for index in table_data["indices"]:
-			if index["index_name"]=="PRIMARY":
-				sql_insert=""" DELETE FROMsch_chameleon.t_replica_tables 
-											WHERE
-													v_table_name=%s
-												AND	v_schema_name %s
-										;
-								"""
-				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema))	
-	
-	def drop_primary_key(self, token):
-		self.logger.info("dropping primary key for table %s" % (token["name"],))
-		sql_gen="""
-						SELECT 
-							format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I;',
-							table_schema,
-							table_name,
-							constraint_name
-							),
-							table_name,
-							table_schema,
-							constraint_schema,
-							constraint_name
-						FROM 
-							information_schema.key_column_usage 
-						WHERE 
-								table_schema=%s 
-							AND table_name=%s;
-					"""
-		self.pg_conn.pgsql_cur.execute(sql_gen, (self.dest_schema, token["name"]))
-		value_check=self.pg_conn.pgsql_cur.fetchone()
-		cat_version=value_check[0]
+		self.logger.info("unregistering table %s from the replica catalog" % (table_name,))
+		sql_delete=""" DELETE FROM sch_chameleon.t_replica_tables 
+									WHERE
+											v_table_name=%s
+										AND	v_schema_name=%s
+								RETURNING i_id_table
+								;
+						"""
+		self.pg_conn.pgsql_cur.execute(sql_delete, (table_name, self.pg_conn.dest_schema))	
+		removed_id=self.pg_conn.pgsql_cur.fetchone()
+		table_id=removed_id[0]
+		self.logger.info("renaming table %s to %s_%s" % (table_name, table_name, table_id))
+		sql_rename="""ALTER TABLE IF EXISTS "%s"."%s" rename to "%s_%s"; """ % (self.pg_conn.dest_schema, table_name, table_name, table_id)
+		self.logger.debug(sql_rename)
+		self.pg_conn.pgsql_cur.execute(sql_rename)	
 	
 	def create_tables(self):
 		
@@ -549,6 +530,29 @@ class pg_engine:
 				
 		query=' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
 		return query
+
+	def drop_primary_key(self, token):
+		self.logger.info("dropping primary key for table %s" % (token["name"],))
+		sql_gen="""
+						SELECT  DISTINCT
+							format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I;',
+							table_schema,
+							table_name,
+							constraint_name
+							)
+						FROM 
+							information_schema.key_column_usage 
+						WHERE 
+								table_schema=%s 
+							AND table_name=%s;
+					"""
+		self.pg_conn.pgsql_cur.execute(sql_gen, (self.pg_conn.dest_schema, token["name"]))
+		value_check=self.pg_conn.pgsql_cur.fetchone()
+		if value_check:
+			sql_drop=value_check[0]
+			self.pg_conn.pgsql_cur.execute(sql_drop)
+			self.unregister_table(token["name"])
+		
 
 	def gen_query(self, token):
 		""" the function generates the ddl"""
