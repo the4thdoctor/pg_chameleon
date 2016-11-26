@@ -197,14 +197,14 @@ class sql_token:
 					command = ' '.join(alter_item[0].split())
 					if command == 'DROP COLUMN':
 						alter_dic["command"]=command
-						alter_dic["name"]=alter_item[1].strip().strip(',')
+						alter_dic["name"]=alter_item[1].strip().strip(',').strip('`')
 
 					elif command == 'ADD COLUMN':
 						alter_column=self.m_alter_column.search(alter_item[1])
 						if alter_column:
 							#print alter_column.groups()
 							alter_dic["command"]=command
-							alter_dic["name"]=alter_column.group(1)
+							alter_dic["name"]=alter_column.group(1).strip().strip('`')
 							alter_dic["type"]=alter_column.group(2).lower()
 							alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 							#print alter_column.groups()
