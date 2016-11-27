@@ -155,8 +155,9 @@ class mysql_engine:
 						close_batch=True
 					
 				self.sql_token.reset_lists()
-				my_stream.close()
-				return [master_data, close_batch]
+				if close_batch:
+					my_stream.close()
+					return [master_data, close_batch]
 
 				
 			else:
