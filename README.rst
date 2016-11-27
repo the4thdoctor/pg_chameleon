@@ -4,13 +4,55 @@
 
 
 
-Current version: 0.1 DEVEL
+Current version: 1.0.alpha.1
 
 .. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
     :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
 `Documentation available at readthedocs <http://pg-chameleon.readthedocs.io/en/latest/>`_
+
+What does it work
+..............................
+* Read the schema specifications from MySQL and replicate the same structure it into PostgreSQL
+* Locks the tables in mysql and gets the master coordinates
+* Create primary keys and indices on PostgreSQL
+* Write in PostgreSQL frontier table
+
+What does seem to work
+..............................
+* Enum support
+* Blob import into bytea (HEX conversion)
+* Read replica from MySQL
+* Copy the data from MySQL to PostgreSQL on the fly
+* Replay of the replicated data in PostgreSQL
+* Create and drop table replica
+* Alter table ADD/DROP column replica
+* Alter table DROP PRIMARY KEY. The table on PostgreSQL is renamed and removed from the replica.
+
+
+What doesn't work
+..............................
+* Full DDL replica 
+* Replica monitoring 
+* Replay statistics
+
+
+DDL replica limitations
+..............................
+DDL and DML mixed in the same transaction are not decoded in the right order. 
+This can result in a replica breakage caused by a wrong jsonb descriptor if
+the DML change the data on the same table modified by the DDL.
+I know the issue and I'm working on a solution.
+
+
+
+Test please!
+..............................
+
+* Please submit the issues you find.
+* Bear in mind this is an alpha release. **if you use the software in production** keep an eye on the process to ensure the data is correctly replicated.
+
 
 Setup 
 **********
@@ -210,35 +252,8 @@ The library is being developed on Linux Slackware 14.2 with python 2.7.6.
 The databases source and target are tested on FreeBSD 10.3
 
 * MySQL: 5.6.33 
-* PostgreSQL: 9.5.5 
+* PostgreSQL: 9.5.4
   
-What does it work
-..............................
-* Read the schema specifications from MySQL and replicate the same structure it into PostgreSQL
-* Locks the tables in mysql and gets the master coordinates
-* Create primary keys and indices on PostgreSQL
-* Write in PostgreSQL frontier table
-
- 
-What does seems to work
-..............................
-* Enum support
-* Blob import into bytea (needs testing)
-* Read replica from MySQL
-* Copy the data from MySQL to PostgreSQL on the fly
-* Replay of the replicated data in PostgreSQL
-* Create and drop table replica
-
-What does'n work
-..............................
-* Full DDL replica 
-* Replica monitoring 
-
-Test please!
-..............................
-
-This software is in a very early stage of development. 
-Please submit the issues you find and please **do not use it in production** unless you know what you're doing.
 
 
 
