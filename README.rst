@@ -4,7 +4,7 @@
 
 
 
-Current version: 1.0.alpha.1
+Current version: 1.0-alpha.1
 
 .. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
     :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
