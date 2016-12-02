@@ -147,26 +147,28 @@ class replica_engine:
 	def check_running(self):
 		""" checks if the process is running. saves the pid file if not """
 		
-			
+		return_to_os=False 
 		try:
 			file_pid=open(self.pid_file,'rb')
 			pid=file_pid.read()
 			file_pid.close()
 			os.kill(int(pid),0)
-			
 			self.logger.info("replica process already running with pid %s" % (pid, ))
-			
+			return_to_os=True
 		except:
 			pid=os.getpid()
 			file_pid=open(self.pid_file,'wb')
 			file_pid.write(str(pid))
 			file_pid.close()
-		sys.exit(3)	
+			return_to_os=False
+		return return_to_os
+		
 	def run_replica(self):
 		"""
 			Runs the replica loop. 
 		"""
-		self.check_running()
+		if self.check_running():
+			sys.exit()
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
