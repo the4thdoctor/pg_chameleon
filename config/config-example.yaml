@@ -18,6 +18,10 @@ hexify:
     - 'longblob'
     - 'binary'
 
+ 
+pid_dir: 'pid/'
+
+
 log_dir: 'logs/'
 log_level: 'debug'
 log_dest: 'stdout'

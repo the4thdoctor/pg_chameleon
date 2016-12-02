@@ -45,6 +45,7 @@ class global_config:
 		dt=datetime.now()
 		log_sfx=dt.strftime('%Y%m%d-%H%M%S')
 		self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
+		self.pid_file=confdic["pid_dir"]+"/"+command+".pid"
 		copy_max_memory=str(confdic["copy_max_memory"])[:-1]
 		copy_scale=str(confdic["copy_max_memory"])[-1]
 		try:
@@ -100,6 +101,8 @@ class replica_engine:
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
 		self.sleep_loop=self.global_config.sleep_loop
 		
+		self.pid_file=self.global_config.pid_file
+		
 	def  create_schema(self):
 		"""
 			Creates the database schema on PostgreSQL using the metadata extracted from MySQL.
@@ -130,7 +133,6 @@ class replica_engine:
 		"""
 			Upgrade the service schema to the latest version.
 			
-			:todo: everything!
 		"""
 		self.pg_eng.upgrade_service_schema()
 		
@@ -142,10 +144,29 @@ class replica_engine:
 		self.logger.info("Dropping the service schema")
 		self.pg_eng.drop_service_schema()
 	
+	def check_running(self):
+		""" checks if the process is running. saves the pid file if not """
+		
+			
+		try:
+			file_pid=open(self.pid_file,'rb')
+			pid=file_pid.read()
+			file_pid.close()
+			os.kill(int(pid),0)
+			
+			self.logger.info("replica process already running with pid %s" % (pid, ))
+			
+		except:
+			pid=os.getpid()
+			file_pid=open(self.pid_file,'wb')
+			file_pid.write(str(pid))
+			file_pid.close()
+		sys.exit(3)	
 	def run_replica(self):
 		"""
 			Runs the replica loop. 
 		"""
+		self.check_running()
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
