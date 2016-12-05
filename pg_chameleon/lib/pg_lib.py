@@ -5,6 +5,7 @@ import json
 import datetime
 import decimal
 import time
+import binascii
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
 		if isinstance(obj, datetime.time) or isinstance(obj, datetime.datetime) or  isinstance(obj, datetime.date) or isinstance(obj, decimal.Decimal):
@@ -81,7 +82,7 @@ class pg_engine:
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.5'
+		self.cat_version='0.6'
 		self.cat_sql=[
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -89,6 +90,7 @@ class pg_engine:
 									{'version':'0.3','script': 'upgrade/cat_0.3.sql'}, 
 									{'version':'0.4','script': 'upgrade/cat_0.4.sql'}, 
 									{'version':'0.5','script': 'upgrade/cat_0.5.sql'}, 
+									{'version':'0.6','script': 'upgrade/cat_0.6.sql'}, 
 							]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -305,6 +307,7 @@ class pg_engine:
 					file_schema=open(self.sql_dir+script_schema, 'rb')
 					sql_schema=file_schema.read()
 					file_schema.close()
+					print "================================================="
 					self.pg_conn.pgsql_cur.execute(sql_schema)
 				
 				
@@ -444,8 +447,55 @@ class pg_engine:
 		self.pg_conn.pgsql_cur.execute(sql_batch)
 		return self.pg_conn.pgsql_cur.fetchall()
 	
+	def insert_batch(self,group_insert):
+		self.logger.debug("starting insert loop")
+		for row_data in group_insert:
+			global_data=row_data["global_data"]
+			event_data=row_data["event_data"]
+			event_update=row_data["event_update"]
+			log_table=global_data["log_table"]
+			sql_insert="""
+									INSERT INTO sch_chameleon."""+log_table+"""
+									(
+										i_id_batch, 
+										v_table_name, 
+										v_schema_name, 
+										enm_binlog_event, 
+										t_binlog_name, 
+										i_binlog_position, 
+										jsb_event_data,
+										jsb_event_update
+									)
+									VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+									;						
+							"""
+			try:
+				self.pg_conn.pgsql_cur.execute(sql_insert,(
+																				global_data["batch_id"], 
+																				global_data["table"],  
+																				global_data["schema"], 
+																				global_data["action"], 
+																				global_data["binlog"], 
+																				global_data["logpos"], 
+																				json.dumps(event_data, cls=pg_encoder), 
+																				json.dumps(event_update, cls=pg_encoder))
+																	)
+			except:
+				self.logger.error("error when storing event data. saving the discarded row")
+				self.save_discarded_row(row_data,global_data["batch_id"])
+	
+	def save_discarded_row(self,row_data,batch_id):
+		hex_row=binascii.hexlify(str(row_data))
+		sql_save="""INSERT INTO sch_chameleon.t_discarded_rows(
+											i_id_batch, 
+											by_row_data
+											)
+						VALUES (%s,%s);
+						"""
+		self.pg_conn.pgsql_cur.execute(sql_save,(batch_id,hex_row))
+	
 	def write_batch(self, group_insert):
-		self.logger.debug("saving replica batch data")
+		self.logger.debug("writing replica batch data")
 		insert_list=[]
 		for row_data in group_insert:
 			global_data=row_data["global_data"]
@@ -480,8 +530,11 @@ class pg_engine:
 								VALUES
 									"""+ ','.join(insert_list )+"""
 						"""
-		self.pg_conn.pgsql_cur.execute(sql_insert)
-		
+		try:
+			self.pg_conn.pgsql_cur.execute(sql_insert)
+		except:
+			self.logger.error("error when saving batch data, fallback to inserts")
+			self.insert_batch(group_insert)
 		
 	def set_batch_processed(self, id_batch):
 		self.logger.debug("updating batch %s to processed" % (id_batch, ))

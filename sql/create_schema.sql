@@ -21,8 +21,6 @@ CREATE TABLE sch_chameleon.t_replica_batch
   ts_processed timestamp without time zone ,
   ts_replayed timestamp without time zone ,
   v_log_table character varying(100) NOT NULL,
-  i_replayed bigint NULL,
-  i_skipped bigint NULL,
   CONSTRAINT pk_t_batch PRIMARY KEY (i_id_batch)
 )
 WITH (
