@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import logging
+import smtplib
 from datetime import datetime
 class global_config:
 	"""
@@ -184,3 +185,39 @@ class replica_engine:
 		"""
 		self.my_eng.copy_table_data(self.pg_eng, self.global_config.copy_max_memory)
 		self.pg_eng.save_master_status(self.my_eng.master_status)
+
+
+class email_lib:
+	"""
+		class to manage email alerts sent in specific events.
+	"""
+	def __init__(self, config, logger):
+		self.config=config
+		self.smtp_server=None
+		self.logger=logger
+	
+	def connect_smtp(self):
+		self.logger.info("establishing connection with to SMTP server")
+		try:
+			self.smtp_server = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
+			if self.config["smtp_tls"]:
+				self.smtp_server.starttls()
+			if self.config["smtp_login"]:
+				self.smtp_server.login(self.config["smtp_username"], self.config["smtp_password"])
+			
+		except:
+			self.logger.error("could not connect to the SMTP server")
+			self.smtp_server=None
+	
+		
+	def disconnect_smtp(self):
+		if self.smtp_server:
+			self.logger.info("disconnecting from SMTP server")
+			self.smtp_server.quit()
+	
+	def send_restarted_replica(self):
+		"""
+			sends the email when restarting the replica process
+		"""
+		self.connect_smtp()
+		self.disconnect_smtp()
