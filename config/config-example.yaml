@@ -18,6 +18,10 @@ hexify:
     - 'longblob'
     - 'binary'
 
+ 
+pid_dir: 'pid/'
+
+
 log_dir: 'logs/'
 log_level: 'debug'
 log_dest: 'stdout'
@@ -48,3 +52,14 @@ pg_conn:
     user: replication_username
     password: never_commit_passwords
  
+ #email configuration
+email_config: 
+    smtp_use_password: Yes
+    smtp_host: 'smtp.foo.bar'
+    smtp_port: 587
+    smtp_username: login@foo.bar
+    smtp_password: never_commit_passwords
+    smtp_use_tls: Yes
+    email_from: pgobfuscator@foo.bar
+    recipients:
+        - alert@foo.bar

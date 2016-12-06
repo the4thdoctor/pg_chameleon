@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import logging
+import smtplib
 from datetime import datetime
 class global_config:
 	"""
@@ -21,47 +22,53 @@ class global_config:
 		"""
 			Class  constructor.
 		"""
+		dt=datetime.now()
+		log_sfx=dt.strftime('%Y%m%d-%H%M%S')
 		config_file='config/config.yaml'
+		
 		if not os.path.isfile(config_file):
 			print "**FATAL - configuration file missing **\ncopy config/config-example.yaml to "+config_file+" and set your connection settings."
 			sys.exit()
 		conffile=open(config_file, 'rb')
 		confdic=yaml.load(conffile.read())
 		conffile.close()
-		self.mysql_conn=confdic["mysql_conn"]
-		self.pg_conn=confdic["pg_conn"]
-		self.my_database=confdic["my_database"]
-		self.my_charset=confdic["my_charset"]
-		self.pg_charset=confdic["pg_charset"]
-		self.pg_database=confdic["pg_database"]
-		self.my_server_id=confdic["my_server_id"]
-		self.replica_batch_size=confdic["replica_batch_size"]
-		self.tables_limit=confdic["tables_limit"]
-		self.copy_mode=confdic["copy_mode"]
-		self.hexify=confdic["hexify"]
-		self.log_level=confdic["log_level"]
-		self.log_dest=confdic["log_dest"]
-		self.sleep_loop=confdic["sleep_loop"]
-		dt=datetime.now()
-		log_sfx=dt.strftime('%Y%m%d-%H%M%S')
-		self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
-		copy_max_memory=str(confdic["copy_max_memory"])[:-1]
-		copy_scale=str(confdic["copy_max_memory"])[-1]
 		try:
-			int(copy_scale)
-			copy_max_memory=confdic["copy_max_memory"]
-		except:
-			if copy_scale=='k':
-				copy_max_memory=str(int(copy_max_memory)*1024)
-			elif copy_scale=='M':
-				copy_max_memory=str(int(copy_max_memory)*1024*1024)
-			elif copy_scale=='G':
-				copy_max_memory=str(int(copy_max_memory)*1024*1024*1024)
-			else:
-				print "**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes."
-				sys.exit()
-		self.copy_max_memory=copy_max_memory
-	
+			self.mysql_conn=confdic["mysql_conn"]
+			self.pg_conn=confdic["pg_conn"]
+			self.my_database=confdic["my_database"]
+			self.my_charset=confdic["my_charset"]
+			self.pg_charset=confdic["pg_charset"]
+			self.pg_database=confdic["pg_database"]
+			self.my_server_id=confdic["my_server_id"]
+			self.replica_batch_size=confdic["replica_batch_size"]
+			self.tables_limit=confdic["tables_limit"]
+			self.copy_mode=confdic["copy_mode"]
+			self.hexify=confdic["hexify"]
+			self.log_level=confdic["log_level"]
+			self.log_dest=confdic["log_dest"]
+			self.sleep_loop=confdic["sleep_loop"]
+			
+			self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
+			self.pid_file=confdic["pid_dir"]+"/"+command+".pid"
+			copy_max_memory=str(confdic["copy_max_memory"])[:-1]
+			copy_scale=str(confdic["copy_max_memory"])[-1]
+			try:
+				int(copy_scale)
+				copy_max_memory=confdic["copy_max_memory"]
+			except:
+				if copy_scale=='k':
+					copy_max_memory=str(int(copy_max_memory)*1024)
+				elif copy_scale=='M':
+					copy_max_memory=str(int(copy_max_memory)*1024*1024)
+				elif copy_scale=='G':
+					copy_max_memory=str(int(copy_max_memory)*1024*1024*1024)
+				else:
+					print "**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes."
+					sys.exit()
+			self.copy_max_memory=copy_max_memory
+		except KeyError as key_missing:
+			print 'Missing key %s in configuration file. check config/config-example.yaml for reference' % (key_missing, )
+			sys.exit()
 
 		
 class replica_engine:
@@ -100,6 +107,8 @@ class replica_engine:
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
 		self.sleep_loop=self.global_config.sleep_loop
 		
+		self.pid_file=self.global_config.pid_file
+		
 	def  create_schema(self):
 		"""
 			Creates the database schema on PostgreSQL using the metadata extracted from MySQL.
@@ -130,7 +139,6 @@ class replica_engine:
 		"""
 			Upgrade the service schema to the latest version.
 			
-			:todo: everything!
 		"""
 		self.pg_eng.upgrade_service_schema()
 		
@@ -142,10 +150,33 @@ class replica_engine:
 		self.logger.info("Dropping the service schema")
 		self.pg_eng.drop_service_schema()
 	
+	def check_running(self):
+		""" checks if the process is running. saves the pid file if not """
+		
+		return_to_os=False 
+		try:
+			file_pid=open(self.pid_file,'rb')
+			pid=file_pid.read()
+			file_pid.close()
+			os.kill(int(pid),0)
+			print "replica process already running with pid %s" % (pid, )
+			return_to_os=True
+			if self.global_config.log_dest=='file':
+				os.remove(self.global_config.log_file)
+		except:
+			pid=os.getpid()
+			file_pid=open(self.pid_file,'wb')
+			file_pid.write(str(pid))
+			file_pid.close()
+			return_to_os=False
+		return return_to_os
+		
 	def run_replica(self):
 		"""
 			Runs the replica loop. 
 		"""
+		if self.check_running():
+			sys.exit()
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
@@ -161,3 +192,39 @@ class replica_engine:
 		"""
 		self.my_eng.copy_table_data(self.pg_eng, self.global_config.copy_max_memory)
 		self.pg_eng.save_master_status(self.my_eng.master_status)
+
+
+class email_lib:
+	"""
+		class to manage email alerts sent in specific events.
+	"""
+	def __init__(self, config, logger):
+		self.config=config
+		self.smtp_server=None
+		self.logger=logger
+	
+	def connect_smtp(self):
+		self.logger.info("establishing connection with to SMTP server")
+		try:
+			self.smtp_server = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
+			if self.config["smtp_tls"]:
+				self.smtp_server.starttls()
+			if self.config["smtp_login"]:
+				self.smtp_server.login(self.config["smtp_username"], self.config["smtp_password"])
+			
+		except:
+			self.logger.error("could not connect to the SMTP server")
+			self.smtp_server=None
+	
+		
+	def disconnect_smtp(self):
+		if self.smtp_server:
+			self.logger.info("disconnecting from SMTP server")
+			self.smtp_server.quit()
+	
+	def send_restarted_replica(self):
+		"""
+			sends the email when restarting the replica process
+		"""
+		self.connect_smtp()
+		self.disconnect_smtp()

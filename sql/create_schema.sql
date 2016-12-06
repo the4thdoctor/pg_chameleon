@@ -3,8 +3,9 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '0.5'::TEXT t_version
+	SELECT '0.6'::TEXT t_version
 ;
+
 
 CREATE TYPE sch_chameleon.en_binlog_event 
 	AS ENUM ('delete', 'update', 'insert','ddl');
@@ -23,6 +24,7 @@ CREATE TABLE sch_chameleon.t_replica_batch
   v_log_table character varying(100) NOT NULL,
   i_replayed bigint NULL,
   i_skipped bigint NULL,
+  i_ddl bigint NULL,
   CONSTRAINT pk_t_batch PRIMARY KEY (i_id_batch)
 )
 WITH (
@@ -92,6 +94,18 @@ WITH (
 CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
 	ON sch_chameleon.t_replica_tables (v_table_name,v_schema_name);
 
+
+	
+CREATE TABLE sch_chameleon.t_discarded_rows
+(
+	i_id_row		bigserial,
+	i_id_batch	bigint NOT NULL,
+	ts_discard	timestamp with time zone NOT NULL DEFAULT clock_timestamp(),
+	t_row_data	text,
+	CONSTRAINT pk_t_discarded_rows PRIMARY KEY (i_id_row)
+)
+;
+	
 	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer)
 RETURNS BOOLEAN AS
@@ -110,13 +124,17 @@ $BODY$
 		v_t_ddl		    text;
 		v_b_loop	    boolean;
 		v_i_id_batch	integer;
+		v_i_replayed integer;
+		v_i_skipped integer;
+		
 	BEGIN
 	    v_b_loop:=True;
+		v_i_replayed=0;
 		FOR v_r_rows IN WITH t_batch AS
 					(
 						SELECT 
 							i_id_batch 
-						FROM 
+						FROM ONLY
 							sch_chameleon.t_replica_batch  
 						WHERE 
 								    b_started 
@@ -178,6 +196,12 @@ $BODY$
 			    WHERE
 				    i_id_event=v_r_rows.i_id_event
 			    ;
+				UPDATE ONLY sch_chameleon.t_replica_batch  
+				SET 
+					i_ddl=coalesce(i_ddl,0)+1
+				WHERE
+					i_id_batch=v_r_rows.i_id_batch
+				;
             ELSE
     			SELECT 
     				array_agg(key) evt_fields,
@@ -303,15 +327,30 @@ $BODY$
     		    WHERE
     			    i_id_event=v_r_rows.i_id_event
     		    ;
+				v_i_replayed=v_i_replayed+1;
+				v_i_id_batch=v_r_rows.i_id_batch;
+				
             END IF;
 		END LOOP;
+		IF v_i_replayed>0
+		THEN
+			UPDATE ONLY sch_chameleon.t_replica_batch  
+			SET 
+				i_replayed=v_i_replayed,
+				ts_replayed=clock_timestamp()
+				
+			WHERE
+				i_id_batch=v_i_id_batch
+			;
+		END IF;
+		
 		IF v_r_rows IS NULL
 		THEN 
 		    RAISE DEBUG 'v_r_rows: %',v_r_rows.i_id_event; 
 		    v_b_loop=False;
 		    
 		
-		UPDATE sch_chameleon.t_replica_batch  
+		UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 
 				b_replayed=True,
 				ts_replayed=clock_timestamp()
@@ -320,7 +359,7 @@ $BODY$
 			i_id_batch=(
     			            SELECT 
     							i_id_batch 
-    						FROM 
+    						FROM ONLY
     							sch_chameleon.t_replica_batch  
     						WHERE 
     								b_started 
@@ -332,15 +371,24 @@ $BODY$
 						)
 		RETURNING i_id_batch INTO v_i_id_batch
 		;
+
 		DELETE FROM sch_chameleon.t_log_replica
     		    WHERE
     			    i_id_batch=v_i_id_batch
     		    ;
+				
+		GET DIAGNOSTICS v_i_skipped = ROW_COUNT;
+		UPDATE ONLY sch_chameleon.t_replica_batch  
+			SET 
+				i_skipped=v_i_skipped
+			WHERE
+				i_id_batch=v_i_id_batch
+			;
 		SELECT 
 			count(*)>0 
 			INTO
 				v_b_loop
-		FROM 
+		FROM ONLY
 			sch_chameleon.t_replica_batch  
 		WHERE 
 				b_started 

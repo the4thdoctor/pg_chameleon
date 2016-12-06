@@ -11,13 +11,15 @@ ALTER TABLE sch_chameleon.t_replica_batch
 	;
 
 	
-CREATE TABLE sch_chameleon.t_replica_batch_archive
+CREATE TABLE sch_chameleon.t_discarded_rows
 (
-  CONSTRAINT pk_t_batch_archive PRIMARY KEY (i_id_batch)
+	i_id_row		bigserial,
+	i_id_batch	bigint NOT NULL,
+	ts_discard	timestamp with time zone NOT NULL DEFAULT clock_timestamp(),
+	t_row_data	text,
+	CONSTRAINT pk_t_discarded_rows PRIMARY KEY (i_id_row)
 )
-INHERITS (sch_chameleon.t_replica_batch)
 ;
-
 	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer)
 RETURNS BOOLEAN AS
@@ -108,6 +110,12 @@ $BODY$
 			    WHERE
 				    i_id_event=v_r_rows.i_id_event
 			    ;
+				UPDATE ONLY sch_chameleon.t_replica_batch  
+				SET 
+					i_ddl=coalesce(i_ddl,0)+1
+				WHERE
+					i_id_batch=v_r_rows.i_id_batch
+				;
             ELSE
     			SELECT 
     				array_agg(key) evt_fields,
