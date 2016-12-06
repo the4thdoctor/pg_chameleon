@@ -5,7 +5,7 @@ import json
 import datetime
 import decimal
 import time
-import binascii
+import base64
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
 		if isinstance(obj, datetime.time) or isinstance(obj, datetime.datetime) or  isinstance(obj, datetime.date) or isinstance(obj, decimal.Decimal):
@@ -470,6 +470,7 @@ class pg_engine:
 									;						
 							"""
 			try:
+				raise
 				self.pg_conn.pgsql_cur.execute(sql_insert,(
 																				global_data["batch_id"], 
 																				global_data["table"],  
@@ -485,14 +486,15 @@ class pg_engine:
 				self.save_discarded_row(row_data,global_data["batch_id"])
 	
 	def save_discarded_row(self,row_data,batch_id):
-		hex_row=binascii.hexlify(str(row_data))
+		print str(row_data)
+		b64_row=base64.b64encode(str(row_data))
 		sql_save="""INSERT INTO sch_chameleon.t_discarded_rows(
 											i_id_batch, 
-											by_row_data
+											t_row_data
 											)
 						VALUES (%s,%s);
 						"""
-		self.pg_conn.pgsql_cur.execute(sql_save,(batch_id,hex_row))
+		self.pg_conn.pgsql_cur.execute(sql_save,(batch_id,b64_row))
 	
 	def write_batch(self, group_insert):
 		self.logger.debug("writing replica batch data")
@@ -531,6 +533,7 @@ class pg_engine:
 									"""+ ','.join(insert_list )+"""
 						"""
 		try:
+			raise
 			self.pg_conn.pgsql_cur.execute(sql_insert)
 		except:
 			self.logger.error("error when saving batch data, fallback to inserts")

@@ -16,7 +16,7 @@ CREATE TABLE sch_chameleon.t_discarded_rows
 	i_id_row		bigserial,
 	i_id_batch	bigint NOT NULL,
 	ts_discard	timestamp with time zone NOT NULL DEFAULT clock_timestamp(),
-	by_row_data	bytea,
+	t_row_data	text,
 	CONSTRAINT pk_t_discarded_rows PRIMARY KEY (i_id_row)
 )
 ;
