@@ -22,48 +22,53 @@ class global_config:
 		"""
 			Class  constructor.
 		"""
+		dt=datetime.now()
+		log_sfx=dt.strftime('%Y%m%d-%H%M%S')
 		config_file='config/config.yaml'
+		
 		if not os.path.isfile(config_file):
 			print "**FATAL - configuration file missing **\ncopy config/config-example.yaml to "+config_file+" and set your connection settings."
 			sys.exit()
 		conffile=open(config_file, 'rb')
 		confdic=yaml.load(conffile.read())
 		conffile.close()
-		self.mysql_conn=confdic["mysql_conn"]
-		self.pg_conn=confdic["pg_conn"]
-		self.my_database=confdic["my_database"]
-		self.my_charset=confdic["my_charset"]
-		self.pg_charset=confdic["pg_charset"]
-		self.pg_database=confdic["pg_database"]
-		self.my_server_id=confdic["my_server_id"]
-		self.replica_batch_size=confdic["replica_batch_size"]
-		self.tables_limit=confdic["tables_limit"]
-		self.copy_mode=confdic["copy_mode"]
-		self.hexify=confdic["hexify"]
-		self.log_level=confdic["log_level"]
-		self.log_dest=confdic["log_dest"]
-		self.sleep_loop=confdic["sleep_loop"]
-		dt=datetime.now()
-		log_sfx=dt.strftime('%Y%m%d-%H%M%S')
-		self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
-		self.pid_file=confdic["pid_dir"]+"/"+command+".pid"
-		copy_max_memory=str(confdic["copy_max_memory"])[:-1]
-		copy_scale=str(confdic["copy_max_memory"])[-1]
 		try:
-			int(copy_scale)
-			copy_max_memory=confdic["copy_max_memory"]
-		except:
-			if copy_scale=='k':
-				copy_max_memory=str(int(copy_max_memory)*1024)
-			elif copy_scale=='M':
-				copy_max_memory=str(int(copy_max_memory)*1024*1024)
-			elif copy_scale=='G':
-				copy_max_memory=str(int(copy_max_memory)*1024*1024*1024)
-			else:
-				print "**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes."
-				sys.exit()
-		self.copy_max_memory=copy_max_memory
-	
+			self.mysql_conn=confdic["mysql_conn"]
+			self.pg_conn=confdic["pg_conn"]
+			self.my_database=confdic["my_database"]
+			self.my_charset=confdic["my_charset"]
+			self.pg_charset=confdic["pg_charset"]
+			self.pg_database=confdic["pg_database"]
+			self.my_server_id=confdic["my_server_id"]
+			self.replica_batch_size=confdic["replica_batch_size"]
+			self.tables_limit=confdic["tables_limit"]
+			self.copy_mode=confdic["copy_mode"]
+			self.hexify=confdic["hexify"]
+			self.log_level=confdic["log_level"]
+			self.log_dest=confdic["log_dest"]
+			self.sleep_loop=confdic["sleep_loop"]
+			
+			self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
+			self.pid_file=confdic["pid_dir"]+"/"+command+".pid"
+			copy_max_memory=str(confdic["copy_max_memory"])[:-1]
+			copy_scale=str(confdic["copy_max_memory"])[-1]
+			try:
+				int(copy_scale)
+				copy_max_memory=confdic["copy_max_memory"]
+			except:
+				if copy_scale=='k':
+					copy_max_memory=str(int(copy_max_memory)*1024)
+				elif copy_scale=='M':
+					copy_max_memory=str(int(copy_max_memory)*1024*1024)
+				elif copy_scale=='G':
+					copy_max_memory=str(int(copy_max_memory)*1024*1024*1024)
+				else:
+					print "**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes."
+					sys.exit()
+			self.copy_max_memory=copy_max_memory
+		except KeyError as key_missing:
+			print 'Missing key %s in configuration file. check config/config-example.yaml for reference' % (key_missing, )
+			sys.exit()
 
 		
 class replica_engine:
@@ -154,8 +159,10 @@ class replica_engine:
 			pid=file_pid.read()
 			file_pid.close()
 			os.kill(int(pid),0)
-			self.logger.info("replica process already running with pid %s" % (pid, ))
+			print "replica process already running with pid %s" % (pid, )
 			return_to_os=True
+			if self.global_config.log_dest=='file':
+				os.remove(self.global_config.log_file)
 		except:
 			pid=os.getpid()
 			file_pid=open(self.pid_file,'wb')
