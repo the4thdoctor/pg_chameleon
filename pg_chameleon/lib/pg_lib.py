@@ -470,7 +470,6 @@ class pg_engine:
 									;						
 							"""
 			try:
-				raise
 				self.pg_conn.pgsql_cur.execute(sql_insert,(
 																				global_data["batch_id"], 
 																				global_data["table"],  
@@ -533,7 +532,6 @@ class pg_engine:
 									"""+ ','.join(insert_list )+"""
 						"""
 		try:
-			raise
 			self.pg_conn.pgsql_cur.execute(sql_insert)
 		except:
 			self.logger.error("error when saving batch data, fallback to inserts")
