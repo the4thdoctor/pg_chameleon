@@ -187,7 +187,7 @@ class sql_token:
 			elif malter_table:
 				alter_cmd=[]
 				alter_stat=malter_table.group(0) + ','
-				stat_dic["command"]=malter_table.group(1)
+				stat_dic["command"]=malter_table.group(1).upper().strip()
 				stat_dic["name"]=malter_table.group(2).strip().strip('`')
 				dim_groups=self.m_dimension.findall(alter_stat)
 				for dim_group in dim_groups:
@@ -196,13 +196,15 @@ class sql_token:
 				alter_list=self.m_alter_list.findall(alter_stat)
 				for alter_item in alter_list:
 					alter_dic={}
-					command = ' '.join(alter_item[0].split())
+					command = ' '.join(alter_item[0].split()).upper().strip()
+					
 					if command == 'DROP COLUMN':
 						alter_dic["command"]=command
 						alter_dic["name"]=alter_item[1].strip().strip(',').replace('`', '').strip()
 
 					elif command == 'ADD COLUMN':
-						alter_column=self.m_alter_column.search(alter_item[1])
+						alter_column=self.m_alter_column.search(alter_item[1].strip())
+						print 'ddd'+alter_item[1]+'ddd'
 						if alter_column:
 							#print alter_column.groups()
 							alter_dic["command"]=command
