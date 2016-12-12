@@ -4,60 +4,18 @@
 
 
 
-Current version: 1.0-alpha.1
+Current version: 1.0 ALPHA_X
 
 .. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
     :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
-`Documentation available at readthedocs <http://pg-chameleon.readthedocs.io/en/latest/>`_
-
-What does it work
-..............................
-* Read the schema specifications from MySQL and replicate the same structure it into PostgreSQL
-* Locks the tables in mysql and gets the master coordinates
-* Create primary keys and indices on PostgreSQL
-* Write in PostgreSQL frontier table
-
-What does seem to work
-..............................
-* Enum support
-* Blob import into bytea (HEX conversion)
-* Read replica from MySQL
-* Copy the data from MySQL to PostgreSQL on the fly
-* Replay of the replicated data in PostgreSQL
-* Create and drop table replica
-* Alter table ADD/DROP column replica
-* Alter table DROP PRIMARY KEY. The table on PostgreSQL is renamed and removed from the replica.
-
-
-What doesn't work
-..............................
-* Full DDL replica 
-* Replica monitoring 
-* Replay statistics
-
-
-DDL replica limitations
-..............................
-DDL and DML mixed in the same transaction are not decoded in the right order. 
-This can result in a replica breakage caused by a wrong jsonb descriptor if
-the DML change the data on the same table modified by the DDL.
-I know the issue and I'm working on a solution.
-
-
-
-Test please!
-..............................
-
-* Please submit the issues you find.
-* Bear in mind this is an alpha release. **if you use the software in production** keep an eye on the process to ensure the data is correctly replicated.
-
+`Documentation available at readthedocs <http://pg-chameleon.readthedocs.io/>`_
 
 Setup 
 **********
 
-* Download the package or git clone
+* Download the package or git clone the repository
 * Create a virtual environment in the main app
 * Install the required packages listed in requirements.txt 
 * Create a user on mysql for the replica (e.g. usr_replica)
@@ -83,19 +41,19 @@ Configuration parameters
 The configuration file is a yaml file. Each parameter controls the
 way the program acts.
 
-* my_server_id the server id for the mysql replica. must be unique among the replica cluster
-* copy_max_memory the max amount of memory to use when copying the table in PostgreSQL. Is possible to specify the value in (k)ilobytes, (M)egabytes, (G)igabytes adding the suffix (e.g. 300M)
-* my_database mysql database to replicate. a schema with the same name will be initialised in the postgres database
+* my_server_id the server id for the mysql replica. must be unique among the replica cluster.
+* copy_max_memory the max amount of memory to use when copying the table in PostgreSQL. Is possible to specify the value in (k)ilobytes, (M)egabytes, (G)igabytes adding the suffix (e.g. 300M).
+* my_database mysql database to replicate. a schema with the same name will be initialised in the postgres database.
 * pg_database destination database in PostgreSQL. 
 * copy_mode the allowed values are 'file'  and 'direct'. With direct the copy happens on the fly. With file the table is first dumped in a csv file then reloaded in PostgreSQL.
 * hexify is a yaml list with the data types that require coversion in hex (e.g. blob, binary). The conversion happens on the copy and on the replica.
-* log_dir directory where the logs are stored
-* log_level logging verbosity. allowed values are debug, info, warning, error
+* log_dir directory where the logs are stored.
+* log_level logging verbosity. allowed values are debug, info, warning, error.
 * log_dest log destination. stdout for debugging purposes, file for the normal activity.
-* my_charset mysql charset for the copy (please note the replica is always in utf8)
+* my_charset mysql charset for the copy. Please note the replica library read is always in utf8.
 * pg_charset PostgreSQL connection's charset. 
-* tables_limit yaml list with the tables to replicate. if empty the entire mysql database is replicated.
-* sleep_loop seconds between a new replica  batch attempt
+* tables_limit yaml list with the tables to replicate. If  the list is empty then the entire mysql database is replicated.
+* sleep_loop seconds between a two replica  batches.
 
 MySQL connection parameters
     
@@ -121,13 +79,13 @@ PostgreSQL connection parameters
 
 Usage
 **********************
-The script pg_chameleon.py have a very basic command line interface. Accepts three commands
+The script pg_chameleon.py accepts five commands.
 
-* drop_schema Drops the schema sch_chameleon with cascade option
-* create_schema Create the schema sch_chameleon
-* upgrade_schema Upgrade an existing schema sch_chameleon
-* init_replica Creates the table structure and copy the data from mysql locking the tables in read only mode. It saves the master status in sch_chameleon.t_replica_batch. The command drops and recreate the service schema.
-* start_replica Starts the replication from mysql to PostgreSQL using the master data stored in sch_chameleon.t_replica_batch and update the master position every time an new batch is processed.
+* drop_schema Drops the service schema sch_chameleon with cascade option. 
+* create_schema Create the schema sch_chameleon from scratch.
+* upgrade_schema Upgrade an existing schema sch_chameleon to an higher version. 
+* init_replica Create the table structure from the mysql into a PostgreSQL schema with the same mysql's database name. The mysql tables are locked in read only mode and  the data is  copied into the PostgreSQL database. The master's coordinates are stored in the PostgreSQL service schema. The command drops and recreate the service schema.
+* start_replica Starts the replication from mysql to PostgreSQL using the master data stored in sch_chameleon.t_replica_batch. The master's position is updated time a new batch is processed. The command upgrade the service schema if required.
 
 Example
 **********************
@@ -149,9 +107,17 @@ Add the configuration for the replica to my.cnf (requires mysql restart)
 .. code-block:: none
     
     binlog_format= ROW
+    binlog_row_image=FULL
     log-bin = mysql-bin
     server-id = 1
 
+If you are using a cascading replica configuration ensure the parameter 	log_slave_updates is set to ON.
+
+.. code-block:: none
+    
+    log_slave_updates= ON
+
+	
 In PostgreSQL create a user for the replica and a database owned by the user
 
 .. code-block:: sql
@@ -252,8 +218,48 @@ The library is being developed on Linux Slackware 14.2 with python 2.7.6.
 The databases source and target are tested on FreeBSD 10.3
 
 * MySQL: 5.6.33 
-* PostgreSQL: 9.5.4
+* PostgreSQL: 9.5.5 
   
+What does it work
+..............................
+* Read the schema specifications from MySQL and replicate the same structure it into PostgreSQL
+* Locks the tables in mysql and gets the master coordinates
+* Create primary keys and indices on PostgreSQL
+* Write in PostgreSQL frontier table
+
+ 
+What does seems to work
+..............................
+* Enum support
+* Blob import into bytea (needs testing)
+* Read replica from MySQL
+* Copy the data from MySQL to PostgreSQL on the fly
+* Replay of the replicated data in PostgreSQL
+* Create and drop table replica
+* Discard of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
+
+What doesn't work
+..............................
+* Full DDL replica 
+* Replica monitoring 
+
+Caveats
+..............................
+The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
+If the copy process fails for memory problems check the data inside the failing table is not causing overload on the system's memory.
+
+The batch is processed every time the replica stream is empty and when the replica switch to another log segment. Therefore the mysql binlog size determines the batch size.
+Currently the process is sequential. Read the replica -> Store the rows -> Replay. In the future I'll improve this aspect.
+
+
+
+
+Test please!
+..............................
+
+This software is in a very early stage of development. 
+Please submit the issues you find and please **do not use it in production** unless you know what you're doing.
+
 
 
 

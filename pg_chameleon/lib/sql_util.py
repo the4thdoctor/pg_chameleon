@@ -40,7 +40,7 @@ class sql_token:
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+column.*,?)', re.IGNORECASE)
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP)\s+COLUMN))(.*?,)', re.IGNORECASE)
-		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*\((.*?)\)', re.IGNORECASE)
+		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
 		self.m_drop_primary=re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
 		
 	def reset_lists(self):
@@ -187,7 +187,7 @@ class sql_token:
 			elif malter_table:
 				alter_cmd=[]
 				alter_stat=malter_table.group(0) + ','
-				stat_dic["command"]=malter_table.group(1)
+				stat_dic["command"]=malter_table.group(1).upper().strip()
 				stat_dic["name"]=malter_table.group(2).strip().strip('`')
 				dim_groups=self.m_dimension.findall(alter_stat)
 				for dim_group in dim_groups:
@@ -195,20 +195,25 @@ class sql_token:
 				
 				alter_list=self.m_alter_list.findall(alter_stat)
 				for alter_item in alter_list:
+					print alter_item
 					alter_dic={}
-					command = ' '.join(alter_item[0].split())
+					command = ' '.join(alter_item[0].split()).upper().strip()
 					if command == 'DROP COLUMN':
 						alter_dic["command"]=command
 						alter_dic["name"]=alter_item[1].strip().strip(',').replace('`', '').strip()
 
 					elif command == 'ADD COLUMN':
-						alter_column=self.m_alter_column.search(alter_item[1])
+						print alter_item[1].strip()
+						alter_column=self.m_alter_column.search(alter_item[1].strip())
 						if alter_column:
-							#print alter_column.groups()
+							
 							alter_dic["command"]=command
 							alter_dic["name"]=alter_column.group(1).strip().strip('`')
 							alter_dic["type"]=alter_column.group(2).lower()
-							alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
+							try:
+								alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
+							except:
+								alter_dic["dimension"]=0
 							#print alter_column.groups()
 					alter_cmd.append(alter_dic)
 					stat_dic["alter_cmd"]=alter_cmd
