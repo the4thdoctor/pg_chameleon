@@ -39,6 +39,7 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 				"""
 
 statement="""alter table test add column `dkdkd` timestamp NULL;"""
+#statement="""ALTER TABLE test ADD COLUMN `dkdkd` timestamp NULL;"""
 
 token_sql=sql_token()
 token_sql.parse_sql(statement)
