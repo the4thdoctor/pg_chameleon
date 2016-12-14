@@ -9,14 +9,11 @@ class sql_token:
 		self.tokenised=[]
 		self.query_list=[]
 		self.pkey_cols=[]
+		
 		#re for column definitions
 		self.m_columns=re.compile(r'\((.*)\)', re.IGNORECASE)
 		self.m_inner=re.compile(r'\((.*)\)', re.IGNORECASE)
-		#[^,]+[,\s\d\)]+[\w\s]+[,]
-		#[^,](\([\d\s,]+\))?
-		#transform comma in pipe for dimensions like (30,20) so is safe to split using the comma search
-		#((\(\s?\d+\s?),(\s?\d+\s?\)))
-		#r.sub(r"\2|\3",sql)
+		
 		#re for keys and indices
 		self.m_pkeys=re.compile(r',\s*PRIMARY\s*KEY\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_ukeys=re.compile(r',\s*UNIQUE\s*KEY\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
@@ -29,8 +26,8 @@ class sql_token:
 		self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
 		self.m_pars=re.compile(r'(\((:?.*?)\))', re.IGNORECASE)
 		self.m_dimension=re.compile(r'(\(.*?\))', re.IGNORECASE)
-		#self.m_enum=re.compile(r'\s*enum\s*\((.*?)\)', re.IGNORECASE|re.DOTALL)
 		self.m_fields=re.compile(r'(.*?),', re.IGNORECASE)
+		
 		#re for column constraint and auto incremental
 		self.m_nulls=re.compile(r'(NOT)?\s*(NULL)', re.IGNORECASE)
 		self.m_autoinc=re.compile(r'(AUTO_INCREMENT)', re.IGNORECASE)
@@ -146,6 +143,43 @@ class sql_token:
 		#for item in table_dic["columns"]:
 		#	print item
 		return table_dic	
+	
+	def parse_alter_table(self, malter_table):
+		""" """
+		stat_dic={}
+		alter_cmd=[]
+		alter_stat=malter_table.group(0) + ','
+		stat_dic["command"]=malter_table.group(1).upper().strip()
+		stat_dic["name"]=malter_table.group(2).strip().strip('`')
+		dim_groups=self.m_dimension.findall(alter_stat)
+		for dim_group in dim_groups:
+			alter_stat=alter_stat.replace(dim_group, dim_group.replace(',','|'))
+		
+		alter_list=self.m_alter_list.findall(alter_stat)
+		print alter_stat
+		for alter_item in alter_list:
+			print alter_item
+			alter_dic={}
+			command = ' '.join(alter_item[0].split()).upper().strip()
+			if command == 'DROP COLUMN' or command == 'DROP':
+				alter_dic["command"]='DROP COLUMN'
+				alter_dic["name"]=alter_item[1].strip().strip(',').replace('`', '').strip()
+
+			elif command == 'ADD COLUMN' or command == 'ADD':
+				alter_column=self.m_alter_column.search(alter_item[1].strip())
+				if alter_column:
+					
+					alter_dic["command"]='ADD COLUMN'
+					alter_dic["name"]=alter_column.group(1).strip().strip('`')
+					alter_dic["type"]=alter_column.group(2).lower()
+					try:
+						alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
+					except:
+						alter_dic["dimension"]=0
+					#print alter_column.groups()
+			alter_cmd.append(alter_dic)
+			stat_dic["alter_cmd"]=alter_cmd
+		return stat_dic
 		
 	def parse_sql(self, sql_string):
 		"""
@@ -185,38 +219,7 @@ class sql_token:
 				stat_dic["command"]=command
 				stat_dic["name"]=mdrop_table.group(2)
 			elif malter_table:
-				alter_cmd=[]
-				alter_stat=malter_table.group(0) + ','
-				stat_dic["command"]=malter_table.group(1).upper().strip()
-				stat_dic["name"]=malter_table.group(2).strip().strip('`')
-				dim_groups=self.m_dimension.findall(alter_stat)
-				for dim_group in dim_groups:
-					alter_stat=alter_stat.replace(dim_group, dim_group.replace(',','|'))
-				
-				alter_list=self.m_alter_list.findall(alter_stat)
-				print alter_stat
-				for alter_item in alter_list:
-					print alter_item
-					alter_dic={}
-					command = ' '.join(alter_item[0].split()).upper().strip()
-					if command == 'DROP COLUMN' or command == 'DROP':
-						alter_dic["command"]='DROP COLUMN'
-						alter_dic["name"]=alter_item[1].strip().strip(',').replace('`', '').strip()
-
-					elif command == 'ADD COLUMN' or command == 'ADD':
-						alter_column=self.m_alter_column.search(alter_item[1].strip())
-						if alter_column:
-							
-							alter_dic["command"]='ADD COLUMN'
-							alter_dic["name"]=alter_column.group(1).strip().strip('`')
-							alter_dic["type"]=alter_column.group(2).lower()
-							try:
-								alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
-							except:
-								alter_dic["dimension"]=0
-							#print alter_column.groups()
-					alter_cmd.append(alter_dic)
-					stat_dic["alter_cmd"]=alter_cmd
+				stat_dic=self.parse_alter_table(malter_table)
 			elif mdrop_primary:
 				stat_dic["command"]="DROP PRIMARY KEY"
 				stat_dic["name"]=mdrop_primary.group(1).strip().strip(',').replace('`', '').strip()
