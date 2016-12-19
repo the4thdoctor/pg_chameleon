@@ -566,9 +566,9 @@ class pg_engine:
 		query_cmd=token["command"]
 		table_name=token["name"]
 		for alter_dic in token["alter_cmd"]:
-			if alter_dic["command"] == 'DROP COLUMN':
+			if alter_dic["command"] == 'DROP':
 				alter_cmd.append("%(command)s %(name)s CASCADE" % alter_dic)
-			elif alter_dic["command"] == 'ADD COLUMN':
+			elif alter_dic["command"] == 'ADD':
 				column_type=self.type_dictionary[alter_dic["type"]]
 				if column_type=="enum":
 					enum_name="enum_"+table_name+"_"+alter_dic["name"]

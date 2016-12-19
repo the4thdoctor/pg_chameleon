@@ -156,22 +156,20 @@ class sql_token:
 			alter_stat=alter_stat.replace(dim_group, dim_group.replace(',','|'))
 		
 		alter_list=self.m_alter_list.findall(alter_stat)
-		print alter_stat
 		for alter_item in alter_list:
-			print alter_item
 			alter_dic={}
-			command = ' '.join(alter_item[0].split()).upper().strip()
-			if command == 'DROP COLUMN' or command == 'DROP':
-				alter_dic["command"]='DROP COLUMN'
-				alter_dic["name"]=alter_item[1].strip().strip(',').replace('`', '').strip()
+			command = (alter_item[0].split())[0].upper().strip()
+			if command == 'DROP':
+				alter_dic["command"] = command
+				alter_dic["name"] = alter_item[1].strip().strip(',').replace('`', '').strip()
 
-			elif command == 'ADD COLUMN' or command == 'ADD':
+			elif command == 'ADD':
 				alter_column=self.m_alter_column.search(alter_item[1].strip())
 				if alter_column:
 					
-					alter_dic["command"]='ADD COLUMN'
-					alter_dic["name"]=alter_column.group(1).strip().strip('`')
-					alter_dic["type"]=alter_column.group(2).lower()
+					alter_dic["command"] = command
+					alter_dic["name"] = alter_column.group(1).strip().strip('`')
+					alter_dic["type"] = alter_column.group(2).lower()
 					try:
 						alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 					except:
