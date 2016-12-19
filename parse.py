@@ -38,8 +38,9 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 
 				"""
 
-statement="""alter table test drop  `dkdkd` timestamp NULL;"""
+statement="""alter table test_pk drop primary key;"""
 #statement="""ALTER TABLE test ADD COLUMN `dkdkd` timestamp NULL;"""
+#statement="""create table test_pk (id int ,PRIMARY KEY  (id) ); """
 
 token_sql=sql_token()
 token_sql.parse_sql(statement)

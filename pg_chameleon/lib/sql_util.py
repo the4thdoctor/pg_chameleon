@@ -216,11 +216,11 @@ class sql_token:
 				command=' '.join(mdrop_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
 				stat_dic["name"]=mdrop_table.group(2)
-			elif malter_table:
-				stat_dic=self.parse_alter_table(malter_table)
 			elif mdrop_primary:
 				stat_dic["command"]="DROP PRIMARY KEY"
 				stat_dic["name"]=mdrop_primary.group(1).strip().strip(',').replace('`', '').strip()
+			elif malter_table:
+				stat_dic=self.parse_alter_table(malter_table)
 			
 				
 			if stat_dic!={}:
