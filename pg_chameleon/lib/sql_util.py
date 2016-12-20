@@ -35,8 +35,8 @@ class sql_token:
 		#re for query type
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
-		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+(?:COLUMN)?.*,?)', re.IGNORECASE)
-		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP)\s+(?:COLUMN)?))(.*?,)', re.IGNORECASE)
+		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE)\s+(?:COLUMN)?.*,?)', re.IGNORECASE)
+		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE)\s+(?:COLUMN)?))(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
 		self.m_drop_primary=re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
 		
@@ -175,6 +175,12 @@ class sql_token:
 					except:
 						alter_dic["dimension"]=0
 					#print alter_column.groups()
+			elif command == 'CHANGE':
+				alter_dic["command"] = command
+				change_lst=alter_item[1].strip(',').strip().split()
+				alter_dic["old"] = change_lst[0]
+				alter_dic["new"] = change_lst[1]
+				alter_dic["type"] = change_lst[2]
 			alter_cmd.append(alter_dic)
 			stat_dic["alter_cmd"]=alter_cmd
 		return stat_dic
@@ -220,6 +226,7 @@ class sql_token:
 				stat_dic["command"]="DROP PRIMARY KEY"
 				stat_dic["name"]=mdrop_primary.group(1).strip().strip(',').replace('`', '').strip()
 			elif malter_table:
+				print stat_cleanup
 				stat_dic=self.parse_alter_table(malter_table)
 			
 				

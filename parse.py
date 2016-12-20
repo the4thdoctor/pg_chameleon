@@ -38,9 +38,11 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 
 				"""
 
-statement="""alter table test_pk drop primary key;"""
+#statement="""alter table test_pk drop primary key;"""
 #statement="""ALTER TABLE test ADD COLUMN `dkdkd` timestamp NULL;"""
 #statement="""create table test_pk (id int ,PRIMARY KEY  (id) ); """
+#statement="""alter table test change   date_create_new date_create_new timestamp;"""
+statement=""" alter table test change date_create date_create varchar(30) null;"""
 
 token_sql=sql_token()
 token_sql.parse_sql(statement)
@@ -49,4 +51,4 @@ for token in token_sql.tokenised:
 	if   token["command"]=="ALTER TABLE":
 		print token
 	#else:	
-	print token
+	
