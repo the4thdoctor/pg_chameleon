@@ -11,6 +11,10 @@ copy_mode: 'file'
 #seconds between each replica loop
 sleep_loop: 10 
 
+#Pause the replica for the given amount of seconds if a reindex process is found
+pause_on_reindex: True
+sleep_on_reindex: 30
+
 hexify: 
     - 'blob'
     - 'tinyblob'

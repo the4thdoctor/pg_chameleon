@@ -667,4 +667,7 @@ class pg_engine:
 									%s
 								)
 						"""
-		print self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
+		self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
+	def check_reindex(self):
+		"""the function checks if there is any reindex running and holds for  """
+		print "check reindex"

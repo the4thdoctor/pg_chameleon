@@ -216,6 +216,7 @@ class mysql_engine:
 		
 		:param pg_engine: The postgresql engine object required for storing the master coordinates and replaying the batches
 		"""
+		pg_engine.check_reindex()
 		batch_data=pg_engine.get_batch_data()
 		self.logger.debug('batch data: %s' % (batch_data, ))
 		if len(batch_data)>0:
