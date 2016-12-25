@@ -1,14 +1,52 @@
-### Welcome to GitHub Pages.
-This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here [using GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/), select a template crafted by a designer, and publish. After your page is generated, you can check out the new `gh-pages` branch locally. If you’re using GitHub Desktop, simply sync your repository and you’ll see the new branch.
+# pg_chameleon a lightweigth MySQL to PostgreSQL replica
 
-### Designer Templates
-We’ve crafted some handsome templates for you to use. Go ahead and click 'Continue to layouts' to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved.
+![Alt text](images/pgchameleon.png "Igor the chameleon")
 
-### Creating pages manually
-If you prefer to not use the automatic generator, push a branch named `gh-pages` to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.
+The chameleon logo was made by [Elena Toma](http://tonkipappero.deviantart.com/ "Tonkipappero's Art")
 
-### Authors and Contributors
-You can @mention a GitHub username to generate a link to their profile. The resulting `<a>` element will link to the contributor’s GitHub Profile. For example: In 2007, Chris Wanstrath (@defunkt), PJ Hyett (@pjhyett), and Tom Preston-Werner (@mojombo) founded GitHub.
+Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7. The system relies on
+the [mysql-replication](https://github.com/noplay/python-mysql-replication "mysql-replication") library to pull the changes from MySQL and covert them into a jsonb object.
+A plpgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
 
-### Support or Contact
-Having trouble with Pages? Check out our [documentation](https://help.github.com/pages) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+The tool can initialise the replica pulling out the data from MySQL but this requires the FLUSH TABLE WITH READ LOCK; to work properly.
+
+The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
+
+#### Branches and testing
+
+The revamp branch is the development branch and should't be used for testis.
+
+The master branch receives the updates from revamp when the branch is working properly. The master branch is suggested for
+testing the tool.
+
+
+There is an initial  Alpha 1  release which works but is not completely tested. Several bugs have been fixed since the release.
+
+An Alpha 2 release should appear very soon.
+
+The tool comes with the following limitations.
+
+#### Installation in virtualenv
+
+For working properly you should use virtualenv for installing the requirements via pip
+No daemon yet
+
+The script should be executed in a screen session to keep it running. Currently there's no respawning of the process on failure nor failure detector.
+
+#### psycopg2 requires python and postgresql dev files
+
+The psycopg2's pip installation requires the python development files and postgresql source code.
+Please refer to your distribution for fulfilling those requirements.
+
+#### DDL replica limitations
+
+DDL and DML mixed in the same transaction are not decoded in the right order. This can result in a replica breakage caused by a wrong jsonb descriptor if the DML change the data on the same table modified by the DDL. I know the issue and I'm working on a solution.
+
+### Test please!
+
+
+A recording of a presentation  bout pg_chameleon is available on the Brighton PostgreSQL meetup page.
+
+Unfortunately the audio is suboptimal.
+
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/ZZeBGDpUhec/0.jpg)](http://www.youtube.com/watch?v=ZZeBGDpUhec "pg_chameleon a lightweight replication system")
