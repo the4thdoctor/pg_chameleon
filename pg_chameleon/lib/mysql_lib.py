@@ -72,16 +72,8 @@ class mysql_engine:
 		self.replica_batch_size=self.mysql_con.replica_batch_size
 		self.master_status=[]
 		self.id_batch=None
-		self.replica_verbs=[
-										'CREATE', 
-										'DROP', 
-										'ALTER'
-									]
-		self.replica_relations=[
-												'TABLE', 
-												'INDEX'
-									]
 		self.sql_token=sql_token()
+		self.pause_on_reindex=global_config.pause_on_reindex
 	
 	def normalise_query(self, parsed_query):
 		"""
@@ -216,7 +208,8 @@ class mysql_engine:
 		
 		:param pg_engine: The postgresql engine object required for storing the master coordinates and replaying the batches
 		"""
-		pg_engine.check_reindex()
+		if self.pause_on_reindex:
+			pg_engine.check_reindex()
 		batch_data=pg_engine.get_batch_data()
 		self.logger.debug('batch data: %s' % (batch_data, ))
 		if len(batch_data)>0:

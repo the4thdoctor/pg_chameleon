@@ -47,6 +47,10 @@ class global_config:
 			self.log_level=confdic["log_level"]
 			self.log_dest=confdic["log_dest"]
 			self.sleep_loop=confdic["sleep_loop"]
+			self.pause_on_reindex=confdic["pause_on_reindex"]
+			self.sleep_on_reindex=confdic["sleep_on_reindex"]
+			self.reindex_app_names=confdic["reindex_app_names"]
+			print self.reindex_app_names
 			
 			self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
 			self.pid_file=confdic["pid_dir"]+"/"+command+".pid"

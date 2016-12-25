@@ -39,6 +39,8 @@ class pg_connection:
 
 class pg_engine:
 	def __init__(self, global_config, table_metadata, table_file, logger, sql_dir='sql/'):
+		self.sleep_on_reindex=global_config.sleep_on_reindex
+		self.reindex_app_names=global_config.reindex_app_names
 		self.logger=logger
 		self.sql_dir=sql_dir
 		self.idx_sequence=0
@@ -668,6 +670,22 @@ class pg_engine:
 								)
 						"""
 		self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
+		
+		
 	def check_reindex(self):
-		"""the function checks if there is any reindex running and holds for  """
-		print "check reindex"
+		"""the function checks if there is any reindex running and holds for  the given number of seconds """
+		sql_check="""SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND application_name = ANY(%s) ;"""
+		self.pg_conn.pgsql_cur.execute(sql_check, (self.reindex_app_names, ))
+
+
+
+
+
+
+
+
+
+
+
+
+
