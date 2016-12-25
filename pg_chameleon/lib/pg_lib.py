@@ -675,8 +675,14 @@ class pg_engine:
 	def check_reindex(self):
 		"""the function checks if there is any reindex running and holds for  the given number of seconds """
 		sql_check="""SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND application_name = ANY(%s) ;"""
-		self.pg_conn.pgsql_cur.execute(sql_check, (self.reindex_app_names, ))
-
+		while True:
+			self.pg_conn.pgsql_cur.execute(sql_check, (self.reindex_app_names, ))
+			reindex_tup = self.pg_conn.pgsql_cur.fetchone()
+			reindex_cnt = reindex_tup[0]
+			if reindex_cnt == 0:
+				break;
+			self.logger.info("reindex detected, sleeping %s second(s)" % (self.sleep_on_reindex,))
+			time.sleep(self.sleep_on_reindex)
 
 
 
