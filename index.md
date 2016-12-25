@@ -1,4 +1,4 @@
-# pg_chameleon a lightweigth MySQL to PostgreSQL replica
+## pg_chameleon a lightweigth MySQL to PostgreSQL replica
 
 ![Alt text](images/pgchameleon.png "Igor the chameleon")
 
