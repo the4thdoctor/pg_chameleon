@@ -1,0 +1,8 @@
+title: Pg chameleon
+description: "Mysql to PostgreSQL replica system from "
+google_analytics: 
+show_downloads: true
+theme: jekyll-theme-leap-day
+
+gems:
+  - jekyll-mentions
