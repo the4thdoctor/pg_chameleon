@@ -1,6 +1,6 @@
-title: Pg chameleon
-description: "Mysql to PostgreSQL replica system from "
-google_analytics: 
+title: Pg_chameleon
+description: "A lightweigth MySQL to PostgreSQL replica system "
+google_analytics: UA-51824212-3
 show_downloads: true
 theme: jekyll-theme-leap-day
 
