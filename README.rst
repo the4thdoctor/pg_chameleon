@@ -54,6 +54,24 @@ way the program acts.
 * pg_charset PostgreSQL connection's charset. 
 * tables_limit yaml list with the tables to replicate. If  the list is empty then the entire mysql database is replicated.
 * sleep_loop seconds between a two replica  batches.
+* pause_on_reindex determines whether to pause the replica if a reindex process is found in pg_stat_activity
+* sleep_on_reindex seconds to sleep when a reindex process is found
+* reindex_app_names  lists the application names to check for reindex (e.g. reindexdb). This is a workaround which required for keeping the replication user unprivileged. 
+
+Reindex detection example setup
+
+.. code-block:: yaml
+
+    #Pause the replica for the given amount of seconds if a reindex process is found
+    pause_on_reindex: Yes
+    sleep_on_reindex: 30
+
+    #list the application names which are supposed to reindex the database
+    reindex_app_names:
+    - 'reindexdb'
+    - 'my_custom_reindex'
+
+
 
 MySQL connection parameters
     
