@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+from __future__ import absolute_import
 import argparse
 from pg_chameleon import replica_engine
 commands = [
@@ -31,4 +33,4 @@ if args.command in commands:
 	elif args.command == commands[4]:
 		replica.drop_service_schema()
 else:
-	print command_help
+	print(command_help)

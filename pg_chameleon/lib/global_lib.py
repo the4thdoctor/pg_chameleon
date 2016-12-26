@@ -1,3 +1,6 @@
+from __future__ import print_function
+from builtins import str
+from builtins import object
 from pg_chameleon import mysql_engine, pg_engine
 import yaml
 import sys
@@ -6,7 +9,7 @@ import time
 import logging
 import smtplib
 from datetime import datetime
-class global_config:
+class global_config(object):
 	"""
 		This class parses the configuration file which is in config/config.yaml and sets 
 		the class variables used by the other libraries. 
@@ -27,7 +30,7 @@ class global_config:
 		config_file='config/config.yaml'
 		
 		if not os.path.isfile(config_file):
-			print "**FATAL - configuration file missing **\ncopy config/config-example.yaml to "+config_file+" and set your connection settings."
+			print("**FATAL - configuration file missing **\ncopy config/config-example.yaml to "+config_file+" and set your connection settings.")
 			sys.exit()
 		conffile=open(config_file, 'rb')
 		confdic=yaml.load(conffile.read())
@@ -50,7 +53,7 @@ class global_config:
 			self.pause_on_reindex=confdic["pause_on_reindex"]
 			self.sleep_on_reindex=confdic["sleep_on_reindex"]
 			self.reindex_app_names=confdic["reindex_app_names"]
-			print self.reindex_app_names
+			print(self.reindex_app_names)
 			
 			self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
 			self.pid_file=confdic["pid_dir"]+"/"+command+".pid"
@@ -67,15 +70,15 @@ class global_config:
 				elif copy_scale=='G':
 					copy_max_memory=str(int(copy_max_memory)*1024*1024*1024)
 				else:
-					print "**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes."
+					print("**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes.")
 					sys.exit()
 			self.copy_max_memory=copy_max_memory
 		except KeyError as key_missing:
-			print 'Missing key %s in configuration file. check config/config-example.yaml for reference' % (key_missing, )
+			print('Missing key %s in configuration file. check config/config-example.yaml for reference' % (key_missing, ))
 			sys.exit()
 
 		
-class replica_engine:
+class replica_engine(object):
 	"""
 		This class acts as bridge between the mysql and postgresql engines. The constructor inits the global configuration
 		class  and setup the mysql and postgresql engines as class objects. 
@@ -163,7 +166,7 @@ class replica_engine:
 			pid=file_pid.read()
 			file_pid.close()
 			os.kill(int(pid),0)
-			print "replica process already running with pid %s" % (pid, )
+			print("replica process already running with pid %s" % (pid, ))
 			return_to_os=True
 			if self.global_config.log_dest=='file':
 				os.remove(self.global_config.log_file)
@@ -198,7 +201,7 @@ class replica_engine:
 		self.pg_eng.save_master_status(self.my_eng.master_status)
 
 
-class email_lib:
+class email_lib(object):
 	"""
 		class to manage email alerts sent in specific events.
 	"""

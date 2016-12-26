@@ -1,3 +1,6 @@
+from __future__ import print_function
+from builtins import str
+from builtins import object
 import psycopg2
 import os
 import sys
@@ -13,7 +16,7 @@ class pg_encoder(json.JSONEncoder):
 		return json.JSONEncoder.default(self, obj)
 
 
-class pg_connection:
+class pg_connection(object):
 	def __init__(self, global_config):
 		self.global_conf=global_config
 		self.pg_conn=self.global_conf.pg_conn
@@ -25,7 +28,7 @@ class pg_connection:
 		
 	
 	def connect_db(self):
-		pg_pars=dict(self.pg_conn.items()+ {'dbname':self.pg_database}.items())
+		pg_pars=dict(list(self.pg_conn.items())+ list({'dbname':self.pg_database}.items()))
 		strconn="dbname=%(dbname)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % pg_pars
 		self.pgsql_conn = psycopg2.connect(strconn)
 		self.pgsql_conn .set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
@@ -37,7 +40,7 @@ class pg_connection:
 		self.pgsql_conn.close()
 		
 
-class pg_engine:
+class pg_engine(object):
 	def __init__(self, global_config, table_metadata, table_file, logger, sql_dir='sql/'):
 		self.sleep_on_reindex=global_config.sleep_on_reindex
 		self.reindex_app_names=global_config.reindex_app_names
@@ -309,7 +312,7 @@ class pg_engine:
 					file_schema=open(self.sql_dir+script_schema, 'rb')
 					sql_schema=file_schema.read()
 					file_schema.close()
-					print "================================================="
+					print("=================================================")
 					self.pg_conn.pgsql_cur.execute(sql_schema)
 				
 				
@@ -487,7 +490,7 @@ class pg_engine:
 				self.save_discarded_row(row_data,global_data["batch_id"])
 	
 	def save_discarded_row(self,row_data,batch_id):
-		print str(row_data)
+		print(str(row_data))
 		b64_row=base64.b64encode(str(row_data))
 		sql_save="""INSERT INTO sch_chameleon.t_discarded_rows(
 											i_id_batch, 

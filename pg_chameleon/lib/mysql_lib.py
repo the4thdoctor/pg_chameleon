@@ -1,4 +1,11 @@
-import StringIO
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
+import io
 import pymysql
 import sys
 import codecs
@@ -14,7 +21,7 @@ from pymysqlreplication.row_event import (
 from pymysqlreplication.event import RotateEvent
 from pg_chameleon import sql_token
 
-class mysql_connection:
+class mysql_connection(object):
 	def __init__(self, global_config):
 		self.global_conf=global_config
 		self.my_server_id=self.global_conf.my_server_id
@@ -58,7 +65,7 @@ class mysql_connection:
 		self.my_connection_ubf.close()
 		
 		
-class mysql_engine:
+class mysql_engine(object):
 	def __init__(self, global_config, logger, out_dir="/tmp/"):
 		self.hexify=global_config.hexify
 		self.logger=logger
@@ -441,11 +448,11 @@ class mysql_engine:
 			self.mysql_con.my_cursor.execute(sql_count, (self.mysql_con.my_database, table_name))
 			count_rows=self.mysql_con.my_cursor.fetchone()
 			total_rows=count_rows["table_rows"]
-			copy_limit=count_rows["copy_limit"]
+			copy_limit=int(count_rows["copy_limit"])
 			if copy_limit == 0:
 				copy_limit=1000000
-			num_slices=total_rows/copy_limit
-			range_slices=range(num_slices+1)
+			num_slices=int(total_rows//copy_limit)
+			range_slices=list(range(num_slices+1))
 			total_slices=len(range_slices)
 			slice=range_slices[0]
 			self.logger.debug("%s will be copied in %s slices of %s rows"  % (table_name, total_slices, copy_limit))
@@ -468,7 +475,7 @@ class mysql_engine:
 				csv_data="\n".join(d[0] for d in csv_results )
 				
 				if self.mysql_con.copy_mode=='direct':
-					csv_file=StringIO.StringIO()
+					csv_file=io.StringIO()
 					csv_file.write(csv_data)
 					csv_file.seek(0)
 

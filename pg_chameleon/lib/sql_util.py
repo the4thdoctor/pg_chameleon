@@ -1,6 +1,8 @@
+from builtins import str
+from builtins import object
 import re
 
-class sql_token:
+class sql_token(object):
 	"""
 	Class sql_token. Tokenise the sql statements captured by the mysql replication.
 	Each statement is converted in a python dictionary being used by pg_engine.
@@ -90,14 +92,14 @@ class sql_token:
 			key_dic["index_columns"]=pkey[0].replace('`', '"')
 			key_dic["non_unique"]=0
 			self.pkey_cols=key_dic["index_columns"]
-			idx_list.append(dict(key_dic.items()))
+			idx_list.append(dict(list(key_dic.items())))
 			key_dic={}
 		if ukey:
 			for cols in ukey:
 				key_dic["index_name"]='ukidx_'+table_name[0:20]+'_'+str(idx_counter)
 				key_dic["index_columns"]=cols.replace('`', '"')
 				key_dic["non_unique"]=0
-				idx_list.append(dict(key_dic.items()))
+				idx_list.append(dict(list(key_dic.items())))
 				key_dic={}
 				idx_counter+=1
 		if idx:
@@ -105,7 +107,7 @@ class sql_token:
 				key_dic["index_name"]='idx_'+table_name[0:20]+'_'+str(idx_counter)
 				key_dic["index_columns"]=cols.replace('`', '"')
 				key_dic["non_unique"]=1
-				idx_list.append(dict(key_dic.items()))
+				idx_list.append(dict(list(key_dic.items())))
 				key_dic={}
 				idx_counter+=1
 		return idx_list
@@ -226,7 +228,6 @@ class sql_token:
 				stat_dic["command"]="DROP PRIMARY KEY"
 				stat_dic["name"]=mdrop_primary.group(1).strip().strip(',').replace('`', '').strip()
 			elif malter_table:
-				print stat_cleanup
 				stat_dic=self.parse_alter_table(malter_table)
 			
 				
