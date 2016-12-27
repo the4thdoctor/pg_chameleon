@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
-from __future__ import absolute_import
 import argparse
 from pg_chameleon import replica_engine
 commands = [
@@ -12,9 +10,10 @@ commands = [
 	]
 command_help = 'Available commands, ' + ','.join(commands)
 
-parser = argparse.ArgumentParser(description='Command line for pg_chameleon.')
+parser = argparse.ArgumentParser(description='Command line for pg_chameleon.',  add_help=True)
 parser.add_argument('command', metavar='command', type=str, help=command_help)
 args = parser.parse_args()
+
 
 if args.command in commands:
 	replica = replica_engine(args.command)
@@ -32,5 +31,3 @@ if args.command in commands:
 		replica.upgrade_service_schema()
 	elif args.command == commands[4]:
 		replica.drop_service_schema()
-else:
-	print(command_help)

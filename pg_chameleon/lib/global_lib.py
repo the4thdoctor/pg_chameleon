@@ -162,7 +162,7 @@ class replica_engine(object):
 		
 		return_to_os=False 
 		try:
-			file_pid=open(self.pid_file,'rb')
+			file_pid=open(self.pid_file,'r')
 			pid=file_pid.read()
 			file_pid.close()
 			os.kill(int(pid),0)
@@ -172,7 +172,7 @@ class replica_engine(object):
 				os.remove(self.global_config.log_file)
 		except:
 			pid=os.getpid()
-			file_pid=open(self.pid_file,'wb')
+			file_pid=open(self.pid_file,'w')
 			file_pid.write(str(pid))
 			file_pid.close()
 			return_to_os=False
