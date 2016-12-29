@@ -520,7 +520,6 @@ class pg_engine(object):
 																								)
 																		)
 											)
-			
 		sql_insert="""
 								INSERT INTO sch_chameleon."""+log_table+"""
 								(
@@ -534,7 +533,7 @@ class pg_engine(object):
 									jsb_event_update
 								)
 								VALUES
-									"""+ ','.join(insert_list )+"""
+									"""+ ','.join(str(v) for v in insert_list )+"""
 						"""
 		try:
 			self.pg_conn.pgsql_cur.execute(sql_insert)
@@ -673,6 +672,7 @@ class pg_engine(object):
 								)
 						"""
 		self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
+		
 		
 		
 	def check_reindex(self):

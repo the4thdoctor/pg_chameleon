@@ -141,7 +141,7 @@ class mysql_engine(object):
 				
 				for token in self.sql_token.tokenised:
 					if len(token)>0:
-						schema_name=binlogevent.schema
+						schema_name=binlogevent.schema.decode()
 						
 						query_data={
 												"binlog":log_file, 
@@ -164,8 +164,13 @@ class mysql_engine(object):
 					total_events+=1
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
-					table_name=binlogevent.table
-					schema_name=binlogevent.schema
+					try:
+						table_name=binlogevent.table.decode()
+						schema_name=binlogevent.schema.decode()
+					except:
+						table_name=binlogevent.table
+						schema_name=binlogevent.schema
+
 					column_map=table_type_map[table_name]
 					global_data={
 										"binlog":log_file, 
