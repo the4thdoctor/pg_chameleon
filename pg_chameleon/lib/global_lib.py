@@ -53,7 +53,7 @@ class global_config(object):
 			self.pause_on_reindex=confdic["pause_on_reindex"]
 			self.sleep_on_reindex=confdic["sleep_on_reindex"]
 			self.reindex_app_names=confdic["reindex_app_names"]
-			print(self.reindex_app_names)
+			
 			
 			self.log_file=confdic["log_dir"]+"/"+command+"_"+log_sfx+'.log'
 			self.pid_file=confdic["pid_dir"]+"/"+command+".pid"

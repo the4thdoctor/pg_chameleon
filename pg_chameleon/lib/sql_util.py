@@ -198,6 +198,7 @@ class sql_token(object):
 		sql_string=re.sub(r'\s+default(.*?),', ' ', sql_string, re.IGNORECASE)
 		statements=sql_string.split(';')
 		for statement in statements:
+			
 			stat_dic={}
 			stat_cleanup=re.sub(r'/\*.*?\*/', '', statement, re.DOTALL)
 			stat_cleanup=re.sub(r'--.*?\n', '', stat_cleanup)
@@ -233,3 +234,4 @@ class sql_token(object):
 				
 			if stat_dic!={}:
 				self.tokenised.append(stat_dic)
+		

@@ -49,6 +49,6 @@ token_sql.parse_sql(statement)
 #print token_sql.tokenised
 for token in token_sql.tokenised:
 	if   token["command"]=="ALTER TABLE":
-		print token
+		print(token)
 	#else:	
 	
