@@ -1,6 +1,3 @@
-from __future__ import print_function
-from builtins import str
-from builtins import object
 import psycopg2
 import os
 import sys
@@ -533,7 +530,7 @@ class pg_engine(object):
 									jsb_event_update
 								)
 								VALUES
-									"""+ ','.join(str(v) for v in insert_list )+"""
+									"""+ b','.join(insert_list ).decode()+"""
 						"""
 		try:
 			self.pg_conn.pgsql_cur.execute(sql_insert)
