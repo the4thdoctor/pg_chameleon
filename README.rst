@@ -1,7 +1,12 @@
 
 .. image:: images/pgchameleon.png
 
+Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and 3.6. 
+The system relies on the mysql-replication library to pull the changes from MySQL and covert them into a jsonb object. A plpgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
 
+The tool can initialise the replica pulling out the data from MySQL but this requires the FLUSH TABLE WITH READ LOCK; to work properly.
+
+The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
 Current version: 1.0 ALPHA_X
@@ -11,6 +16,58 @@ Current version: 1.0 ALPHA_X
     :alt: Documentation Status
 
 `Documentation available at readthedocs <http://pg-chameleon.readthedocs.io/>`_
+
+
+Platform and versions
+****************************
+
+The library is being developed on Linux Slackware 14.2 with python 2.7 and python 3.6.
+
+The databases source and target are tested on FreeBSD 10.3
+
+* MySQL: 5.6.33 
+* PostgreSQL: 9.5.5 
+  
+What does it work
+..............................
+* Read the schema specifications from MySQL and replicate the same structure it into PostgreSQL
+* Locks the tables in mysql and gets the master coordinates
+* Create primary keys and indices on PostgreSQL
+* Write in PostgreSQL frontier table
+
+ 
+What does seems to work
+..............................
+* Enum support
+* Blob import into bytea (needs testing)
+* Read replica from MySQL
+* Copy the data from MySQL to PostgreSQL on the fly
+* Replay of the replicated data in PostgreSQL
+* Create and drop table replica
+* Discard of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
+
+What doesn't work
+..............................
+* Full DDL replica 
+* Replica monitoring 
+
+Caveats
+..............................
+The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
+If the copy process fails for memory problems check the data inside the failing table is not causing overload on the system's memory.
+
+The batch is processed every time the replica stream is empty and when the replica switch to another log segment. Therefore the mysql binlog size determines the batch size.
+Currently the process is sequential. Read the replica -> Store the rows -> Replay. In the future I'll improve this aspect.
+
+
+
+Test please!
+..............................
+
+This software is in a very early stage of development. 
+Please submit the issues you find and please **do not use it in production** unless you know what you're doing.
+
+
 
 Setup 
 **********
@@ -227,57 +284,3 @@ Start the replica with
     
     ./pg_chameleon.py start_replica
 	
-
-Platform and versions
-****************************
-
-The library is being developed on Linux Slackware 14.2 with python 2.7.6.
-
-The databases source and target are tested on FreeBSD 10.3
-
-* MySQL: 5.6.33 
-* PostgreSQL: 9.5.5 
-  
-What does it work
-..............................
-* Read the schema specifications from MySQL and replicate the same structure it into PostgreSQL
-* Locks the tables in mysql and gets the master coordinates
-* Create primary keys and indices on PostgreSQL
-* Write in PostgreSQL frontier table
-
- 
-What does seems to work
-..............................
-* Enum support
-* Blob import into bytea (needs testing)
-* Read replica from MySQL
-* Copy the data from MySQL to PostgreSQL on the fly
-* Replay of the replicated data in PostgreSQL
-* Create and drop table replica
-* Discard of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
-
-What doesn't work
-..............................
-* Full DDL replica 
-* Replica monitoring 
-
-Caveats
-..............................
-The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
-If the copy process fails for memory problems check the data inside the failing table is not causing overload on the system's memory.
-
-The batch is processed every time the replica stream is empty and when the replica switch to another log segment. Therefore the mysql binlog size determines the batch size.
-Currently the process is sequential. Read the replica -> Store the rows -> Replay. In the future I'll improve this aspect.
-
-
-
-
-Test please!
-..............................
-
-This software is in a very early stage of development. 
-Please submit the issues you find and please **do not use it in production** unless you know what you're doing.
-
-
-
-
