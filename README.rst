@@ -9,7 +9,7 @@ The tool can initialise the replica pulling out the data from MySQL but this req
 The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
-Current version: 1.0 ALPHA_X
+Current version: 1.0 ALPHA_2
 
 .. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
     :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
