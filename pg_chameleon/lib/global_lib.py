@@ -1,6 +1,3 @@
-from __future__ import print_function
-from builtins import str
-from builtins import object
 from pg_chameleon import mysql_engine, pg_engine
 import yaml
 import sys
