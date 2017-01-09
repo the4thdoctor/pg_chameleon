@@ -35,8 +35,8 @@ class sql_token(object):
 		#re for query type
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
-		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE)\s+(?:COLUMN)?.*,?)', re.IGNORECASE)
-		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE)\s+(?:COLUMN)?))(.*?,)', re.IGNORECASE)
+		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?.*,?)', re.IGNORECASE)
+		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
 		self.m_drop_primary=re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
 		
@@ -158,6 +158,7 @@ class sql_token(object):
 		alter_list=self.m_alter_list.findall(alter_stat)
 		for alter_item in alter_list:
 			alter_dic={}
+			#print(alter_item)
 			command = (alter_item[0].split())[0].upper().strip()
 			if command == 'DROP':
 				alter_dic["command"] = command
