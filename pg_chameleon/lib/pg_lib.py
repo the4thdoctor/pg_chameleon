@@ -613,7 +613,7 @@ class pg_engine(object):
 		query=""
 		
 		if token["command"] =="DROP TABLE":
-			query=" %(command)s \"%(name)s\";" % token
+			query=" %(command)s IF EXISTS \"%(name)s\";" % token
 		elif token["command"] =="CREATE TABLE":
 			table_metadata={}
 			table_metadata["columns"]=token["columns"]

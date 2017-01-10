@@ -163,11 +163,9 @@ class sql_token(object):
 			if command == 'DROP':
 				alter_dic["command"] = command
 				alter_dic["name"] = alter_item[1].strip().strip(',').replace('`', '').strip()
-
 			elif command == 'ADD':
 				alter_column=self.m_alter_column.search(alter_item[1].strip())
 				if alter_column:
-					
 					alter_dic["command"] = command
 					alter_dic["name"] = alter_column.group(1).strip().strip('`')
 					alter_dic["type"] = alter_column.group(2).lower()
@@ -182,6 +180,11 @@ class sql_token(object):
 				alter_dic["old"] = change_lst[0]
 				alter_dic["new"] = change_lst[1]
 				alter_dic["type"] = change_lst[2]
+			elif command == 'MODIFY':
+				alter_dic["command"] = command
+				modify_lst=alter_item[1].strip(',').strip().split()
+				alter_dic["column"] = modify_lst[0]
+				alter_dic["type"] = modify_lst[1]
 			alter_cmd.append(alter_dic)
 			stat_dic["alter_cmd"]=alter_cmd
 		return stat_dic
