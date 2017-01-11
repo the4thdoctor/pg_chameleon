@@ -39,6 +39,7 @@ class sql_token(object):
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
 		self.m_drop_primary=re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
+		self.m_change_modify=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		
 	def reset_lists(self):
 		self.tokenised=[]
@@ -158,7 +159,7 @@ class sql_token(object):
 		alter_list=self.m_alter_list.findall(alter_stat)
 		for alter_item in alter_list:
 			alter_dic={}
-			#print(alter_item)
+			print(alter_item)
 			command = (alter_item[0].split())[0].upper().strip()
 			if command == 'DROP':
 				alter_dic["command"] = command

@@ -581,7 +581,10 @@ class pg_engine(object):
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
 				alter_cmd.append("%s \"%s\" %s NULL" % (alter_dic["command"], alter_dic["name"], column_type))	
-				
+			elif alter_dic["command"] == 'CHANGE':
+				pass
+			elif alter_dic["command"] == 'MODIFY':
+				pass
 		query=' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
 		return query
 
