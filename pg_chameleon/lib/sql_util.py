@@ -39,7 +39,7 @@ class sql_token(object):
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
 		self.m_drop_primary=re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
-		self.m_change_modify=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
+		self.m_modify=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		
 	def reset_lists(self):
 		self.tokenised=[]
@@ -159,7 +159,7 @@ class sql_token(object):
 		alter_list=self.m_alter_list.findall(alter_stat)
 		for alter_item in alter_list:
 			alter_dic={}
-			print(alter_item)
+			#print(alter_item)
 			command = (alter_item[0].split())[0].upper().strip()
 			if command == 'DROP':
 				alter_dic["command"] = command
@@ -177,15 +177,22 @@ class sql_token(object):
 					#print alter_column.groups()
 			elif command == 'CHANGE':
 				alter_dic["command"] = command
+				alter_column=self.m_alter_column.search(alter_item[1].strip())
 				change_lst=alter_item[1].strip(',').strip().split()
 				alter_dic["old"] = change_lst[0]
 				alter_dic["new"] = change_lst[1]
 				alter_dic["type"] = change_lst[2]
+				print(alter_column)
 			elif command == 'MODIFY':
-				alter_dic["command"] = command
-				modify_lst=alter_item[1].strip(',').strip().split()
-				alter_dic["column"] = modify_lst[0]
-				alter_dic["type"] = modify_lst[1]
+				alter_column=self.m_alter_column.search(alter_item[1].strip())
+				if alter_column:
+					alter_dic["command"] = command
+					alter_dic["name"] = alter_column.group(1).strip().strip('`')
+					alter_dic["type"] = alter_column.group(2).lower()
+					try:
+						alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
+					except:
+						alter_dic["dimension"]=0
 			alter_cmd.append(alter_dic)
 			stat_dic["alter_cmd"]=alter_cmd
 		return stat_dic
