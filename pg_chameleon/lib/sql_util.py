@@ -38,6 +38,7 @@ class sql_token(object):
 		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?.*,?)', re.IGNORECASE)
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
+		self.m_alter_change=re.compile(r'\s*`?(\w*)`?\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
 		self.m_drop_primary=re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
 		self.m_modify=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		
@@ -177,12 +178,17 @@ class sql_token(object):
 					#print alter_column.groups()
 			elif command == 'CHANGE':
 				alter_dic["command"] = command
-				alter_column=self.m_alter_column.search(alter_item[1].strip())
-				change_lst=alter_item[1].strip(',').strip().split()
-				alter_dic["old"] = change_lst[0]
-				alter_dic["new"] = change_lst[1]
-				alter_dic["type"] = change_lst[2]
-				print(alter_column)
+				alter_column=self.m_alter_change.search(alter_item[1].strip())
+				if alter_column:
+					alter_dic["command"] = command
+					alter_dic["old"] = alter_column.group(1).strip().strip('`')
+					alter_dic["new"] = alter_column.group(2).strip().strip('`')
+					alter_dic["type"] = alter_column.group(3).strip().strip('`')
+					try:
+						alter_dic["dimension"]=alter_column.group(4).replace('|', ',').strip()
+					except:
+						alter_dic["dimension"]=0
+				
 			elif command == 'MODIFY':
 				alter_column=self.m_alter_column.search(alter_item[1].strip())
 				if alter_column:
