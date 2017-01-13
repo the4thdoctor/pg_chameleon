@@ -34,6 +34,7 @@ pid_dir: 'pid/'
 log_dir: 'logs/'
 log_level: 'debug'
 log_dest: 'stdout'
+log_append: True
 #log_dest: 'file'
 #log_level: 'info'
 #log_level: 'debug'

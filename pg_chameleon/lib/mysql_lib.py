@@ -352,7 +352,7 @@ class mysql_engine(object):
 		return index_data
 	
 	def get_table_metadata(self):
-		self.logger.info("getting table metadata")
+		self.logger.debug("getting table metadata")
 		table_include=""
 		if self.mysql_con.tables_limit:
 			self.logger.info("table copy limited to tables: %s" % ','.join(self.mysql_con.tables_limit))
