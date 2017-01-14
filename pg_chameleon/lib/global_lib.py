@@ -89,8 +89,8 @@ class replica_engine(object):
 		
 		
 	"""
-	def __init__(self, stdout=False):
-		self.global_config=global_config()
+	def __init__(self, config, stdout=False):
+		self.global_config=global_config(config)
 		self.logger = logging.getLogger(__name__)
 		self.logger.setLevel(logging.DEBUG)
 		self.logger.propagate = False
