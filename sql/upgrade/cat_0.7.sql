@@ -4,11 +4,15 @@ CREATE OR REPLACE VIEW sch_chameleon.v_version
 ;
 
 
+CREATE TYPE sch_chameleon.en_src_status
+	AS ENUM ('ready', 'initialising', 'running');
+
 	
 CREATE TABLE sch_chameleon.t_sources
 (
 	i_id_source	bigserial,
 	t_source		text,
+	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
 )
 ;
@@ -16,6 +20,18 @@ CREATE TABLE sch_chameleon.t_sources
 ALTER TABLE sch_chameleon.t_replica_batch 
 	ADD COLUMN i_id_source bigint 
 	;
+
+ALTER TABLE sch_chameleon.t_replica_tables
+	ADD COLUMN i_id_source bigint 
+	;
+
+DROP INDEX sch_chameleon.idx_t_replica_tables_table_schema;
+
+CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
+	ON sch_chameleon.t_replica_tables (i_id_source,v_table_name,v_schema_name);
+	
+	
+
 	
 WITH t_insert AS
 	(
@@ -24,22 +40,41 @@ WITH t_insert AS
         VALUES
         	('default')
         RETURNING i_id_source
-    )
-    
-UPDATE sch_chameleon.t_replica_batch 
-	SET i_id_source=t_insert.i_id_source
-FROM
-	t_insert
-;
+    ),
+    t_replica AS 
+	(
+		UPDATE sch_chameleon.t_replica_batch 
+			SET i_id_source=t_insert.i_id_source
+		FROM
+			t_insert
+	)
+		UPDATE sch_chameleon.t_replica_tables
+			SET i_id_source=t_insert.i_id_source
+		FROM
+			t_insert
+			;
+			
 ALTER TABLE sch_chameleon.t_replica_batch 
 	ALTER COLUMN i_id_source SET NOT NULL
 	;
+
+ALTER TABLE sch_chameleon.t_replica_tables
+	ALTER COLUMN i_id_source SET NOT NULL
+	;
+
 	
 ALTER TABLE sch_chameleon.t_replica_batch
-	ADD CONSTRAINT fk_t_source_i_id_source FOREIGN KEY (i_id_source)
+	ADD CONSTRAINT fk_t_replica_batch_i_id_source FOREIGN KEY (i_id_source)
 	REFERENCES sch_chameleon.t_sources (i_id_source)
 	ON UPDATE RESTRICT ON DELETE CASCADE
 	;
+
+ALTER TABLE sch_chameleon.t_replica_tables
+	ADD CONSTRAINT fk_t_replica_tables_i_id_source FOREIGN KEY (i_id_source)
+	REFERENCES sch_chameleon.t_sources (i_id_source)
+	ON UPDATE RESTRICT ON DELETE CASCADE
+	;
+
 	
 DROP FUNCTION  IF EXISTS sch_chameleon.fn_process_batch(integer)	;
 
