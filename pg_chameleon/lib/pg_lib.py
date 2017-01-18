@@ -99,7 +99,43 @@ class pg_engine(object):
 		if cat_version!=self.cat_version and int(num_schema)>0:
 			self.upgrade_service_schema()
 	
-			
+	def add_source(self, source_name):
+		sql_source = """
+					SELECT 
+						count(i_id_source)
+					FROM 
+						sch_chameleon.t_sources 
+					WHERE 
+						t_source=%s
+				;
+			"""
+		self.pg_conn.pgsql_cur.execute(sql_source, (source_name, ))
+		source_data = self.pg_conn.pgsql_cur.fetchone()
+		cnt_source = source_data[0]
+		if cnt_source == 0:
+			sql_add = """INSERT INTO sch_chameleon.t_sources 
+						( t_source) 
+					VALUES 
+						(%s); """
+			self.pg_conn.pgsql_cur.execute(sql_add, (source_name, ))
+		
+		else:
+			print("Source %s already registered." % source_name)
+		sys.exit()
+		
+	def set_source(self):
+		sql_source = """
+					SELECT 
+						i_id_source 
+					FROM 
+						sch_chameleon.t_sources 
+					WHERE 
+						t_source=%s
+				;
+			"""
+		self.pg_conn.pgsql_cur.execute(sql_source, (self.pg_conn.global_conf.source_name, ))
+		source_data=self.pg_conn.pgsql_cur.fetchone()
+		print(source_data)
 		
 	
 	def create_schema(self):

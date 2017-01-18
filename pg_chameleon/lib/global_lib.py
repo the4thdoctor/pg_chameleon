@@ -5,7 +5,6 @@ import os
 import time
 import logging
 import smtplib
-from datetime import datetime
 class global_config(object):
 	"""
 		This class parses the configuration file which is in config/config.yaml and sets 
@@ -22,8 +21,6 @@ class global_config(object):
 		"""
 			Class  constructor.
 		"""
-		dt=datetime.now()
-		#log_sfx=dt.strftime('%Y%m%d-%H%M%S')
 		self.config_dir = "config"
 		config_file = '%s/%s.yaml' % (self.config_dir, config_name)
 		self.config_name=config_name
@@ -34,6 +31,7 @@ class global_config(object):
 		confdic = yaml.load(conffile.read())
 		conffile.close()
 		try:
+			self.source_name=confdic["source_name"]
 			self.mysql_conn=confdic["mysql_conn"]
 			self.pg_conn=confdic["pg_conn"]
 			self.my_database=confdic["my_database"]
@@ -119,7 +117,20 @@ class replica_engine(object):
 		self.sleep_loop=self.global_config.sleep_loop
 		
 		self.pid_file=self.global_config.pid_file
+	
+	def init_replica(self):
+		self.set_source()
+		self.create_schema()
+		self.copy_table_data()
+		self.create_indices()
+	
+	def set_source(self):
+		"""
+			register the source name in the t_sources table
+		"""
+		self.pg_eng.set_source()
 		
+	
 	def  create_schema(self):
 		"""
 			Creates the database schema on PostgreSQL using the metadata extracted from MySQL.
@@ -200,9 +211,11 @@ class replica_engine(object):
 			lst_file=file.split('.')
 			file_name=lst_file[0]
 			file_ext=lst_file[1]
-			if file_ext=='yaml' and file_name!='config-example':
+			if file_ext == 'yaml' and file_name!='config-example':
 				print ("====== %s ======" % (file_name, ))
-	
+				
+	def add_source(self):
+		self.pg_eng.add_source(self.global_config.source_name)
 
 			
 	def copy_table_data(self):

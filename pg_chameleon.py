@@ -7,7 +7,9 @@ commands = [
 					'start_replica',
 					'upgrade_schema',
 					'drop_schema', 
-					'list_config'
+					'list_config', 
+					'add_source', 
+					'drop_source'
 	]
 command_help = 'Available commands, ' + ','.join(commands)
 
@@ -22,11 +24,7 @@ if args.command in commands:
 	if args.command == commands[0]:
 		replica.create_service_schema()
 	elif args.command == commands[1]:
-		replica.drop_service_schema()
-		replica.create_service_schema()
-		replica.create_schema()
-		replica.copy_table_data()
-		replica.create_indices()
+		replica.init_replica()
 	elif args.command == commands[2]:
 		replica.run_replica()
 	elif args.command == commands[3]:
@@ -35,3 +33,7 @@ if args.command in commands:
 		replica.drop_service_schema()
 	elif args.command == commands[5]:
 		replica.list_config()
+	elif args.command == commands[6]:
+		replica.add_source()
+	elif args.command == commands[7]:
+		replica.drop_source()

@@ -5,7 +5,7 @@ CREATE OR REPLACE VIEW sch_chameleon.v_version
 
 
 CREATE TYPE sch_chameleon.en_src_status
-	AS ENUM ('ready', 'initialising', 'running');
+	AS ENUM ('ready', 'initialising','initialised', 'running');
 
 	
 CREATE TABLE sch_chameleon.t_sources
@@ -54,6 +54,7 @@ WITH t_insert AS
 			t_insert
 			;
 			
+
 ALTER TABLE sch_chameleon.t_replica_batch 
 	ALTER COLUMN i_id_source SET NOT NULL
 	;
@@ -82,8 +83,8 @@ CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,text)
 RETURNS BOOLEAN AS
 $BODY$
 	DECLARE
-	    p_max_events		ALIAS FOR $1;
-		p_source_name	ALIAS FOR $2;
+	    p_max_events	ALIAS FOR $1;
+		p_source_name   ALIAS FOR $2;
 		v_r_rows	    record;
 		v_t_fields	    text[];
 		v_t_values	    text[];
