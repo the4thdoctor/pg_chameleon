@@ -217,7 +217,19 @@ class replica_engine(object):
 	def add_source(self):
 		self.pg_eng.add_source(self.global_config.source_name)
 
-			
+	def drop_source(self):
+		lst_yes= ['yes',  'Yes', 'y', 'Y']
+		source_name = self.global_config.source_name
+		drp_msg = 'Dropping the source %s will remove drop any replica reference.\n Are you sure? YES/No\n'  % source_name
+		if sys.version_info[0] == 3:
+			drop_src = input(drp_msg)
+		else:
+			drop_src = raw_input(drp_msg)
+		if drop_src == 'YES':
+			self.pg_eng.drop_source(self.global_config.source_name)
+		elif drop_src in  lst_yes:
+			print('Please type YES all uppercase to confirm')
+		sys.exit()
 	def copy_table_data(self):
 		"""
 			Copy the data for the replicated tables from mysql to postgres.

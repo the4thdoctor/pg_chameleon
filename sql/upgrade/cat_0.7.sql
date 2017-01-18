@@ -16,6 +16,8 @@ CREATE TABLE sch_chameleon.t_sources
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
 )
 ;
+
+CREATE UNIQUE INDEX idx_t_sources_t_source ON sch_chameleon.t_sources(t_source);
 	
 ALTER TABLE sch_chameleon.t_replica_batch 
 	ADD COLUMN i_id_source bigint 
