@@ -12,13 +12,15 @@ CREATE TABLE sch_chameleon.t_sources
 (
 	i_id_source	bigserial,
 	t_source		text,
+	t_dest_schema   text,
 	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
 )
 ;
 
 CREATE UNIQUE INDEX idx_t_sources_t_source ON sch_chameleon.t_sources(t_source);
-	
+CREATE UNIQUE INDEX idx_t_sources_t_dest_schema ON sch_chameleon.t_sources(t_dest_schema);
+		
 ALTER TABLE sch_chameleon.t_replica_batch 
 	ADD COLUMN i_id_source bigint 
 	;
@@ -32,7 +34,9 @@ DROP INDEX sch_chameleon.idx_t_replica_tables_table_schema;
 CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
 	ON sch_chameleon.t_replica_tables (i_id_source,v_table_name,v_schema_name);
 	
-	
+DROP INDEX sch_chameleon.idx_t_replica_batch_binlog_name_position;
+CREATE UNIQUE INDEX idx_t_replica_batch_binlog_name_position 
+    ON sch_chameleon.t_replica_batch  (i_id_source,t_binlog_name,i_binlog_position);
 
 	
 WITH t_insert AS

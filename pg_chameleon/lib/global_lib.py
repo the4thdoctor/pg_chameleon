@@ -32,6 +32,7 @@ class global_config(object):
 		conffile.close()
 		try:
 			self.source_name=confdic["source_name"]
+			self.dest_schema=confdic["dest_schema"]
 			self.mysql_conn=confdic["mysql_conn"]
 			self.pg_conn=confdic["pg_conn"]
 			self.my_database=confdic["my_database"]
@@ -75,6 +76,18 @@ class global_config(object):
 			print('Missing key %s in configuration file. check config/config-example.yaml for reference' % (key_missing, ))
 			sys.exit()
 
+	def get_source_name(self, config_name = 'default'):
+		config_file = '%s/%s.yaml' % (self.config_dir, config_name)
+		self.config_name=config_name
+		if os.path.isfile(config_file):
+			conffile = open(config_file, 'rb')
+			confdic = yaml.load(conffile.read())
+			conffile.close()
+			try:
+				source_name=confdic["source_name"]
+			except:
+				print('FATAL - missing parameter source name in config file %s' % config_file)
+		return source_name
 		
 class replica_engine(object):
 	"""
@@ -119,16 +132,16 @@ class replica_engine(object):
 		self.pid_file=self.global_config.pid_file
 	
 	def init_replica(self):
-		self.set_source()
+		self.set_source_id()
 		self.create_schema()
 		self.copy_table_data()
 		self.create_indices()
 	
-	def set_source(self):
+	def set_source_id(self):
 		"""
-			register the source name in the t_sources table
+			gets the source id for the current configuration
 		"""
-		self.pg_eng.set_source()
+		self.pg_eng.set_source_id()
 		
 	
 	def  create_schema(self):
@@ -205,17 +218,21 @@ class replica_engine(object):
 			time.sleep(self.sleep_loop)
 	
 	def list_config(self):
-		list_config=(os.listdir(self.global_config.config_dir))
+		list_config = (os.listdir(self.global_config.config_dir))
 		print ("Available configurations")
 		for file in list_config:
-			lst_file=file.split('.')
-			file_name=lst_file[0]
-			file_ext=lst_file[1]
+			lst_file = file.split('.')
+			file_name = lst_file[0]
+			file_ext = lst_file[1]
 			if file_ext == 'yaml' and file_name!='config-example':
-				print ("====== %s ======" % (file_name, ))
+				source_name = self.global_config.get_source_name(file_name)
+				source_status = self.pg_eng.get_source_status(source_name)
+				print ("%s.yaml Source Name: %s - Status: %s" % (file_name, source_name, source_status ))
 				
 	def add_source(self):
-		self.pg_eng.add_source(self.global_config.source_name)
+		source_name=self.global_config.source_name
+		dest_schema=self.global_config.dest_schema
+		self.pg_eng.add_source(source_name, dest_schema)
 
 	def drop_source(self):
 		lst_yes= ['yes',  'Yes', 'y', 'Y']

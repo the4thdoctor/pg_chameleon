@@ -8,6 +8,9 @@ pg_database: db_replication
 copy_mode: 'file' 
 #copy_mode: 'direct'
 source_name: 'default'
+dest_schema: 
+
+
 
 #seconds between each replica loop
 sleep_loop: 10 

@@ -99,7 +99,7 @@ class pg_engine(object):
 		if cat_version!=self.cat_version and int(num_schema)>0:
 			self.upgrade_service_schema()
 	
-	def add_source(self, source_name):
+	def add_source(self, source_name, dest_schema):
 		sql_source = """
 					SELECT 
 						count(i_id_source)
@@ -114,15 +114,32 @@ class pg_engine(object):
 		cnt_source = source_data[0]
 		if cnt_source == 0:
 			sql_add = """INSERT INTO sch_chameleon.t_sources 
-						( t_source) 
+						( t_source,t_schema) 
 					VALUES 
-						(%s); """
-			self.pg_conn.pgsql_cur.execute(sql_add, (source_name, ))
-		
+						(%s,%s); """
+			self.pg_conn.pgsql_cur.execute(sql_add, (source_name, dest_schema ))
 		else:
 			print("Source %s already registered." % source_name)
 		sys.exit()
 	
+	def get_source_status(self, source_name):
+		sql_source = """
+					SELECT 
+						enm_status
+					FROM 
+						sch_chameleon.t_sources 
+					WHERE 
+						t_source=%s
+				;
+			"""
+		self.pg_conn.pgsql_cur.execute(sql_source, (source_name, ))
+		source_data = self.pg_conn.pgsql_cur.fetchone()
+		if source_data:
+			source_status = source_data[0]
+		else:
+			source_status = 'Not registered'
+		return source_status
+		
 	def drop_source(self, source_name):
 		sql_delete = """ DELETE FROM sch_chameleon.t_sources 
 					WHERE  t_source=%s; """
@@ -130,7 +147,7 @@ class pg_engine(object):
 	
 		
 	
-	def set_source(self):
+	def set_source_id(self):
 		sql_source = """
 					SELECT 
 						i_id_source 
@@ -140,10 +157,16 @@ class pg_engine(object):
 						t_source=%s
 				;
 			"""
-		self.pg_conn.pgsql_cur.execute(sql_source, (self.pg_conn.global_conf.source_name, ))
+		source_name=self.pg_conn.global_conf.source_name
+		self.pg_conn.pgsql_cur.execute(sql_source, (source_name, ))
 		source_data=self.pg_conn.pgsql_cur.fetchone()
-		print(source_data)
-		
+		try:
+			self.i_id_source=source_data[0]
+		except:
+			print("Source %s is not registered." % source_name)
+			sys.exit()
+	
+			
 	
 	def create_schema(self):
 		sql_drop="DROP SCHEMA IF EXISTS "+self.pg_conn.dest_schema+" CASCADE;"
@@ -159,6 +182,7 @@ class pg_engine(object):
 			if index["index_name"]=="PRIMARY":
 				sql_insert=""" INSERT INTO sch_chameleon.t_replica_tables 
 										(
+											i_id_source,
 											v_table_name,
 											v_schema_name,
 											v_table_pkey
@@ -166,14 +190,15 @@ class pg_engine(object):
 										VALUES (
 														%s,
 														%s,
+														%s,
 														ARRAY[%s]
 													)
-										ON CONFLICT (v_table_name,v_schema_name)
+										ON CONFLICT (i_id_source,v_table_name,v_schema_name)
 											DO UPDATE 
 												SET v_table_pkey=EXCLUDED.v_table_pkey
 										;
 								"""
-				self.pg_conn.pgsql_cur.execute(sql_insert, (table_name, self.pg_conn.dest_schema, index["index_columns"].strip()))	
+				self.pg_conn.pgsql_cur.execute(sql_insert, (self.i_id_source, table_name, self.pg_conn.dest_schema, index["index_columns"].strip()))	
 	
 	def unregister_table(self, table_name):
 		self.logger.info("unregistering table %s from the replica catalog" % (table_name,))
@@ -417,6 +442,8 @@ class pg_engine(object):
 											
 									FROM
 											sch_chameleon.t_replica_batch
+									WHERE 
+										i_id_source=%s
 									)
 									UNION ALL
 									(
@@ -430,7 +457,7 @@ class pg_engine(object):
 								) tab
 						;
 					"""
-		self.pg_conn.pgsql_cur.execute(sql_tab_log)
+		self.pg_conn.pgsql_cur.execute(sql_tab_log, (self.i_id_source, ))
 		results=self.pg_conn.pgsql_cur.fetchone()
 		table_file=results[0]
 		master_data=master_status[0]
@@ -440,6 +467,7 @@ class pg_engine(object):
 		sql_master="""
 							INSERT INTO sch_chameleon.t_replica_batch
 															(
+																i_id_source,
 																t_binlog_name, 
 																i_binlog_position,
 																v_log_table
@@ -447,22 +475,23 @@ class pg_engine(object):
 												VALUES (
 																%s,
 																%s,
+																%s,
 																%s
 															)
-							ON CONFLICT DO NOTHING
+							--ON CONFLICT DO NOTHING
 							RETURNING i_id_batch
 							;
 						"""
 		self.logger.info("saving master data")
 		try:
-			self.pg_conn.pgsql_cur.execute(sql_master, (binlog_name, binlog_position, table_file))
+			self.pg_conn.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position, table_file))
 			results=self.pg_conn.pgsql_cur.fetchone()
 			next_batch_id=results[0]
 		except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_master, (binlog_name, binlog_position, table_file)))
-		except:
-			pass
+		#except:
+		#	pass
 		return next_batch_id
 		
 	def get_batch_data(self):
