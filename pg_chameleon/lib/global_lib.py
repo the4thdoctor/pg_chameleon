@@ -136,6 +136,7 @@ class replica_engine(object):
 		self.create_schema()
 		self.copy_table_data()
 		self.create_indices()
+		self.set_source_id('initialised')
 	
 	def set_source_id(self, source_status):
 		"""
