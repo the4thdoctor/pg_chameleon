@@ -84,7 +84,7 @@ class pg_engine(object):
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.6'
+		self.cat_version='0.7'
 		self.cat_sql=[
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -93,6 +93,7 @@ class pg_engine(object):
 									{'version':'0.4','script': 'upgrade/cat_0.4.sql'}, 
 									{'version':'0.5','script': 'upgrade/cat_0.5.sql'}, 
 									{'version':'0.6','script': 'upgrade/cat_0.6.sql'}, 
+									{'version':'0.7','script': 'upgrade/cat_0.7.sql'}, 
 							]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -114,7 +115,7 @@ class pg_engine(object):
 		cnt_source = source_data[0]
 		if cnt_source == 0:
 			sql_add = """INSERT INTO sch_chameleon.t_sources 
-						( t_source,t_schema) 
+						( t_source,t_dest_schema) 
 					VALUES 
 						(%s,%s); """
 			self.pg_conn.pgsql_cur.execute(sql_add, (source_name, dest_schema ))
@@ -147,7 +148,7 @@ class pg_engine(object):
 	
 		
 	
-	def set_source_id(self):
+	def set_source_id(self, source_status):
 		sql_source = """
 					SELECT 
 						i_id_source 
@@ -379,12 +380,28 @@ class pg_engine(object):
 					file_schema.close()
 					print("=================================================")
 					self.pg_conn.pgsql_cur.execute(sql_schema)
+					if script_ver=='0.7':
+						sql_update="""UPDATE sch_chameleon.t_sources
+												SET
+													t_dest_schema=%s 
+												WHERE i_id_source=(
+																	SELECT 
+																		i_id_source
+																	FROM
+																		sch_chameleon.t_sources
+																	WHERE
+																		t_source='default'
+																		AND t_dest_schema='default'
+																)
+												;
+						"""
+						self.pg_conn.pgsql_cur.execute(sql_update, (self.pg_conn.global_conf.dest_schema, ))
 				
 				
 				if script_ver==cat_version and not install_script:
 					self.logger.info("enabling install script")
 					install_script=True
-					
+		
 	def check_service_schema(self):
 		sql_check="""
 								SELECT 

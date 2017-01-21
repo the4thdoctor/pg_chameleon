@@ -5,14 +5,14 @@ CREATE OR REPLACE VIEW sch_chameleon.v_version
 
 
 CREATE TYPE sch_chameleon.en_src_status
-	AS ENUM ('ready', 'initialising','initialised', 'running');
+	AS ENUM ('ready', 'initialising','initialised','stopped','running');
 
 	
 CREATE TABLE sch_chameleon.t_sources
 (
 	i_id_source	bigserial,
-	t_source		text,
-	t_dest_schema   text,
+	t_source		text NOT NULL,
+	t_dest_schema   text NOT NULL,
 	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
 )
@@ -42,9 +42,9 @@ CREATE UNIQUE INDEX idx_t_replica_batch_binlog_name_position
 WITH t_insert AS
 	(
 		INSERT INTO	sch_chameleon.t_sources 
-			(t_source)
+			(t_source,t_dest_schema)
         VALUES
-        	('default')
+        	('default','default')
         RETURNING i_id_source
     ),
     t_replica AS 

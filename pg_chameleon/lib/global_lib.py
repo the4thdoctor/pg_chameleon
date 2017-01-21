@@ -132,16 +132,16 @@ class replica_engine(object):
 		self.pid_file=self.global_config.pid_file
 	
 	def init_replica(self):
-		self.set_source_id()
+		self.set_source_id('initialising')
 		self.create_schema()
 		self.copy_table_data()
 		self.create_indices()
 	
-	def set_source_id(self):
+	def set_source_id(self, source_status):
 		"""
 			gets the source id for the current configuration
 		"""
-		self.pg_eng.set_source_id()
+		self.pg_eng.set_source_id(source_status)
 		
 	
 	def  create_schema(self):
