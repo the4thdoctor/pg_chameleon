@@ -8,7 +8,7 @@ pg_database: db_replication
 copy_mode: 'file' 
 #copy_mode: 'direct'
 source_name: 'default'
-dest_schema: 
+dest_schema: 'my_schema'
 
 
 

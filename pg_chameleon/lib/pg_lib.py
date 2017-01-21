@@ -150,16 +150,16 @@ class pg_engine(object):
 	
 	def set_source_id(self, source_status):
 		sql_source = """
-					SELECT 
-						i_id_source 
-					FROM 
-						sch_chameleon.t_sources 
-					WHERE 
+					UPDATE sch_chameleon.t_sources
+					SET
+						enm_status=%s
+					WHERE
 						t_source=%s
+					RETURNING i_id_source
 				;
 			"""
 		source_name=self.pg_conn.global_conf.source_name
-		self.pg_conn.pgsql_cur.execute(sql_source, (source_name, ))
+		self.pg_conn.pgsql_cur.execute(sql_source, (source_status, source_name))
 		source_data=self.pg_conn.pgsql_cur.fetchone()
 		try:
 			self.i_id_source=source_data[0]
@@ -168,7 +168,13 @@ class pg_engine(object):
 			sys.exit()
 	
 			
-	
+	def clean_batch_data(self):
+		sql_delete="""DELETE FROM sch_chameleon.t_replica_batch 
+								WHERE i_id_source=%s;
+							"""
+		self.pg_conn.pgsql_cur.execute(sql_delete, (self.i_id_source, ))
+		
+		
 	def create_schema(self):
 		sql_drop="DROP SCHEMA IF EXISTS "+self.pg_conn.dest_schema+" CASCADE;"
 		sql_create=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"

@@ -132,19 +132,13 @@ class replica_engine(object):
 		self.pid_file=self.global_config.pid_file
 	
 	def init_replica(self):
-		self.set_source_id('initialising')
+		self.pg_eng.set_source_id('initialising')
+		self.pg_eng.clean_batch_data()
 		self.create_schema()
 		self.copy_table_data()
 		self.create_indices()
-		self.set_source_id('initialised')
-	
-	def set_source_id(self, source_status):
-		"""
-			gets the source id for the current configuration
-		"""
-		self.pg_eng.set_source_id(source_status)
-		
-	
+		self.pg_eng.set_source_id('initialised')
+
 	def  create_schema(self):
 		"""
 			Creates the database schema on PostgreSQL using the metadata extracted from MySQL.
