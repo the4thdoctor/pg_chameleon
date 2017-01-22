@@ -29,14 +29,19 @@ ALTER TABLE sch_chameleon.t_replica_tables
 	ADD COLUMN i_id_source bigint 
 	;
 
-DROP INDEX sch_chameleon.idx_t_replica_tables_table_schema;
-
-CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
-	ON sch_chameleon.t_replica_tables (i_id_source,v_table_name,v_schema_name);
 	
 DROP INDEX sch_chameleon.idx_t_replica_batch_binlog_name_position;
 CREATE UNIQUE INDEX idx_t_replica_batch_binlog_name_position 
     ON sch_chameleon.t_replica_batch  (i_id_source,t_binlog_name,i_binlog_position);
+
+DROP INDEX sch_chameleon.idx_t_replica_batch_ts_created;
+CREATE UNIQUE INDEX idx_t_replica_batch_ts_created
+	ON sch_chameleon.t_replica_batch (i_id_source,ts_created);
+
+
+DROP INDEX sch_chameleon.idx_t_replica_tables_table_schema;
+CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
+	ON sch_chameleon.t_replica_tables (i_id_source,v_table_name,v_schema_name);
 
 	
 WITH t_insert AS
