@@ -155,7 +155,7 @@ class pg_engine(object):
 						enm_status=%s
 					WHERE
 						t_source=%s
-					RETURNING i_id_source
+					RETURNING i_id_source,t_dest_schema
 				;
 			"""
 		source_name=self.pg_conn.global_conf.source_name
@@ -163,6 +163,7 @@ class pg_engine(object):
 		source_data=self.pg_conn.pgsql_cur.fetchone()
 		try:
 			self.i_id_source=source_data[0]
+			self.dest_schema=source_data[1]
 		except:
 			print("Source %s is not registered." % source_name)
 			sys.exit()
@@ -176,9 +177,10 @@ class pg_engine(object):
 		
 		
 	def create_schema(self):
-		sql_drop="DROP SCHEMA IF EXISTS "+self.pg_conn.dest_schema+" CASCADE;"
-		sql_create=" CREATE SCHEMA IF NOT EXISTS "+self.pg_conn.dest_schema+";"
-		sql_path=" SET search_path="+self.pg_conn.dest_schema+";"
+		
+		sql_drop="DROP SCHEMA IF EXISTS "+self.dest_schema+" CASCADE;"
+		sql_create=" CREATE SCHEMA IF NOT EXISTS "+self.dest_schema+";"
+		sql_path=" SET search_path="+self.dest_schema+";"
 		self.pg_conn.pgsql_cur.execute(sql_drop)
 		self.pg_conn.pgsql_cur.execute(sql_create)
 		self.pg_conn.pgsql_cur.execute(sql_path)
