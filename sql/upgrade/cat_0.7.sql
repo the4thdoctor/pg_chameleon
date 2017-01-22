@@ -85,12 +85,12 @@ ALTER TABLE sch_chameleon.t_replica_tables
 	
 DROP FUNCTION  IF EXISTS sch_chameleon.fn_process_batch(integer)	;
 
-CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,text)
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
 $BODY$
 	DECLARE
-	    p_max_events	ALIAS FOR $1;
-		p_source_name   ALIAS FOR $2;
+	    p_i_max_events	ALIAS FOR $1;
+		p_i_source_id   ALIAS FOR $2;
 		v_r_rows	    record;
 		v_t_fields	    text[];
 		v_t_values	    text[];
@@ -119,6 +119,7 @@ $BODY$
 								    b_started 
 							AND 	b_processed 
 							AND     NOT b_replayed
+							AND     i_id_source=p_i_source_id
 						ORDER BY 
 							ts_created 
 						LIMIT 1
@@ -142,12 +143,13 @@ $BODY$
 							INNER JOIN sch_chameleon.t_replica_tables tab
 								ON
 										tab.v_table_name=log.v_table_name
-									AND 	tab.v_schema_name=log.v_schema_name
+									AND tab.v_schema_name=log.v_schema_name
+									AND tab.i_id_source=p_i_source_id
 								INNER JOIN t_batch bat
 								ON	bat.i_id_batch=log.i_id_batch
 							
 						ORDER BY ts_event_datetime
-						LIMIT p_max_events
+						LIMIT p_i_max_events
 					)
 				SELECT
 				    i_id_event,

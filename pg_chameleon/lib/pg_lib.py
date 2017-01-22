@@ -207,7 +207,7 @@ class pg_engine(object):
 												SET v_table_pkey=EXCLUDED.v_table_pkey
 										;
 								"""
-				self.pg_conn.pgsql_cur.execute(sql_insert, (self.i_id_source, table_name, self.pg_conn.dest_schema, index["index_columns"].strip()))	
+				self.pg_conn.pgsql_cur.execute(sql_insert, (self.i_id_source, table_name, self.dest_schema, index["index_columns"].strip()))	
 	
 	def unregister_table(self, table_name):
 		self.logger.info("unregistering table %s from the replica catalog" % (table_name,))
@@ -218,11 +218,11 @@ class pg_engine(object):
 								RETURNING i_id_table
 								;
 						"""
-		self.pg_conn.pgsql_cur.execute(sql_delete, (table_name, self.pg_conn.dest_schema))	
+		self.pg_conn.pgsql_cur.execute(sql_delete, (table_name, self.dest_schema))	
 		removed_id=self.pg_conn.pgsql_cur.fetchone()
 		table_id=removed_id[0]
 		self.logger.info("renaming table %s to %s_%s" % (table_name, table_name, table_id))
-		sql_rename="""ALTER TABLE IF EXISTS "%s"."%s" rename to "%s_%s"; """ % (self.pg_conn.dest_schema, table_name, table_name, table_id)
+		sql_rename="""ALTER TABLE IF EXISTS "%s"."%s" rename to "%s_%s"; """ % (self.dest_schema, table_name, table_name, table_id)
 		self.logger.debug(sql_rename)
 		self.pg_conn.pgsql_cur.execute(sql_rename)	
 	
@@ -514,7 +514,7 @@ class pg_engine(object):
 			next_batch_id=results[0]
 		except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_master, (binlog_name, binlog_position, table_file)))
+					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position, table_file)))
 		#except:
 		#	pass
 		return next_batch_id
@@ -529,6 +529,7 @@ class pg_engine(object):
 							WHERE 
 											NOT b_processed
 								AND 	NOT b_replayed
+								AND		i_id_source=%s
 						)
 					UPDATE sch_chameleon.t_replica_batch
 						SET b_started=True
@@ -543,7 +544,7 @@ class pg_engine(object):
 						v_log_table
 					;
 					"""
-		self.pg_conn.pgsql_cur.execute(sql_batch)
+		self.pg_conn.pgsql_cur.execute(sql_batch, (self.i_id_source, ))
 		return self.pg_conn.pgsql_cur.fetchall()
 	
 	def insert_batch(self,group_insert):
@@ -605,7 +606,7 @@ class pg_engine(object):
 			insert_list.append(self.pg_conn.pgsql_cur.mogrify("(%s,%s,%s,%s,%s,%s,%s,%s)", (
 																									global_data["batch_id"], 
 																									global_data["table"],  
-																									global_data["schema"], 
+																									self.dest_schema, 
 																									global_data["action"], 
 																									global_data["binlog"], 
 																									global_data["logpos"], 
@@ -649,9 +650,9 @@ class pg_engine(object):
 		
 	def process_batch(self, replica_batch_size):
 		batch_loop=True
-		sql_process="""SELECT sch_chameleon.fn_process_batch(%s);"""
+		sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
 		while batch_loop:
-			self.pg_conn.pgsql_cur.execute(sql_process, (replica_batch_size, ))
+			self.pg_conn.pgsql_cur.execute(sql_process, (replica_batch_size, self.i_id_source))
 			batch_result=self.pg_conn.pgsql_cur.fetchone()
 			batch_loop=batch_result[0]
 			self.logger.debug("Batch loop value %s" % (batch_loop))
@@ -700,7 +701,7 @@ class pg_engine(object):
 								table_schema=%s 
 							AND table_name=%s;
 					"""
-		self.pg_conn.pgsql_cur.execute(sql_gen, (self.pg_conn.dest_schema, token["name"]))
+		self.pg_conn.pgsql_cur.execute(sql_gen, (self.dest_schema, token["name"]))
 		value_check=self.pg_conn.pgsql_cur.fetchone()
 		if value_check:
 			sql_drop=value_check[0]
@@ -736,7 +737,7 @@ class pg_engine(object):
 
 
 	def write_ddl(self, token, query_data):
-		sql_path=" SET search_path="+self.pg_conn.dest_schema+";"
+		sql_path=" SET search_path="+self.dest_schema+";"
 		pg_ddl=sql_path+self.gen_query(token)
 		log_table=query_data["log_table"]
 		insert_vals=(	query_data["batch_id"], 

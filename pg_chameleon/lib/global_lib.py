@@ -31,54 +31,54 @@ class global_config(object):
 		confdic = yaml.load(conffile.read())
 		conffile.close()
 		try:
-			self.source_name=confdic["source_name"]
-			self.dest_schema=confdic["dest_schema"]
-			self.mysql_conn=confdic["mysql_conn"]
-			self.pg_conn=confdic["pg_conn"]
-			self.my_database=confdic["my_database"]
-			self.my_charset=confdic["my_charset"]
-			self.pg_charset=confdic["pg_charset"]
-			self.pg_database=confdic["pg_database"]
-			self.my_server_id=confdic["my_server_id"]
-			self.replica_batch_size=confdic["replica_batch_size"]
-			self.tables_limit=confdic["tables_limit"]
-			self.copy_mode=confdic["copy_mode"]
-			self.hexify=confdic["hexify"]
-			self.log_level=confdic["log_level"]
-			self.log_dest=confdic["log_dest"]
-			self.log_append=confdic["log_append"]
+			self.source_name = confdic["source_name"]
+			self.dest_schema = confdic["dest_schema"]
+			self.mysql_conn = confdic["mysql_conn"]
+			self.pg_conn = confdic["pg_conn"]
+			self.my_database = confdic["my_database"]
+			self.my_charset = confdic["my_charset"]
+			self.pg_charset = confdic["pg_charset"]
+			self.pg_database = confdic["pg_database"]
+			self.my_server_id = confdic["my_server_id"]
+			self.replica_batch_size = confdic["replica_batch_size"]
+			self.tables_limit = confdic["tables_limit"]
+			self.copy_mode = confdic["copy_mode"]
+			self.hexify = confdic["hexify"]
+			self.log_level = confdic["log_level"]
+			self.log_dest = confdic["log_dest"]
+			self.log_append = confdic["log_append"]
 			
-			self.sleep_loop=confdic["sleep_loop"]
-			self.pause_on_reindex=confdic["pause_on_reindex"]
-			self.sleep_on_reindex=confdic["sleep_on_reindex"]
-			self.reindex_app_names=confdic["reindex_app_names"]
+			self.sleep_loop = confdic["sleep_loop"]
+			self.pause_on_reindex = confdic["pause_on_reindex"]
+			self.sleep_on_reindex = confdic["sleep_on_reindex"]
+			self.reindex_app_names = confdic["reindex_app_names"]
 			
 			
-			self.log_file=confdic["log_dir"]+config_name+'.log'
-			self.pid_file=confdic["pid_dir"]+"/pg_chameleon.pid"
-			copy_max_memory=str(confdic["copy_max_memory"])[:-1]
-			copy_scale=str(confdic["copy_max_memory"])[-1]
+			self.log_file = confdic["log_dir"]+config_name+'.log'
+			self.pid_file = confdic["pid_dir"]+"/"+config_name+".pid"
+			copy_max_memory = str(confdic["copy_max_memory"])[:-1]
+			copy_scale = str(confdic["copy_max_memory"])[-1]
 			try:
 				int(copy_scale)
-				copy_max_memory=confdic["copy_max_memory"]
+				copy_max_memory = confdic["copy_max_memory"]
 			except:
-				if copy_scale=='k':
-					copy_max_memory=str(int(copy_max_memory)*1024)
-				elif copy_scale=='M':
-					copy_max_memory=str(int(copy_max_memory)*1024*1024)
-				elif copy_scale=='G':
-					copy_max_memory=str(int(copy_max_memory)*1024*1024*1024)
+				if copy_scale =='k':
+					copy_max_memory = str(int(copy_max_memory)*1024)
+				elif copy_scale =='M':
+					copy_max_memory = str(int(copy_max_memory)*1024*1024)
+				elif copy_scale =='G':
+					copy_max_memory = str(int(copy_max_memory)*1024*1024*1024)
 				else:
 					print("**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes.")
 					sys.exit()
-			self.copy_max_memory=copy_max_memory
+			self.copy_max_memory = copy_max_memory
 		except KeyError as key_missing:
 			print('Missing key %s in configuration file. check config/config-example.yaml for reference' % (key_missing, ))
 			sys.exit()
 
 	def get_source_name(self, config_name = 'default'):
 		config_file = '%s/%s.yaml' % (self.config_dir, config_name)
-		self.config_name=config_name
+		self.config_name = config_name
 		if os.path.isfile(config_file):
 			conffile = open(config_file, 'rb')
 			confdic = yaml.load(conffile.read())
@@ -205,12 +205,15 @@ class replica_engine(object):
 		"""
 			Runs the replica loop. 
 		"""
+		self.pg_eng.set_source_id('running')
 		if self.check_running():
+			self.pg_eng.set_source_id('stopped')
 			sys.exit()
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
 			time.sleep(self.sleep_loop)
+		self.pg_eng.set_source_id('stopped')
 	
 	def list_config(self):
 		list_config = (os.listdir(self.global_config.config_dir))
