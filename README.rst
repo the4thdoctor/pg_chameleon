@@ -1,10 +1,12 @@
 
 .. image:: images/pgchameleon.png
 
-Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and 3.6. 
-The system relies on the mysql-replication library to pull the changes from MySQL and covert them into a jsonb object. A plpgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
+Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and Python 3. 
+The system relies on the mysql-replication library to pull the changes from MySQL and covert them into a jsonb object. 
+A plpgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
 
-The tool can initialise the replica pulling out the data from MySQL but this requires the FLUSH TABLE WITH READ LOCK; to work properly.
+The tool requires an  initial replica setup which pulls the data from MySQL in read only mode. 
+This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 
 The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
@@ -23,7 +25,7 @@ Platform and versions
 
 The library is being developed on Linux Slackware 14.2 with python 2.7 and python 3.6.
 
-The databases source and target are tested on FreeBSD 10.3
+The databases source and target are tested on FreeBSD 11.0
 
 * MySQL: 5.6.33 
 * PostgreSQL: 9.5.5 
@@ -95,6 +97,11 @@ Requirements
 
 Configuration parameters
 ********************************
+The tool supports multiple configuration files. The replica can run from multiple sources at same time as long as the destination schema is different.
+
+
+
+
 The configuration file is a yaml file. Each parameter controls the
 way the program acts.
 
@@ -114,6 +121,9 @@ way the program acts.
 * pause_on_reindex determines whether to pause the replica if a reindex process is found in pg_stat_activity
 * sleep_on_reindex seconds to sleep when a reindex process is found
 * reindex_app_names  lists the application names to check for reindex (e.g. reindexdb). This is a workaround which required for keeping the replication user unprivileged. 
+* source_name  this must be unique along the list of sources. The tool detects if there's a duplicate when registering a new source
+* dest_schema this is also a unique value. once the source is registered the dest_schema can't be changed anymore
+* log_append append to log file or truncate it at each restart
 
 Reindex detection example setup
 
@@ -235,7 +245,7 @@ For PostgreSQL
     Type "help" for help.
     db_replica=> 
 
-Setup the connection parameters in config.yaml
+Setup the connection parameters in default.yaml
 
 .. code-block:: yaml
 
@@ -274,7 +284,9 @@ Initialise the schema and the replica with
 
 .. code-block:: none
     
-    ./pg_chameleon.py init_replica
+    ./pg_chameleon.py create_schema 
+    ./pg_chameleon.py add_source --config default
+    ./pg_chameleon.py init_replica --config default
 
 
 Start the replica with
@@ -282,5 +294,6 @@ Start the replica with
 
 .. code-block:: none
     
-    ./pg_chameleon.py start_replica
+	./pg_chameleon.py start_replica --config default
 	
+
