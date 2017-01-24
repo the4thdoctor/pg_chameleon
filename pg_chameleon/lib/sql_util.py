@@ -35,6 +35,7 @@ class sql_token(object):
 		#re for query type
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
+		self.m_alter_index=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+(?:UNIQUE)?\s*?(?:INDEX).*,?)', re.IGNORECASE)
 		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?.*,?)', re.IGNORECASE)
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
@@ -49,8 +50,7 @@ class sql_token(object):
 	def parse_column(self, col_def):
 		colmatch=self.m_field.search(col_def)
 		dimmatch=self.m_dimension.search(col_def)
-		#enmatch=self.m_enum.search(col_def)
-		#print col_def
+		#print(col_def)
 		
 		col_dic={}
 		if colmatch:
@@ -227,6 +227,7 @@ class sql_token(object):
 			mcreate_table=self.m_create_table.match(stat_cleanup)
 			mdrop_table=self.m_drop_table.match(stat_cleanup)
 			malter_table=self.m_alter_table.match(stat_cleanup)
+			malter_index=self.m_alter_index.match(stat_cleanup)
 			mdrop_primary=self.m_drop_primary.match(stat_cleanup)
 			
 			#print stat_cleanup
@@ -244,6 +245,8 @@ class sql_token(object):
 			elif mdrop_primary:
 				stat_dic["command"]="DROP PRIMARY KEY"
 				stat_dic["name"]=mdrop_primary.group(1).strip().strip(',').replace('`', '').strip()
+			elif malter_index:
+				pass
 			elif malter_table:
 				stat_dic=self.parse_alter_table(malter_table)
 			
