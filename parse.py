@@ -42,10 +42,9 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #statement="""ALTER TABLE test ADD COLUMN `dkdkd` timestamp NULL;"""
 #statement="""create table test_pk (id int ,PRIMARY KEY  (id) ); """
 #statement="""alter table test change   date_create_new date_create_new timestamp;"""
-#statement="""ALTER TABLE `test_table` MODIFY `test_column` bigint(20) DEFAULT NULL; 
-#ALTER TABLE table2 CHANGE column1 column2 bigint(20);"""
-statement="""ALTER TABLE `test_table` ADD UNIQUE INDEX `idx_unique` (`log`, `status`);
- """
+statement="""ALTER TABLE `test_table` MODIFY `test_column` bigint(20) DEFAULT NULL; 
+ALTER TABLE table2 CHANGE column1 column2 bigint(20);"""
+#statement="""ALTER TABLE `test_table` ADD UNIQUE INDEX `idx_unique` (`log`, `status`);"""
 token_sql=sql_token()
 token_sql.parse_sql(statement)
 #print token_sql.tokenised
