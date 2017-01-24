@@ -52,11 +52,15 @@ class mysql_connection(object):
 		self.my_cursor_fallback=self.my_connection.cursor()
 	
 	def disconnect_db(self):
-		self.my_connection.close()
-	
+		try:
+			self.my_connection.close()
+		except:
+			pass
 	def disconnect_db_ubf(self):
-		self.my_connection_ubf.close()
-		
+		try:
+			self.my_connection_ubf.close()
+		except:
+			pass
 		
 class mysql_engine(object):
 	def __init__(self, global_config, logger, out_dir="/tmp/"):
@@ -89,6 +93,7 @@ class mysql_engine(object):
 		Stream the replica using the batch data.
 		:param batch_data: The list with the master's batch data.
 		"""
+		schema_name=pg_engine.dest_schema
 		close_batch=False
 		total_events=0
 		table_type_map=self.get_table_type_map()	
@@ -134,7 +139,7 @@ class mysql_engine(object):
 				
 				for token in self.sql_token.tokenised:
 					if len(token)>0:
-						schema_name=binlogevent.schema.decode()
+						#schema_name=binlogevent.schema.decode()
 						
 						query_data={
 												"binlog":log_file, 
@@ -158,7 +163,7 @@ class mysql_engine(object):
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
 					table_name=binlogevent.table
-					schema_name=binlogevent.schema
+					#schema_name=binlogevent.schema
 
 					column_map=table_type_map[table_name]
 					global_data={

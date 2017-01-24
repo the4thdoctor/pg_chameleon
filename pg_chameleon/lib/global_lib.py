@@ -87,6 +87,7 @@ class global_config(object):
 				source_name=confdic["source_name"]
 			except:
 				print('FATAL - missing parameter source name in config file %s' % config_file)
+				source_name='NOT CONFIGURED'
 		return source_name
 		
 class replica_engine(object):
