@@ -687,13 +687,18 @@ class pg_engine(object):
 				column_type=self.type_dictionary[alter_dic["type"]]
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
-				sql_type = """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s ;""" % (table_name, old_column, column_type)
+				sql_type = """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s  USING "%s"::%s ;;""" % (table_name, old_column, column_type, old_column, column_type)
 				if old_column != new_column:
 					sql_rename="""ALTER TABLE  "%s" RENAME COLUMN "%s" TO "%s" ;""" % (table_name, old_column, new_column)
 				query=sql_type+sql_rename
 				return query
 			elif alter_dic["command"] == 'MODIFY':
-				pass
+				column_type=self.type_dictionary[alter_dic["type"]]
+				column_name=alter_dic["name"]
+				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
+						column_type=column_type+"("+str(alter_dic["dimension"])+")"
+				query = """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s USING "%s"::%s ;""" % (table_name, column_name, column_type, column_name, column_type)
+				return query
 		query=' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
 		return query
 
