@@ -657,7 +657,8 @@ class pg_engine(object):
 			batch_loop=batch_result[0]
 			self.logger.debug("Batch loop value %s" % (batch_loop))
 			
-
+	def build_type(self, alter_dic):
+		"""the function builds the data type and the optional enum setup """
 	def build_alter_table(self, token):
 		""" the function builds the alter table statement from the token idata"""
 		alter_cmd=[]
