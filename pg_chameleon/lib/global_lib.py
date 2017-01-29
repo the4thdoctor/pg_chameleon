@@ -56,6 +56,7 @@ class global_config(object):
 			
 			self.log_file = confdic["log_dir"]+config_name+'.log'
 			self.pid_file = confdic["pid_dir"]+"/"+config_name+".pid"
+			self.exit_file = confdic["pid_dir"]+"/"+config_name+".lock"
 			copy_max_memory = str(confdic["copy_max_memory"])[:-1]
 			copy_scale = str(confdic["copy_max_memory"])[-1]
 			try:
@@ -130,7 +131,8 @@ class replica_engine(object):
 		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
 		self.sleep_loop=self.global_config.sleep_loop
 		
-		self.pid_file=self.global_config.pid_file
+		self.pid_file = self.global_config.pid_file
+		self.exit_file = self.global_config.exit_file
 	
 	def init_replica(self):
 		self.pg_eng.set_source_id('initialising')
@@ -180,6 +182,17 @@ class replica_engine(object):
 		"""
 		self.logger.info("Dropping the service schema")
 		self.pg_eng.drop_service_schema()
+		
+	def check_file_exit(self):
+		process_exit=False
+		"""checks for the exit file and terminate the replica if the file is present """
+		if os.path.isfile(self.exit_file):
+			print ("exit file detected, removing the pid file and terminating the replica process")
+			os.remove(self.pid_file)
+			print("you shall remove the file %s before starting the replica process " % self.exit_file)
+			process_exit=True
+		return process_exit
+	
 	
 	def check_running(self):
 		""" checks if the process is running. saves the pid file if not """
@@ -206,14 +219,22 @@ class replica_engine(object):
 		"""
 			Runs the replica loop. 
 		"""
-		self.pg_eng.set_source_id('running')
-		if self.check_running():
+		already_running = self.check_running()
+		exit_request = self.check_file_exit()
+		
+		if already_running:
+			sys.exit()
+		if exit_request:
 			self.pg_eng.set_source_id('stopped')
 			sys.exit()
+		
+		self.pg_eng.set_source_id('running')
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
 			time.sleep(self.sleep_loop)
+			if self.check_file_exit():
+				break
 		self.pg_eng.set_source_id('stopped')
 	
 	def list_config(self):
