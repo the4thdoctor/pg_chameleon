@@ -706,6 +706,53 @@ class pg_engine(object):
 		return query
 
 
+	def truncate_tables(self):
+		sql_clean=""" 
+						SELECT DISTINCT
+							format('SET lock_timeout=''10s'';TRUNCATE TABLE %%I.%%I;',v_schema,v_table) v_truncate,
+							format('DELETE FROM %%I.%%I;',v_schema,v_table) v_delete,
+							format('VACUUM %%I.%%I;',v_schema,v_table) v_vacuum,
+							format('%%I.%%I',v_schema,v_table) as v_tab,
+							v_table
+						FROM
+							sch_chameleon.t_index_def 
+						WHERE
+							i_id_source=%s
+						ORDER BY 
+							v_table
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_clean, (self.i_id_source, ))
+		tab_clean=self.pg_conn.pgsql_cur.fetchall()
+		for stat_clean in tab_clean:
+			st_truncate=stat_clean[0]
+			st_delete=stat_clean[1]
+			st_vacuum=stat_clean[2]
+			tab_name=stat_clean[3]
+			try:
+				self.logger.info("truncating table %s" % (tab_name,))
+				self.pg_conn.pgsql_cur.execute(st_truncate)
+				
+			except:
+				self.logger.info("truncate failed, fallback to delete on table %s" % (tab_name,))
+				self.pg_conn.pgsql_cur.execute(st_delete)
+				self.logger.info("running vacuum on table %s" % (tab_name,))
+				self.pg_conn.pgsql_cur.execute(st_vacuum)
+
+	def drop_src_indices(self):
+		sql_idx="""SELECT t_drop FROM  sch_chameleon.t_index_def WHERE i_id_source=%s;"""
+		self.pg_conn.pgsql_cur.execute(sql_idx, (self.i_id_source, ))
+		idx_drop=self.pg_conn.pgsql_cur.fetchall()
+		for drop_stat in idx_drop:
+			self.pg_conn.pgsql_cur.execute(drop_stat[0])
+			
+	def create_src_indices(self):
+		sql_idx="""SELECT t_create FROM  sch_chameleon.t_index_def WHERE i_id_source=%s;"""
+		self.pg_conn.pgsql_cur.execute(sql_idx, (self.i_id_source, ))
+		idx_create=self.pg_conn.pgsql_cur.fetchall()
+		for create_stat in idx_create:
+			self.pg_conn.pgsql_cur.execute(create_stat[0])
+		
+
 	def get_index_def(self):
 		sql_get_idx=""" 
 				DELETE FROM sch_chameleon.t_index_def WHERE i_id_source=%s;
@@ -789,7 +836,7 @@ class pg_engine(object):
 				) idx
 		
 		"""
-		self.pg_conn.pgsql_cur.mogrify(sql_get_idx, (self.i_id_source,  self.dest_schema, ))
+		self.pg_conn.pgsql_cur.execute(sql_get_idx, (self.i_id_source,  self.dest_schema, ))
 
 	def drop_primary_key(self, token):
 		self.logger.info("dropping primary key for table %s" % (token["name"],))

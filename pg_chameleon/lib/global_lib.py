@@ -293,12 +293,15 @@ class replica_engine(object):
 		elif drop_src in  lst_yes:
 			print('Please type YES all uppercase to confirm')
 		sys.exit()
-	def copy_table_data(self):
+		
+	def copy_table_data(self, truncate_tables=False):
 		"""
 			Copy the data for the replicated tables from mysql to postgres.
 			
 			After the copy the master's coordinates are saved in postgres.
 		"""
+		if truncate_tables:
+			self.pg_eng.truncate_tables()
 		self.my_eng.copy_table_data(self.pg_eng, self.global_config.copy_max_memory)
 		self.pg_eng.save_master_status(self.my_eng.master_status)
 
@@ -306,6 +309,10 @@ class replica_engine(object):
 		self.stop_replica(allow_restart=False)
 		self.pg_eng.set_source_id('initialising')
 		self.pg_eng.get_index_def()
+		self.pg_eng.drop_src_indices()
+		self.pg_eng.truncate_tables()
+		##self.copy_table_data()
+		self.pg_eng.create_src_indices()
 		self.pg_eng.set_source_id('initialised')
 		self.enable_replica()
 class email_lib(object):
