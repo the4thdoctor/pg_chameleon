@@ -142,6 +142,31 @@ class replica_engine(object):
 		self.create_indices()
 		self.pg_eng.set_source_id('initialised')
 
+	def wait_for_replica_end(self):
+		""" waiting for replica end"""
+		self.logger.info("waiting for replica process to stop")
+		while True:
+			replica_running=self.check_running(write_pid=False)
+			if not replica_running:
+				break
+			time.sleep(5)
+		
+		self.logger.info("replica process stopped")
+	
+
+	def stop_replica(self, allow_restart=True):
+		exit=open(self.exit_file, 'w')
+		exit.close()
+		self.wait_for_replica_end()
+		if allow_restart:
+			os.remove(self.exit_file)
+	
+	def enable_replica(self):
+		try:
+			os.remove(self.exit_file)
+		except:
+			pass
+			
 	def  create_schema(self):
 		"""
 			Creates the database schema on PostgreSQL using the metadata extracted from MySQL.
@@ -187,39 +212,39 @@ class replica_engine(object):
 		process_exit=False
 		"""checks for the exit file and terminate the replica if the file is present """
 		if os.path.isfile(self.exit_file):
-			print ("exit file detected, removing the pid file and terminating the replica process")
-			os.remove(self.pid_file)
-			print("you shall remove the file %s before starting the replica process " % self.exit_file)
+			if os.path.isfile(self.pid_file):
+				self.logger.info("exit file detected, removing the pid file and terminating the replica process")
+				os.remove(self.pid_file)
+			else:
+				self.logger.info("you shall remove the file %s before starting the replica process " % self.exit_file)
 			process_exit=True
 		return process_exit
 	
 	
-	def check_running(self):
+	def check_running(self, write_pid=False):
 		""" checks if the process is running. saves the pid file if not """
 		
-		return_to_os=False 
+		process_running=False 
 		try:
 			file_pid=open(self.pid_file,'r')
 			pid=file_pid.read()
 			file_pid.close()
 			os.kill(int(pid),0)
-			print("replica process already running with pid %s" % (pid, ))
-			return_to_os=True
-			if self.global_config.log_dest=='file':
-				os.remove(self.global_config.log_file)
+			process_running=True
 		except:
-			pid=os.getpid()
-			file_pid=open(self.pid_file,'w')
-			file_pid.write(str(pid))
-			file_pid.close()
-			return_to_os=False
-		return return_to_os
+			if write_pid:
+				pid=os.getpid()
+				file_pid=open(self.pid_file,'w')
+				file_pid.write(str(pid))
+				file_pid.close()
+			process_running=False
+		return process_running
 		
 	def run_replica(self):
 		"""
 			Runs the replica loop. 
 		"""
-		already_running = self.check_running()
+		already_running = self.check_running(write_pid=True)
 		exit_request = self.check_file_exit()
 		
 		if already_running:

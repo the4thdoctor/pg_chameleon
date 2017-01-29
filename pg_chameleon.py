@@ -9,7 +9,11 @@ commands = [
 					'drop_schema', 
 					'list_config', 
 					'add_source', 
-					'drop_source'
+					'drop_source', 
+					'stop_replica', 
+					'disable_replica', 
+					'enable_replica'
+
 	]
 command_help = 'Available commands, ' + ','.join(commands)
 
@@ -37,3 +41,9 @@ if args.command in commands:
 		replica.add_source()
 	elif args.command == commands[7]:
 		replica.drop_source()
+	elif args.command == commands[8]:
+		replica.stop_replica()
+	elif args.command == commands[9]:
+		replica.stop_replica(allow_restart=False)
+	elif args.command == commands[10]:
+		replica.enable_replica()
