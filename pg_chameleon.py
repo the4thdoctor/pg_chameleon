@@ -12,7 +12,8 @@ commands = [
 					'drop_source', 
 					'stop_replica', 
 					'disable_replica', 
-					'enable_replica'
+					'enable_replica', 
+					'sync_replica', 
 
 	]
 command_help = 'Available commands, ' + ','.join(commands)
@@ -47,3 +48,5 @@ if args.command in commands:
 		replica.stop_replica(allow_restart=False)
 	elif args.command == commands[10]:
 		replica.enable_replica()
+	elif args.command == commands[11]:
+		replica.sync_replica()

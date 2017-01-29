@@ -164,8 +164,9 @@ class replica_engine(object):
 	def enable_replica(self):
 		try:
 			os.remove(self.exit_file)
+			self.logger.info("Replica enabled")
 		except:
-			pass
+			self.logger.info("Replica already enabled")
 			
 	def  create_schema(self):
 		"""
@@ -301,7 +302,12 @@ class replica_engine(object):
 		self.my_eng.copy_table_data(self.pg_eng, self.global_config.copy_max_memory)
 		self.pg_eng.save_master_status(self.my_eng.master_status)
 
-
+	def sync_replica(self):
+		self.stop_replica(allow_restart=False)
+		self.pg_eng.set_source_id('initialising')
+		self.pg_eng.get_index_def()
+		self.pg_eng.set_source_id('initialised')
+		self.enable_replica()
 class email_lib(object):
 	"""
 		class to manage email alerts sent in specific events.

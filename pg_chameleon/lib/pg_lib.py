@@ -84,7 +84,7 @@ class pg_engine(object):
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.7'
+		self.cat_version='0.8'
 		self.cat_sql=[
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -94,6 +94,7 @@ class pg_engine(object):
 									{'version':'0.5','script': 'upgrade/cat_0.5.sql'}, 
 									{'version':'0.6','script': 'upgrade/cat_0.6.sql'}, 
 									{'version':'0.7','script': 'upgrade/cat_0.7.sql'}, 
+									{'version':'0.8','script': 'upgrade/cat_0.8.sql'}, 
 							]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -659,6 +660,7 @@ class pg_engine(object):
 			
 	def build_type(self, alter_dic):
 		"""the function builds the data type and the optional enum setup """
+		
 	def build_alter_table(self, token):
 		""" the function builds the alter table statement from the token idata"""
 		alter_cmd=[]
@@ -702,6 +704,92 @@ class pg_engine(object):
 				return query
 		query=' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
 		return query
+
+
+	def get_index_def(self):
+		sql_get_idx=""" 
+				DELETE FROM sch_chameleon.t_index_def WHERE i_id_source=%s;
+				INSERT INTO sch_chameleon.t_index_def
+					(
+						i_id_source,
+						v_schema,
+						v_table,
+						v_index,
+						t_create,
+						t_drop
+					)
+				SELECT 
+					i_id_source,
+					schema_name,
+					table_name,
+					index_name,
+					CASE
+						WHEN indisprimary
+						THEN
+							format('ALTER TABLE %%I.%%I ADD CONSTRAINT %%I %%s',
+								schema_name,
+								table_name,
+								index_name,
+								pg_get_constraintdef(const_id)
+							)
+							
+						ELSE
+							pg_get_indexdef(index_id)    
+					END AS t_create,
+					CASE
+						WHEN indisprimary
+						THEN
+							format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I',
+								schema_name,
+								table_name,
+								index_name
+								
+							)
+							
+						ELSE
+							format('DROP INDEX %%I.%%I',
+								schema_name,
+								index_name
+								
+							)
+					END AS  t_drop
+					
+				FROM
+
+				(
+				SELECT 
+					tab.relname AS table_name,
+					indx.relname AS index_name,
+					idx.indexrelid index_id,
+					indisprimary,
+					sch.nspname schema_name,
+					src.i_id_source,
+					cns.oid as const_id
+					
+				FROM
+					pg_index idx
+					INNER JOIN pg_class indx
+					ON
+						idx.indexrelid=indx.oid
+					INNER JOIN pg_class tab
+					INNER JOIN pg_namespace sch
+					ON 
+						tab.relnamespace=sch.oid
+					
+					ON
+						idx.indrelid=tab.oid
+					INNER JOIN sch_chameleon.t_sources src
+					ON sch.nspname=src.t_dest_schema
+					LEFT OUTER JOIN pg_constraint cns
+					ON 
+						indx.relname=cns.conname
+					
+				WHERE
+					sch.nspname=%s
+				) idx
+		
+		"""
+		self.pg_conn.pgsql_cur.mogrify(sql_get_idx, (self.i_id_source,  self.dest_schema, ))
 
 	def drop_primary_key(self, token):
 		self.logger.info("dropping primary key for table %s" % (token["name"],))

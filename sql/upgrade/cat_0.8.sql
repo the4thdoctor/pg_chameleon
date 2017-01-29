@@ -18,4 +18,4 @@ WITH (
   OIDS=FALSE
 );
 
-CREATE UNIQUE INDEX idx_schema_table_source ON sch_chameleon.t_index_def(i_id_source,v_schema,v_table,v_index;
+CREATE UNIQUE INDEX idx_schema_table_source ON sch_chameleon.t_index_def(i_id_source,v_schema,v_table,v_index);
