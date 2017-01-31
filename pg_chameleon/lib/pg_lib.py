@@ -513,7 +513,7 @@ class pg_engine(object):
 			if cleanup:
 				self.logger.info("cleaning not replayed batches for source %s", self.i_id_source)
 				sql_cleanup=""" DELETE FROM sch_chameleon.t_replica_batch WHERE i_id_source=%s AND NOT b_replayed; """
-				self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.i_id_source))
+				self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
 			self.pg_conn.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position, table_file))
 			results=self.pg_conn.pgsql_cur.fetchone()
 			next_batch_id=results[0]
