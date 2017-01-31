@@ -260,7 +260,7 @@ class pg_engine(object):
 		column_copy=[]
 		for column in my_tables[table]["columns"]:
 			column_copy.append('"'+column["column_name"]+'"')
-		sql_copy="COPY "+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' ; "
+		sql_copy="COPY "+'"'+self.pg_conn.global_conf.dest_schema+'"'+"."+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' ; "
 		self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
 		
 	def insert_data(self, table,  insert_data,  my_tables={}):
@@ -270,7 +270,7 @@ class pg_engine(object):
 		for column in my_tables[table]["columns"]:
 			column_copy.append('"'+column["column_name"]+'"')
 			column_marker.append('%s')
-		sql_head="INSERT INTO "+'"'+table+'"'+" ("+','.join(column_copy)+") VALUES ("+','.join(column_marker)+");"
+		sql_head="INSERT INTO "+'"'+self.pg_conn.global_conf.dest_schema+'"'+"."+'"'+table+'"'+" ("+','.join(column_copy)+") VALUES ("+','.join(column_marker)+");"
 		for data_row in insert_data:
 			column_values=[]
 			for column in my_tables[table]["columns"]:
@@ -448,7 +448,7 @@ class pg_engine(object):
 		file_schema.close()
 		self.pg_conn.pgsql_cur.execute(sql_schema)
 	
-	def save_master_status(self, master_status):
+	def save_master_status(self, master_status, cleanup=False):
 		next_batch_id=None
 		sql_tab_log=""" 
 							SELECT 
@@ -510,6 +510,10 @@ class pg_engine(object):
 						"""
 		self.logger.info("saving master data")
 		try:
+			if cleanup:
+				self.logger.info("cleaning not replayed batches for source %s", self.i_id_source)
+				sql_cleanup=""" DELETE FROM sch_chameleon.t_replica_batch WHERE i_id_source=%s AND NOT b_replayed; """
+				self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.i_id_source))
 			self.pg_conn.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position, table_file))
 			results=self.pg_conn.pgsql_cur.fetchone()
 			next_batch_id=results[0]
@@ -829,13 +833,15 @@ class pg_engine(object):
 					ON sch.nspname=src.t_dest_schema
 					LEFT OUTER JOIN pg_constraint cns
 					ON 
-						indx.relname=cns.conname
+							indx.relname=cns.conname
+						AND cns.connamespace=sch.oid
 					
 				WHERE
 					sch.nspname=%s
 				) idx
 		
 		"""
+		print((self.i_id_source,  self.dest_schema, ))
 		self.pg_conn.pgsql_cur.execute(sql_get_idx, (self.i_id_source,  self.dest_schema, ))
 
 	def drop_primary_key(self, token):
