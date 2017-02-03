@@ -713,10 +713,10 @@ class pg_engine(object):
 	def truncate_tables(self):
 		sql_clean=""" 
 						SELECT DISTINCT
-							format('SET lock_timeout=''10s'';TRUNCATE TABLE %%I.%%I;',v_schema,v_table) v_truncate,
-							format('DELETE FROM %%I.%%I;',v_schema,v_table) v_delete,
-							format('VACUUM %%I.%%I;',v_schema,v_table) v_vacuum,
-							format('%%I.%%I',v_schema,v_table) as v_tab,
+							format('SET lock_timeout=''10s'';TRUNCATE TABLE %I.%I;',v_schema,v_table) v_truncate,
+							format('DELETE FROM %I.%I;',v_schema,v_table) v_delete,
+							format('VACUUM %I.%I;',v_schema,v_table) v_vacuum,
+							format('%I.%I',v_schema,v_table) as v_tab,
 							v_table
 						FROM
 							sch_chameleon.t_index_def 

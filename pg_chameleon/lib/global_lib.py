@@ -315,6 +315,7 @@ class replica_engine(object):
 		self.pg_eng.create_src_indices()
 		self.pg_eng.set_source_id('initialised')
 		self.enable_replica()
+		
 class email_lib(object):
 	"""
 		class to manage email alerts sent in specific events.
