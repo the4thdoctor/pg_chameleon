@@ -115,7 +115,7 @@ class mysql_engine(object):
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		for binlogevent in my_stream:
 			total_events+=1
-			self.logger.debug("log_file %s, log_position %s. id_batch: %s replica_batch_size:%s total_events:%s " % (log_file, log_position, id_batch, self.replica_batch_size, total_events))
+			#self.logger.debug("log_file %s, log_position %s. id_batch: %s replica_batch_size:%s total_events:%s " % (log_file, log_position, id_batch, self.replica_batch_size, total_events))
 			if isinstance(binlogevent, RotateEvent):
 				binlogfile=binlogevent.next_binlog
 				position=binlogevent.position
@@ -192,7 +192,7 @@ class mysql_engine(object):
 							event_data[column_name]=binascii.hexlify(event_data[column_name])
 					event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
 					group_insert.append(event_insert)
-					self.logger.debug("Action: %s Total events: %s " % (global_data["action"],  total_events))
+					#self.logger.debug("Action: %s Total events: %s " % (global_data["action"],  total_events))
 					master_data["File"]=log_file
 					master_data["Position"]=log_position
 					if total_events>=self.replica_batch_size:

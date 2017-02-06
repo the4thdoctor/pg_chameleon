@@ -601,7 +601,7 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_save,(batch_id,b64_row))
 	
 	def write_batch(self, group_insert):
-		self.logger.debug("writing replica batch data")
+		#self.logger.debug("writing replica batch data")
 		insert_list=[]
 		for row_data in group_insert:
 			global_data=row_data["global_data"]
@@ -713,10 +713,10 @@ class pg_engine(object):
 	def truncate_tables(self):
 		sql_clean=""" 
 						SELECT DISTINCT
-							format('SET lock_timeout=''10s'';TRUNCATE TABLE %I.%I;',v_schema,v_table) v_truncate,
-							format('DELETE FROM %I.%I;',v_schema,v_table) v_delete,
-							format('VACUUM %I.%I;',v_schema,v_table) v_vacuum,
-							format('%I.%I',v_schema,v_table) as v_tab,
+							format('SET lock_timeout=''10s'';TRUNCATE TABLE %%I.%%I CASCADE;',v_schema,v_table) v_truncate,
+							format('DELETE FROM %%I.%%I;',v_schema,v_table) v_delete,
+							format('VACUUM %%I.%%I;',v_schema,v_table) v_vacuum,
+							format('%%I.%%I',v_schema,v_table) as v_tab,
 							v_table
 						FROM
 							sch_chameleon.t_index_def 

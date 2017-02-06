@@ -258,9 +258,9 @@ class replica_engine(object):
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
-			time.sleep(self.sleep_loop)
 			if self.check_file_exit():
 				break
+			time.sleep(self.sleep_loop)
 		self.pg_eng.set_source_id('stopped')
 	
 	def list_config(self):
