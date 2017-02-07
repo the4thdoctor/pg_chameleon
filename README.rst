@@ -1,7 +1,7 @@
 
 .. image:: images/pgchameleon.png
 
-Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and Python 3. 
+Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and Python 3.3+
 The system relies on the mysql-replication library to pull the changes from MySQL and covert them into a jsonb object. 
 A plpgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
 
@@ -11,7 +11,7 @@ This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
-Current version: 1.0 ALPHA_2
+Current version: v1.0.alpha.3
 
 .. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
     :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
@@ -32,7 +32,7 @@ The databases source and target are tested on FreeBSD 11.0
   
 What does it work
 ..............................
-* Read the schema specifications from MySQL and replicate the same structure it into PostgreSQL
+* Read the schema specifications from MySQL and replicate the same structure into PostgreSQL
 * Locks the tables in mysql and gets the master coordinates
 * Create primary keys and indices on PostgreSQL
 * Write in PostgreSQL frontier table
@@ -45,8 +45,9 @@ What does seems to work
 * Read replica from MySQL
 * Copy the data from MySQL to PostgreSQL on the fly
 * Replay of the replicated data in PostgreSQL
-* Create and drop table replica
-* Discard of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
+* Basic DDL Support (CREATE/DROP/ALTER TABLE, DROP PRIMARY KEY)
+* Discards of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
+* Replica from multiple MySQL schema or servers
 
 What doesn't work
 ..............................
@@ -56,33 +57,28 @@ What doesn't work
 Caveats
 ..............................
 The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
-If the copy process fails for memory problems check the data inside the failing table is not causing overload on the system's memory.
+If the copy process fails for memory problems check the failing table's row length. This could be a probable cause of memory overload.
 
-The batch is processed every time the replica stream is empty and when the replica switch to another log segment. Therefore the mysql binlog size determines the batch size.
-Currently the process is sequential. Read the replica -> Store the rows -> Replay. In the future I'll improve this aspect.
+The batch is processed every time the replica stream is empty and when the MySQL switches to another log segment (ROTATE EVENT). 
+Therefore the mysql binlog size determines the batch size.
+Currently the process is sequential. 
 
+Read the replica -> Store the rows -> Replay. 
+
+The version 2.0 will improve this and other aspects.
+
+
+Python 3 is supported but only from version 3.3 as per mysql-replication  requirement.
 
 
 Test please!
 ..............................
 
-This software is in a very early stage of development. 
-Please submit the issues you find and please **do not use it in production** unless you know what you're doing.
+This software needs user's feeback. 
+The system has proven to be quite efficient and stable. 
+Not being fully tested yet may I ask you **to be very carefull if you want to use it in production**.
 
-
-
-Setup 
-**********
-
-* Download the package or git clone the repository
-* Create a virtual environment in the main app
-* Install the required packages listed in requirements.txt 
-* Create a user on mysql for the replica (e.g. usr_replica)
-* Grant access to usr on the replicated database (e.g. GRANT ALL ON sakila.* TO 'usr_replica';)
-* Grant RELOAD privilege to the user (e.g. GRANT RELOAD ON \*.\* to 'usr_replica';)
-* Grant REPLICATION CLIENT privilege to the user (e.g. GRANT REPLICATION CLIENT ON \*.\* to 'usr_replica';)
-* Grant REPLICATION SLAVE privilege to the user (e.g. GRANT REPLICATION SLAVE ON \*.\* to 'usr_replica';)
-
+Please submit any issue via GitHub.
 
 Requirements
 ******************
@@ -95,11 +91,24 @@ Requirements
 * `sphinx==1.4.6 <http://www.sphinx-doc.org/en/stable/>`_
 * `sphinx-autobuild==0.6.0 <https://github.com/GaretJax/sphinx-autobuild>`_
 
+
+Quick Setup 
+**********
+
+* Download the package or git clone the repository
+* Create a virtual environment in the main app directory and activate it
+* Install the required packages listed in requirements.txt 
+* Create a user on mysql for the replica (e.g. usr_replica)
+* Grant access to usr on the replicated database (e.g. GRANT ALL ON sakila.* TO 'usr_replica';)
+* Grant RELOAD privilege to the user (e.g. GRANT RELOAD ON \*.\* to 'usr_replica';)
+* Grant REPLICATION CLIENT privilege to the user (e.g. GRANT REPLICATION CLIENT ON \*.\* to 'usr_replica';)
+* Grant REPLICATION SLAVE privilege to the user (e.g. GRANT REPLICATION SLAVE ON \*.\* to 'usr_replica';)
+
+
+
 Configuration parameters
 ********************************
-The tool supports multiple configuration files. The replica can run from multiple sources at same time as long as the destination schema is different.
-
-
+The tool supports multiple configuration files. The replica can run from multiple sources at same time as long as the postgresql destination schema is different.
 
 
 The configuration file is a yaml file. Each parameter controls the
@@ -164,13 +173,23 @@ PostgreSQL connection parameters
 
 Usage
 **********************
-The script pg_chameleon.py accepts five commands.
+The script pg_chameleon.py requires one of the following commands.
 
 * drop_schema Drops the service schema sch_chameleon with cascade option. 
-* create_schema Create the schema sch_chameleon from scratch.
-* upgrade_schema Upgrade an existing schema sch_chameleon to an higher version. 
+* create_schema Create the service schema sch_chameleon.
+* upgrade_schema Upgrade an existing schema sch_chameleon to an newer version. 
 * init_replica Create the table structure from the mysql into a PostgreSQL schema with the same mysql's database name. The mysql tables are locked in read only mode and  the data is  copied into the PostgreSQL database. The master's coordinates are stored in the PostgreSQL service schema. The command drops and recreate the service schema.
 * start_replica Starts the replication from mysql to PostgreSQL using the master data stored in sch_chameleon.t_replica_batch. The master's position is updated time a new batch is processed. The command upgrade the service schema if required.
+* list_config List the available configurations and their status ('ready', 'initialising','initialised','stopped','running')
+* add_source register a new configuration file as source
+* drop_source remove the configuration from the registered sources
+* stop_replica ends the replica process
+* disable_replica ends the replica process and disable the restart
+* enable_replica enable the replica process
+* sync_replica sync the data between mysql and postgresql without dropping the tables
+
+the optional command **--config** followed by the configuration file without the yaml suffix allow to specify different configurations.
+If omitted defaults to **default**.
 
 Example
 **********************
@@ -296,4 +315,5 @@ Start the replica with
     
 	./pg_chameleon.py start_replica --config default
 	
+
 
