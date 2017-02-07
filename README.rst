@@ -76,9 +76,9 @@ Test please!
 
 This software needs user's feeback. 
 The system has proven to be quite efficient and stable. 
-Not being fully tested yet may I ask you **to be very carefull if you want to use it in production**.
+However the tool is not fully tested yet. I just ask you **to be very carefull if you want to use it in production**.
 
-Please submit any issue via GitHub.
+If you find a bug please submit the issue via GitHub.
 
 Requirements
 ******************
