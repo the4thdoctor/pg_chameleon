@@ -3,7 +3,7 @@ import pymysql
 import sys
 import codecs
 import binascii
-
+import datetime
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import (
@@ -163,6 +163,8 @@ class mysql_engine(object):
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
 					table_name=binlogevent.table
+					event_time=binlogevent.timestamp
+					#self.logger.debug("row event. binlogfile %s, position %s. Date %s " % (binlogfile, log_position, datetime.datetime.fromtimestamp(event_time).isoformat()))
 					#schema_name=binlogevent.schema
 
 					column_map=table_type_map[table_name]

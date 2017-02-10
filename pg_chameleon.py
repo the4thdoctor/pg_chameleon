@@ -14,6 +14,7 @@ commands = [
 					'disable_replica', 
 					'enable_replica', 
 					'sync_replica', 
+					'show_status'
 
 	]
 command_help = 'Available commands, ' + ','.join(commands)
@@ -50,3 +51,5 @@ if args.command in commands:
 		replica.enable_replica()
 	elif args.command == commands[11]:
 		replica.sync_replica()
+	elif args.command == commands[12]:
+		replica.show_status()
