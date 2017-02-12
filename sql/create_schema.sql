@@ -3,7 +3,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '0.8'::TEXT t_version
+	SELECT '0.9'::TEXT t_version
 ;
 
 
@@ -20,7 +20,7 @@ CREATE TABLE sch_chameleon.t_sources
 	t_source		text NOT NULL,
 	t_dest_schema   text NOT NULL,
 	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
-	--ts_last_event timestamp without time zone,
+	ts_last_event timestamp without time zone,
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
 )
 ;

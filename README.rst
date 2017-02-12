@@ -23,7 +23,7 @@ Current version: v1.0.alpha.3
 Platform and versions
 ****************************
 
-The library is being developed on Linux Slackware 14.2 with python 2.7 and python 3.6.
+The tool is developed using Linux Slackware 14.2 with python 2.7 and python 3.6.
 
 The databases source and target are tested on FreeBSD 11.0
 
@@ -48,11 +48,12 @@ What does seems to work
 * Basic DDL Support (CREATE/DROP/ALTER TABLE, DROP PRIMARY KEY)
 * Discards of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
 * Replica from multiple MySQL schema or servers
+* Basic replica monitoring 
 
 What doesn't work
 ..............................
 * Full DDL replica 
-* Replica monitoring 
+
 
 Caveats
 ..............................
@@ -67,8 +68,10 @@ Read the replica -> Store the rows -> Replay.
 
 The version 2.0 will improve this and other aspects.
 
+Python 3 is supported but only from version 3.3 as required by mysql-replication .
 
-Python 3 is supported but only from version 3.3 as per mysql-replication  requirement.
+The lag is determined using the last received event timestamp and the postgresql timestamp. If the mysql is read only the lag will increase because
+no replica event is coming in. I'll try to improve this aspect in the future.
 
 
 Test please!
@@ -133,6 +136,7 @@ way the program acts.
 * source_name  this must be unique along the list of sources. The tool detects if there's a duplicate when registering a new source
 * dest_schema this is also a unique value. once the source is registered the dest_schema can't be changed anymore
 * log_append append to log file or truncate it at each restart
+* batch_retention the max retention for the replayed batches rows in t_replica_batch. The field accepts any valid interval accepted by PostgreSQL
 
 Reindex detection example setup
 
@@ -187,6 +191,7 @@ The script pg_chameleon.py requires one of the following commands.
 * disable_replica ends the replica process and disable the restart
 * enable_replica enable the replica process
 * sync_replica sync the data between mysql and postgresql without dropping the tables
+* show_status displays the replication status for each source, with the lag in seconds and the last received event
 
 the optional command **--config** followed by the configuration file without the yaml suffix allow to specify different configurations.
 If omitted defaults to **default**.
