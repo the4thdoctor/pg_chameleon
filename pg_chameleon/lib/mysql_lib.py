@@ -516,6 +516,7 @@ class mysql_engine(object):
 		self.mysql_con.my_cursor.execute(t_sql_master)
 		self.master_status=self.mysql_con.my_cursor.fetchall()		
 		
+		
 	def lock_tables(self):
 		""" lock tables and get the log coords """
 		self.locked_tables=[]

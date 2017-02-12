@@ -508,7 +508,10 @@ class pg_engine(object):
 		master_data = master_status[0]
 		binlog_name = master_data["File"]
 		binlog_position = master_data["Position"]
-		event_time = datetime.datetime.fromtimestamp(master_data["Time"]).isoformat()
+		try:
+			event_time = datetime.datetime.fromtimestamp(master_data["Time"]).isoformat()
+		except:
+			event_time  = None
 		self.logger.debug("master data: table file %s, log name: %s, log position: %s " % (table_file, binlog_name, binlog_position))
 		sql_master="""
 							INSERT INTO sch_chameleon.t_replica_batch
