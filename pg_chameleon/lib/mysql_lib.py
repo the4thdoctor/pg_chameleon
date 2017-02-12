@@ -117,6 +117,7 @@ class mysql_engine(object):
 			total_events+=1
 			#self.logger.debug("log_file %s, log_position %s. id_batch: %s replica_batch_size:%s total_events:%s " % (log_file, log_position, id_batch, self.replica_batch_size, total_events))
 			if isinstance(binlogevent, RotateEvent):
+				event_time=binlogevent.timestamp
 				binlogfile=binlogevent.next_binlog
 				position=binlogevent.position
 				self.logger.debug("rotate event. binlogfile %s, position %s. " % (binlogfile, position))
@@ -124,17 +125,20 @@ class mysql_engine(object):
 					if log_file!=binlogfile:
 						master_data["File"]=binlogfile
 						master_data["Position"]=position
+						master_data["Time"]=event_time
 					if len(group_insert)>0:
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
 					my_stream.close()
 					return [master_data, close_batch]
 			elif isinstance(binlogevent, QueryEvent):
+				event_time=binlogevent.timestamp
 				if len(group_insert)>0:
 					pg_engine.write_batch(group_insert)
 					group_insert=[]
 				master_data["File"]=binlogfile
 				master_data["Position"]=binlogevent.packet.log_pos
+				master_data["Time"]=event_time
 				self.sql_token.parse_sql(binlogevent.query)
 				
 				for token in self.sql_token.tokenised:
@@ -197,6 +201,7 @@ class mysql_engine(object):
 					#self.logger.debug("Action: %s Total events: %s " % (global_data["action"],  total_events))
 					master_data["File"]=log_file
 					master_data["Position"]=log_position
+					master_data["Time"]=event_time
 					if total_events>=self.replica_batch_size:
 						self.logger.debug("total events exceeded. Writing batch.: %s  " % (master_data,  ))
 						total_events=0

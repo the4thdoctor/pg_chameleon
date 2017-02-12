@@ -84,7 +84,7 @@ class pg_engine(object):
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.8'
+		self.cat_version='0.9'
 		self.cat_sql=[
 									{'version':'base','script': 'create_schema.sql'}, 
 									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -95,6 +95,7 @@ class pg_engine(object):
 									{'version':'0.6','script': 'upgrade/cat_0.6.sql'}, 
 									{'version':'0.7','script': 'upgrade/cat_0.7.sql'}, 
 									{'version':'0.8','script': 'upgrade/cat_0.8.sql'}, 
+									{'version':'0.9','script': 'upgrade/cat_0.9.sql'}, 
 							]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -441,6 +442,23 @@ class pg_engine(object):
 		else:
 			self.logger.error("The service schema is already created")
 			
+	def get_status(self):
+		"""the function list the sources with the running status and the eventual lag """
+		sql_status="""
+								SELECT
+									t_source,
+									t_dest_schema,
+									enm_status,
+									extract(epoch from now()-ts_last_event)::integer as i_seconds_behind_master,
+									ts_last_event 
+								FROM 
+									sch_chameleon.t_sources
+								ORDER BY 
+									t_source
+								; """
+		self.pg_conn.pgsql_cur.execute(sql_status)
+		results = self.pg_conn.pgsql_cur.fetchall()
+		return results
 		
 	def drop_service_schema(self):
 		file_schema=open(self.sql_dir+"drop_schema.sql", 'rb')
@@ -484,11 +502,12 @@ class pg_engine(object):
 						;
 					"""
 		self.pg_conn.pgsql_cur.execute(sql_tab_log, (self.i_id_source, ))
-		results=self.pg_conn.pgsql_cur.fetchone()
-		table_file=results[0]
-		master_data=master_status[0]
-		binlog_name=master_data["File"]
-		binlog_position=master_data["Position"]
+		results = self.pg_conn.pgsql_cur.fetchone()
+		table_file = results[0]
+		master_data = master_status[0]
+		binlog_name = master_data["File"]
+		binlog_position = master_data["Position"]
+		event_time = datetime.datetime.fromtimestamp(master_data["Time"]).isoformat()
 		self.logger.debug("master data: table file %s, log name: %s, log position: %s " % (table_file, binlog_name, binlog_position))
 		sql_master="""
 							INSERT INTO sch_chameleon.t_replica_batch
@@ -508,7 +527,16 @@ class pg_engine(object):
 							RETURNING i_id_batch
 							;
 						"""
-		self.logger.info("saving master data")
+						
+		sql_event="""UPDATE sch_chameleon.t_sources 
+					SET 
+						ts_last_event=%s 
+					WHERE 
+						i_id_source=%s; 
+						"""
+		self.logger.info("saving master data id source: %s log file: %s  log position:%s Last event: %s" % (self.i_id_source, binlog_name, binlog_position, event_time))
+		
+		
 		try:
 			if cleanup:
 				self.logger.info("cleaning not replayed batches for source %s", self.i_id_source)
@@ -520,8 +548,13 @@ class pg_engine(object):
 		except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position, table_file)))
-		#except:
-		#	pass
+		try:
+			self.pg_conn.pgsql_cur.execute(sql_event, (event_time, self.i_id_source, ))
+			
+		except psycopg2.Error as e:
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.pg_conn.pgsql_cur.mogrify(sql_event, (event_time, self.i_id_source, ))
+		
 		return next_batch_id
 		
 	def get_batch_data(self):

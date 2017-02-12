@@ -273,8 +273,22 @@ class replica_engine(object):
 			if file_ext == 'yaml' and file_name!='config-example':
 				source_name = self.global_config.get_source_name(file_name)
 				source_status = self.pg_eng.get_source_status(source_name)
-				print ("%s.yaml Source Name: %s - Status: %s" % (file_name, source_name, source_status ))
-				
+				print ("Config file\t\t\tName\t\tStatus\t\t" )
+				print ("==================================================================" )
+				print ("%s.yaml\t\t\t%s\t\t%s\t\t" % (file_name, source_name, source_status ))
+	
+	def show_status(self):
+		source_status=self.pg_eng.get_status()
+		print ("Config file\t\tDest schema\t\tStatus\t\tLag\t\tLast event" )
+		print ("=============================================================================================================" )
+			
+		for status in source_status:
+			source_name = status[0]
+			dest_schema = status[1]
+			source_status = status[2]
+			seconds_behind_master = status[3]
+			last_received_event = status[4]
+			print ("%s.yaml\t\t%s\t\t%s\t\t%s\t\t%s" % (source_name, dest_schema, source_status, seconds_behind_master, last_received_event ))
 	def add_source(self):
 		source_name=self.global_config.source_name
 		dest_schema=self.global_config.dest_schema
