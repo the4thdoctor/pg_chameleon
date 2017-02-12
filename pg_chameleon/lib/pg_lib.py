@@ -39,8 +39,9 @@ class pg_connection(object):
 
 class pg_engine(object):
 	def __init__(self, global_config, table_metadata, table_file, logger, sql_dir='sql/'):
-		self.sleep_on_reindex=global_config.sleep_on_reindex
-		self.reindex_app_names=global_config.reindex_app_names
+		self.sleep_on_reindex = global_config.sleep_on_reindex
+		self.reindex_app_names = global_config.reindex_app_names
+		self.batch_retention = global_config.batch_retention
 		self.logger=logger
 		self.sql_dir=sql_dir
 		self.idx_sequence=0
@@ -694,7 +695,17 @@ class pg_engine(object):
 			batch_result=self.pg_conn.pgsql_cur.fetchone()
 			batch_loop=batch_result[0]
 			self.logger.debug("Batch loop value %s" % (batch_loop))
-			
+		self.logger.debug("Cleaning replayed batches older than %s" % (self.batch_retention))
+		sql_cleanup="""DELETE FROM 
+									sch_chameleon.t_replica_batch
+								WHERE
+										b_started
+									AND b_processed
+									AND b_replayed
+									AND now()-ts_replayed>%s::interval
+									 """
+		self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.batch_retention, ))
+
 	def build_type(self, alter_dic):
 		"""the function builds the data type and the optional enum setup """
 		

@@ -52,7 +52,7 @@ class global_config(object):
 			self.pause_on_reindex = confdic["pause_on_reindex"]
 			self.sleep_on_reindex = confdic["sleep_on_reindex"]
 			self.reindex_app_names = confdic["reindex_app_names"]
-			
+			self.batch_retention = confdic["batch_retention"]
 			
 			self.log_file = confdic["log_dir"]+config_name+'.log'
 			self.pid_file = confdic["pid_dir"]+"/"+config_name+".pid"
