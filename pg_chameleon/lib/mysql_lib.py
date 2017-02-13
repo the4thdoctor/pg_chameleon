@@ -96,7 +96,6 @@ class mysql_engine(object):
 		schema_name=pg_engine.dest_schema
 		close_batch=False
 		total_events=0
-		table_type_map=self.get_table_type_map()	
 		master_data={}
 		group_insert=[]
 		id_batch=batch_data[0][0]
@@ -114,6 +113,7 @@ class mysql_engine(object):
 														)
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		for binlogevent in my_stream:
+			table_type_map=self.get_table_type_map()	
 			total_events+=1
 			#self.logger.debug("log_file %s, log_position %s. id_batch: %s replica_batch_size:%s total_events:%s " % (log_file, log_position, id_batch, self.replica_batch_size, total_events))
 			if isinstance(binlogevent, RotateEvent):
