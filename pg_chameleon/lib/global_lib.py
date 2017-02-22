@@ -266,6 +266,8 @@ class replica_engine(object):
 	def list_config(self):
 		list_config = (os.listdir(self.global_config.config_dir))
 		print ("Available configurations")
+		print ("Config file\t\t\tName\t\tStatus\t\t" )
+		print ("==================================================================" )
 		for file in list_config:
 			lst_file = file.split('.')
 			file_name = lst_file[0]
@@ -273,8 +275,8 @@ class replica_engine(object):
 			if file_ext == 'yaml' and file_name!='config-example':
 				source_name = self.global_config.get_source_name(file_name)
 				source_status = self.pg_eng.get_source_status(source_name)
-				print ("Config file\t\t\tName\t\tStatus\t\t" )
-				print ("==================================================================" )
+				
+				
 				print ("%s.yaml\t\t\t%s\t\t%s\t\t" % (file_name, source_name, source_status ))
 	
 	def show_status(self):

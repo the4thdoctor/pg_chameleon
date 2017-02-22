@@ -104,14 +104,14 @@ class mysql_engine(object):
 		log_position=batch_data[0][2]
 		log_table=batch_data[0][3]
 		my_stream = BinLogStreamReader(
-																connection_settings = self.mysql_con.mysql_conn, 
-																server_id=self.mysql_con.my_server_id, 
-																only_events=[RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent], 
-																log_file=log_file, 
-																log_pos=log_position, 
-																resume_stream=True, 
-																only_schemas=[self.mysql_con.my_database]
-														)
+									connection_settings = self.mysql_con.mysql_conn, 
+									server_id=self.mysql_con.my_server_id, 
+									only_events=[RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent], 
+									log_file=log_file, 
+									log_pos=log_position, 
+									resume_stream=True, 
+									only_schemas=[self.mysql_con.my_database]
+									)
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		for binlogevent in my_stream:
 			
@@ -147,11 +147,11 @@ class mysql_engine(object):
 						#schema_name=binlogevent.schema.decode()
 						
 						query_data={
-												"binlog":log_file, 
-												"logpos":log_position, 
-												"schema": schema_name, 
-												"batch_id":id_batch, 
-												"log_table":log_table
+									"binlog":log_file, 
+									"logpos":log_position, 
+									"schema": schema_name, 
+									"batch_id":id_batch, 
+									"log_table":log_table
 						}
 						pg_engine.write_ddl(token, query_data)
 						close_batch=True
@@ -251,15 +251,15 @@ class mysql_engine(object):
 	def get_table_type_map(self):
 		table_type_map={}
 		self.logger.debug("collecting table type map")
-		sql_tables="""SELECT 
-											table_schema,
-											table_name
-								FROM 
-											information_schema.TABLES 
-								WHERE 
-														table_type='BASE TABLE' 
-											AND 	table_schema=%s
-								;
+		sql_tables="""	SELECT 
+						table_schema,
+						table_name
+					FROM 
+						information_schema.TABLES 
+					WHERE 
+							table_type='BASE TABLE' 
+						AND	table_schema=%s
+					;
 							"""
 		self.mysql_con.my_cursor.execute(sql_tables, (self.mysql_con.my_database))
 		table_list=self.mysql_con.my_cursor.fetchall()
