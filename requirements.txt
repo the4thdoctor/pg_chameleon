@@ -1,6 +1,6 @@
 PyMySQL==0.7.6
 argparse==1.2.1
-mysql-replication==0.9
+mysql-replication==0.11
 psycopg2==2.6.2
 PyYAML==3.11
 sphinx==1.4.6
