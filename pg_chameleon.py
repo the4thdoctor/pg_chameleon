@@ -14,7 +14,8 @@ commands = [
 					'disable_replica', 
 					'enable_replica', 
 					'sync_replica', 
-					'show_status'
+					'show_status', 
+					'list_tables'
 
 	]
 command_help = 'Available commands, ' + ','.join(commands)
@@ -22,6 +23,7 @@ command_help = 'Available commands, ' + ','.join(commands)
 parser = argparse.ArgumentParser(description='Command line for pg_chameleon.',  add_help=True)
 parser.add_argument('command', metavar='command', type=str, help=command_help)
 parser.add_argument('--config', metavar='config', type=str,  default='default',  required=False)
+parser.add_argument('--table', metavar='table', type=str,  default='all',  required=False)
 
 args = parser.parse_args()
 
@@ -53,3 +55,5 @@ if args.command in commands:
 		replica.sync_replica()
 	elif args.command == commands[12]:
 		replica.show_status()
+	elif args.command == commands[13]:
+		replica.list_tables()
