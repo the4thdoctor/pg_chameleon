@@ -321,8 +321,9 @@ class replica_engine(object):
 		self.my_eng.copy_table_data(self.pg_eng, self.global_config.copy_max_memory)
 		self.pg_eng.save_master_status(self.my_eng.master_status, cleanup=True)
 
-	def sync_replica(self):
+	def sync_replica(self, table):
 		self.stop_replica(allow_restart=False)
+		self.pg_eng.table_limit=table.split(',')
 		self.pg_eng.set_source_id('initialising')
 		self.pg_eng.get_index_def()
 		self.pg_eng.drop_src_indices()

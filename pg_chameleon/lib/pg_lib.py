@@ -102,6 +102,7 @@ class pg_engine(object):
 		num_schema=(self.check_service_schema())[0]
 		if cat_version!=self.cat_version and int(num_schema)>0:
 			self.upgrade_service_schema()
+		self.table_limit = ['*']
 	
 	def add_source(self, source_name, dest_schema):
 		sql_source = """
@@ -805,6 +806,10 @@ class pg_engine(object):
 		
 
 	def get_index_def(self):
+		table_limit = ''
+		if self.table_limit[0] != '*':
+			table_limit = self.pg_conn.pgsql_cur.mogrify("""WHERE table_name IN  (SELECT unnest(%s))""",(self.table_limit, )).decode()
+		
 		sql_get_idx=""" 
 				DELETE FROM sch_chameleon.t_index_def WHERE i_id_source=%s;
 				INSERT INTO sch_chameleon.t_index_def
@@ -887,8 +892,8 @@ class pg_engine(object):
 					sch.nspname=%s
 				) idx
 		
-		"""
-		print((self.i_id_source,  self.dest_schema, ))
+		""" + table_limit
+		
 		self.pg_conn.pgsql_cur.execute(sql_get_idx, (self.i_id_source,  self.dest_schema, ))
 
 	def drop_primary_key(self, token):
