@@ -75,6 +75,6 @@ email_config:
     smtp_username: login@foo.bar
     smtp_password: never_commit_passwords
     smtp_use_tls: Yes
-    email_from: pgobfuscator@foo.bar
+    email_from: pgchameleon@foo.bar
     recipients:
         - alert@foo.bar

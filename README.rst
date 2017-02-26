@@ -177,7 +177,7 @@ PostgreSQL connection parameters
 
 Usage
 **********************
-The script pg_chameleon.py requires one of the following commands.
+The script chameleon.py requires one of the following commands.
 
 * drop_schema Drops the service schema sch_chameleon with cascade option. 
 * create_schema Create the service schema sch_chameleon.
@@ -308,9 +308,9 @@ Initialise the schema and the replica with
 
 .. code-block:: none
     
-    ./pg_chameleon.py create_schema 
-    ./pg_chameleon.py add_source --config default
-    ./pg_chameleon.py init_replica --config default
+    ./chameleon.py create_schema 
+    ./chameleon.py add_source --config default
+    ./chameleon.py init_replica --config default
 
 
 Start the replica with
@@ -318,7 +318,7 @@ Start the replica with
 
 .. code-block:: none
     
-	./pg_chameleon.py start_replica --config default
+	./chameleon.py start_replica --config default
 	
 
 

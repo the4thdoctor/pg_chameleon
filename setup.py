@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 from setuptools import setup
 
 
@@ -26,7 +25,7 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 	classifiers=[
 		"License :: OSI Approved :: BSD License"
 	],
-	packages=['pg_chameleon'],
+	#packages=['pg_chameleon'],
 	py_modules=[
 		"pg_chameleon.__init__",
 		"pg_chameleon.lib.global_lib",
@@ -35,7 +34,7 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 		"pg_chameleon.lib.sql_util"
 	],
 	scripts=[
-		"pg_chameleon.py"
+		"chameleon.py"
 	],
 	install_requires=[
 					'PyMySQL', 
@@ -46,4 +45,7 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 					'sphinx', 
 					'sphinx-autobuild'
 	],
+	data_files=[('/etc/pg_chameleon', ['config/config-example.yaml'])], 
+	
+	
 )
