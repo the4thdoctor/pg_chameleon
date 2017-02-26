@@ -12,6 +12,7 @@ else:
 	
 
 config_files=[(conf_dir, ['config/config-example.yaml'])]
+
 setup(
 	name="pg_chameleon",
 	version="1.0beta1",
