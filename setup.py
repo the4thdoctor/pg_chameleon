@@ -1,8 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from os import geteuid
+from os.path import  expanduser
 from setuptools import setup
 
+if geteuid() == 0:
+	conf_dir = '/etc/pg_chameleon'
+else:
+	conf_dir="%s/.pg_chameleon/config" % expanduser('~')	
+	
+	
 
+config_files=[(conf_dir, ['config/config-example.yaml'])]
 setup(
 	name="pg_chameleon",
 	version="1.0beta1",
@@ -45,7 +54,7 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 					'sphinx', 
 					'sphinx-autobuild'
 	],
-	data_files=[('/etc/pg_chameleon', ['config/config-example.yaml'])], 
+	data_files=config_files, 
 	
 	
 )

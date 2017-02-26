@@ -21,11 +21,18 @@ class global_config(object):
 		"""
 			Class  constructor.
 		"""
-		self.config_dir = "config"
-		config_file = '%s/%s.yaml' % (self.config_dir, config_name)
-		self.config_name=config_name
-		if not os.path.isfile(config_file):
-			print("**FATAL - configuration file missing **\ncopy config/config-example.yaml to "+config_file+" and set your connection settings.")
+		config_home = "%s/.pg_chameleon/config" % os.path.expanduser('~')	
+		self.config_dirs = [config_home,"/etc/pg_chameleon"]
+		config_missing = True
+		for config_dir in self.config_dirs:
+			config_file = '%s/%s.yaml' % (config_dir, config_name)
+			if os.path.isfile(config_file):
+				self.config_name = config_name
+				self.config_dir = config_dir
+				config_missing = False
+				break
+		if config_missing:
+			print("**FATAL - could not find the configuration file in any of expected paths %s"  % ', '.join(self.config_dirs))
 			sys.exit()
 		conffile = open(config_file, 'rb')
 		confdic = yaml.load(conffile.read())
