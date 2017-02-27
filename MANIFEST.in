@@ -1,1 +1,2 @@
 include config/config-example.yaml
+include sql/create_schema.sql

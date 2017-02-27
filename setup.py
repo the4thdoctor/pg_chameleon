@@ -1,17 +1,36 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from os import geteuid
-from os.path import  expanduser
+import sys
+from os import geteuid, listdir
+from os.path import  expanduser, isfile, join
 from setuptools import setup
 
 if geteuid() == 0:
-	conf_dir = '/etc/pg_chameleon'
+	cham_dir = '/usr/local/etc/pg_chameleon'
 else:
-	conf_dir="%s/.pg_chameleon/config" % expanduser('~')	
-	
-	
+	cham_dir = "%s/.pg_chameleon" % expanduser('~')	
 
-config_files=[(conf_dir, ['config/config-example.yaml'])]
+sql_up_path = 'sql/upgrade'
+conf_dir = "%s/config" % cham_dir
+sql_dir = "%s/sql" % cham_dir
+sql_up_dir = "%s/%s" % (cham_dir, sql_up_path)
+
+
+data_files = []
+conf_files = (conf_dir, ['config/config-example.yaml'])
+
+sql_src = ['sql/create_schema.sql', 'sql/drop_schema.sql']
+
+sql_upgrade = ["%s/%s" % (sql_up_path, file) for file in listdir(sql_up_path) if isfile(join(sql_up_path, file))]
+
+sql_files = (sql_dir,sql_src)
+sql_files = (sql_dir,sql_src)
+sql_up_files = (sql_up_dir,sql_upgrade)
+
+
+data_files.append(conf_files)
+data_files.append(sql_files)
+data_files.append(sql_up_files)
 
 setup(
 	name="pg_chameleon",
@@ -44,7 +63,7 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 		"pg_chameleon.lib.sql_util"
 	],
 	scripts=[
-		"chameleon.py"
+		"scripts/chameleon.py"
 	],
 	install_requires=[
 					'PyMySQL>=0.7.6', 
@@ -55,7 +74,7 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 					'sphinx>=1.4.6', 
 					'sphinx-autobuild>=0.6.0'
 	],
-	data_files=config_files, 
+	data_files=data_files, 
 	
 	
 )
