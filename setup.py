@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import sys
-from os import geteuid, listdir
+import stat
+
+from os import geteuid, listdir, mkdir, chmod
 from os.path import  expanduser, isfile, join
 from setuptools import setup
 
@@ -9,6 +10,14 @@ if geteuid() == 0:
 	cham_dir = '/usr/local/etc/pg_chameleon'
 else:
 	cham_dir = "%s/.pg_chameleon" % expanduser('~')	
+	
+if geteuid() != 0:	
+	try:
+		mkdir(cham_dir)
+	except:
+		pass
+	chmod(cham_dir, stat.S_IRWXU)
+
 
 sql_up_path = 'sql/upgrade'
 conf_dir = "%s/config" % cham_dir
