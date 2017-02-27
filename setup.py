@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import stat
-
+import sys
 from os import geteuid, listdir, mkdir, chmod
 from os.path import  expanduser, isfile, join
 from setuptools import setup
@@ -14,6 +14,8 @@ else:
 if geteuid() != 0:	
 	try:
 		mkdir(cham_dir)
+		mkdir('%s/logs' % cham_dir)
+		mkdir('%s/pid' % cham_dir)
 	except:
 		pass
 	chmod(cham_dir, stat.S_IRWXU)
@@ -40,10 +42,9 @@ sql_up_files = (sql_up_dir,sql_upgrade)
 data_files.append(conf_files)
 data_files.append(sql_files)
 data_files.append(sql_up_files)
-
 setup(
 	name="pg_chameleon",
-	version="1.0beta1",
+	version="1.0alpha4",
 	description="MySQL to PostgreSQL replica",
 	long_description="""Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and Python 3.3+
 The system relies on the mysql-replication library to pull the changes from MySQL and covert them into a jsonb object. 
@@ -83,7 +84,7 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 					'sphinx>=1.4.6', 
 					'sphinx-autobuild>=0.6.0'
 	],
-	data_files=data_files, 
-	
+	data_files = data_files, 
+	include_package_data = True
 	
 )

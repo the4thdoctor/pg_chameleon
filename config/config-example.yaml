@@ -33,10 +33,10 @@ hexify:
     - 'binary'
 
  
-pid_dir: 'pid/'
+pid_dir: '~/.pg_chameleon/pid/'
 
 
-log_dir: 'logs/'
+log_dir: '~/.pg_chameleon/logs/'
 log_level: 'debug'
 log_dest: 'stdout'
 log_append: True

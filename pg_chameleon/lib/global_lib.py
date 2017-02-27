@@ -80,9 +80,9 @@ class global_config(object):
 			self.reindex_app_names = confdic["reindex_app_names"]
 			self.batch_retention = confdic["batch_retention"]
 			
-			self.log_file = confdic["log_dir"]+config_name+'.log'
-			self.pid_file = confdic["pid_dir"]+"/"+config_name+".pid"
-			self.exit_file = confdic["pid_dir"]+"/"+config_name+".lock"
+			self.log_file = os.path.expanduser(confdic["log_dir"])+config_name+'.log'
+			self.pid_file = os.path.expanduser(confdic["pid_dir"])+"/"+config_name+".pid"
+			self.exit_file = os.path.expanduser(confdic["pid_dir"])+"/"+config_name+".lock"
 			copy_max_memory = str(confdic["copy_max_memory"])[:-1]
 			copy_scale = str(confdic["copy_max_memory"])[-1]
 			try:
