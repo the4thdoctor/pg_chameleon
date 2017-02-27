@@ -47,13 +47,13 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 		"chameleon.py"
 	],
 	install_requires=[
-					'PyMySQL', 
-					'argparse', 
-					'mysql-replication', 
-					'psycopg2', 
-					'PyYAML', 
-					'sphinx', 
-					'sphinx-autobuild'
+					'PyMySQL>=0.7.6', 
+					'argparse>=1.2.1', 
+					'mysql-replication>=0.11', 
+					'psycopg2>=2.6.2', 
+					'PyYAML>=3.11', 
+					'sphinx>=1.4.6', 
+					'sphinx-autobuild>=0.6.0'
 	],
 	data_files=config_files, 
 	

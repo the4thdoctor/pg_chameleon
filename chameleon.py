@@ -2,21 +2,19 @@
 import argparse
 from pg_chameleon import replica_engine
 commands = [
-					'create_schema',
-					'init_replica',
-					'start_replica',
-					'upgrade_schema',
-					'drop_schema', 
-					'list_config', 
-					'add_source', 
-					'drop_source', 
-					'stop_replica', 
-					'disable_replica', 
-					'enable_replica', 
-					'sync_replica', 
-					'show_status', 
-					'list_tables'
-
+			'create_schema',
+			'init_replica',
+			'start_replica',
+			'upgrade_schema',
+			'drop_schema', 
+			'list_config', 
+			'add_source', 
+			'drop_source', 
+			'stop_replica', 
+			'disable_replica', 
+			'enable_replica', 
+			'sync_replica', 
+			'show_status' 
 	]
 command_help = 'Available commands, ' + ','.join(commands)
 table_help= 'Specify the table\'s name to sync. Multiple tables can be specified separated by comma. If omitted all tables will be syncronised.' 
