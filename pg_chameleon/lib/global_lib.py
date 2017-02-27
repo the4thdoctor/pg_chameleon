@@ -21,10 +21,29 @@ class global_config(object):
 		"""
 			Class  constructor.
 		"""
-		config_home = "%s/.pg_chameleon/config" % os.path.expanduser('~')	
-		self.config_dirs = [config_home,"/etc/pg_chameleon"]
+		cham_dir = '/usr/local/etc/pg_chameleon'
+		global_config = '%s/config' % cham_dir
+		global_sql = '%s/sql' % cham_dir
+		
+		local_config = "%s/.pg_chameleon/config/" % os.path.expanduser('~')	
+		local_sql = "%s/.pg_chameleon/sql/" % os.path.expanduser('~')	
+		config_dirs = [local_config,global_config]
+		
+		sql_dirs = [local_sql,global_sql]
+		
+		sql_missing = True
 		config_missing = True
-		for config_dir in self.config_dirs:
+		
+		for sqldir in sql_dirs:
+			if os.path.isdir(sqldir):
+				self.sql_dir = sqldir
+				sql_missing = False
+				break
+		if sql_missing:
+			print("**FATAL - sql directory missing in any of the expected paths %s"  % ', '.join(sql_dirs))
+			sys.exit()
+			
+		for config_dir in config_dirs:
 			config_file = '%s/%s.yaml' % (config_dir, config_name)
 			if os.path.isfile(config_file):
 				self.config_name = config_name
@@ -32,7 +51,7 @@ class global_config(object):
 				config_missing = False
 				break
 		if config_missing:
-			print("**FATAL - could not find the configuration file in any of expected paths %s"  % ', '.join(self.config_dirs))
+			print("**FATAL - could not find the configuration file in any of expected paths %s"  % ', '.join(config_dirs))
 			sys.exit()
 		conffile = open(config_file, 'rb')
 		confdic = yaml.load(conffile.read())
@@ -81,7 +100,7 @@ class global_config(object):
 					sys.exit()
 			self.copy_max_memory = copy_max_memory
 		except KeyError as key_missing:
-			print('Missing key %s in configuration file. check config/config-example.yaml for reference' % (key_missing, ))
+			print('Missing key %s in configuration file. check %s/config-example.yaml for reference' % (key_missing, self.config_dir))
 			sys.exit()
 
 	def get_source_name(self, config_name = 'default'):
@@ -135,7 +154,7 @@ class replica_engine(object):
 		self.logger.addHandler(fh)
 
 		self.my_eng=mysql_engine(self.global_config, self.logger)
-		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger)
+		self.pg_eng=pg_engine(self.global_config, self.my_eng.my_tables, self.my_eng.table_file, self.logger, self.global_config.sql_dir)
 		self.sleep_loop=self.global_config.sleep_loop
 		
 		self.pid_file = self.global_config.pid_file
