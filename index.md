@@ -4,7 +4,7 @@
 
 The chameleon logo was made by [Elena Toma](http://tonkipappero.deviantart.com/ "Tonkipappero's Art")
 
-Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7. The system relies on
+Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and 3.6. The system relies on
 the [mysql-replication](https://github.com/noplay/python-mysql-replication "mysql-replication") library to pull the changes from MySQL and covert them into a jsonb object.
 A plpgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
 
@@ -12,26 +12,26 @@ The tool can initialise the replica pulling out the data from MySQL but this req
 
 The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
+
+The latest release is the [v1.0-alpha.4](https://github.com/the4thdoctor/pg_chameleon/releases/tag/v1.0-alpha.4)
+
+This release is available via pypi. Please ensure you are running the latest pip version before installing pg_chameleon. 
+
+
 #### Branches and testing
 
-The revamp branch is the development branch and should't be used for testis.
+The branch currently developed is the pgchameleon_v1. 
 
-The master branch receives the updates from revamp when the branch is working properly. The master branch is suggested for
-testing the tool.
+The branch pgchameleon_v2 is the pure python 3 project's revamp.
+I will start active development when psycopg2 2.7 will become available.
 
-
-There is an initial  Alpha 1  release which works but is not completely tested. Several bugs have been fixed since the release.
-
-An Alpha 2 release should appear very soon.
-
-The tool comes with the following limitations.
 
 #### Installation in virtualenv
 
-For working properly you should use virtualenv for installing the requirements via pip
-No daemon yet
+For working properly you should use virtualenv and install it using *pip install pg_chameleon*.
 
-The script should be executed in a screen session to keep it running. Currently there's no respawning of the process on failure nor failure detector.
+The script should be executed in a screen session to keep it running or using cron. 
+Currently there's no respawning of the process or failure detection.
 
 #### psycopg2 requires python and postgresql dev files
 
@@ -40,11 +40,11 @@ Please refer to your distribution for fulfilling those requirements.
 
 #### DDL replica limitations
 
-DDL and DML mixed in the same transaction are not decoded in the right order. This can result in a replica breakage caused by a wrong jsonb descriptor if the DML change the data on the same table modified by the DDL. I know the issue and I'm working on a solution.
+DDL and DML mixed in the same transaction are not decoded in the right order. 
+This can affect the replica because of a wrong jsonb descriptor. 
+I know the issue and I'm trying to address the problem and therefore build on a solution.
 
-### Test please!
-
-
+### pg_chameleon a lightweight replication system!
 A recording of a presentation  bout pg_chameleon is available on the Brighton PostgreSQL meetup page.
 
 Unfortunately the audio is suboptimal.
