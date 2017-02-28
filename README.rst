@@ -11,7 +11,9 @@ This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
-Current version: v1.0.alpha.3
+Current version: **v1.0.alpha.4**
+
+**This should be the final alpha release.**
 
 .. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
     :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
@@ -85,22 +87,22 @@ If you find a bug please submit the issue via GitHub.
 
 Requirements
 ******************
-* `PyMySQL==0.7.6 <https://github.com/PyMySQL/PyMySQL>`_ 
-* `argparse==1.2.1 <https://github.com/bewest/argparse>`_
-* `mysql-replication==0.9 <https://github.com/noplay/python-mysql-replication>`_
-* `psycopg2==2.6.2 <https://github.com/psycopg/psycopg2>`_
-* `PyYAML==3.11 <https://github.com/yaml/pyyaml>`_
-* `daemonize==2.4.7 <https://pypi.python.org/pypi/daemonize/>`_
-* `sphinx==1.4.6 <http://www.sphinx-doc.org/en/stable/>`_
-* `sphinx-autobuild==0.6.0 <https://github.com/GaretJax/sphinx-autobuild>`_
+* `PyMySQL <https://github.com/PyMySQL/PyMySQL>`_ 
+* `argparse <https://github.com/bewest/argparse>`_
+* `mysql-replication <https://github.com/noplay/python-mysql-replication>`_
+* `psycopg2 <https://github.com/psycopg/psycopg2>`_
+* `PyYAML <https://github.com/yaml/pyyaml>`_
+* `daemonize <https://pypi.python.org/pypi/daemonize/>`_
+* `sphinx <http://www.sphinx-doc.org/en/stable/>`_
+* `sphinx-autobuild <https://github.com/GaretJax/sphinx-autobuild>`_
 
 
 Quick Setup 
-**********
+*****************
 
-* Download the package or git clone the repository
-* Create a virtual environment in the main app directory and activate it
-* Install the required packages listed in requirements.txt 
+* Create a virtual environment (e.g. python3 -m venv venv)
+* Activate the virtual environment (e.g. source venv/bin/activate)
+* Install pgchameleon with **pip install pg_chameleon**
 * Create a user on mysql for the replica (e.g. usr_replica)
 * Grant access to usr on the replicated database (e.g. GRANT ALL ON sakila.* TO 'usr_replica';)
 * Grant RELOAD privilege to the user (e.g. GRANT RELOAD ON \*.\* to 'usr_replica';)
@@ -111,6 +113,21 @@ Quick Setup
 
 Configuration parameters
 ********************************
+When installing the package within a virtual environment the setup creates the pg_chameleon configuration directory in $HOME/.pg_chameleon.
+Inside the directory there are three subdirs. 
+
+
+* config is where the configuration files live. Use config-example.yaml as template for the other configuration files. Please note the logs and pid directories with relative path will no longer work. The you should either use an absolute path or provide the home alias. Again, check the config-example.yaml for an example.
+
+* pid is where the replica pid is created. it can be changed in the configuration file
+
+* logs is where the logs are saved created. it can be changed in the configuration file
+
+* sql stores the sql service files and upgrade files, you can ignore it
+
+The system wide install is partially supported. In that case the files are created in /usr/local/etc/pg_chameleon. No user's configuration directory is created. I'll improve this aspect in the first
+beta release.
+
 The tool supports multiple configuration files. The replica can run from multiple sources at same time as long as the postgresql destination schema is different.
 
 
@@ -265,7 +282,7 @@ For PostgreSQL
 
     psql  -h derpy -U usr_replica db_replica
     Password for user usr_replica: 
-    psql (9.5.4)
+    psql (9.5.5)
     Type "help" for help.
     db_replica=> 
 
@@ -308,9 +325,9 @@ Initialise the schema and the replica with
 
 .. code-block:: none
     
-    ./chameleon.py create_schema 
-    ./chameleon.py add_source --config default
-    ./chameleon.py init_replica --config default
+    chameleon.py create_schema 
+    chameleon.py add_source --config default
+    chameleon.py init_replica --config default
 
 
 Start the replica with
@@ -318,7 +335,7 @@ Start the replica with
 
 .. code-block:: none
     
-	./chameleon.py start_replica --config default
+	chameleon.py start_replica --config default
 	
 
 
