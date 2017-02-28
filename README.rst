@@ -11,7 +11,7 @@ This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
-Current version: **v1.0.alpha.4**
+Current version: **v1.0-alpha.4**
 
 **This should be the final alpha release.**
 
