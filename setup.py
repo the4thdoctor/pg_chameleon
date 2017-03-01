@@ -44,7 +44,7 @@ data_files.append(sql_files)
 data_files.append(sql_up_files)
 setup(
 	name="pg_chameleon",
-	version="v1.0-alpha.4",
+	version="v1.0-beta.1",
 	description="MySQL to PostgreSQL replica",
 	long_description="""Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and Python 3.3+
 The system relies on the mysql-replication library to pull the changes from MySQL and covert them into a jsonb object. 
@@ -79,10 +79,9 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 					'PyMySQL>=0.7.6', 
 					'argparse>=1.2.1', 
 					'mysql-replication>=0.11', 
-					'psycopg2>=2.6.2', 
+					'psycopg2>=2.7.0', 
 					'PyYAML>=3.11', 
-					'sphinx>=1.4.6', 
-					'sphinx-autobuild>=0.6.0'
+					
 	],
 	data_files = data_files, 
 	include_package_data = True

@@ -1,7 +1,7 @@
 PyMySQL==0.7.6
 argparse==1.2.1
 mysql-replication==0.11
-psycopg2==2.6.2
+psycopg2==2.7.0
 PyYAML==3.11
 sphinx==1.4.6
 sphinx-autobuild==0.6.0
