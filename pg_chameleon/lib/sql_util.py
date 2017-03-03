@@ -202,7 +202,7 @@ class sql_token(object):
 						alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 					except:
 						alter_dic["dimension"]=0
-			if alter_dic["name"] not in excluded_names:
+			if alter_dic["name"].upper() not in excluded_names:
 				alter_cmd.append(alter_dic)
 			stat_dic["alter_cmd"]=alter_cmd
 		return stat_dic
