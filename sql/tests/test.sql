@@ -11,6 +11,7 @@ INSERT INTO test (value1,value2)
 VALUES
 ('hello','dave'),
 ('knock knock','neo'),
+('l''araba','phoenix'),
 ('the answer','is 42');
 ALTER TABLE test
 ADD COLUMN `count` SMALLINT(6) NULL ,
