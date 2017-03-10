@@ -132,6 +132,7 @@ class sql_token(object):
 		column_list=self.m_keys.sub( '', column_list)
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
+		
 		table_dic["indices"]=self.build_key_dic(inner_stat, table_name)
 		#print table_dic["indices"]
 		#column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
@@ -148,12 +149,14 @@ class sql_token(object):
 	
 	def parse_alter_table(self, malter_table):
 		""" """
+		excluded_names = ['CONSTRAINT']
 		stat_dic={}
 		alter_cmd=[]
 		alter_stat=malter_table.group(0) + ','
 		stat_dic["command"]=malter_table.group(1).upper().strip()
 		stat_dic["name"]=malter_table.group(2).strip().strip('`')
 		dim_groups=self.m_dimension.findall(alter_stat)
+		
 		for dim_group in dim_groups:
 			alter_stat=alter_stat.replace(dim_group, dim_group.replace(',','|'))
 		
@@ -199,7 +202,8 @@ class sql_token(object):
 						alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 					except:
 						alter_dic["dimension"]=0
-			alter_cmd.append(alter_dic)
+			if alter_dic["name"].upper() not in excluded_names:
+				alter_cmd.append(alter_dic)
 			stat_dic["alter_cmd"]=alter_cmd
 		return stat_dic
 		
@@ -249,7 +253,8 @@ class sql_token(object):
 				pass
 			elif malter_table:
 				stat_dic=self.parse_alter_table(malter_table)
-			
+				if len(stat_dic["alter_cmd"]) == 0:
+					stat_dic = {}
 				
 			if stat_dic!={}:
 				self.tokenised.append(stat_dic)
