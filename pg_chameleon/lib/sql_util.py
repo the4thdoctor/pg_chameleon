@@ -8,7 +8,7 @@ class sql_token(object):
 	def __init__(self):
 		self.tokenised=[]
 		self.query_list=[]
-		self.pkey_cols=[]
+		self.pkey_cols=""
 		
 		#re for column definitions
 		self.m_columns=re.compile(r'\((.*)\)', re.IGNORECASE)
@@ -125,6 +125,7 @@ class sql_token(object):
 		
 	
 	def parse_create_table(self, sql_create, table_name):
+		
 		m_inner=self.m_inner.search(sql_create)
 		inner_stat=m_inner.group(1).strip()
 		table_dic={}
@@ -149,7 +150,7 @@ class sql_token(object):
 	
 	def parse_alter_table(self, malter_table):
 		""" """
-		excluded_names = ['CONSTRAINT']
+		excluded_names = ['CONSTRAINT', 'PRIMARY']
 		stat_dic={}
 		alter_cmd=[]
 		alter_stat=malter_table.group(0) + ','
@@ -187,6 +188,7 @@ class sql_token(object):
 					alter_dic["old"] = alter_column.group(1).strip().strip('`')
 					alter_dic["new"] = alter_column.group(2).strip().strip('`')
 					alter_dic["type"] = alter_column.group(3).strip().strip('`')
+					alter_dic["name"] = alter_column.group(1).strip().strip('`')
 					try:
 						alter_dic["dimension"]=alter_column.group(4).replace('|', ',').strip()
 					except:
