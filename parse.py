@@ -42,15 +42,13 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #statement="""ALTER TABLE test ADD COLUMN `dkdkd` timestamp NULL;"""
 #statement="""create table test_pk (id int ,PRIMARY KEY  (id) ); """
 #statement="""alter table test change   date_create_new date_create_new timestamp;"""
-#statement="""ALTER TABLE `test_table` MODIFY `test_column` bigint(20) DEFAULT NULL; 
-#ALTER TABLE table2 CHANGE column1 column2 bigint(20);
-#ALTER TABLE `test_table` MODIFY `test_column` enum('blah','dd') DEFAULT NULL; """
+statement="""ALTER TABLE `test_table` MODIFY `test_column` bigint(20) DEFAULT NULL; 
+ALTER TABLE table2 CHANGE column1 column2 bigint(20);
+ALTER TABLE `test_table` MODIFY `test_column` enum('blah','dd') DEFAULT NULL; """
 #statement="""ALTER TABLE `test_table` ADD UNIQUE INDEX `idx_unique` (`log`, `status`);"""
-#statement = """ CREATE TABLE `api_token_auth_level` (`api_token_id` BIGINT(20) NOT NULL, `auth_level_id` TINYINT(1) NOT NULL) ENGINE=InnoDB"""
-statement = """ALTER TABLE `api_token_auth_level` ADD PRIMARY KEY (`api_token_id`, `auth_level_id`)"""
 token_sql=sql_token()
 token_sql.parse_sql(statement)
-print (token_sql.tokenised)
+#print token_sql.tokenised
 for token in token_sql.tokenised:
 	if   token["command"]=="ALTER TABLE":
 		alter_cmd = token["alter_cmd"][0]
