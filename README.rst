@@ -83,7 +83,10 @@ This software needs user's feeback.
 The system has proven to be quite efficient and stable. 
 However the tool is not fully tested yet. I just ask you **to be very carefull if you want to use it in production**.
 
-If you find a bug please submit the issue via GitHub.
+The best way to report a bug is to submit the issue GitHub.
+However if you like to get in touch you can ping me on **twitter @4thdoctor_scarf ** or if you like there is a channel on **irc.freenode.net #pgchameleon**.
+
+
 
 Requirements
 ******************
@@ -365,6 +368,8 @@ Start the replica with
 .. code-block:: none
     
 	chameleon.py start_replica --config default
+	
+
 	
 
 
