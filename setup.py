@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import stat
-import sys
-from os import geteuid, listdir, mkdir, chmod
-from os.path import  expanduser, isfile, join
+from os import listdir
+from os.path import  isfile, join
 from setuptools import setup
 from distutils.sysconfig import get_python_lib
 
@@ -11,17 +9,6 @@ python_lib=get_python_lib()
 
 package_data = ('%s/pg_chameleon' % python_lib, ['LICENSE'])
 
-if geteuid() != 0:
-	cham_dir = "%s/.pg_chameleon" % expanduser('~')	
-	
-if geteuid() != 0:	
-	try:
-		mkdir(cham_dir)
-		mkdir('%s/logs' % cham_dir)
-		mkdir('%s/pid' % cham_dir)
-		chmod(cham_dir, stat.S_IRWXU)
-	except:
-		pass
 	
 
 sql_up_path = 'sql/upgrade'

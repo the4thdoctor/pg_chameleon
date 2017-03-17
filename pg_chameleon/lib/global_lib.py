@@ -6,20 +6,44 @@ import time
 import logging
 import smtplib
 from distutils.sysconfig import get_python_lib
+from shutil import copy
 
 
 class config_dir(object):
 	def __init__(self):
 		python_lib=get_python_lib()
-		self.cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
-		self.local_config = "%s/config/" % self.cham_dir 
-		self.local_logs = "%s/logs/" % self.cham_dir 
-		self.local_pid = "%s/pid/" % self.cham_dir 
-		self.global_config = '%s/pg_chameleon/config' % python_lib
-		self.global_sql = '%s/sql' % python_lib
+		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
+		local_config = "%s/config/" % cham_dir 
+		local_logs = "%s/logs/" % cham_dir 
+		local_pid = "%s/pid/" % cham_dir 
+		self.global_config_example = '%s/pg_chameleon/config/config-example.yaml' % python_lib
+		self.local_config_example = '%s/config-example.yaml' % local_config
+		#global_sql = '%s/sql' % python_lib
+		self.conf_dirs=[
+			cham_dir, 
+			local_config, 
+			local_logs, 
+			local_pid, 
+			
+		]
+		
 	def set_config(self):
-		if not os.path.isdir(self.cham_dir):
-			os.mkdir(self.cham_dir)
+		for confdir in self.conf_dirs:
+			if not os.path.isdir(confdir):
+				print ("creating directory %s" % confdir)
+				os.mkdir(confdir)
+		
+		if os.path.isfile(self.local_config_example):
+			if os.path.getctime(self.global_config_example)>os.path.getctime(self.local_config_example):
+				print ("updating config_example %s" % self.local_config_example)
+				copy(self.global_config_example, self.local_config_example)
+		else:
+			print ("copying config_example %s" % self.local_config_example)
+			copy(self.global_config_example, self.local_config_example)
+		
+			
+			
+			
 
 class global_config(object):
 	"""
@@ -37,38 +61,27 @@ class global_config(object):
 		"""
 			Class  constructor.
 		"""
-		cham_dir = '/usr/local/etc/pg_chameleon'
-		global_config = '%s/config' % cham_dir
-		global_sql = '%s/sql' % cham_dir
+		python_lib=get_python_lib()
+		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
+		config_dir = '%s/config/' % cham_dir
+		sql_dir = "%s/pg_chameleon/sql/" % python_lib
 		
-		local_config = "%s/.pg_chameleon/config/" % os.path.expanduser('~')	
-		local_sql = "%s/.pg_chameleon/sql/" % os.path.expanduser('~')	
-		config_dirs = [local_config,global_config]
 		
-		sql_dirs = [local_sql,global_sql]
-		
-		sql_missing = True
 		config_missing = True
 		
-		for sqldir in sql_dirs:
-			if os.path.isdir(sqldir):
-				self.sql_dir = sqldir
-				sql_missing = False
-				break
-		if sql_missing:
-			print("**FATAL - sql directory missing in any of the expected paths %s"  % ', '.join(sql_dirs))
-			sys.exit()
+		if os.path.isdir(sql_dir):
+				self.sql_dir = sql_dir
+		else:
+			print("**FATAL - sql directory %s missing "  % self.sql_dir)
+			sys.exit(1)
 			
-		for config_dir in config_dirs:
-			config_file = '%s/%s.yaml' % (config_dir, config_name)
-			if os.path.isfile(config_file):
-				self.config_name = config_name
-				self.config_dir = config_dir
-				config_missing = False
-				break
-		if config_missing:
-			print("**FATAL - could not find the configuration file in any of expected paths %s"  % ', '.join(config_dirs))
-			sys.exit()
+		config_file = '%s/%s.yaml' % (config_dir, config_name)
+		if os.path.isfile(config_file):
+			self.config_name = config_name
+			self.config_dir = config_dir
+		else:
+			print("**FATAL - could not find the configuration file %s.yaml in %s"  % (config_name, config_dir))
+			sys.exit(2)
 		conffile = open(config_file, 'rb')
 		confdic = yaml.load(conffile.read())
 		conffile.close()
@@ -135,7 +148,7 @@ class global_config(object):
 		
 class replica_engine(object):
 	"""
-		This class acts as bridge between the mysql and postgresql engines. The constructor inits the global configuration
+		This class is a bridge between the mysql and postgresql engines. The constructor inits the global configuration
 		class  and setup the mysql and postgresql engines as class objects. 
 		The class setup the logging using the configuration parameter (e.g. log level debug on stdout).
 		
