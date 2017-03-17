@@ -5,10 +5,13 @@ import sys
 from os import geteuid, listdir, mkdir, chmod
 from os.path import  expanduser, isfile, join
 from setuptools import setup
+from distutils.sysconfig import get_python_lib
 
-if geteuid() == 0:
-	cham_dir = '/usr/local/etc/pg_chameleon'
-else:
+python_lib=get_python_lib()
+
+package_data = ('%s/pg_chameleon' % python_lib, ['LICENSE'])
+
+if geteuid() != 0:
 	cham_dir = "%s/.pg_chameleon" % expanduser('~')	
 	
 if geteuid() != 0:	
@@ -16,15 +19,15 @@ if geteuid() != 0:
 		mkdir(cham_dir)
 		mkdir('%s/logs' % cham_dir)
 		mkdir('%s/pid' % cham_dir)
+		chmod(cham_dir, stat.S_IRWXU)
 	except:
 		pass
-	chmod(cham_dir, stat.S_IRWXU)
-
+	
 
 sql_up_path = 'sql/upgrade'
-conf_dir = "%s/config" % cham_dir
-sql_dir = "%s/sql" % cham_dir
-sql_up_dir = "%s/%s" % (cham_dir, sql_up_path)
+conf_dir = "%s/pg_chameleon/config" % python_lib
+sql_dir = "%s/pg_chameleon/sql" % python_lib
+sql_up_dir = "%s/pg_chameleon/%s" % (python_lib, sql_up_path)
 
 
 data_files = []
@@ -64,7 +67,6 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 	classifiers=[
 		"License :: OSI Approved :: BSD License"
 	],
-	#packages=['pg_chameleon'],
 	py_modules=[
 		"pg_chameleon.__init__",
 		"pg_chameleon.lib.global_lib",

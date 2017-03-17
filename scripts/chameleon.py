@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 import argparse
 from pg_chameleon import replica_engine
+from pg_chameleon import config_dir
+configdir = config_dir()
+configdir.set_config()
+
 commands = [
 			'create_schema',
 			'init_replica',

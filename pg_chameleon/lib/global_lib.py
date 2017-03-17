@@ -5,6 +5,22 @@ import os
 import time
 import logging
 import smtplib
+from distutils.sysconfig import get_python_lib
+
+
+class config_dir(object):
+	def __init__(self):
+		python_lib=get_python_lib()
+		self.cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
+		self.local_config = "%s/config/" % self.cham_dir 
+		self.local_logs = "%s/logs/" % self.cham_dir 
+		self.local_pid = "%s/pid/" % self.cham_dir 
+		self.global_config = '%s/pg_chameleon/config' % python_lib
+		self.global_sql = '%s/sql' % python_lib
+	def set_config(self):
+		if not os.path.isdir(self.cham_dir):
+			os.mkdir(self.cham_dir)
+
 class global_config(object):
 	"""
 		This class parses the configuration file which is in config/config.yaml and sets 
