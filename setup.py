@@ -36,14 +36,14 @@ setup(
 	name="pg_chameleon",
 	version="v1.0-beta.1",
 	description="MySQL to PostgreSQL replica",
-	long_description="""Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and Python 3.3+
-The system relies on the mysql-replication library to pull the changes from MySQL and covert them into a jsonb object. 
-A plpgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
+	long_description="""pg_chameleon is a replication tool capable to replicate from MySQL to PostgreSQL. Is compatible with Python 2.7 and Python 3.3+
+The system use the library mysql-replication to pull the row images from MySQL which are transformed into a jsonb object. 
+A pl/pgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
 
 The tool requires an  initial replica setup which pulls the data from MySQL in read only mode. 
 This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 
-The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
+pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 """,
 	author="Federico Campoli",
 	author_email="the4thdoctor.gallifrey@gmail.com",
@@ -52,7 +52,23 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 		"linux"
 	],
 	classifiers=[
-		"License :: OSI Approved :: BSD License"
+		"License :: OSI Approved :: BSD License",
+		"Environment :: Console",
+		"Intended Audience :: Developers",
+		"Intended Audience :: Information Technology",
+		"Intended Audience :: Science/Research",
+		"Intended Audience :: System Administrators",
+		"Intended Audience :: Telecommunications Industry",
+		"Natural Language :: English",
+		"Operating System :: POSIX :: BSD",
+		"Operating System :: POSIX :: Linux",
+		"Programming Language :: Python",
+		"Programming Language :: Python :: 2.7",
+		"Programming Language :: Python :: 3",
+		"Programming Language :: Python :: 3.3",
+		"Programming Language :: Python :: 3.4",
+		"Topic :: Database :: Database Engines/Servers",
+		"Topic :: Other/Nonlisted Topic"
 	],
 	py_modules=[
 		"pg_chameleon.__init__",
@@ -65,11 +81,11 @@ The tool can pull the data from a cascading replica when the MySQL slave is conf
 		"scripts/chameleon.py"
 	],
 	install_requires=[
-					'PyMySQL>=0.7.6', 
-					'argparse>=1.2.1', 
-					'mysql-replication>=0.11', 
-					'psycopg2>=2.7.0', 
-					'PyYAML>=3.11', 
+		'PyMySQL>=0.7.6', 
+		'argparse>=1.2.1', 
+		'mysql-replication>=0.11', 
+		'psycopg2>=2.7.0', 
+		'PyYAML>=3.11', 
 					
 	],
 	data_files = data_files, 

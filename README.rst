@@ -1,19 +1,19 @@
 
 .. image:: images/pgchameleon.png
 
-Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and Python 3.3+
-The system relies on the mysql-replication library to pull the changes from MySQL and covert them into a jsonb object. 
-A plpgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
+pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and Python 3.3+
+The system use the library mysql-replication to pull the row images from MySQL which are transformed into a jsonb object. 
+A pl/pgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
 
 The tool requires an  initial replica setup which pulls the data from MySQL in read only mode. 
 This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 
-The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
+pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
-Current version: **v1.0-alpha.4**
+Current version: **v1.0-beta.1**
 
-**This should be the final alpha release.**
+
 
 .. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
     :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
@@ -29,8 +29,8 @@ The tool is developed using Linux Slackware 14.2 with python 2.7 and python 3.6.
 
 The databases source and target are tested on FreeBSD 11.0
 
-* MySQL: 5.6.33 
-* PostgreSQL: 9.5.5 
+* MySQL: 5.6
+* PostgreSQL: 9.5
   
 What does it work
 ..............................
@@ -68,7 +68,7 @@ Currently the process is sequential.
 
 Read the replica -> Store the rows -> Replay. 
 
-The version 2.0 will improve this and other aspects.
+The version 2.0 will improve this aspect.
 
 Python 3 is supported but only from version 3.3 as required by mysql-replication .
 
@@ -125,10 +125,14 @@ Inside the directory there are three subdirs.
 
 * sql stores the sql service files and upgrade files, you can ignore it
 
-The system wide install is partially supported. In that case the files are created in /usr/local/etc/pg_chameleon. No user's configuration directory is created. I'll improve this aspect in the first
-beta release.
+The system wide install is now supported. In the sql files are created in the python site-packages/pg_chameleon dir. When running for the first time the script creates a directory .pg_chameleon
+in the user's home directory. The file config-example is stored in ~/.pg_chameleon/config and should be used as template for the other configuration files. 
 
-The tool supports multiple configuration files. The replica can run from multiple sources at same time as long as the postgresql destination schema is different.
+**do not use config-example.yaml** The tool ignore this filename and the file is overwritten when pg_chameleon is upgraded.
+
+The is possible to have multiple configuration files to configure the replica from multiple source databases at same time as long as the postgresql destination schema is different.
+
+Each source requires to be started in a separate process (e.g. a cron entry).
 
 
 The configuration file is a yaml file. Each parameter controls the
@@ -204,7 +208,7 @@ The script chameleon.py requires one of the following commands.
 * list_config List the available configurations and their status ('ready', 'initialising','initialised','stopped','running')
 * add_source register a new configuration file as source
 * drop_source remove the configuration from the registered sources
-* stop_replica ends the replica process
+* stop_replica ends the replica process gracefully
 * disable_replica ends the replica process and disable the restart
 * enable_replica enable the replica process
 * sync_replica sync the data between mysql and postgresql without dropping the tables
@@ -216,6 +220,31 @@ If omitted defaults to **default**.
 Example
 **********************
 
+Create a virtualenv and activate it
+.. code-block:: none
+    
+    python3 -m venv venv
+    source venv/bin/activate
+    
+    
+Install pg_chameleon
+
+.. code-block:: none
+    
+    pip install pg_chameleon
+
+
+Run the script in order to create the configuration directory.
+
+.. code-block:: none
+    
+    chameleon.py
+    
+    
+cd in ~/.pg_chameleon/config and copy the configuration-example.yaml to default.yaml. Please note this is the default configuration and can be omitted when executing the chameleon.py script.
+
+    
+    
 In MySQL create a user for the replica.
 
 .. code-block:: sql
