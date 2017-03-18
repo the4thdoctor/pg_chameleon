@@ -116,24 +116,24 @@ Quick Setup
 
 Configuration parameters
 ********************************
-When installing the package within a virtual environment the setup creates the pg_chameleon configuration directory in $HOME/.pg_chameleon.
-Inside the directory there are three subdirs. 
+The system wide install is now supported correctly. 
+
+The first time chameleon.py is executed it creates a configuration directory in $HOME/.pg_chameleon.
+Inside the directory there are two subdirectories. 
 
 
 * config is where the configuration files live. Use config-example.yaml as template for the other configuration files. Please note the logs and pid directories with relative path will no longer work. The you should either use an absolute path or provide the home alias. Again, check the config-example.yaml for an example.
 
-* pid is where the replica pid is created. it can be changed in the configuration file
+* pid is where the replica pid file is created. it can be changed in the configuration file
 
-* logs is where the logs are saved created. it can be changed in the configuration file
+* logs is where the replica logs are saved if log_dest is file. It can be changed in the configuration file
 
-* sql stores the sql service files and upgrade files, you can ignore it
+The file config-example.yaml is stored in ~/.pg_chameleon/config and should be used as template for the other configuration files. 
 
-The system wide install is now supported. In the sql files are created in the python site-packages/pg_chameleon dir. When running for the first time the script creates a directory .pg_chameleon
-in the user's home directory. The file config-example is stored in ~/.pg_chameleon/config and should be used as template for the other configuration files. 
 
-**do not use config-example.yaml** The tool ignore this filename and the file is overwritten when pg_chameleon is upgraded.
+**do not use config-example.yaml** directly. The tool skips this filename as the file gets overwritten when pg_chameleon is upgraded.
 
-The is possible to have multiple configuration files to configure the replica from multiple source databases at same time as long as the postgresql destination schema is different.
+Is it possible to have multiple configuration files for configuring the replica from multiple source databases. It's compulsory to chose different destination schemas on postgresql.
 
 Each source requires to be started in a separate process (e.g. a cron entry).
 
@@ -217,8 +217,8 @@ The script chameleon.py requires one of the following commands.
 * sync_replica sync the data between mysql and postgresql without dropping the tables
 * show_status displays the replication status for each source, with the lag in seconds and the last received event
 
-the optional command **--config** followed by the configuration file without the yaml suffix allow to specify different configurations.
-If omitted defaults to **default**.
+the optional command **--config** followed by the configuration file name, without the yaml suffix, allow to specify different configurations.
+If omitted the configuration defaults to **default**.
 
 Example
 **********************

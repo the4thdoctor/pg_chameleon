@@ -56,6 +56,20 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 	],
 	classifiers=[
 		"License :: OSI Approved :: BSD License",
+		"Environment :: Console",
+		"Intended Audience :: Developers",
+		"Intended Audience :: Information Technology",
+		"Intended Audience :: System Administrators",
+		"Natural Language :: English",
+		"Operating System :: POSIX :: BSD",
+		"Operating System :: POSIX :: Linux",
+		"Programming Language :: Python",
+		"Programming Language :: Python :: 2.7",
+		"Programming Language :: Python :: 3",
+		"Programming Language :: Python :: 3.3",
+		"Programming Language :: Python :: 3.4",
+		"Topic :: Database :: Database Engines/Servers",
+		"Topic :: Other/Nonlisted Topic"
 	],
 	py_modules=[
 		"pg_chameleon.__init__",
