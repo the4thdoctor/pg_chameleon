@@ -12,9 +12,9 @@ package_data = ('%s/pg_chameleon' % python_lib, ['LICENSE'])
 	
 
 sql_up_path = 'sql/upgrade'
-conf_dir = "%s/pg_chameleon/config" % python_lib
-sql_dir = "%s/pg_chameleon/sql" % python_lib
-sql_up_dir = "%s/pg_chameleon/%s" % (python_lib, sql_up_path)
+conf_dir = "/%s/pg_chameleon/config" % python_lib
+sql_dir = "/%s/pg_chameleon/sql" % python_lib
+sql_up_dir = "/%s/pg_chameleon/%s" % (python_lib, sql_up_path)
 
 
 data_files = []
@@ -32,6 +32,9 @@ sql_up_files = (sql_up_dir,sql_upgrade)
 data_files.append(conf_files)
 data_files.append(sql_files)
 data_files.append(sql_up_files)
+
+
+
 setup(
 	name="pg_chameleon",
 	version="v1.0-beta.1",
@@ -53,22 +56,6 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 	],
 	classifiers=[
 		"License :: OSI Approved :: BSD License",
-		"Environment :: Console",
-		"Intended Audience :: Developers",
-		"Intended Audience :: Information Technology",
-		"Intended Audience :: Science/Research",
-		"Intended Audience :: System Administrators",
-		"Intended Audience :: Telecommunications Industry",
-		"Natural Language :: English",
-		"Operating System :: POSIX :: BSD",
-		"Operating System :: POSIX :: Linux",
-		"Programming Language :: Python",
-		"Programming Language :: Python :: 2.7",
-		"Programming Language :: Python :: 3",
-		"Programming Language :: Python :: 3.3",
-		"Programming Language :: Python :: 3.4",
-		"Topic :: Database :: Database Engines/Servers",
-		"Topic :: Other/Nonlisted Topic"
 	],
 	py_modules=[
 		"pg_chameleon.__init__",
