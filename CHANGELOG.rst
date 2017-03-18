@@ -3,8 +3,9 @@ changelog
 
 1.0 Beta 1  -  18 Mar 2017
 ............................................
-* changed package data storage to work properly with system wide installations
+* changed not python files in package  to work properly with system wide installations
 * fixed issue with ALTER TABLE ADD CONSTRAINT
+* add datetime.timedelta to json encoding exceptions
 * added support for enum in ALTER TABLE MODIFY
 * requires psycopg2 2.7 which installs without postgresql headers
 

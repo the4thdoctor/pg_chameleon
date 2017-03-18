@@ -34,19 +34,14 @@ The databases source and target are tested on FreeBSD 11.0
   
 What does it work
 ..............................
-* Read the schema specifications from MySQL and replicate the same structure into PostgreSQL
-* Locks the tables in mysql and gets the master coordinates
+* Read the schema and data from MySQL and restore it into a PostgreSQL schema
+* Saves in PostgreSQL the MySQL's master coordinates
 * Create primary keys and indices on PostgreSQL
-* Write in PostgreSQL frontier table
+* Replica from MySQL to postgreSQL
 
  
 What does seems to work
 ..............................
-* Enum support
-* Blob import into bytea (needs testing)
-* Read replica from MySQL
-* Copy the data from MySQL to PostgreSQL on the fly
-* Replay of the replicated data in PostgreSQL
 * Basic DDL Support (CREATE/DROP/ALTER TABLE, DROP PRIMARY KEY)
 * Discards of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
 * Replica from multiple MySQL schema or servers
@@ -62,11 +57,12 @@ Caveats
 The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
 If the copy process fails for memory problems check the failing table's row length. This could be a probable cause of memory overload.
 
-The batch is processed every time the replica stream is empty and when the MySQL switches to another log segment (ROTATE EVENT). 
-Therefore the mysql binlog size determines the batch size.
+The batch is processed every time the replica stream is empty, when a DDL is captured or when the MySQL switches to another log segment (ROTATE EVENT). 
+Therefore the replica_batch_size  is just indicative.
+
 Currently the process is sequential. 
 
-Read the replica -> Store the rows -> Replay. 
+Read the replica -> Store the rows -> Replay the stored rows. 
 
 The version 2.0 will improve this aspect.
 
@@ -84,18 +80,22 @@ The system has proven to be quite efficient and stable.
 However the tool is not fully tested yet. I just ask you **to be very carefull if you want to use it in production**.
 
 The best way to report a bug is to submit the issue GitHub.
-However if you like to get in touch you can ping me on **twitter @4thdoctor_scarf** or if you like there is a channel on **irc.freenode.net #pgchameleon**.
+However if you like to get in touch you can ping me on **twitter @4thdoctor_scarf** or if you prefer to chat, on irc there is a dedicated channel **irc.freenode.net #pgchameleon**.
 
 
 
 Requirements
 ******************
+
+MySQL: 5.5+
+
+PostgreSQL: 9.5+
+
 * `PyMySQL <https://github.com/PyMySQL/PyMySQL>`_ 
 * `argparse <https://github.com/bewest/argparse>`_
 * `mysql-replication <https://github.com/noplay/python-mysql-replication>`_
 * `psycopg2 <https://github.com/psycopg/psycopg2>`_
 * `PyYAML <https://github.com/yaml/pyyaml>`_
-* `daemonize <https://pypi.python.org/pypi/daemonize/>`_
 * `sphinx <http://www.sphinx-doc.org/en/stable/>`_
 * `sphinx-autobuild <https://github.com/GaretJax/sphinx-autobuild>`_
 
