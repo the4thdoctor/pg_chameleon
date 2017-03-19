@@ -10,7 +10,15 @@ from shutil import copy
 
 
 class config_dir(object):
+	""" 
+		Class used to setup the local user configuration directory.
+		The class constructor sets only the class variables for the method set_config.
+		The function get_python_lib() is used to determine the python library where pg_chameleon is installed.
+	"""
 	def __init__(self):
+		"""
+			Class constructor.
+		"""
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
 		local_config = "%s/config/" % cham_dir 
@@ -18,7 +26,6 @@ class config_dir(object):
 		local_pid = "%s/pid/" % cham_dir 
 		self.global_config_example = '%s/pg_chameleon/config/config-example.yaml' % python_lib
 		self.local_config_example = '%s/config-example.yaml' % local_config
-		#global_sql = '%s/sql' % python_lib
 		self.conf_dirs=[
 			cham_dir, 
 			local_config, 
@@ -28,6 +35,15 @@ class config_dir(object):
 		]
 		
 	def set_config(self):
+		""" 
+			The method loops the list self.conf_dirs creating it only if missing.
+			
+			The method checks the freshness of the config-example.yaml file and copies the new version
+			from the python library determined in the class constructor with get_python_lib().
+			
+			If the configuration file is missing the method copies the file with a different message.
+		
+		"""
 		for confdir in self.conf_dirs:
 			if not os.path.isdir(confdir):
 				print ("creating directory %s" % confdir)
@@ -47,19 +63,23 @@ class config_dir(object):
 
 class global_config(object):
 	"""
-		This class parses the configuration file which is in config/config.yaml and sets 
-		the class variables used by the other libraries. 
+		This class parses the configuration file specified by the parameter config_name and sets 
+		the class variables used by the replica_engine class. 
 		The constructor checks if the configuration file is present and if is missing emits an error message followed by
 		the sys.exit() command. If the configuration file is successful parsed the class variables are set from the
-		configuration values.
-		The class sets the log output file from the parameter command.  If the log destination is stdout then the logfile is ignored
+		configuration values. 
 		
-		:param command: the command specified on the pg_chameleon.py command line
+		The  function get_python_lib() is used to determine the library directory where pg_chameleon is installed in order to get the
+		sql files.
+		The configuration files are searched in the $HOME/.pg_chameleon/config.
+		Should any parameter be missing in config the class constructor emits an error message specifying the parameter with reference to config-example.yaml.
+		
+		:param config_name: the configuration file to use. If omitted is set to default.
 	
 	"""
 	def __init__(self,config_name="default"):
 		"""
-			Class  constructor.
+			The class  constructor.
 		"""
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
@@ -133,6 +153,13 @@ class global_config(object):
 			sys.exit()
 
 	def get_source_name(self, config_name = 'default'):
+		"""
+		The method tries to set the parameter source_name determined from the configuration file.
+		The value is used to query the replica catalog in order to get the source sstatus in method list_config().
+		
+		:param config_name: the configuration file to use. If omitted is set to default.
+		"""
+		
 		config_file = '%s/%s.yaml' % (self.config_dir, config_name)
 		self.config_name = config_name
 		if os.path.isfile(config_file):
@@ -148,16 +175,15 @@ class global_config(object):
 		
 class replica_engine(object):
 	"""
-		This class is a bridge between the mysql and postgresql engines. The constructor inits the global configuration
-		class  and setup the mysql and postgresql engines as class objects. 
-		The class setup the logging using the configuration parameter (e.g. log level debug on stdout).
-		
-		:param command: the command specified on the pg_chameleon.py command line
-		
-		
+		This class is wraps the the mysql and postgresql engines in order to perform the various activities required for the replica. 
+		The constructor inits the global configuration class  and setup the mysql and postgresql engines as class objects. 
+		The class sets the logging using the configuration parameter.
 		
 	"""
 	def __init__(self, config, stdout=False):
+		"""
+			Class constructor
+		"""
 		self.global_config=global_config(config)
 		self.logger = logging.getLogger(__name__)
 		self.logger.setLevel(logging.DEBUG)
@@ -190,6 +216,16 @@ class replica_engine(object):
 		self.exit_file = self.global_config.exit_file
 	
 	def init_replica(self):
+		"""
+			The method initialise a replica.
+		
+			It calls the pg_engine methods set_source_id which sets the source identifier and change the source status.
+			
+			The pg_engine method clean_batch_data is used to remove any unreplayed row in the tables t_log_replica_1(2).
+			
+			The class methods create_schema, copy_table_data and create_indices are called in sequence to initialise the replica.
+			
+		"""
 		self.pg_eng.set_source_id('initialising')
 		self.pg_eng.clean_batch_data()
 		self.create_schema()
@@ -198,7 +234,13 @@ class replica_engine(object):
 		self.pg_eng.set_source_id('initialised')
 
 	def wait_for_replica_end(self):
-		""" waiting for replica end"""
+		""" 
+			The method is used to wait for the replica's end monitoring the pid file.
+			The replica status is determined using the check_running method passing the write_pid=false.
+			
+			There is a 5 seconds sleep between each check.
+			
+		"""
 		self.logger.info("waiting for replica process to stop")
 		while True:
 			replica_running=self.check_running(write_pid=False)
@@ -210,6 +252,10 @@ class replica_engine(object):
 	
 
 	def stop_replica(self, allow_restart=True):
+		"""
+			the method writes the exit file in the pid directory and waits for the replica process's end.
+			If allow_restart is true the exit file is removed.
+		"""
 		exit=open(self.exit_file, 'w')
 		exit.close()
 		self.wait_for_replica_end()
@@ -217,6 +263,9 @@ class replica_engine(object):
 			os.remove(self.exit_file)
 	
 	def enable_replica(self):
+		"""
+			The  method remove the exit file in order to let the replica start again.
+		"""
 		try:
 			os.remove(self.exit_file)
 			self.logger.info("Replica enabled")
@@ -278,7 +327,10 @@ class replica_engine(object):
 	
 	
 	def check_running(self, write_pid=False):
-		""" checks if the process is running. saves the pid file if not """
+		""" 
+			checks if the process is running. 
+			If swrite_pid is set to true and the replica is not running it saves the pid file.
+		"""
 		
 		process_running=False 
 		try:
@@ -298,7 +350,15 @@ class replica_engine(object):
 		
 	def run_replica(self):
 		"""
-			Runs the replica loop. 
+			The method starts and run the replica loop. 
+			Before starting the loop checks if the replica is already running with check_running with write_pid=True.
+			
+			It also checks whether the exit file is present or not. 
+			If present skips the replica start, otherwise start the while loop which runs the mysql_engine method run_replica.
+			
+			When the mysql_engine.run_replica() completes it checks if there is the exit file and eventually exit the loop.
+			Otherwise sleeps for the amount or seconds set in sleep_loop.
+			
 		"""
 		already_running = self.check_running(write_pid=True)
 		exit_request = self.check_file_exit()
