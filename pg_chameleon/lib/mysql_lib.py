@@ -343,23 +343,46 @@ class mysql_engine(object):
 		column_data=self.mysql_con.my_cursor.fetchall()
 		return column_data
 
+	def get_fk_metadata(self):
+		sql_fk=""" 
+			SELECT
+				constraint_name,
+				table_name,
+				GROUP_CONCAT(concat('"',column_name,'"') ORDER BY ordinal_position) as fk_tab_colunms,
+				referenced_table_name,
+				GROUP_CONCAT(concat('"',referenced_column_name,'"') ORDER BY ordinal_position) as fk_ref_colunms
+			FROM
+				information_schema.key_column_usage
+			WHERE
+					table_schema=%s
+				AND	referenced_column_name IS NOT NULL
+			GROUP BY
+				constraint_name,
+				table_name,
+				referenced_table_name
+			;
+				
+		
+		"""
+
 	def get_index_metadata(self, table):
-		sql_index="""SELECT 
-										index_name,
-										non_unique,
-										GROUP_CONCAT(concat('"',column_name,'"') ORDER BY seq_in_index) as index_columns
-									FROM
-										information_schema.statistics
-									WHERE
-														table_schema=%s
-											AND 	table_name=%s
-											AND	index_type = 'BTREE'
-									GROUP BY 
-										table_name,
-										non_unique,
-										index_name
-									;
-							"""
+		sql_index="""
+				SELECT 
+					index_name,
+					non_unique,
+					GROUP_CONCAT(concat('"',column_name,'"') ORDER BY seq_in_index) as index_columns
+				FROM
+					information_schema.statistics
+				WHERE
+									table_schema=%s
+						AND 	table_name=%s
+						AND	index_type = 'BTREE'
+				GROUP BY 
+					table_name,
+					non_unique,
+					index_name
+				;
+		"""
 		self.mysql_con.my_cursor.execute(sql_index, (self.mysql_con.my_database, table))
 		index_data=self.mysql_con.my_cursor.fetchall()
 		return index_data
