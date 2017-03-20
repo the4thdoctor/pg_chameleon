@@ -739,7 +739,8 @@ class pg_engine(object):
 				replace(replace(column_default,'nextval(''',''),'''::regclass)',''),
 				table_schema,
 				table_name
-			)
+			),
+			replace(replace(column_default,'nextval(''',''),'''::regclass)','') as  seq_name
 		FROM 
 				information_schema.columns
 		WHERE 
@@ -749,8 +750,9 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_gen_reset, (destination_schema, ))
 		results=self.pg_conn.pgsql_cur.fetchall()
 		try:
-			for statement in results[0]:
-				self.pg_conn.pgsql_cur.execute(statement)
+			for statement in results:
+				self.logger.info("resetting the sequence  %s" % statement[1])
+				self.pg_conn.pgsql_cur.execute(statement[0])
 		except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(statement)
