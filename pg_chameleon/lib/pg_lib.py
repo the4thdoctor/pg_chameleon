@@ -254,11 +254,12 @@ class pg_engine(object):
 	
 	def create_indices(self):
 		self.logger.info("creating the indices")
-		for index in self.idx_ddl:
-			idx_ddl= self.idx_ddl[index]
+		for table in self.idx_ddl:
+			idx_ddl= self.idx_ddl[table]
+			self.logger.debug("processing table %s" % (table, ))
 			for sql_idx in idx_ddl:
-				
 				self.pg_conn.pgsql_cur.execute(sql_idx)
+				
 	
 	def copy_data(self, table,  csv_file,  my_tables={}):
 		column_copy=[]
@@ -716,7 +717,47 @@ class pg_engine(object):
 									 """
 		self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.batch_retention, ))
 
-		
+	
+	def reset_sequences(self, source_name):
+		""" method to reset the sequences to the max value available in table """
+		sql_schema="""
+			SELECT
+				t_dest_schema 
+			FROM
+				sch_chameleon.t_sources 
+			WHERE
+				t_source=%s
+			;
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_schema, (source_name, ))
+		dschema=self.pg_conn.pgsql_cur.fetchone()
+		destination_schema = dschema[0]
+		self.logger.info("resetting the sequences in schema %s" % destination_schema)
+		sql_gen_reset=""" 
+		SELECT 
+			format('SELECT setval(%%L::regclass,(select max(id) FROM %%I.%%I));',
+				replace(replace(column_default,'nextval(''',''),'''::regclass)',''),
+				table_schema,
+				table_name
+			)
+		FROM 
+				information_schema.columns
+		WHERE 
+					table_schema=%s
+				AND	column_default like 'nextval%%'
+		;"""
+		self.pg_conn.pgsql_cur.execute(sql_gen_reset, (destination_schema, ))
+		results=self.pg_conn.pgsql_cur.fetchall()
+		try:
+			for statement in results[0]:
+				self.pg_conn.pgsql_cur.execute(statement)
+		except psycopg2.Error as e:
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error(statement)
+		except:
+			pass
+	
+
 	def build_alter_table(self, token):
 		""" the function builds the alter table statement from the token idata"""
 		alter_cmd=[]

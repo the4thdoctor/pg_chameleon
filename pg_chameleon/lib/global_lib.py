@@ -151,7 +151,8 @@ class global_config(object):
 		except KeyError as key_missing:
 			print('Missing key %s in configuration file. check %s/config-example.yaml for reference' % (key_missing, self.config_dir))
 			sys.exit()
-
+	
+	
 	def get_source_name(self, config_name = 'default'):
 		"""
 		The method tries to set the parameter source_name determined from the configuration file.
@@ -184,6 +185,7 @@ class replica_engine(object):
 		"""
 			Class constructor
 		"""
+		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		self.global_config=global_config(config)
 		self.logger = logging.getLogger(__name__)
 		self.logger.setLevel(logging.DEBUG)
@@ -214,6 +216,28 @@ class replica_engine(object):
 		
 		self.pid_file = self.global_config.pid_file
 		self.exit_file = self.global_config.exit_file
+	
+	def detach_replica(self):
+		"""
+			The method terminates the replica, remove the source from the table t_sources and resets the sequences in 
+			the postgresql database, leaving the replica snapshot capable to continue the activity directly on PostgreSQL
+		"""
+		source_name = self.global_config.source_name
+		drp_msg = 'Detaching the replica will remove any reference for the source %s.\n Are you sure? YES/No\n'  % source_name
+		if sys.version_info[0] == 3:
+			drop_src = input(drp_msg)
+		else:
+			drop_src = raw_input(drp_msg)
+		if drop_src == 'YES':
+			self.stop_replica(allow_restart=False)
+			self.pg_eng.reset_sequences(self.global_config.source_name)
+			self.pg_eng.drop_source(self.global_config.source_name)
+		elif drop_src in  self.lst_yes:
+			print('Please type YES all uppercase to confirm')
+		sys.exit()
+		
+		print('replica detached')
+	
 	
 	def init_replica(self):
 		"""
@@ -412,7 +436,7 @@ class replica_engine(object):
 		self.pg_eng.add_source(source_name, dest_schema)
 
 	def drop_source(self):
-		lst_yes= ['yes',  'Yes', 'y', 'Y']
+		
 		source_name = self.global_config.source_name
 		drp_msg = 'Dropping the source %s will remove drop any replica reference.\n Are you sure? YES/No\n'  % source_name
 		if sys.version_info[0] == 3:
@@ -421,7 +445,7 @@ class replica_engine(object):
 			drop_src = raw_input(drp_msg)
 		if drop_src == 'YES':
 			self.pg_eng.drop_source(self.global_config.source_name)
-		elif drop_src in  lst_yes:
+		elif drop_src in  self.lst_yes:
 			print('Please type YES all uppercase to confirm')
 		sys.exit()
 		

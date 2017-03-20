@@ -18,7 +18,8 @@ commands = [
 			'disable_replica', 
 			'enable_replica', 
 			'sync_replica', 
-			'show_status' 
+			'show_status' , 
+			'detach_replica'
 	]
 command_help = 'Available commands, ' + ','.join(commands)
 table_help= 'Specify the table\'s name to sync. Multiple tables can be specified separated by comma. If omitted all tables will be syncronised.' 
@@ -59,4 +60,4 @@ if args.command in commands:
 	elif args.command == commands[12]:
 		replica.show_status()
 	elif args.command == commands[13]:
-		replica.list_tables()
+		replica.detach_replica()
