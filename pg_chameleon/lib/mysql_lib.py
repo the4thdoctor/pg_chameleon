@@ -78,6 +78,7 @@ class mysql_engine(object):
 		self.id_batch=None
 		self.sql_token=sql_token()
 		self.pause_on_reindex=global_config.pause_on_reindex
+		self.stat_skip = ['BEGIN', 'COMMIT']
 	
 	def normalise_query(self, parsed_query):
 		"""
@@ -133,45 +134,45 @@ class mysql_engine(object):
 					my_stream.close()
 					return [master_data, close_batch]
 			elif isinstance(binlogevent, QueryEvent):
-				event_time=binlogevent.timestamp
-				if len(group_insert)>0:
-					pg_engine.write_batch(group_insert)
-					group_insert=[]
-				master_data["File"]=binlogfile
-				master_data["Position"]=binlogevent.packet.log_pos
-				master_data["Time"]=event_time
-				self.sql_token.parse_sql(binlogevent.query)
-				
-				for token in self.sql_token.tokenised:
-					if len(token)>0:
-						#schema_name=binlogevent.schema.decode()
-						
-						query_data={
-									"binlog":log_file, 
-									"logpos":log_position, 
-									"schema": schema_name, 
-									"batch_id":id_batch, 
-									"log_table":log_table
-						}
-						pg_engine.write_ddl(token, query_data)
-						close_batch=True
+				if binlogevent.query.strip().upper() not in self.stat_skip:
+					event_time=binlogevent.timestamp
+					if len(group_insert)>0:
+						pg_engine.write_batch(group_insert)
+						group_insert=[]
+					master_data["File"]=binlogfile
+					master_data["Position"]=binlogevent.packet.log_pos
+					master_data["Time"]=event_time
+					self.sql_token.parse_sql(binlogevent.query)
 					
-				self.sql_token.reset_lists()
-				if close_batch:
-					my_stream.close()
-					return [master_data, close_batch]
+					for token in self.sql_token.tokenised:
+						if len(token)>0:
+							#schema_name=binlogevent.schema.decode()
+							
+							query_data={
+										"binlog":log_file, 
+										"logpos":log_position, 
+										"schema": schema_name, 
+										"batch_id":id_batch, 
+										"log_table":log_table
+							}
+							pg_engine.write_ddl(token, query_data)
+							close_batch=True
+						
+					self.sql_token.reset_lists()
+					if close_batch:
+						my_stream.close()
+						return [master_data, close_batch]
 
 				
 			else:
+				
 				for row in binlogevent.rows:
 					total_events+=1
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
 					table_name=binlogevent.table
 					event_time=binlogevent.timestamp
-					#self.logger.debug("row event. binlogfile %s, position %s. Date %s " % (binlogfile, log_position, datetime.datetime.fromtimestamp(event_time).isoformat()))
-					#schema_name=binlogevent.schema
-
+					
 					column_map=table_type_map[table_name]
 					global_data={
 										"binlog":log_file, 
@@ -204,7 +205,7 @@ class mysql_engine(object):
 					master_data["Position"]=log_position
 					master_data["Time"]=event_time
 					if total_events>=self.replica_batch_size:
-						self.logger.debug("total events exceeded. Writing batch.: %s  " % (master_data,  ))
+						self.logger.debug("total events exceeded %s. Writing batch.: %s  " % (total_events, master_data,  ))
 						total_events=0
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
@@ -214,6 +215,7 @@ class mysql_engine(object):
 		if len(group_insert)>0:
 			pg_engine.write_batch(group_insert)
 			close_batch=True
+		self.logger.debug("batch stream completed with %s events" % (total_events, ))
 		return [master_data, close_batch]
 
 	def run_replica(self, pg_engine):
@@ -251,33 +253,35 @@ class mysql_engine(object):
 	def get_table_type_map(self):
 		table_type_map={}
 		self.logger.debug("collecting table type map")
-		sql_tables="""	SELECT 
-						table_schema,
-						table_name
-					FROM 
-						information_schema.TABLES 
-					WHERE 
-							table_type='BASE TABLE' 
-						AND	table_schema=%s
-					;
-							"""
+		sql_tables="""	
+			SELECT 
+				table_schema,
+				table_name
+			FROM 
+				information_schema.TABLES 
+			WHERE 
+					table_type='BASE TABLE' 
+				AND	table_schema=%s
+			;
+					"""
 		self.mysql_con.my_cursor.execute(sql_tables, (self.mysql_con.my_database))
 		table_list=self.mysql_con.my_cursor.fetchall()
 		for table in table_list:
 			column_type={}
-			sql_columns="""SELECT 
-												column_name,
-												data_type
-												
-									FROM 
-												information_schema.COLUMNS 
-									WHERE 
-															table_schema=%s
-												AND 	table_name=%s
-									ORDER BY 
-													ordinal_position
-									;
-								"""
+			sql_columns="""
+				SELECT 
+							column_name,
+							data_type
+							
+				FROM 
+							information_schema.COLUMNS 
+				WHERE 
+										table_schema=%s
+							AND 	table_name=%s
+				ORDER BY 
+								ordinal_position
+				;
+			"""
 			self.mysql_con.my_cursor.execute(sql_columns, (self.mysql_con.my_database, table["table_name"]))
 			column_data=self.mysql_con.my_cursor.fetchall()
 			for column in column_data:
