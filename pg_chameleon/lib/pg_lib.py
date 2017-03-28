@@ -734,18 +734,19 @@ class pg_engine(object):
 		destination_schema = dschema[0]
 		self.logger.info("resetting the sequences in schema %s" % destination_schema)
 		sql_gen_reset=""" 
-		SELECT 
-			format('SELECT setval(%%L::regclass,(select max(id) FROM %%I.%%I));',
-				replace(replace(column_default,'nextval(''',''),'''::regclass)',''),
-				table_schema,
-				table_name
-			),
-			replace(replace(column_default,'nextval(''',''),'''::regclass)','') as  seq_name
-		FROM 
-				information_schema.columns
-		WHERE 
-					table_schema=%s
-				AND	column_default like 'nextval%%'
+			SELECT 
+				format('SELECT setval(%%L::regclass,(select max(%%I) FROM %%I.%%I));',
+					replace(replace(column_default,'nextval(''',''),'''::regclass)',''),
+					column_name,
+					table_schema,
+					table_name
+				),
+				replace(replace(column_default,'nextval(''',''),'''::regclass)','') as  seq_name
+			FROM 
+					information_schema.columns
+			WHERE 
+						table_schema=%s
+					AND	column_default like 'nextval%%'
 		;"""
 		self.pg_conn.pgsql_cur.execute(sql_gen_reset, (destination_schema, ))
 		results=self.pg_conn.pgsql_cur.fetchall()
