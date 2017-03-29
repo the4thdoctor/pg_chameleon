@@ -14,7 +14,7 @@ CREATE PROCEDURE prepare_data()
 BEGIN
   DECLARE v_part INT DEFAULT 1;
   DECLARE rnd_val INT DEFAULT 1;
-  WHILE v_part < 20000 DO
+  WHILE v_part < 50000 DO
     SET rnd_val = FLOOR(RAND() * (30000 - 1 + 1)) + 1 ;
     INSERT INTO test_partition (id_partition) VALUES (rnd_val);
     SET v_part = v_part + 1;

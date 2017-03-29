@@ -211,11 +211,13 @@ class mysql_engine(object):
 						group_insert=[]
 						close_batch=True
 						
+						
 		my_stream.close()
 		if len(group_insert)>0:
+			self.logger.debug("writing the last %s events" % (total_events, ))
 			pg_engine.write_batch(group_insert)
 			close_batch=True
-		self.logger.debug("batch stream completed with %s events" % (total_events, ))
+		
 		return [master_data, close_batch]
 
 	def run_replica(self, pg_engine):
