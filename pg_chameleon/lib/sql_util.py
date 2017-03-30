@@ -15,7 +15,7 @@ class sql_token(object):
 		self.m_inner=re.compile(r'\((.*)\)', re.IGNORECASE)
 		
 		#re for keys and indices
-		self.m_pkeys=re.compile(r',\s*PRIMARY\s*KEY\s*\((.*?)\)\s*', re.IGNORECASE)
+		self.m_pkeys=re.compile(r',\s*CONSTRAINT\s*`?\w*`?\s*PRIMARY\s*KEY\s*\((.*?)\)\s?', re.IGNORECASE)
 		self.m_ukeys=re.compile(r',\s*UNIQUE\s*KEY\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_keys=re.compile(r',\s*(?:UNIQUE)?\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((?:.*?)\)\s*', re.IGNORECASE)
 		self.m_idx=re.compile(r',\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
@@ -133,7 +133,7 @@ class sql_token(object):
 		column_list=self.m_keys.sub( '', column_list)
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
-		
+		print(column_list)
 		table_dic["indices"]=self.build_key_dic(inner_stat, table_name)
 		#print table_dic["indices"]
 		#column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
