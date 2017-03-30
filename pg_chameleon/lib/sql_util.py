@@ -19,7 +19,7 @@ class sql_token(object):
 		self.m_ukeys=re.compile(r',\s*UNIQUE\s*KEY\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_keys=re.compile(r',\s*(?:UNIQUE)?\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((?:.*?)\)\s*', re.IGNORECASE)
 		self.m_idx=re.compile(r',\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
-		self.m_fkeys=re.compile(r',\s*CONSTRAINT\s*`?\w*`?\s*FOREIGN\s*KEY(?:.*?)(?:ON\s*(?:DELETE|UPDATE)\s*(?:RESTRICT|CASCADE)\s*)+', re.IGNORECASE)
+		self.m_fkeys=re.compile(r',\s*CONSTRAINT\s*`?\w*`?\s*FOREIGN\s*KEY(?:\(?.*\(??)(?:\s*REFERENCES\s*`?\w*`)?(?:ON\s*(?:DELETE|UPDATE)\s*(?:RESTRICT|CASCADE)\s*)?', re.IGNORECASE)
 		
 		#re for fields
 		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
@@ -133,7 +133,7 @@ class sql_token(object):
 		column_list=self.m_keys.sub( '', column_list)
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
-		print(column_list)
+		#print(column_list)
 		table_dic["indices"]=self.build_key_dic(inner_stat, table_name)
 		#print table_dic["indices"]
 		#column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
