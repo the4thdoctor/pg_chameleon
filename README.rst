@@ -11,7 +11,7 @@ This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
-Current version: **v1.0-beta.1**
+Current version: **v1.0-beta.2**
 
 
 
@@ -46,6 +46,7 @@ What does seems to work
 * Discards of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
 * Replica from multiple MySQL schema or servers
 * Basic replica monitoring 
+* Detach replica from MySQL
 
 What doesn't work
 ..............................
@@ -55,14 +56,14 @@ What doesn't work
 Caveats
 ..............................
 The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
-If the copy process fails for memory problems check the failing table's row length. This could be a probable cause of memory overload.
+If the copy process fails for memory errpr check the failing table's row length and the number of rows for each slice. 
 
 The batch is processed every time the replica stream is empty, when a DDL is captured or when the MySQL switches to another log segment (ROTATE EVENT). 
-Therefore the replica_batch_size  is just indicative.
+Therefore the replica_batch_size  is just the high watermark. The parameter controls also the size of the batch replayed by pg_engine.process_batch.
 
-Currently the process is sequential. 
+The current implementation is sequential. 
 
-Read the replica -> Store the rows -> Replay the stored rows. 
+Read the replica -> Store the rows -> Replays the stored rows. 
 
 The version 2.0 will improve this aspect.
 
@@ -216,6 +217,7 @@ The script chameleon.py requires one of the following commands.
 * enable_replica enable the replica process
 * sync_replica sync the data between mysql and postgresql without dropping the tables
 * show_status displays the replication status for each source, with the lag in seconds and the last received event
+* detach_replica stops the replica stream, discards the replica setup and resets the sequences in PostgreSQL to work as a standalone db. **The foreign keys generation is not currently supported.**
 
 the optional command **--config** followed by the configuration file name, without the yaml suffix, allow to specify different configurations.
 If omitted the configuration defaults to **default**.
@@ -370,6 +372,12 @@ Start the replica with
 	chameleon.py start_replica --config default
 	
 
+To detach the replica from MySQL 
+
+
+.. code-block:: none
+    
+	chameleon.py detach_replica --config default
 	
 
 

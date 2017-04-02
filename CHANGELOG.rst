@@ -3,7 +3,10 @@ changelog
 
 1.0 Beta 2  -  02 Apr 2017
 ............................................
-* 
+* add detach replica with automatic sequence reset (no FK generation yet)
+* replica speed improvement with the exclusion  of BEGIN,COMMIT when capturing the queries from MySQL
+* fix the capturing regexp  for primary keys and foreign keys
+* fix version in documentation 
 
 
 1.0 Beta 1  -  18 Mar 2017
