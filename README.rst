@@ -56,7 +56,7 @@ What doesn't work
 Caveats
 ..............................
 The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
-If the copy process fails for memory errpr check the failing table's row length and the number of rows for each slice. 
+If the copy process fails for memory error check the failing table's row length and the number of rows for each slice. 
 
 The batch is processed every time the replica stream is empty, when a DDL is captured or when the MySQL switches to another log segment (ROTATE EVENT). 
 Therefore the replica_batch_size  is just the high watermark. The parameter controls also the size of the batch replayed by pg_engine.process_batch.
