@@ -1,6 +1,11 @@
 changelog 
 *************************
 
+1.0 Beta 2  -  02 Apr 2017
+............................................
+* 
+
+
 1.0 Beta 1  -  18 Mar 2017
 ............................................
 * changed not python files in package  to work properly with system wide installations
