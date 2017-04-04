@@ -20,6 +20,7 @@ class sql_token(object):
 		self.m_keys=re.compile(r',\s*(?:UNIQUE)?\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((?:.*?)\)\s*', re.IGNORECASE)
 		self.m_idx=re.compile(r',\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_fkeys=re.compile(r',\s*(?:CONSTRAINT)\s*`?\w*`?\s*FOREIGN\s*KEY(?:\(?.*\(??)(?:\s*REFERENCES\s*`?\w*`)?(?:ON\s*(?:DELETE|UPDATE)\s*(?:RESTRICT|CASCADE)\s*)?', re.IGNORECASE)
+		self.m_inline_pkeys=re.compile(r'(.*?)\bPRIMARY\b\s*\bKEY\b', re.IGNORECASE)
 		
 		#re for fields
 		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
@@ -48,10 +49,8 @@ class sql_token(object):
 		self.query_list=[]
 		
 	def parse_column(self, col_def):
-		colmatch=self.m_field.search(col_def)
-		dimmatch=self.m_dimension.search(col_def)
-		#print(col_def)
-		
+		colmatch = self.m_field.search(col_def)
+		dimmatch = self.m_dimension.search(col_def)
 		col_dic={}
 		if colmatch:
 			col_dic["column_name"]=colmatch.group(1).strip("`").strip()
@@ -63,13 +62,15 @@ class sql_token(object):
 				col_dic["numeric_precision"]=dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
-			if nullcons:
-				pkey_list=self.pkey_cols.split(',')
+			pkey_list=self.pkey_cols.split(',')
+			col_dic["is_nullable"]="YES"
+			if col_dic["column_name"] in pkey_list:
+				col_dic["is_nullable"]="NO"
+			elif nullcons:
 				pkey_list=[cln.strip() for cln in pkey_list]
-				if nullcons.group(0)=="NOT NULL" or col_dic["column_name"] in pkey_list:
+				if nullcons.group(0)=="NOT NULL":
 					col_dic["is_nullable"]="NO"
-				else:
-					col_dic["is_nullable"]="YES"
+				
 			if autoinc:
 				col_dic["extra"]="auto_increment"
 			else :
@@ -83,11 +84,21 @@ class sql_token(object):
 		idx_counter=0
 		inner_stat=inner_stat.strip()
 		#print inner_stat
+		pk_match =  self.m_inline_pkeys.match(inner_stat)
+		
+		
 
 		pkey=self.m_pkeys.findall(inner_stat)
 		ukey=self.m_ukeys.findall(inner_stat)
 		idx=self.m_idx.findall(inner_stat)
-		if pkey:
+		if pk_match:
+			key_dic["index_name"]='PRIMARY'
+			key_dic["index_columns"] = (pk_match.group(1).strip().split()[0])
+			key_dic["non_unique"]=0
+			self.pkey_cols=key_dic["index_columns"]
+			idx_list.append(dict(list(key_dic.items())))
+			key_dic={}
+		elif pkey:
 			key_dic["index_name"]='PRIMARY'
 			key_dic["index_columns"]=pkey[0].replace('`', '"')
 			key_dic["non_unique"]=0
@@ -129,11 +140,11 @@ class sql_token(object):
 		m_inner=self.m_inner.search(sql_create)
 		inner_stat=m_inner.group(1).strip()
 		table_dic={}
+		
 		column_list=self.m_pkeys.sub( '', inner_stat)
 		column_list=self.m_keys.sub( '', column_list)
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
-		#print(column_list)
 		table_dic["indices"]=self.build_key_dic(inner_stat, table_name)
 		#print table_dic["indices"]
 		#column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
