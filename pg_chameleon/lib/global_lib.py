@@ -224,6 +224,8 @@ class replica_engine(object):
 		"""
 		source_name = self.global_config.source_name
 		drp_msg = 'Detaching the replica will remove any reference for the source %s.\n Are you sure? YES/No\n'  % source_name
+		fk_metadata = self.my_eng.get_fk_metadata()
+			
 		if sys.version_info[0] == 3:
 			drop_src = input(drp_msg)
 		else:
@@ -231,6 +233,7 @@ class replica_engine(object):
 		if drop_src == 'YES':
 			self.stop_replica(allow_restart=False)
 			self.pg_eng.reset_sequences(self.global_config.source_name)
+			self.pg_eng.add_foreign_keys(self.global_config.source_name, fk_metadata)
 			self.pg_eng.drop_source(self.global_config.source_name)
 		elif drop_src in  self.lst_yes:
 			print('Please type YES all uppercase to confirm')

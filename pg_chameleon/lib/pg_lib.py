@@ -717,7 +717,64 @@ class pg_engine(object):
 									 """
 		self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.batch_retention, ))
 
-	
+	def add_foreign_keys(self, source_name, fk_metadata):
+		"""
+			the method  creates the foreign keys extracted from the mysql catalog
+			the keys are created initially as invalid then validated. If an error happens
+			is displayed on the standard output
+		"""
+		fk_list = []
+		sql_schema="""
+			SELECT
+				t_dest_schema 
+			FROM
+				sch_chameleon.t_sources 
+			WHERE
+				t_source=%s
+			;
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_schema, (source_name, ))
+		dschema=self.pg_conn.pgsql_cur.fetchone()
+		destination_schema = dschema[0]
+		self.logger.info("creating the not validated foreign keys in schema %s" % destination_schema)
+		fk_counter = 0
+		for foreign_key in fk_metadata:
+			table_name = foreign_key["table_name"]
+			fk_name = foreign_key["constraint_name"][0:20] + "_" + str(fk_counter)
+			fk_cols = foreign_key["fk_cols"]
+			referenced_table_name = foreign_key["referenced_table_name"]
+			ref_columns = foreign_key["ref_columns"]
+			fk_list.append({'fkey_name':fk_name, 'table_name':table_name})
+			sql_fkey = ("""ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" FOREIGN KEY (%s) REFERENCES "%s"."%s" (%s) NOT VALID;""" % 
+				(
+					destination_schema, 
+					table_name, 
+					fk_name, 
+					fk_cols, 
+					destination_schema, 
+					referenced_table_name, 
+					ref_columns
+				)
+				)
+			fk_counter+=1
+			self.logger.debug("creating %s on %s" % (fk_name, table_name))
+			try:
+				self.pg_conn.pgsql_cur.execute(sql_fkey)
+			except psycopg2.Error as e:
+					self.logger.error("could not create the foreign key %s on table %s" % (fk_name, table_name))
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error("STATEMENT: %s " % (self.pg_conn.pgsql_cur.mogrify(sql_fkey)))
+					
+		self.logger.info("validating the foreign keys in schema %s" % destination_schema)
+		for fkey in fk_list:
+			sql_validate = 'ALTER TABLE "%s"."%s" VALIDATE CONSTRAINT "%s";' % (destination_schema, fkey["table_name"], fkey["fkey_name"])
+			try:
+				self.pg_conn.pgsql_cur.execute(sql_validate)
+			except psycopg2.Error as e:
+					self.logger.error("could not validate the foreign key %s on table %s" % (fkey["table_name"], fkey["fkey_name"]))
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error("STATEMENT: %s " % (self.pg_conn.pgsql_cur.mogrify(sql_validate)))
+		
 	def reset_sequences(self, source_name):
 		""" method to reset the sequences to the max value available in table """
 		sql_schema="""

@@ -393,6 +393,34 @@ class mysql_engine(object):
 		index_data=self.mysql_con.my_cursor.fetchall()
 		return index_data
 	
+	def get_fk_metadata(self):
+		self.logger.debug("getting foreign keys metadata")
+		sql_fkeys = """ 
+			SELECT 
+				table_name,
+				constraint_name,
+				referenced_table_name,
+				GROUP_CONCAT(concat('"',column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as fk_cols,
+				GROUP_CONCAT(concat('"',REFERENCED_COLUMN_NAME,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as ref_columns
+			FROM 
+				information_schema.key_column_usage 
+			WHERE 
+					table_schema=%s 
+				AND referenced_table_name IS NOT NULL
+				AND referenced_table_schema=%s
+				
+			GROUP BY 
+				table_name,
+				constraint_name,
+				referenced_table_name
+				
+			ORDER BY 
+				table_name
+			;
+		"""
+		self.mysql_con.my_cursor.execute(sql_fkeys, (self.mysql_con.my_database, self.mysql_con.my_database))
+		fkey_list=self.mysql_con.my_cursor.fetchall()
+		return fkey_list
 	def get_table_metadata(self):
 		self.logger.debug("getting table metadata")
 		table_include=""
