@@ -721,7 +721,10 @@ class pg_engine(object):
 		"""
 			the method  creates the foreign keys extracted from the mysql catalog
 			the keys are created initially as invalid then validated. If an error happens
-			is displayed on the standard output
+			is displayed on the log destination
+			
+			:param source_name: the source name, required to determine the destination schema
+			:param fk_metadata: the foreign keys metadata extracted from mysql's information schema
 		"""
 		fk_list = []
 		sql_schema="""
@@ -776,7 +779,11 @@ class pg_engine(object):
 					self.logger.error("STATEMENT: %s " % (self.pg_conn.pgsql_cur.mogrify(sql_validate)))
 		
 	def reset_sequences(self, source_name):
-		""" method to reset the sequences to the max value available in table """
+		""" 
+			the method resets the sequences to the max value available the associated table 
+			:param source_name: the source name, required to determine the destination schema
+			
+		"""
 		sql_schema="""
 			SELECT
 				t_dest_schema 
