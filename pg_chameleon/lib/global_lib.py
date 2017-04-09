@@ -87,8 +87,6 @@ class global_config(object):
 		sql_dir = "%s/pg_chameleon/sql/" % python_lib
 		
 		
-		config_missing = True
-		
 		if os.path.isdir(sql_dir):
 				self.sql_dir = sql_dir
 		else:
@@ -122,6 +120,7 @@ class global_config(object):
 			self.log_level = confdic["log_level"]
 			self.log_dest = confdic["log_dest"]
 			self.log_append = confdic["log_append"]
+			self.out_dir = confdic["out_dir"]
 			
 			self.sleep_loop = confdic["sleep_loop"]
 			self.pause_on_reindex = confdic["pause_on_reindex"]
@@ -475,38 +474,3 @@ class replica_engine(object):
 		self.pg_eng.set_source_id('initialised')
 		self.enable_replica()
 		
-class email_lib(object):
-	"""
-		class to manage email alerts sent in specific events.
-	"""
-	def __init__(self, config, logger):
-		self.config=config
-		self.smtp_server=None
-		self.logger=logger
-	
-	def connect_smtp(self):
-		self.logger.info("establishing connection with to SMTP server")
-		try:
-			self.smtp_server = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
-			if self.config["smtp_tls"]:
-				self.smtp_server.starttls()
-			if self.config["smtp_login"]:
-				self.smtp_server.login(self.config["smtp_username"], self.config["smtp_password"])
-			
-		except:
-			self.logger.error("could not connect to the SMTP server")
-			self.smtp_server=None
-	
-		
-	def disconnect_smtp(self):
-		if self.smtp_server:
-			self.logger.info("disconnecting from SMTP server")
-			self.smtp_server.quit()
-	
-	def send_restarted_replica(self):
-		"""
-			sends the email when restarting the replica process
-		"""
-		self.connect_smtp()
-		self.disconnect_smtp()
-	

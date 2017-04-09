@@ -13,6 +13,7 @@ from pymysqlreplication.row_event import (
 )
 from pymysqlreplication.event import RotateEvent
 from pg_chameleon import sql_token
+from os import remove
 
 class mysql_connection(object):
 	def __init__(self, global_config):
@@ -63,10 +64,10 @@ class mysql_connection(object):
 			pass
 		
 class mysql_engine(object):
-	def __init__(self, global_config, logger, out_dir="/tmp/"):
+	def __init__(self, global_config, logger):
 		self.hexify=global_config.hexify
 		self.logger=logger
-		self.out_dir=out_dir
+		self.out_dir=global_config.out_dir
 		self.my_tables={}
 		self.table_file={}
 		self.mysql_con=mysql_connection(global_config)
@@ -480,7 +481,7 @@ class mysql_engine(object):
 			pg_engine.insert_data(table_name, insert_data , self.my_tables)
 
 	def copy_table_data(self, pg_engine,  copy_max_memory):
-		out_file='/tmp/output_copy.csv'
+		out_file='%s/output_copy.csv' % self.out_dir
 		self.logger.info("locking the tables")
 		self.lock_tables()
 		table_list = []
@@ -574,6 +575,7 @@ class mysql_engine(object):
 				self.insert_table_data(pg_engine, ins_arg)
 		self.logger.info("releasing the lock")
 		self.unlock_tables()
+		remove(out_file)
 		
 	def get_master_status(self):
 		t_sql_master="SHOW MASTER STATUS;"
