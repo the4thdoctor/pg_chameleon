@@ -36,6 +36,7 @@ class sql_token(object):
 		#re for query type
 		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
+		self.m_truncate_table=re.compile(r'(TRUNCATE)\s*(?:TABLE)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_alter_index=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+(?:UNIQUE)?\s*?(?:INDEX).*,?)', re.IGNORECASE)
 		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?.*,?)', re.IGNORECASE)
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
@@ -239,13 +240,14 @@ class sql_token(object):
 			stat_cleanup=re.sub(r'[\b(\b]', ' ( ', stat_cleanup)
 			stat_cleanup=re.sub(r'[\b,\b]', ', ', stat_cleanup)
 			stat_cleanup=stat_cleanup.replace('\n', ' ')
-			stat_cleanup=re.sub("\([\w*\s*]\)", " ",  stat_cleanup)
-			stat_cleanup=stat_cleanup.strip()
-			mcreate_table=self.m_create_table.match(stat_cleanup)
-			mdrop_table=self.m_drop_table.match(stat_cleanup)
-			malter_table=self.m_alter_table.match(stat_cleanup)
-			malter_index=self.m_alter_index.match(stat_cleanup)
-			mdrop_primary=self.m_drop_primary.match(stat_cleanup)
+			stat_cleanup = re.sub("\([\w*\s*]\)", " ",  stat_cleanup)
+			stat_cleanup = stat_cleanup.strip()
+			mcreate_table = self.m_create_table.match(stat_cleanup)
+			mdrop_table = self.m_drop_table.match(stat_cleanup)
+			malter_table = self.m_alter_table.match(stat_cleanup)
+			malter_index = self.m_alter_index.match(stat_cleanup)
+			mdrop_primary = self.m_drop_primary.match(stat_cleanup)
+			mtruncate_table = self.m_truncate_table.match(stat_cleanup)
 			
 			#print stat_cleanup
 			if mcreate_table:
@@ -259,6 +261,10 @@ class sql_token(object):
 				command=' '.join(mdrop_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
 				stat_dic["name"]=mdrop_table.group(2)
+			elif mtruncate_table:
+				command=' '.join(mtruncate_table.group(1).split()).upper().strip()
+				stat_dic["command"]=command
+				stat_dic["name"]=mtruncate_table.group(2)
 			elif mdrop_primary:
 				stat_dic["command"]="DROP PRIMARY KEY"
 				stat_dic["name"]=mdrop_primary.group(1).strip().strip(',').replace('`', '').strip()

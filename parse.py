@@ -48,9 +48,13 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #statement="""ALTER TABLE `test_table` ADD UNIQUE INDEX `idx_unique` (`log`, `status`);"""
 #statement = """CREATE TABLE test (id integer null auto_increment primary key, `test_col` bigint(20)) ;"""
 #statement = """CREATE TABLE test (id integer auto_increment, primary key(id)  )"""
+statement = """TRUNCATE table     
+
+
+`test`;"""
 token_sql=sql_token()
 token_sql.parse_sql(statement)
-#print (token_sql.tokenised)
+print (token_sql.tokenised)
 for token in token_sql.tokenised:
 	print(token)
 #	if   token["command"]=="ALTER TABLE":
