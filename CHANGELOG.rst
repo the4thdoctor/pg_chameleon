@@ -1,6 +1,13 @@
 changelog 
 *************************
 
+1.0 Beta 3  -  ?? Apr 2017
+............................................
+* add support for primay key defined as column constraint
+* fix regression if null constraint is omitted in a primary key column
+* add foreign key generation to detach replica. keys are added invalid and a validation attempt is performed.
+* add support for truncate table 
+
 1.0 Beta 2  -  02 Apr 2017
 ............................................
 * add detach replica with automatic sequence reset (no FK generation yet)
