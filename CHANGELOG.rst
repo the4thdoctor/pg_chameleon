@@ -8,6 +8,8 @@ changelog
 * add foreign key generation to detach replica. keys are added invalid and a validation attempt is performed.
 * add support for truncate table 
 * add parameter out_dir to set the output destination for the csv files during init_replica
+* add set tables_only  to table_limit when streaming the mysql replica
+* feature freeze
 
 1.0 Beta 2  -  02 Apr 2017
 ............................................
