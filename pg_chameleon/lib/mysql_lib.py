@@ -1,63 +1,63 @@
 import io
 import pymysql
-import sys
 import codecs
 import binascii
-import datetime
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.event import QueryEvent
-from pymysqlreplication.row_event import (
-    DeleteRowsEvent,
-    UpdateRowsEvent,
-    WriteRowsEvent,
-)
+from pymysqlreplication.row_event import DeleteRowsEvent,UpdateRowsEvent,WriteRowsEvent
 from pymysqlreplication.event import RotateEvent
 from pg_chameleon import sql_token
 from os import remove
 
 class mysql_connection(object):
 	def __init__(self, global_config):
-		self.global_conf=global_config
-		self.my_server_id=self.global_conf.my_server_id
-		self.mysql_conn=self.global_conf.mysql_conn
-		self.my_database=self.global_conf.my_database
-		self.my_charset=self.global_conf.my_charset
-		self.tables_limit=self.global_conf.tables_limit
-		self.replica_batch_size=self.global_conf.replica_batch_size
-		self.copy_mode=self.global_conf.copy_mode
-		self.my_connection=None
-		self.my_cursor=None
-		self.my_cursor_fallback=None
+		self.global_conf = global_config
+		self.my_server_id = self.global_conf.my_server_id
+		self.mysql_conn = self.global_conf.mysql_conn
+		self.my_database = self.global_conf.my_database
+		self.my_charset = self.global_conf.my_charset
+		self.tables_limit = self.global_conf.tables_limit
+		self.replica_batch_size = self.global_conf.replica_batch_size
+		self.copy_mode = self.global_conf.copy_mode
+		self.my_connection = None
+		self.my_cursor = None
+		self.my_cursor_fallback = None
 		
 	def connect_db_ubf(self):
-		"""  Establish connection with the database """
-		self.my_connection_ubf=pymysql.connect(host=self.mysql_conn["host"],
-							user=self.mysql_conn["user"],
-							password=self.mysql_conn["passwd"],
-							db=self.my_database,
-							charset=self.my_charset,
-							cursorclass=pymysql.cursors.SSCursor)
+		"""  Establish the connection with the database creating a unbuffered cursor """
+		self.my_connection_ubf=pymysql.connect(
+			host=self.mysql_conn["host"],
+			user=self.mysql_conn["user"],
+			password=self.mysql_conn["passwd"],
+			db=self.my_database,
+			charset=self.my_charset,
+			cursorclass=pymysql.cursors.SSCursor
+		)
 		self.my_cursor_ubf=self.my_connection_ubf.cursor()
 
 		
 	
 	def connect_db(self):
-		"""  Establish connection with the database """
-		self.my_connection=pymysql.connect(host=self.mysql_conn["host"],
-							user=self.mysql_conn["user"],
-							password=self.mysql_conn["passwd"],
-							db=self.my_database,
-							charset=self.my_charset,
-							cursorclass=pymysql.cursors.DictCursor)
+		"""  Establish the connection with the database creating a dictionary cursor """
+		self.my_connection=pymysql.connect(
+			host=self.mysql_conn["host"],
+			user=self.mysql_conn["user"],
+			password=self.mysql_conn["passwd"],
+			db=self.my_database,
+			charset=self.my_charset,
+			cursorclass=pymysql.cursors.DictCursor
+		)
 		self.my_cursor=self.my_connection.cursor()
 		self.my_cursor_fallback=self.my_connection.cursor()
 	
 	def disconnect_db(self):
+		"""Disconnects the dictionary connection"""
 		try:
 			self.my_connection.close()
 		except:
 			pass
 	def disconnect_db_ubf(self):
+		"""Disconnects the unbuffered connection"""
 		try:
 			self.my_connection_ubf.close()
 		except:
@@ -65,60 +65,52 @@ class mysql_connection(object):
 		
 class mysql_engine(object):
 	def __init__(self, global_config, logger):
-		self.hexify=global_config.hexify
-		self.logger=logger
-		self.out_dir=global_config.out_dir
-		self.my_tables={}
-		self.table_file={}
-		self.mysql_con=mysql_connection(global_config)
+		self.hexify = global_config.hexify
+		self.logger = logger
+		self.out_dir = global_config.out_dir
+		self.my_tables = {}
+		self.table_file = {}
+		self.mysql_con = mysql_connection(global_config)
 		self.mysql_con.connect_db()
 		self.get_table_metadata()
-		self.my_streamer=None
-		self.replica_batch_size=self.mysql_con.replica_batch_size
-		self.master_status=[]
-		self.id_batch=None
-		self.sql_token=sql_token()
-		self.pause_on_reindex=global_config.pause_on_reindex
+		self.my_streamer = None
+		self.replica_batch_size = self.mysql_con.replica_batch_size
+		self.master_status = []
+		self.id_batch = None
+		self.sql_token = sql_token()
+		self.pause_on_reindex = global_config.pause_on_reindex
 		self.stat_skip = ['BEGIN', 'COMMIT']
+		self.tables_limit = global_config.tables_limit
 	
-	def normalise_query(self, parsed_query):
-		"""
-			Normalise a query the parsed query in in order to have a standard way to replicate the DDL on PostgreSQL
-			The relation's medatada is extracted from mysql's information schema
-			:param query: the query string to normalise
-		"""
-		
-	
-				
 	def read_replica(self, batch_data, pg_engine):
 		"""
 		Stream the replica using the batch data.
 		:param batch_data: The list with the master's batch data.
+		:param pg_engine: The postgresql engine object required for writing the rows in the log tables
 		"""
-		table_type_map=self.get_table_type_map()	
-		schema_name=pg_engine.dest_schema
-		close_batch=False
-		total_events=0
-		master_data={}
-		group_insert=[]
-		id_batch=batch_data[0][0]
-		log_file=batch_data[0][1]
-		log_position=batch_data[0][2]
-		log_table=batch_data[0][3]
+		table_type_map = self.get_table_type_map()	
+		schema_name = pg_engine.dest_schema
+		close_batch = False
+		total_events = 0
+		master_data = {}
+		group_insert = []
+		id_batch = batch_data[0][0]
+		log_file = batch_data[0][1]
+		log_position = batch_data[0][2]
+		log_table = batch_data[0][3]
 		my_stream = BinLogStreamReader(
-									connection_settings = self.mysql_con.mysql_conn, 
-									server_id=self.mysql_con.my_server_id, 
-									only_events=[RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent], 
-									log_file=log_file, 
-									log_pos=log_position, 
-									resume_stream=True, 
-									only_schemas=[self.mysql_con.my_database]
-									)
+			connection_settings = self.mysql_con.mysql_conn, 
+			server_id = self.mysql_con.my_server_id, 
+			only_events = [RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent], 
+			log_file = log_file, 
+			log_pos = log_position, 
+			resume_stream = True, 
+			only_schemas = [self.mysql_con.my_database], 
+			only_tables = self.tables_limit
+		)
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		for binlogevent in my_stream:
-			
 			total_events+=1
-			#self.logger.debug("log_file %s, log_position %s. id_batch: %s replica_batch_size:%s total_events:%s " % (log_file, log_position, id_batch, self.replica_batch_size, total_events))
 			if isinstance(binlogevent, RotateEvent):
 				event_time=binlogevent.timestamp
 				binlogfile=binlogevent.next_binlog
@@ -147,14 +139,12 @@ class mysql_engine(object):
 					
 					for token in self.sql_token.tokenised:
 						if len(token)>0:
-							#schema_name=binlogevent.schema.decode()
-							
 							query_data={
-										"binlog":log_file, 
-										"logpos":log_position, 
-										"schema": schema_name, 
-										"batch_id":id_batch, 
-										"log_table":log_table
+								"binlog":log_file, 
+								"logpos":log_position, 
+								"schema": schema_name, 
+								"batch_id":id_batch, 
+								"log_table":log_table
 							}
 							pg_engine.write_ddl(token, query_data)
 							close_batch=True
@@ -201,7 +191,6 @@ class mysql_engine(object):
 							event_data[column_name]=binascii.hexlify(event_data[column_name])
 					event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
 					group_insert.append(event_insert)
-					#self.logger.debug("Action: %s Total events: %s " % (global_data["action"],  total_events))
 					master_data["File"]=log_file
 					master_data["Position"]=log_position
 					master_data["Time"]=event_time
@@ -273,16 +262,16 @@ class mysql_engine(object):
 			column_type={}
 			sql_columns="""
 				SELECT 
-							column_name,
-							data_type
-							
+					column_name,
+					data_type
+					
 				FROM 
-							information_schema.COLUMNS 
+					information_schema.COLUMNS 
 				WHERE 
-										table_schema=%s
-							AND 	table_name=%s
+						table_schema=%s
+					AND table_name=%s
 				ORDER BY 
-								ordinal_position
+					ordinal_position
 				;
 			"""
 			self.mysql_con.my_cursor.execute(sql_columns, (self.mysql_con.my_database, table["table_name"]))
@@ -295,82 +284,62 @@ class mysql_engine(object):
 			
 		
 	def get_column_metadata(self, table):
-		sql_columns="""SELECT 
-											column_name,
-											column_default,
-											ordinal_position,
-											data_type,
-											character_maximum_length,
-											extra,
-											column_key,
-											is_nullable,
-											numeric_precision,
-											numeric_scale,
-											CASE 
-												WHEN data_type="enum"
-											THEN	
-												SUBSTRING(COLUMN_TYPE,5)
-											END AS enum_list,
-											CASE
-												WHEN 
-													data_type IN ('"""+"','".join(self.hexify)+"""')
-												THEN
-													concat('hex(',column_name,')')
-												WHEN 
-													data_type IN ('bit')
-												THEN
-													concat('cast(`',column_name,'` AS unsigned)')
-											ELSE
-												concat('`',column_name,'`')
-											END
-											AS column_csv,
-											CASE
-												WHEN 
-													data_type IN ('"""+"','".join(self.hexify)+"""')
-												THEN
-													concat('hex(',column_name,')')
-												WHEN 
-													data_type IN ('bit')
-												THEN
-													concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
-											ELSE
-												concat('`',column_name,'`')
-											END
-											AS column_select
-								FROM 
-											information_schema.COLUMNS 
-								WHERE 
-														table_schema=%s
-											AND 	table_name=%s
-								ORDER BY 
-												ordinal_position
-								;
-							"""
+		sql_columns="""
+					SELECT 
+						column_name,
+						column_default,
+						ordinal_position,
+						data_type,
+						character_maximum_length,
+						extra,
+						column_key,
+						is_nullable,
+						numeric_precision,
+						numeric_scale,
+						CASE 
+							WHEN data_type="enum"
+						THEN	
+							SUBSTRING(COLUMN_TYPE,5)
+						END AS enum_list,
+						CASE
+							WHEN 
+								data_type IN ('"""+"','".join(self.hexify)+"""')
+							THEN
+								concat('hex(',column_name,')')
+							WHEN 
+								data_type IN ('bit')
+							THEN
+								concat('cast(`',column_name,'` AS unsigned)')
+						ELSE
+							concat('`',column_name,'`')
+						END
+						AS column_csv,
+						CASE
+							WHEN 
+								data_type IN ('"""+"','".join(self.hexify)+"""')
+							THEN
+								concat('hex(',column_name,')')
+							WHEN 
+								data_type IN ('bit')
+							THEN
+								concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
+						ELSE
+							concat('`',column_name,'`')
+						END
+						AS column_select
+					FROM 
+								information_schema.COLUMNS 
+					WHERE 
+											table_schema=%s
+								AND 	table_name=%s
+					ORDER BY 
+									ordinal_position
+					;
+				"""
 		self.mysql_con.my_cursor.execute(sql_columns, (self.mysql_con.my_database, table))
 		column_data=self.mysql_con.my_cursor.fetchall()
 		return column_data
 
-	def get_fk_metadata(self):
-		sql_fk=""" 
-			SELECT
-				constraint_name,
-				table_name,
-				GROUP_CONCAT(concat('"',column_name,'"') ORDER BY ordinal_position) as fk_tab_colunms,
-				referenced_table_name,
-				GROUP_CONCAT(concat('"',referenced_column_name,'"') ORDER BY ordinal_position) as fk_ref_colunms
-			FROM
-				information_schema.key_column_usage
-			WHERE
-					table_schema=%s
-				AND	referenced_column_name IS NOT NULL
-			GROUP BY
-				constraint_name,
-				table_name,
-				referenced_table_name
-			;
-				
-		
-		"""
 
 	def get_index_metadata(self, table):
 		sql_index="""
