@@ -112,10 +112,13 @@ class mysql_engine(object):
 		for binlogevent in my_stream:
 			total_events+=1
 			if isinstance(binlogevent, RotateEvent):
+				
 				event_time=binlogevent.timestamp
 				binlogfile=binlogevent.next_binlog
 				position=binlogevent.position
 				self.logger.debug("rotate event. binlogfile %s, position %s. " % (binlogfile, position))
+				if log_file != binlogfile:
+					close_batch = True
 				if close_batch:
 					if log_file!=binlogfile:
 						master_data["File"]=binlogfile
