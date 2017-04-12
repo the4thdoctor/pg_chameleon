@@ -51,54 +51,55 @@ class pg_engine(object):
 		self.table_metadata=table_metadata
 		self.table_file=table_file
 		self.type_dictionary={
-												'integer':'integer',
-												'mediumint':'bigint',
-												'tinyint':'integer',
-												'smallint':'integer',
-												'int':'integer',
-												'bigint':'bigint',
-												'varchar':'character varying',
-												'text':'text',
-												'char':'character',
-												'datetime':'timestamp without time zone',
-												'date':'date',
-												'time':'time without time zone',
-												'timestamp':'timestamp without time zone',
-												'tinytext':'text',
-												'mediumtext':'text',
-												'longtext':'text',
-												'tinyblob':'bytea',
-												'mediumblob':'bytea',
-												'longblob':'bytea',
-												'blob':'bytea', 
-												'binary':'bytea', 
-												'decimal':'numeric', 
-												'double':'double precision', 
-												'double precision':'double precision', 
-												'float':'float', 
-												'bit':'integer', 
-												'year':'integer', 
-												'enum':'enum', 
-												'set':'text', 
-												'json':'text'
-										}
+			'integer':'integer',
+			'mediumint':'bigint',
+			'tinyint':'integer',
+			'smallint':'integer',
+			'int':'integer',
+			'bigint':'bigint',
+			'varchar':'character varying',
+			'text':'text',
+			'char':'character',
+			'datetime':'timestamp without time zone',
+			'date':'date',
+			'time':'time without time zone',
+			'timestamp':'timestamp without time zone',
+			'tinytext':'text',
+			'mediumtext':'text',
+			'longtext':'text',
+			'tinyblob':'bytea',
+			'mediumblob':'bytea',
+			'longblob':'bytea',
+			'blob':'bytea', 
+			'binary':'bytea', 
+			'decimal':'numeric', 
+			'double':'double precision', 
+			'double precision':'double precision', 
+			'float':'float', 
+			'bit':'integer', 
+			'year':'integer', 
+			'enum':'enum', 
+			'set':'text', 
+			'json':'text'
+		}
 		self.table_ddl={}
 		self.idx_ddl={}
 		self.type_ddl={}
 		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='0.9'
+		self.cat_version='1.0'
 		self.cat_sql=[
-									{'version':'base','script': 'create_schema.sql'}, 
-									{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
-									{'version':'0.2','script': 'upgrade/cat_0.2.sql'}, 
-									{'version':'0.3','script': 'upgrade/cat_0.3.sql'}, 
-									{'version':'0.4','script': 'upgrade/cat_0.4.sql'}, 
-									{'version':'0.5','script': 'upgrade/cat_0.5.sql'}, 
-									{'version':'0.6','script': 'upgrade/cat_0.6.sql'}, 
-									{'version':'0.7','script': 'upgrade/cat_0.7.sql'}, 
-									{'version':'0.8','script': 'upgrade/cat_0.8.sql'}, 
-									{'version':'0.9','script': 'upgrade/cat_0.9.sql'}, 
-							]
+			{'version':'base','script': 'create_schema.sql'}, 
+			{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
+			{'version':'0.2','script': 'upgrade/cat_0.2.sql'}, 
+			{'version':'0.3','script': 'upgrade/cat_0.3.sql'}, 
+			{'version':'0.4','script': 'upgrade/cat_0.4.sql'}, 
+			{'version':'0.5','script': 'upgrade/cat_0.5.sql'}, 
+			{'version':'0.6','script': 'upgrade/cat_0.6.sql'}, 
+			{'version':'0.7','script': 'upgrade/cat_0.7.sql'}, 
+			{'version':'0.8','script': 'upgrade/cat_0.8.sql'}, 
+			{'version':'0.9','script': 'upgrade/cat_0.9.sql'}, 
+			{'version':'1.0','script': 'upgrade/cat_1.0.sql'}, 
+		]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
 		if cat_version!=self.cat_version and int(num_schema)>0:

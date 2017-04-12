@@ -3,7 +3,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '0.9'::TEXT t_version
+	SELECT '1.0'::TEXT t_version
 ;
 
 
