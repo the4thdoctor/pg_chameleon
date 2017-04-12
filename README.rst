@@ -11,7 +11,7 @@ This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
-Current version: **v1.0-beta.2**
+Current version: **v1.0-RC.1**
 
 
 
@@ -25,68 +25,38 @@ Current version: **v1.0-beta.2**
 Platform and versions
 ****************************
 
-The tool is developed using Linux Slackware 14.2 with python 2.7 and python 3.6.
+The tool is developed using Linux Slackware 14.2. 
+Is currently tested with python 2.7 and python 3.6.
 
-The databases source and target are tested on FreeBSD 11.0
+The  tool is developed using FreeBSD as database server with
 
 * MySQL: 5.6
-* PostgreSQL: 9.5
-  
-What does it work
-..............................
-* Read the schema and data from MySQL and restore it into a PostgreSQL schema
-* Saves in PostgreSQL the MySQL's master coordinates
-* Create primary keys and indices on PostgreSQL
-* Replica from MySQL to postgreSQL
+* PostgreSQL: 9.5 
 
- 
-What does seems to work
+Possible applications
 ..............................
-* Basic DDL Support (CREATE/DROP/ALTER TABLE, DROP PRIMARY KEY)
+
+* Analytics 
+* Migrations
+* Data aggregation from multiple MySQL databases
+  
+Features
+..............................
+
+* Read the schema and data from MySQL and restore it into a target PostgreSQL schema
+* Setup PostgreSQL to act as a MySQL slave
+* Basic DDL Support (CREATE/DROP/ALTER TABLE, DROP PRIMARY KEY/TRUNCATE)
 * Discards of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
-* Replica from multiple MySQL schema or servers
+* Replica from multiple MySQL schema or servers 
 * Basic replica monitoring 
 * Detach replica from MySQL
-
-What doesn't work
-..............................
-* Full DDL replica 
-
-
-Caveats
-..............................
-The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
-If the copy process fails for memory error check the failing table's row length and the number of rows for each slice. 
-
-The batch is processed every time the replica stream is empty, when a DDL is captured or when the MySQL switches to another log segment (ROTATE EVENT). 
-Therefore the replica_batch_size  is just the high watermark. The parameter controls also the size of the batch replayed by pg_engine.process_batch.
-
-The current implementation is sequential. 
-
-Read the replica -> Store the rows -> Replays the stored rows. 
-
-The version 2.0 will improve this aspect.
-
-Python 3 is supported but only from version 3.3 as required by mysql-replication .
-
-The lag is determined using the last received event timestamp and the postgresql timestamp. If the mysql is read only the lag will increase because
-no replica event is coming in. I'll try to improve this aspect in the future.
-
-
-Test please!
-..............................
-
-This software needs user's feeback. 
-The system has proven to be quite efficient and stable. 
-However the tool is not fully tested yet. I just ask you **to be very carefull if you want to use it in production**.
-
-The best way to report a bug is to submit the issue GitHub.
-However if you like to get in touch you can ping me on **twitter @4thdoctor_scarf** or if you prefer to chat, on irc there is a dedicated channel **irc.freenode.net #pgchameleon**.
 
 
 
 Requirements
 ******************
+
+Python: CPython 2.7/3.3+ on Linux
 
 MySQL: 5.5+
 
@@ -99,6 +69,44 @@ PostgreSQL: 9.5+
 * `PyYAML <https://github.com/yaml/pyyaml>`_
 * `sphinx <http://www.sphinx-doc.org/en/stable/>`_
 * `sphinx-autobuild <https://github.com/GaretJax/sphinx-autobuild>`_
+
+
+
+Caveats
+..............................
+The replica requires the tables to have a primary key. Tables without primary key are initialised during the init_replica process but the replica
+doesn't update them.
+
+Multiple replica sources are supported. However is required a separate process for each replica. Each replica must have a unique destination schema in PostgreSQL.
+
+The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
+If the copy process fails for memory error check the failing table's row length and the number of rows for each slice. 
+
+The batch is processed every time the replica stream is empty, when a DDL is captured or when the MySQL switches to another log segment (ROTATE EVENT). 
+Therefore the replica_batch_size  is the limit for when a write happens in PostgreSQL. The parameter controls also the size of the batch replayed by pg_engine.process_batch.
+
+The current implementation is sequential. 
+
+Read the replica -> Store the rows -> Replays the stored rows. 
+
+The version 2.0 will improve this aspect.
+
+Python 3 is supported but only from version 3.3 as required by mysql-replication .
+
+The lag is determined using the last received event timestamp and the postgresql timestamp. If the mysql is read only the lag will increase because
+no replica event is coming in. 
+
+The detach replica process resets the sequences in postgres to let the database work standalone. The foreign keys from the source MySQL schema are
+extracted and created initially as NOT VALID.  A second run tries to validate the foreign keys. If an error occurs it gets logged out according to the source configuration. 
+
+
+Test please!
+..............................
+
+This software needs user's feeback. 
+
+The best way to report a bug is to submit the issue GitHub.
+However if you like to get in touch you can ping me on **twitter @4thdoctor_scarf** or if you prefer to chat, on irc I created is a dedicated channel **irc.freenode.net #pgchameleon**.
 
 
 Quick Setup 
@@ -129,7 +137,7 @@ Inside the directory there are two subdirectories.
 
 * logs is where the replica logs are saved if log_dest is file. It can be changed in the configuration file
 
-The file config-example.yaml is stored in ~/.pg_chameleon/config and should be used as template for the other configuration files. 
+The file config-example.yaml is stored in **~/.pg_chameleon/config** and should be used as template for the other configuration files. 
 
 
 **do not use config-example.yaml** directly. The tool skips this filename as the file gets overwritten when pg_chameleon is upgraded.
@@ -162,6 +170,7 @@ way the program acts.
 * dest_schema this is also a unique value. once the source is registered the dest_schema can't be changed anymore
 * log_append append to log file or truncate it at each restart
 * batch_retention the max retention for the replayed batches rows in t_replica_batch. The field accepts any valid interval accepted by PostgreSQL
+* out_dir the directory where the csv files are dumped during the init_replica process if the copy mode is file
 
 Reindex detection example setup
 
@@ -217,7 +226,7 @@ The script chameleon.py requires one of the following commands.
 * enable_replica enable the replica process
 * sync_replica sync the data between mysql and postgresql without dropping the tables
 * show_status displays the replication status for each source, with the lag in seconds and the last received event
-* detach_replica stops the replica stream, discards the replica setup and resets the sequences in PostgreSQL to work as a standalone db. **The foreign keys generation is not currently supported.**
+* detach_replica stops the replica stream, discards the replica setup and resets the sequences in PostgreSQL to work as a standalone db. 
 
 the optional command **--config** followed by the configuration file name, without the yaml suffix, allow to specify different configurations.
 If omitted the configuration defaults to **default**.
@@ -372,7 +381,7 @@ Start the replica with
 	chameleon.py start_replica --config default
 	
 
-To detach the replica from MySQL 
+Detaching the replica from MySQL 
 
 
 .. code-block:: none
