@@ -11,6 +11,8 @@ changelog
 * add set tables_only  to table_limit when streaming the mysql replica
 * close batch on rotate event if binlog changes
 * feature freeze
+* fixed replica regression with python 3.x and empty binary data
+* added event_update in hexlify strategy
 
 1.0 Beta 2  -  02 Apr 2017
 ............................................
