@@ -191,7 +191,15 @@ class mysql_engine(object):
 					for column_name in event_data:
 						column_type=column_map[column_name]
 						if column_type in self.hexify and event_data[column_name]:
-							event_data[column_name]=binascii.hexlify(event_data[column_name])
+							event_data[column_name]=binascii.hexlify(event_data[column_name]).decode()
+						elif column_type in self.hexify and isinstance(event_data[column_name], bytes):
+							event_data[column_name] = ''
+					for column_name in event_update:
+						column_type=column_map[column_name]
+						if column_type in self.hexify and event_update[column_name]:
+							event_update[column_name]=binascii.hexlify(event_update[column_name]).decode()
+						elif column_type in self.hexify and isinstance(event_update[column_name], bytes):
+							event_update[column_name] = ''
 					event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
 					group_insert.append(event_insert)
 					master_data["File"]=log_file
@@ -547,7 +555,8 @@ class mysql_engine(object):
 				self.insert_table_data(pg_engine, ins_arg)
 		self.logger.info("releasing the lock")
 		self.unlock_tables()
-		remove(out_file)
+		if self.mysql_con.copy_mode=='file':
+			remove(out_file)
 		
 	def get_master_status(self):
 		t_sql_master="SHOW MASTER STATUS;"
