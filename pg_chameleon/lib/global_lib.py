@@ -183,6 +183,7 @@ class replica_engine(object):
 	def __init__(self, config, stdout=False):
 		"""
 			Class constructor
+			:param stdout: forces the logging to stdout even if the logging destination is file
 		"""
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		self.global_config=global_config(config)
@@ -281,6 +282,7 @@ class replica_engine(object):
 		"""
 			the method writes the exit file in the pid directory and waits for the replica process's end.
 			If allow_restart is true the exit file is removed.
+			:param allow_restart: determines whether the exit file is removed or not in order to allow the replica to start again.
 		"""
 		exit=open(self.exit_file, 'w')
 		exit.close()
@@ -326,14 +328,14 @@ class replica_engine(object):
 		
 	def upgrade_service_schema(self):
 		"""
-			Upgrade the service schema to the latest version.
+			Upgrade the service schema to the latest version. 
 			
 		"""
 		self.pg_eng.upgrade_service_schema()
 		
 	def drop_service_schema(self):
 		"""
-			Drops the service schema. The action discards any information relative to the replica.
+			Drops the service schema. The action discards any replica data.
 
 		"""
 		self.logger.info("Dropping the service schema")
@@ -341,7 +343,7 @@ class replica_engine(object):
 		
 	def check_file_exit(self):
 		process_exit=False
-		"""checks for the exit file and terminate the replica if the file is present """
+		"""checks for the exit file and terminate the replica if the file is present. If there is the pid file is removed before  the function's return """
 		if os.path.isfile(self.exit_file):
 			if os.path.isfile(self.pid_file):
 				self.logger.info("exit file detected, removing the pid file and terminating the replica process")
@@ -355,7 +357,7 @@ class replica_engine(object):
 	def check_running(self, write_pid=False):
 		""" 
 			checks if the process is running. 
-			If swrite_pid is set to true and the replica is not running it saves the pid file.
+			:param write_pid: determines wheter the pid file is written or not. Used if we just need to check if the replica is running.
 		"""
 		
 		process_running=False 
@@ -405,6 +407,9 @@ class replica_engine(object):
 		self.pg_eng.set_source_id('stopped')
 	
 	def list_config(self):
+		"""
+			List the available configurations stored in ~/.pg_chameleon/config/
+		"""
 		list_config = (os.listdir(self.global_config.config_dir))
 		print ("Available configurations")
 		print ("Config file\t\t\tName\t\tStatus\t\t" )
@@ -421,6 +426,9 @@ class replica_engine(object):
 				print ("%s.yaml\t\t\t%s\t\t%s\t\t" % (file_name, source_name, source_status ))
 	
 	def show_status(self):
+		"""
+			list the replica status using the configuration files and the replica catalogue
+		"""
 		source_status=self.pg_eng.get_status()
 		print ("Config file\t\tDest schema\t\tStatus\t\tLag\t\tLast event" )
 		print ("=============================================================================================================" )
@@ -432,13 +440,19 @@ class replica_engine(object):
 			seconds_behind_master = status[3]
 			last_received_event = status[4]
 			print ("%s.yaml\t\t%s\t\t%s\t\t%s\t\t%s" % (source_name, dest_schema, source_status, seconds_behind_master, last_received_event ))
+			
 	def add_source(self):
+		"""
+			register the configuration source in the replica catalogue
+		"""
 		source_name=self.global_config.source_name
 		dest_schema=self.global_config.dest_schema
 		self.pg_eng.add_source(source_name, dest_schema)
 
 	def drop_source(self):
-		
+		"""
+			remove the configuration source and all the replica informations associated with the source from the replica catalogue
+		"""
 		source_name = self.global_config.source_name
 		drp_msg = 'Dropping the source %s will remove drop any replica reference.\n Are you sure? YES/No\n'  % source_name
 		if sys.version_info[0] == 3:
@@ -454,8 +468,8 @@ class replica_engine(object):
 	def copy_table_data(self, truncate_tables=False):
 		"""
 			Copy the data for the replicated tables from mysql to postgres.
-			
 			After the copy the master's coordinates are saved in postgres.
+			:param truncate_tables: determines whether the existing tables should be truncated before running a copy table data
 		"""
 		if truncate_tables:
 			self.pg_eng.truncate_tables()
@@ -463,6 +477,14 @@ class replica_engine(object):
 		self.pg_eng.save_master_status(self.my_eng.master_status, cleanup=True)
 
 	def sync_replica(self, table):
+		"""
+			syncronise the table data without destroying them.
+			The process is very similar to the init_replica except for the fact the tables are not dropped.
+			The existing indices are dropped and created after the data load in order to speed up the process.
+			Is possible to restrict the sync to a limited set of tables.
+			
+			:param table: comma separated list of table names to synchronise
+		"""
 		self.stop_replica(allow_restart=False)
 		self.pg_eng.table_limit=table.split(',')
 		self.pg_eng.set_source_id('initialising')
