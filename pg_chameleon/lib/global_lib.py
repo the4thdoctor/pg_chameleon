@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import logging
+from logging.handlers  import TimedRotatingFileHandler
 import smtplib
 from tabulate import tabulate
 from distutils.sysconfig import get_python_lib
@@ -120,7 +121,7 @@ class global_config(object):
 			self.hexify = confdic["hexify"]
 			self.log_level = confdic["log_level"]
 			self.log_dest = confdic["log_dest"]
-			self.log_append = confdic["log_append"]
+			self.log_days_keep = confdic["log_days_keep"]
 			self.out_dir = confdic["out_dir"]
 			
 			self.sleep_loop = confdic["sleep_loop"]
@@ -197,11 +198,7 @@ class replica_engine(object):
 			fh=logging.StreamHandler(sys.stdout)
 			
 		elif self.global_config.log_dest=='file':
-			if self.global_config.log_append:
-				file_mode='a'
-			else:
-				file_mode='w'
-			fh = logging.FileHandler(self.global_config.log_file, file_mode)
+			fh = TimedRotatingFileHandler(self.global_config.log_file, when="d",interval=1,backupCount=self.global_config.log_days_keep)
 		
 		if self.global_config.log_level=='debug':
 			fh.setLevel(logging.DEBUG)

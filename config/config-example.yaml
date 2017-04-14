@@ -40,7 +40,7 @@ pid_dir: '~/.pg_chameleon/pid/'
 log_dir: '~/.pg_chameleon/logs/'
 log_level: 'debug'
 log_dest: 'stdout'
-log_append: True
+log_days_keep: 10
 #log_dest: 'file'
 #log_level: 'info'
 #log_level: 'debug'
