@@ -68,6 +68,8 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 		"Programming Language :: Python :: 3",
 		"Programming Language :: Python :: 3.3",
 		"Programming Language :: Python :: 3.4",
+		"Programming Language :: Python :: 3.5",
+		"Programming Language :: Python :: 3.6",
 		"Topic :: Database :: Database Engines/Servers",
 		"Topic :: Other/Nonlisted Topic"
 	],
@@ -87,6 +89,7 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 		'mysql-replication>=0.11', 
 		'psycopg2>=2.7.0', 
 		'PyYAML>=3.11', 
+		'tabulate>=0.7.7', 
 					
 	],
 	data_files = data_files, 

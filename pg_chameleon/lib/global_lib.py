@@ -5,6 +5,7 @@ import os
 import time
 import logging
 import smtplib
+from tabulate import tabulate
 from distutils.sysconfig import get_python_lib
 from shutil import copy
 
@@ -411,9 +412,9 @@ class replica_engine(object):
 			List the available configurations stored in ~/.pg_chameleon/config/
 		"""
 		list_config = (os.listdir(self.global_config.config_dir))
-		print ("Available configurations")
-		print ("Config file\t\t\tName\t\tStatus\t\t" )
-		print ("==================================================================" )
+		tab_headers = ['Config file',  'Source name',  'Status']
+		tab_body = []
+		
 		for file in list_config:
 			lst_file = file.split('.')
 			file_name = lst_file[0]
@@ -421,17 +422,17 @@ class replica_engine(object):
 			if file_ext == 'yaml' and file_name!='config-example':
 				source_name = self.global_config.get_source_name(file_name)
 				source_status = self.pg_eng.get_source_status(source_name)
-				
-				
-				print ("%s.yaml\t\t\t%s\t\t%s\t\t" % (file_name, source_name, source_status ))
+				tab_row = [file_name, source_name, source_status]
+				tab_body.append(tab_row)
+		print(tabulate(tab_body, headers=tab_headers))
 	
 	def show_status(self):
 		"""
 			list the replica status using the configuration files and the replica catalogue
 		"""
 		source_status=self.pg_eng.get_status()
-		print ("Config file\t\tDest schema\t\tStatus\t\tLag\t\tLast event" )
-		print ("=============================================================================================================" )
+		tab_headers = ['Config file',  'Destination schema',  'Status' ,  'Lag',  'Last received event']
+		tab_body = []
 			
 		for status in source_status:
 			source_name = status[0]
@@ -439,8 +440,10 @@ class replica_engine(object):
 			source_status = status[2]
 			seconds_behind_master = status[3]
 			last_received_event = status[4]
-			print ("%s.yaml\t\t%s\t\t%s\t\t%s\t\t%s" % (source_name, dest_schema, source_status, seconds_behind_master, last_received_event ))
-			
+			tab_row = [source_name, dest_schema, source_status, seconds_behind_master, last_received_event ]
+			tab_body.append(tab_row)
+		print(tabulate(tab_body, headers=tab_headers))
+		
 	def add_source(self):
 		"""
 			register the configuration source in the replica catalogue

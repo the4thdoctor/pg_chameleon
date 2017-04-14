@@ -555,9 +555,10 @@ class mysql_engine(object):
 				self.insert_table_data(pg_engine, ins_arg)
 		self.logger.info("releasing the lock")
 		self.unlock_tables()
-		if self.mysql_con.copy_mode=='file':
+		try:
 			remove(out_file)
-		
+		except:
+			pass
 	def get_master_status(self):
 		t_sql_master="SHOW MASTER STATUS;"
 		self.mysql_con.my_cursor.execute(t_sql_master)
