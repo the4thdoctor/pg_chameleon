@@ -96,8 +96,10 @@ Python 3 is supported but only from version 3.3 as required by mysql-replication
 The lag is determined using the last received event timestamp and the postgresql timestamp. If the mysql is read only the lag will increase because
 no replica event is coming in. 
 
-The detach replica process resets the sequences in postgres to let the database work standalone. The foreign keys from the source MySQL schema are
-extracted and created initially as NOT VALID.  A second run tries to validate the foreign keys. If an error occurs it gets logged out according to the source configuration. 
+The detach replica process resets the sequences in postgres to let the database work standalone. 
+
+The foreign keys from the source MySQL schema are extracted and created initially as NOT VALID.  The foreign keys are created without the ON DELETE or ON UPDATE clauses.
+A second run tries to validate the foreign keys. If an error occurs it gets logged out according to the source configuration. 
 
 
 Test please!
@@ -114,7 +116,7 @@ Quick Setup
 
 * Create a virtual environment (e.g. python3 -m venv venv)
 * Activate the virtual environment (e.g. source venv/bin/activate)
-* Install pgchameleon with **pip install pg_chameleon**
+* Install pgchameleon with **pip install pg_chameleon**. If you get an error upgrade your pip first.
 * Create a user on mysql for the replica (e.g. usr_replica)
 * Grant access to usr on the replicated database (e.g. GRANT ALL ON sakila.* TO 'usr_replica';)
 * Grant RELOAD privilege to the user (e.g. GRANT RELOAD ON \*.\* to 'usr_replica';)
@@ -168,7 +170,7 @@ way the program acts.
 * reindex_app_names  lists the application names to check for reindex (e.g. reindexdb). This is a workaround which required for keeping the replication user unprivileged. 
 * source_name  this must be unique along the list of sources. The tool detects if there's a duplicate when registering a new source
 * dest_schema this is also a unique value. once the source is registered the dest_schema can't be changed anymore
-* log_append append to log file or truncate it at each restart
+* log_days_keep: specifies the amount how many days to keep the logs which are rotated automatically on a daily basis
 * batch_retention the max retention for the replayed batches rows in t_replica_batch. The field accepts any valid interval accepted by PostgreSQL
 * out_dir the directory where the csv files are dumped during the init_replica process if the copy mode is file
 
@@ -230,6 +232,7 @@ The script chameleon.py requires one of the following commands.
 
 the optional command **--config** followed by the configuration file name, without the yaml suffix, allow to specify different configurations.
 If omitted the configuration defaults to **default**.
+
 
 Example
 **********************

@@ -1,7 +1,7 @@
 changelog 
 *************************
 
-1.0 RC1  -  1? Apr 2017
+1.0 RC1  -  15 Apr 2017
 ............................................
 * add support for primay key defined as column constraint
 * fix regression if null constraint is omitted in a primary key column
@@ -9,7 +9,7 @@ changelog
 * add support for truncate table 
 * add parameter out_dir to set the output destination for the csv files during init_replica
 * add set tables_only  to table_limit when streaming the mysql replica
-* close batch on rotate event if binlog changes
+* force a close batch on rotate event if binlog changes without any row events collected
 * fixed replica regression with python 3.x and empty binary data
 * added event_update in hexlify strategy
 * add tabulate for nice display for sources/status
