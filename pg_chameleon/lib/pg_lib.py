@@ -108,22 +108,30 @@ class pg_engine(object):
 	
 	def add_source(self, source_name, dest_schema):
 		sql_source = """
-					SELECT 
-						count(i_id_source)
-					FROM 
-						sch_chameleon.t_sources 
-					WHERE 
-						t_source=%s
+			SELECT 
+				count(i_id_source)
+			FROM 
+				sch_chameleon.t_sources 
+			WHERE 
+				t_source=%s
 				;
 			"""
 		self.pg_conn.pgsql_cur.execute(sql_source, (source_name, ))
 		source_data = self.pg_conn.pgsql_cur.fetchone()
 		cnt_source = source_data[0]
 		if cnt_source == 0:
-			sql_add = """INSERT INTO sch_chameleon.t_sources 
-						( t_source,t_dest_schema) 
-					VALUES 
-						(%s,%s); """
+			sql_add = """
+				INSERT INTO sch_chameleon.t_sources 
+					( 
+						t_source,
+						t_dest_schema
+					) 
+				VALUES 
+					(
+						%s,
+						%s
+					); 
+			"""
 			self.pg_conn.pgsql_cur.execute(sql_add, (source_name, dest_schema ))
 		else:
 			print("Source %s already registered." % source_name)
@@ -156,12 +164,12 @@ class pg_engine(object):
 	
 	def set_source_id(self, source_status):
 		sql_source = """
-					UPDATE sch_chameleon.t_sources
-					SET
-						enm_status=%s
-					WHERE
-						t_source=%s
-					RETURNING i_id_source,t_dest_schema
+			UPDATE sch_chameleon.t_sources
+			SET
+				enm_status=%s
+			WHERE
+				t_source=%s
+			RETURNING i_id_source,t_dest_schema
 				;
 			"""
 		source_name=self.pg_conn.global_conf.source_name
@@ -195,22 +203,24 @@ class pg_engine(object):
 		table_data=self.table_metadata[table_name]
 		for index in table_data["indices"]:
 			if index["index_name"]=="PRIMARY":
-				sql_insert=""" INSERT INTO sch_chameleon.t_replica_tables 
-										(
-											i_id_source,
-											v_table_name,
-											v_schema_name,
-											v_table_pkey
-										)
-										VALUES (
-														%s,
-														%s,
-														%s,
-														ARRAY[%s]
-													)
-										ON CONFLICT (i_id_source,v_table_name,v_schema_name)
-											DO UPDATE 
-												SET v_table_pkey=EXCLUDED.v_table_pkey
+				sql_insert=""" 
+					INSERT INTO sch_chameleon.t_replica_tables 
+						(
+							i_id_source,
+							v_table_name,
+							v_schema_name,
+							v_table_pkey
+						)
+					VALUES 
+						(
+							%s,
+							%s,
+							%s,
+							ARRAY[%s]
+						)
+					ON CONFLICT (i_id_source,v_table_name,v_schema_name)
+						DO UPDATE 
+							SET v_table_pkey=EXCLUDED.v_table_pkey
 										;
 								"""
 				self.pg_conn.pgsql_cur.execute(sql_insert, (self.i_id_source, table_name, self.dest_schema, index["index_columns"].strip()))	
@@ -266,7 +276,7 @@ class pg_engine(object):
 		column_copy=[]
 		for column in my_tables[table]["columns"]:
 			column_copy.append('"'+column["column_name"]+'"')
-		sql_copy="COPY "+'"'+self.pg_conn.global_conf.dest_schema+'"'+"."+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' ; "
+		sql_copy="COPY "+'"'+self.dest_schema+'"'+"."+'"'+table+'"'+" ("+','.join(column_copy)+") FROM STDIN WITH NULL 'NULL' CSV QUOTE '\"' DELIMITER',' ESCAPE '\"' ; "
 		self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
 		
 	def insert_data(self, table,  insert_data,  my_tables={}):
@@ -276,7 +286,7 @@ class pg_engine(object):
 		for column in my_tables[table]["columns"]:
 			column_copy.append('"'+column["column_name"]+'"')
 			column_marker.append('%s')
-		sql_head="INSERT INTO "+'"'+self.pg_conn.global_conf.dest_schema+'"'+"."+'"'+table+'"'+" ("+','.join(column_copy)+") VALUES ("+','.join(column_marker)+");"
+		sql_head="INSERT INTO "+'"'+self.dest_schema+'"'+"."+'"'+table+'"'+" ("+','.join(column_copy)+") VALUES ("+','.join(column_marker)+");"
 		for data_row in insert_data:
 			column_values=[]
 			for column in my_tables[table]["columns"]:
@@ -361,12 +371,12 @@ class pg_engine(object):
 			Gets the service schema version.
 		"""
 		sql_check="""
-							SELECT 
-											t_version
-							FROM 
-											sch_chameleon.v_version 
-							;
-						"""
+			SELECT 
+				t_version
+			FROM 
+				sch_chameleon.v_version 
+			;
+		"""
 		try:
 			self.pg_conn.pgsql_cur.execute(sql_check)
 			value_check=self.pg_conn.pgsql_cur.fetchone()
@@ -396,21 +406,22 @@ class pg_engine(object):
 					print("=================================================")
 					self.pg_conn.pgsql_cur.execute(sql_schema)
 					if script_ver=='0.7':
-						sql_update="""UPDATE sch_chameleon.t_sources
-												SET
-													t_dest_schema=%s 
-												WHERE i_id_source=(
-																	SELECT 
-																		i_id_source
-																	FROM
-																		sch_chameleon.t_sources
-																	WHERE
-																		t_source='default'
-																		AND t_dest_schema='default'
-																)
-												;
+						sql_update="""
+							UPDATE sch_chameleon.t_sources
+							SET
+								t_dest_schema=%s 
+							WHERE i_id_source=(
+												SELECT 
+													i_id_source
+												FROM
+													sch_chameleon.t_sources
+												WHERE
+													t_source='default'
+													AND t_dest_schema='default'
+											)
+							;
 						"""
-						self.pg_conn.pgsql_cur.execute(sql_update, (self.pg_conn.global_conf.dest_schema, ))
+						self.pg_conn.pgsql_cur.execute(sql_update, (self.dest_schema, ))
 				
 				
 				if script_ver==cat_version and not install_script:
@@ -419,13 +430,13 @@ class pg_engine(object):
 		
 	def check_service_schema(self):
 		sql_check="""
-								SELECT 
-									count(*)
-								FROM 
-									information_schema.schemata  
-								WHERE 
-									schema_name='sch_chameleon'
-						"""
+			SELECT 
+				count(*)
+			FROM 
+				information_schema.schemata  
+			WHERE 
+				schema_name='sch_chameleon'
+		"""
 			
 		self.pg_conn.pgsql_cur.execute(sql_check)
 		num_schema=self.pg_conn.pgsql_cur.fetchone()
@@ -450,17 +461,18 @@ class pg_engine(object):
 	def get_status(self):
 		"""the function list the sources with the running status and the eventual lag """
 		sql_status="""
-								SELECT
-									t_source,
-									t_dest_schema,
-									enm_status,
-									extract(epoch from now()-ts_last_event)::integer as i_seconds_behind_master,
-									ts_last_event 
-								FROM 
-									sch_chameleon.t_sources
-								ORDER BY 
-									t_source
-								; """
+			SELECT
+				t_source,
+				t_dest_schema,
+				enm_status,
+				extract(epoch from now()-ts_last_event)::integer as i_seconds_behind_master,
+				ts_last_event 
+			FROM 
+				sch_chameleon.t_sources
+			ORDER BY 
+				t_source
+			;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_status)
 		results = self.pg_conn.pgsql_cur.fetchall()
 		return results
@@ -474,38 +486,38 @@ class pg_engine(object):
 	def save_master_status(self, master_status, cleanup=False):
 		next_batch_id=None
 		sql_tab_log=""" 
-							SELECT 
-								CASE
-									WHEN v_log_table='t_log_replica_2'
-									THEN 
-										't_log_replica_1'
-									ELSE
-										't_log_replica_2'
-								END AS v_log_table
-							FROM
-								(
-									(
-									SELECT
-											v_log_table,
-											ts_created
-											
-									FROM
-											sch_chameleon.t_replica_batch
-									WHERE 
-										i_id_source=%s
-									)
-									UNION ALL
-									(
-										SELECT
-											't_log_replica_2'  AS v_log_table,
-											'1970-01-01'::timestamp as ts_created
-									)
-									ORDER BY 
-										ts_created DESC
-									LIMIT 1
-								) tab
-						;
-					"""
+			SELECT 
+				CASE
+					WHEN v_log_table='t_log_replica_2'
+					THEN 
+						't_log_replica_1'
+					ELSE
+						't_log_replica_2'
+				END AS v_log_table
+			FROM
+				(
+					(
+						SELECT
+								v_log_table,
+								ts_created
+								
+						FROM
+								sch_chameleon.t_replica_batch
+						WHERE 
+							i_id_source=%s
+					)
+					UNION ALL
+					(
+						SELECT
+							't_log_replica_2'  AS v_log_table,
+							'1970-01-01'::timestamp as ts_created
+					)
+					ORDER BY 
+						ts_created DESC
+					LIMIT 1
+				) tab
+			;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_tab_log, (self.i_id_source, ))
 		results = self.pg_conn.pgsql_cur.fetchone()
 		table_file = results[0]
@@ -518,30 +530,32 @@ class pg_engine(object):
 			event_time  = None
 		self.logger.debug("master data: table file %s, log name: %s, log position: %s " % (table_file, binlog_name, binlog_position))
 		sql_master="""
-							INSERT INTO sch_chameleon.t_replica_batch
-															(
-																i_id_source,
-																t_binlog_name, 
-																i_binlog_position,
-																v_log_table
-															)
-												VALUES (
-																%s,
-																%s,
-																%s,
-																%s
-															)
-							--ON CONFLICT DO NOTHING
-							RETURNING i_id_batch
-							;
-						"""
+			INSERT INTO sch_chameleon.t_replica_batch
+				(
+					i_id_source,
+					t_binlog_name, 
+					i_binlog_position,
+					v_log_table
+				)
+			VALUES 
+				(
+					%s,
+					%s,
+					%s,
+					%s
+				)
+			RETURNING i_id_batch
+			;
+		"""
 						
-		sql_event="""UPDATE sch_chameleon.t_sources 
-					SET 
-						ts_last_event=%s 
-					WHERE 
-						i_id_source=%s; 
-						"""
+		sql_event="""
+			UPDATE sch_chameleon.t_sources 
+			SET 
+				ts_last_event=%s 
+			WHERE 
+				i_id_source=%s
+			; 
+		"""
 		self.logger.info("saving master data id source: %s log file: %s  log position:%s Last event: %s" % (self.i_id_source, binlog_name, binlog_position, event_time))
 		
 		
@@ -566,30 +580,32 @@ class pg_engine(object):
 		return next_batch_id
 		
 	def get_batch_data(self):
-		sql_batch="""WITH t_created AS
-						(
-							SELECT 
-								max(ts_created) AS ts_created
-							FROM 
-								sch_chameleon.t_replica_batch  
-							WHERE 
-											NOT b_processed
-								AND 	NOT b_replayed
-								AND		i_id_source=%s
-						)
-					UPDATE sch_chameleon.t_replica_batch
-						SET b_started=True
-						FROM 
-							t_created
-						WHERE
-							t_replica_batch.ts_created=t_created.ts_created
-					RETURNING
-						i_id_batch,
-						t_binlog_name,
-						i_binlog_position ,
-						v_log_table
-					;
-					"""
+		sql_batch="""
+			WITH t_created AS
+				(
+					SELECT 
+						max(ts_created) AS ts_created
+					FROM 
+						sch_chameleon.t_replica_batch  
+					WHERE 
+							NOT b_processed
+						AND NOT b_replayed
+						AND	i_id_source=%s
+				)
+			UPDATE sch_chameleon.t_replica_batch
+			SET 
+				b_started=True
+			FROM 
+				t_created
+			WHERE
+				t_replica_batch.ts_created=t_created.ts_created
+			RETURNING
+				i_id_batch,
+				t_binlog_name,
+				i_binlog_position ,
+				v_log_table
+			;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_batch, (self.i_id_source, ))
 		return self.pg_conn.pgsql_cur.fetchall()
 	
@@ -601,19 +617,19 @@ class pg_engine(object):
 			event_update=row_data["event_update"]
 			log_table=global_data["log_table"]
 			sql_insert="""
-					INSERT INTO sch_chameleon."""+log_table+"""
-					(
-						i_id_batch, 
-						v_table_name, 
-						v_schema_name, 
-						enm_binlog_event, 
-						t_binlog_name, 
-						i_binlog_position, 
-						jsb_event_data,
-						jsb_event_update
-					)
-					VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-					;						
+				INSERT INTO sch_chameleon."""+log_table+"""
+				(
+					i_id_batch, 
+					v_table_name, 
+					v_schema_name, 
+					enm_binlog_event, 
+					t_binlog_name, 
+					i_binlog_position, 
+					jsb_event_data,
+					jsb_event_update
+				)
+				VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+				;						
 			"""
 			try:
 				self.pg_conn.pgsql_cur.execute(sql_insert,(
@@ -634,12 +650,18 @@ class pg_engine(object):
 	def save_discarded_row(self,row_data,batch_id):
 		print(str(row_data))
 		b64_row=base64.b64encode(str(row_data))
-		sql_save="""INSERT INTO sch_chameleon.t_discarded_rows(
-											i_id_batch, 
-											t_row_data
-											)
-						VALUES (%s,%s);
-						"""
+		sql_save="""
+			INSERT INTO sch_chameleon.t_discarded_rows
+				(
+					i_id_batch, 
+					t_row_data
+				)
+			VALUES 
+				(
+					%s,
+					%s
+				);
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_save,(batch_id,b64_row))
 	
 	def write_batch(self, group_insert):
@@ -670,16 +692,26 @@ class pg_engine(object):
 		try:
 			
 			#self.pg_conn.pgsql_cur.execute(sql_insert)
-			sql_copy="""COPY "sch_chameleon"."""+log_table+""" (
-									i_id_batch, 
-									v_table_name, 
-									v_schema_name, 
-									enm_binlog_event, 
-									t_binlog_name, 
-									i_binlog_position, 
-									jsb_event_data,
-									jsb_event_update
-								) FROM STDIN WITH NULL 'NULL' CSV QUOTE '''' DELIMITER ',' ESCAPE '''' ; """
+			sql_copy="""
+				COPY "sch_chameleon"."""+log_table+""" 
+					(
+						i_id_batch, 
+						v_table_name, 
+						v_schema_name, 
+						enm_binlog_event, 
+						t_binlog_name, 
+						i_binlog_position, 
+						jsb_event_data,
+						jsb_event_update
+					) 
+				FROM 
+					STDIN 
+					WITH NULL 'NULL' 
+					CSV QUOTE '''' 
+					DELIMITER ',' 
+					ESCAPE '''' 
+				;
+			"""
 			self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
 		except psycopg2.Error as e:
 			self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
@@ -691,14 +723,15 @@ class pg_engine(object):
 		
 	def set_batch_processed(self, id_batch):
 		self.logger.debug("updating batch %s to processed" % (id_batch, ))
-		sql_update=""" UPDATE sch_chameleon.t_replica_batch
-										SET
-												b_processed=True,
-												ts_processed=now()
-								WHERE
-										i_id_batch=%s
-								;
-							"""
+		sql_update=""" 
+			UPDATE sch_chameleon.t_replica_batch
+				SET
+					b_processed=True,
+					ts_processed=now()
+			WHERE
+				i_id_batch=%s
+			;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_update, (id_batch, ))
 		
 	def process_batch(self, replica_batch_size):
@@ -710,14 +743,16 @@ class pg_engine(object):
 			batch_loop=batch_result[0]
 			self.logger.debug("Batch loop value %s" % (batch_loop))
 		self.logger.debug("Cleaning replayed batches older than %s" % (self.batch_retention))
-		sql_cleanup="""DELETE FROM 
-									sch_chameleon.t_replica_batch
-								WHERE
-										b_started
-									AND b_processed
-									AND b_replayed
-									AND now()-ts_replayed>%s::interval
-									 """
+		sql_cleanup="""
+			DELETE FROM 
+				sch_chameleon.t_replica_batch
+			WHERE
+					b_started
+				AND b_processed
+				AND b_replayed
+				AND now()-ts_replayed>%s::interval
+			;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.batch_retention, ))
 
 	def add_foreign_keys(self, source_name, fk_metadata):
@@ -882,18 +917,19 @@ class pg_engine(object):
 
 	def truncate_tables(self):
 		sql_clean=""" 
-						SELECT DISTINCT
-							format('SET lock_timeout=''10s'';TRUNCATE TABLE %%I.%%I CASCADE;',v_schema,v_table) v_truncate,
-							format('DELETE FROM %%I.%%I;',v_schema,v_table) v_delete,
-							format('VACUUM %%I.%%I;',v_schema,v_table) v_vacuum,
-							format('%%I.%%I',v_schema,v_table) as v_tab,
-							v_table
-						FROM
-							sch_chameleon.t_index_def 
-						WHERE
-							i_id_source=%s
-						ORDER BY 
-							v_table
+			SELECT DISTINCT
+				format('SET lock_timeout=''10s'';TRUNCATE TABLE %%I.%%I CASCADE;',v_schema,v_table) v_truncate,
+				format('DELETE FROM %%I.%%I;',v_schema,v_table) v_delete,
+				format('VACUUM %%I.%%I;',v_schema,v_table) v_vacuum,
+				format('%%I.%%I',v_schema,v_table) as v_tab,
+				v_table
+			FROM
+				sch_chameleon.t_index_def 
+			WHERE
+				i_id_source=%s
+			ORDER BY 
+				v_table
+			;
 		"""
 		self.pg_conn.pgsql_cur.execute(sql_clean, (self.i_id_source, ))
 		tab_clean=self.pg_conn.pgsql_cur.fetchall()
@@ -933,86 +969,86 @@ class pg_engine(object):
 			table_limit = self.pg_conn.pgsql_cur.mogrify("""WHERE table_name IN  (SELECT unnest(%s))""",(self.table_limit, )).decode()
 		
 		sql_get_idx=""" 
-				DELETE FROM sch_chameleon.t_index_def WHERE i_id_source=%s;
-				INSERT INTO sch_chameleon.t_index_def
-					(
-						i_id_source,
-						v_schema,
-						v_table,
-						v_index,
-						t_create,
-						t_drop
+		DELETE FROM sch_chameleon.t_index_def WHERE i_id_source=%s;
+		INSERT INTO sch_chameleon.t_index_def
+			(
+				i_id_source,
+				v_schema,
+				v_table,
+				v_index,
+				t_create,
+				t_drop
+			)
+		SELECT 
+			i_id_source,
+			schema_name,
+			table_name,
+			index_name,
+			CASE
+				WHEN indisprimary
+				THEN
+					format('ALTER TABLE %%I.%%I ADD CONSTRAINT %%I %%s',
+						schema_name,
+						table_name,
+						index_name,
+						pg_get_constraintdef(const_id)
 					)
-				SELECT 
-					i_id_source,
-					schema_name,
-					table_name,
-					index_name,
-					CASE
-						WHEN indisprimary
-						THEN
-							format('ALTER TABLE %%I.%%I ADD CONSTRAINT %%I %%s',
-								schema_name,
-								table_name,
-								index_name,
-								pg_get_constraintdef(const_id)
-							)
-							
-						ELSE
-							pg_get_indexdef(index_id)    
-					END AS t_create,
-					CASE
-						WHEN indisprimary
-						THEN
-							format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I',
-								schema_name,
-								table_name,
-								index_name
-								
-							)
-							
-						ELSE
-							format('DROP INDEX %%I.%%I',
-								schema_name,
-								index_name
-								
-							)
-					END AS  t_drop
 					
-				FROM
+				ELSE
+					pg_get_indexdef(index_id)    
+			END AS t_create,
+			CASE
+				WHEN indisprimary
+				THEN
+					format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I',
+						schema_name,
+						table_name,
+						index_name
+						
+					)
+					
+				ELSE
+					format('DROP INDEX %%I.%%I',
+						schema_name,
+						index_name
+						
+					)
+			END AS  t_drop
+			
+		FROM
 
-				(
-				SELECT 
-					tab.relname AS table_name,
-					indx.relname AS index_name,
-					idx.indexrelid index_id,
-					indisprimary,
-					sch.nspname schema_name,
-					src.i_id_source,
-					cns.oid as const_id
-					
-				FROM
-					pg_index idx
-					INNER JOIN pg_class indx
-					ON
-						idx.indexrelid=indx.oid
-					INNER JOIN pg_class tab
-					INNER JOIN pg_namespace sch
-					ON 
-						tab.relnamespace=sch.oid
-					
-					ON
-						idx.indrelid=tab.oid
-					INNER JOIN sch_chameleon.t_sources src
-					ON sch.nspname=src.t_dest_schema
-					LEFT OUTER JOIN pg_constraint cns
-					ON 
-							indx.relname=cns.conname
-						AND cns.connamespace=sch.oid
-					
-				WHERE
-					sch.nspname=%s
-				) idx
+		(
+		SELECT 
+			tab.relname AS table_name,
+			indx.relname AS index_name,
+			idx.indexrelid index_id,
+			indisprimary,
+			sch.nspname schema_name,
+			src.i_id_source,
+			cns.oid as const_id
+			
+		FROM
+			pg_index idx
+			INNER JOIN pg_class indx
+			ON
+				idx.indexrelid=indx.oid
+			INNER JOIN pg_class tab
+			INNER JOIN pg_namespace sch
+			ON 
+				tab.relnamespace=sch.oid
+			
+			ON
+				idx.indrelid=tab.oid
+			INNER JOIN sch_chameleon.t_sources src
+			ON sch.nspname=src.t_dest_schema
+			LEFT OUTER JOIN pg_constraint cns
+			ON 
+					indx.relname=cns.conname
+				AND cns.connamespace=sch.oid
+			
+		WHERE
+			sch.nspname=%s
+		) idx
 		
 		""" + table_limit
 		
@@ -1021,18 +1057,19 @@ class pg_engine(object):
 	def drop_primary_key(self, token):
 		self.logger.info("dropping primary key for table %s" % (token["name"],))
 		sql_gen="""
-						SELECT  DISTINCT
-							format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I;',
-							table_schema,
-							table_name,
-							constraint_name
-							)
-						FROM 
-							information_schema.key_column_usage 
-						WHERE 
-								table_schema=%s 
-							AND table_name=%s;
-					"""
+			SELECT  DISTINCT
+				format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I;',
+				table_schema,
+				table_name,
+				constraint_name
+				)
+			FROM 
+				information_schema.key_column_usage 
+			WHERE 
+					table_schema=%s 
+				AND table_name=%s
+			;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_gen, (self.dest_schema, token["name"]))
 		value_check=self.pg_conn.pgsql_cur.fetchone()
 		if value_check:
@@ -1082,27 +1119,28 @@ class pg_engine(object):
 								pg_ddl
 							)
 		sql_insert="""
-								INSERT INTO sch_chameleon."""+log_table+"""
-								(
-									i_id_batch, 
-									v_table_name, 
-									v_schema_name, 
-									enm_binlog_event, 
-									t_binlog_name, 
-									i_binlog_position, 
-									t_query
-								)
-								VALUES
-								(
-									%s,
-									%s,
-									%s,
-									'ddl',
-									%s,
-									%s,
-									%s
-								)
-						"""
+			INSERT INTO sch_chameleon."""+log_table+"""
+				(
+					i_id_batch, 
+					v_table_name, 
+					v_schema_name, 
+					enm_binlog_event, 
+					t_binlog_name, 
+					i_binlog_position, 
+					t_query
+				)
+			VALUES
+				(
+					%s,
+					%s,
+					%s,
+					'ddl',
+					%s,
+					%s,
+					%s
+				)
+			;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
 		
 		
@@ -1118,15 +1156,3 @@ class pg_engine(object):
 				break;
 			self.logger.info("reindex detected, sleeping %s second(s)" % (self.sleep_on_reindex,))
 			time.sleep(self.sleep_on_reindex)
-
-
-
-
-
-
-
-
-
-
-
-
