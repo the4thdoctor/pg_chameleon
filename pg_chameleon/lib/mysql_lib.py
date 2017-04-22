@@ -24,7 +24,7 @@ class mysql_connection(object):
 		self.my_cursor_fallback = None
 		
 	def connect_db_ubf(self):
-		"""  Establish the connection with the database creating a unbuffered cursor """
+		""" Connects to the database and creates an unbuffered cursor """
 		self.my_connection_ubf=pymysql.connect(
 			host=self.mysql_conn["host"],
 			user=self.mysql_conn["user"],
@@ -38,7 +38,7 @@ class mysql_connection(object):
 		
 	
 	def connect_db(self):
-		"""  Establish the connection with the database creating a dictionary cursor """
+		""" Connects to the database and creates a dictionary cursor """
 		self.my_connection=pymysql.connect(
 			host=self.mysql_conn["host"],
 			user=self.mysql_conn["user"],
@@ -254,6 +254,10 @@ class mysql_engine(object):
 		pg_engine.process_batch(self.replica_batch_size)
 
 	def get_table_type_map(self):
+		"""
+			The method builds a dictionary composed by the table name and the column/type mappings.
+			The dictionary is used in read_replica to determine whether a field requires hex encoding.
+		"""
 		table_type_map={}
 		self.logger.debug("collecting table type map")
 		sql_tables="""	
@@ -266,7 +270,7 @@ class mysql_engine(object):
 					table_type='BASE TABLE' 
 				AND	table_schema=%s
 			;
-					"""
+		"""
 		self.mysql_con.my_cursor.execute(sql_tables, (self.mysql_con.my_database))
 		table_list=self.mysql_con.my_cursor.fetchall()
 		for table in table_list:
@@ -275,7 +279,6 @@ class mysql_engine(object):
 				SELECT 
 					column_name,
 					data_type
-					
 				FROM 
 					information_schema.COLUMNS 
 				WHERE 
@@ -295,86 +298,102 @@ class mysql_engine(object):
 			
 		
 	def get_column_metadata(self, table):
+		"""
+			The method extracts the columns metadata for a specific table.
+			The select builds also the field list formatted for the CSV copy or a single insert copy.
+			The data types included in hexlify are hex encoded on the fly.
+			:param table: The table name.
+		"""
 		sql_columns="""
-					SELECT 
-						column_name,
-						column_default,
-						ordinal_position,
-						data_type,
-						character_maximum_length,
-						extra,
-						column_key,
-						is_nullable,
-						numeric_precision,
-						numeric_scale,
-						CASE 
-							WHEN data_type="enum"
-						THEN	
-							SUBSTRING(COLUMN_TYPE,5)
-						END AS enum_list,
-						CASE
-							WHEN 
-								data_type IN ('"""+"','".join(self.hexify)+"""')
-							THEN
-								concat('hex(',column_name,')')
-							WHEN 
-								data_type IN ('bit')
-							THEN
-								concat('cast(`',column_name,'` AS unsigned)')
-						ELSE
-							concat('`',column_name,'`')
-						END
-						AS column_csv,
-						CASE
-							WHEN 
-								data_type IN ('"""+"','".join(self.hexify)+"""')
-							THEN
-								concat('hex(',column_name,')')
-							WHEN 
-								data_type IN ('bit')
-							THEN
-								concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
-						ELSE
-							concat('`',column_name,'`')
-						END
-						AS column_select
-					FROM 
-								information_schema.COLUMNS 
-					WHERE 
-											table_schema=%s
-								AND 	table_name=%s
-					ORDER BY 
-									ordinal_position
-					;
-				"""
+			SELECT 
+				column_name,
+				column_default,
+				ordinal_position,
+				data_type,
+				character_maximum_length,
+				extra,
+				column_key,
+				is_nullable,
+				numeric_precision,
+				numeric_scale,
+				CASE 
+					WHEN data_type="enum"
+				THEN	
+					SUBSTRING(COLUMN_TYPE,5)
+				END AS enum_list,
+				CASE
+					WHEN 
+						data_type IN ('"""+"','".join(self.hexify)+"""')
+					THEN
+						concat('hex(',column_name,')')
+					WHEN 
+						data_type IN ('bit')
+					THEN
+						concat('cast(`',column_name,'` AS unsigned)')
+				ELSE
+					concat('`',column_name,'`')
+				END
+				AS column_csv,
+				CASE
+					WHEN 
+						data_type IN ('"""+"','".join(self.hexify)+"""')
+					THEN
+						concat('hex(',column_name,')')
+					WHEN 
+						data_type IN ('bit')
+					THEN
+						concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
+				ELSE
+					concat('`',column_name,'`')
+				END
+				AS column_select
+			FROM 
+				information_schema.COLUMNS 
+			WHERE 
+				table_schema=%s
+				AND 	table_name=%s
+			ORDER BY 
+				ordinal_position
+			;
+		"""
 		self.mysql_con.my_cursor.execute(sql_columns, (self.mysql_con.my_database, table))
 		column_data=self.mysql_con.my_cursor.fetchall()
 		return column_data
 
 
 	def get_index_metadata(self, table):
+		"""
+			The method extracts the index metadata for a specific table.
+			The select searches only for the BTREE indices using the information_schema.statistics table.
+	
+			:param table: The table name.
+		"""
 		sql_index="""
-				SELECT 
-					index_name,
-					non_unique,
-					GROUP_CONCAT(concat('"',column_name,'"') ORDER BY seq_in_index) as index_columns
-				FROM
-					information_schema.statistics
-				WHERE
-									table_schema=%s
-						AND 	table_name=%s
-						AND	index_type = 'BTREE'
-				GROUP BY 
-					table_name,
-					non_unique,
-					index_name
-				;
+			SELECT 
+				index_name,
+				non_unique,
+				GROUP_CONCAT(concat('"',column_name,'"') ORDER BY seq_in_index) as index_columns
+			FROM
+				information_schema.statistics
+			WHERE
+					table_schema=%s
+				AND 	table_name=%s
+				AND	index_type = 'BTREE'
+			GROUP BY 
+				table_name,
+				non_unique,
+				index_name
+			;
 		"""
 		self.mysql_con.my_cursor.execute(sql_index, (self.mysql_con.my_database, table))
 		index_data=self.mysql_con.my_cursor.fetchall()
 		return index_data
 	
 	def get_fk_metadata(self):
+		"""
+			The method collects the foreign key metadata for the detach replica process.
+			Currently doesn't get the ON UPDATE/ON DELETE triggers
+		"""
 		self.logger.debug("getting foreign keys metadata")
 		sql_fkeys = """ 
 			SELECT 
@@ -402,6 +421,7 @@ class mysql_engine(object):
 		self.mysql_con.my_cursor.execute(sql_fkeys, (self.mysql_con.my_database, self.mysql_con.my_database))
 		fkey_list=self.mysql_con.my_cursor.fetchall()
 		return fkey_list
+		
 	def get_table_metadata(self):
 		self.logger.debug("getting table metadata")
 		table_include=""
