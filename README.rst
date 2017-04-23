@@ -16,7 +16,7 @@ Current version: **v1.0-RC.1**
 
 `Documentation available at python hosted <https://pythonhosted.org/pg_chameleon/>`_
 
-`Release available via pypi<https://pypi.python.org/pypi/pg_chameleon/>`_
+`Release available via pypi <https://pypi.python.org/pypi/pg_chameleon/>`_
 
 Platform and versions
 ****************************
