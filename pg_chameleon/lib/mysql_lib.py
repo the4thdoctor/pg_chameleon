@@ -87,7 +87,27 @@ class mysql_engine(object):
 	
 	def read_replica(self, batch_data, pg_engine):
 		"""
-		Stream the replica using the batch data.
+		Stream the replica using the batch data. This method evaluates the different events streamed from MySQL 
+		and manages them accordingly. The BinLogStreamReader function is called with the only_event parameter which
+		restricts the event type received by the streamer.
+		The events managed are the following.
+		RotateEvent which happens whether mysql restarts or the binary log file changes.
+		QueryEvent which happens when a new row image comes in (BEGIN statement) or a DDL is executed.
+		The BEGIN is always skipped. The DDL is parsed using the sql_token class. 
+		[Write,Update,Delete]RowEvents are the row images pulled from the mysql replica.
+		
+		The RotateEvent and the QueryEvent cause the batch to be closed.
+		
+		The for loop reads the row events, builds the dictionary carrying informations like the destination schema,
+		the 	binlog coordinates and store them into the group_insert list.
+		When the number of events exceeds the replica_batch_size the group_insert is written into PostgreSQL.
+		The batch is not closed in that case and the method exits only if there are no more rows available in the stream.
+		Therefore the replica_batch_size is just the maximum size of the single insert and the size of replayed batch on PostgreSQL.
+		The binlog switch or a captured DDL determines whether a batch is closed and processed.
+		
+		The update row event stores in a separate key event_update the row image before the update. This is required
+		to allow updates where the primary key is updated as well.
+		
 		:param batch_data: The list with the master's batch data.
 		:param pg_engine: The postgresql engine object required for writing the rows in the log tables
 		"""
@@ -226,7 +246,14 @@ class mysql_engine(object):
 
 	def run_replica(self, pg_engine):
 		"""
-		Reads the MySQL replica and stores the data in postgres. 
+		Run a MySQL replica read attempt and stores the data in postgres if found. 
+		The method first checks if there is a reindex in progress using pg_engine.check_reindex.
+		The gets the batch data from PostgreSQL. If the batch data is not empty the method read_replica is executed.
+		When the method exits the replica_data list is decomposed in the master_data (log name, position and last event's timestamp).
+		If the flag close_batch is set the master status is saved in PostgreSQL, and the new batch id is saved in the mysql_engine class variable id_batch.
+		This variable is used to determine whether the old batch should be closed or not. If the variable is not empty then the previous batch
+		is closed updating the processed flag on the replica catalogue.
+		Before the exit the method calls the pg_engine.process_batch to replay the changes in PostgreSQL
 		
 		:param pg_engine: The postgresql engine object required for storing the master coordinates and replaying the batches
 		"""
@@ -479,6 +506,13 @@ class mysql_engine(object):
 			self.logger.debug("Table %s copied %d %%" % (table_name, 100 * float(iteration)/float(total)))
 		
 	def generate_select(self, table_columns, mode="csv"):
+		"""
+			The method builds the select list using the dictionary table_columns which is the columns key in the table's metadata.
+			The method can build a select list for a CSV output or an INSERT output. The default mode is csv.
+			
+			:param table_columns: The table's column dictionary with the column metadata
+			:param mode: the select mode, csv or insert
+		"""
 		column_list=[]
 		columns=""
 		if mode=="csv":
