@@ -108,6 +108,8 @@ class mysql_engine(object):
 		The update row event stores in a separate key event_update the row image before the update. This is required
 		to allow updates where the primary key is updated as well.
 		
+		Each row event is scanned for data types requiring conversion to hex string.
+		
 		:param batch_data: The list with the master's batch data.
 		:param pg_engine: The postgresql engine object required for writing the rows in the log tables
 		"""
