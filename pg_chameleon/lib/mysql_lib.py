@@ -65,6 +65,9 @@ class mysql_connection(object):
 		
 class mysql_engine(object):
 	def __init__(self, global_config, logger):
+		"""
+			Class constructor
+		"""
 		self.hexify = global_config.hexify
 		self.logger = logger
 		self.out_dir = global_config.out_dir
@@ -423,22 +426,33 @@ class mysql_engine(object):
 		return fkey_list
 		
 	def get_table_metadata(self):
+		"""
+			the metod collects the metadata for all the tables in the mysql schema specified
+			in self.my_database using get_column_metadata and get_index_metadata.
+			If there are tables in tables_limit the variable table_include is set in order to limit the results to the tables_limit only.
+			The informations are stored in a dictionary.
+			The key column stores the column metadata and indices stores the index metadata.
+			The key name stores the table name.
+			The dictionary is then saved in the class dictionary self.my_tables with the key set to table name.
+			
+		"""
 		self.logger.debug("getting table metadata")
 		table_include=""
 		if self.mysql_con.tables_limit:
 			self.logger.info("table copy limited to tables: %s" % ','.join(self.mysql_con.tables_limit))
 			table_include="AND table_name IN ('"+"','".join(self.mysql_con.tables_limit)+"')"
-		sql_tables="""SELECT 
-											table_schema,
-											table_name
-								FROM 
-											information_schema.TABLES 
-								WHERE 
-														table_type='BASE TABLE' 
-											AND 	table_schema=%s
-											"""+table_include+"""
-								;
-							"""
+		sql_tables="""
+			SELECT 
+				table_schema,
+				table_name
+			FROM 
+				information_schema.TABLES 
+			WHERE 
+					table_type='BASE TABLE' 
+				AND table_schema=%s
+				"""+table_include+"""
+			;
+		"""
 		
 		self.mysql_con.my_cursor.execute(sql_tables, (self.mysql_con.my_database))
 		table_list=self.mysql_con.my_cursor.fetchall()
@@ -449,6 +463,16 @@ class mysql_engine(object):
 			self.my_tables[table["table_name"]]=dic_table
 	
 	def print_progress (self, iteration, total, table_name):
+		"""
+			Print the copy progress. 
+			As the variable total on innodb is estimated the percentage progress exceed the 100%.
+			In order to reduce noise when the log level is info only the tables copied in multiple slices
+			get the print progress.
+			
+			:param iteration: The slice number currently processed
+			:param total: The estimated total slices
+			:param table_name: The table name
+		"""
 		if total>1:
 			self.logger.info("Table %s copied %d %%" % (table_name, 100 * float(iteration)/float(total)))
 		else:
@@ -469,7 +493,12 @@ class mysql_engine(object):
 	
 
 	def insert_table_data(self, pg_engine, ins_arg):
-		"""fallback to inserts for table and slices """
+		"""
+			This method is a fallback procedure whether copy_table_data fails.
+			The ins_args is a list with the informations required to run the select for building the insert
+			statements and the slices's start and stop.
+			The process is performed in memory and can take a very long time to complete.
+		"""
 		slice_insert=ins_arg[0]
 		table_name=ins_arg[1]
 		columns_ins=ins_arg[2]
@@ -481,6 +510,12 @@ class mysql_engine(object):
 			pg_engine.insert_data(table_name, insert_data , self.my_tables)
 
 	def copy_table_data(self, pg_engine,  copy_max_memory):
+		"""
+			copy the table data from mysql to postgres
+			param pg_engine: The postgresql engine required to write into the postgres database
+			param copy_max_memory: The estimated maximum amount of memory to use in a single slice copy
+			
+		"""
 		out_file='%s/output_copy.csv' % self.out_dir
 		self.logger.info("locking the tables")
 		self.lock_tables()
@@ -499,22 +534,22 @@ class mysql_engine(object):
 			table_columns=table["columns"]
 			self.logger.debug("estimating rows in "+table_name)
 			sql_count=""" 
-								SELECT 
-										table_rows,
-										CASE
-											WHEN avg_row_length>0
-											then
-												round(("""+copy_max_memory+"""/avg_row_length))
-										ELSE
-											0
-										END as copy_limit
-									FROM 
-										information_schema.TABLES 
-									WHERE 
-											table_schema=%s 
-										AND	table_type='BASE TABLE'
-										AND table_name=%s 
-									;
+				SELECT 
+					table_rows,
+					CASE
+						WHEN avg_row_length>0
+						then
+							round(("""+copy_max_memory+"""/avg_row_length))
+					ELSE
+						0
+					END as copy_limit
+				FROM 
+					information_schema.TABLES 
+				WHERE 
+						table_schema=%s 
+					AND	table_type='BASE TABLE'
+					AND table_name=%s 
+				;
 			"""
 			self.mysql_con.my_cursor.execute(sql_count, (self.mysql_con.my_database, table_name))
 			count_rows=self.mysql_con.my_cursor.fetchone()
@@ -579,14 +614,23 @@ class mysql_engine(object):
 			remove(out_file)
 		except:
 			pass
+			
 	def get_master_status(self):
+		"""
+			The method gets the master's coordinates using the command SHOW MASTER STATUS.
+			The dictionary cursor is stored in the class variable self.master_status
+		"""
 		t_sql_master="SHOW MASTER STATUS;"
 		self.mysql_con.my_cursor.execute(t_sql_master)
 		self.master_status=self.mysql_con.my_cursor.fetchall()		
 		
 		
 	def lock_tables(self):
-		""" lock tables and get the log coords """
+		""" 
+			The method locks the tables using FLUSH TABLES WITH READ LOCK. The 
+			tables locked are limited to the tables found by get_table_metadata.
+			After locking the tables the metod gets the master's coordinates with get_master_status.
+		"""
 		self.locked_tables=[]
 		for table_name in self.my_tables:
 			table=self.my_tables[table_name]
@@ -596,10 +640,13 @@ class mysql_engine(object):
 		self.get_master_status()
 	
 	def unlock_tables(self):
-		""" unlock tables previously locked """
+		"""The method unlocks the tables previously locked by lock_tables"""
 		t_sql_unlock="UNLOCK TABLES;"
 		self.mysql_con.my_cursor.execute(t_sql_unlock)
 			
 			
 	def __del__(self):
+		"""
+			Class destructor, disconnects the mysql connections.
+		"""
 		self.mysql_con.disconnect_db()
