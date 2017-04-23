@@ -238,6 +238,7 @@ Example
 **********************
 
 Create a virtualenv and activate it
+
 .. code-block:: none
     
     python3 -m venv venv

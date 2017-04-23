@@ -280,6 +280,7 @@ class replica_engine(object):
 		"""
 			the method writes the exit file in the pid directory and waits for the replica process's end.
 			If allow_restart is true the exit file is removed.
+			
 			:param allow_restart: determines whether the exit file is removed or not in order to allow the replica to start again.
 		"""
 		exit=open(self.exit_file, 'w')
@@ -290,7 +291,7 @@ class replica_engine(object):
 	
 	def enable_replica(self):
 		"""
-			The  method remove the exit file in order to let the replica start again.
+			The  method removes the exit file in order to let the replica start again.
 		"""
 		try:
 			os.remove(self.exit_file)
@@ -355,7 +356,8 @@ class replica_engine(object):
 	def check_running(self, write_pid=False):
 		""" 
 			checks if the process is running. 
-			:param write_pid: determines wheter the pid file is written or not. Used if we just need to check if the replica is running.
+			
+			:param write_pid: determines whether the pid file is written or not. Used if we just need to check if the replica is running.
 		"""
 		
 		process_running=False 
@@ -469,6 +471,7 @@ class replica_engine(object):
 		"""
 			Copy the data for the replicated tables from mysql to postgres.
 			After the copy the master's coordinates are saved in postgres.
+			
 			:param truncate_tables: determines whether the existing tables should be truncated before running a copy table data
 		"""
 		if truncate_tables:

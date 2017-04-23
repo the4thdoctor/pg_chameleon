@@ -334,6 +334,7 @@ class mysql_engine(object):
 			The method extracts the columns metadata for a specific table.
 			The select builds also the field list formatted for the CSV copy or a single insert copy.
 			The data types included in hexlify are hex encoded on the fly.
+			
 			:param table: The table name.
 		"""
 		sql_columns="""
@@ -534,6 +535,9 @@ class mysql_engine(object):
 			The ins_args is a list with the informations required to run the select for building the insert
 			statements and the slices's start and stop.
 			The process is performed in memory and can take a very long time to complete.
+			
+			:param pg_engine: the postgresql engine
+			:param ins_arg: the list with the insert arguments (slice_insert, table_name, columns_insert, slice_size)
 		"""
 		slice_insert=ins_arg[0]
 		table_name=ins_arg[1]
@@ -562,7 +566,8 @@ class mysql_engine(object):
 			If some error occurs the slice number is saved into the list slice_insert and after all the slices are copied the fallback procedure insert_table_data
 			process the remaining slices using the inserts.
 			
-			param copy_max_memory: The estimated maximum amount of memory to use in a single slice copy
+			:param pg_engine: the postgresql engine
+			:param copy_max_memory: The estimated maximum amount of memory to use in a single slice copy
 			
 		"""
 		out_file='%s/output_copy.csv' % self.out_dir
