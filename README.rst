@@ -14,13 +14,9 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 Current version: **v1.0-RC.1**
 
 
+`Documentation available at python hosted <https://pythonhosted.org/pg_chameleon/>`_
 
-.. image:: https://readthedocs.org/projects/pg-chameleon/badge/?version=latest
-    :target: http://pg-chameleon.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
-
-`Documentation available at readthedocs <http://pg-chameleon.readthedocs.io/>`_
-
+`Release available via pypi<https://pypi.python.org/pypi/pg_chameleon/>`_
 
 Platform and versions
 ****************************
