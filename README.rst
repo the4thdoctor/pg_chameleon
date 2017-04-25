@@ -11,7 +11,7 @@ This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
-Current version: **v1.0-RC.1**
+Current version: **v1.0-RC.2**
 
 
 `Documentation available at python hosted <https://pythonhosted.org/pg_chameleon/>`_

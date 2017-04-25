@@ -949,6 +949,7 @@ class pg_engine(object):
 				self.pg_conn.pgsql_cur.execute(st_vacuum)
 
 	def drop_src_indices(self):
+		
 		sql_idx="""SELECT t_drop FROM  sch_chameleon.t_index_def WHERE i_id_source=%s;"""
 		self.pg_conn.pgsql_cur.execute(sql_idx, (self.i_id_source, ))
 		idx_drop=self.pg_conn.pgsql_cur.fetchall()
@@ -969,87 +970,87 @@ class pg_engine(object):
 			table_limit = self.pg_conn.pgsql_cur.mogrify("""WHERE table_name IN  (SELECT unnest(%s))""",(self.table_limit, )).decode()
 		
 		sql_get_idx=""" 
-		DELETE FROM sch_chameleon.t_index_def WHERE i_id_source=%s;
-		INSERT INTO sch_chameleon.t_index_def
-			(
+			DELETE FROM sch_chameleon.t_index_def WHERE i_id_source=%s;
+			INSERT INTO sch_chameleon.t_index_def
+				(
+					i_id_source,
+					v_schema,
+					v_table,
+					v_index,
+					t_create,
+					t_drop
+				)
+			SELECT 
 				i_id_source,
-				v_schema,
-				v_table,
-				v_index,
-				t_create,
-				t_drop
-			)
-		SELECT 
-			i_id_source,
-			schema_name,
-			table_name,
-			index_name,
-			CASE
-				WHEN indisprimary
-				THEN
-					format('ALTER TABLE %%I.%%I ADD CONSTRAINT %%I %%s',
-						schema_name,
-						table_name,
-						index_name,
-						pg_get_constraintdef(const_id)
-					)
-					
-				ELSE
-					pg_get_indexdef(index_id)    
-			END AS t_create,
-			CASE
-				WHEN indisprimary
-				THEN
-					format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I',
-						schema_name,
-						table_name,
-						index_name
+				schema_name,
+				table_name,
+				index_name,
+				CASE
+					WHEN indisprimary
+					THEN
+						format('ALTER TABLE %%I.%%I ADD CONSTRAINT %%I %%s',
+							schema_name,
+							table_name,
+							index_name,
+							pg_get_constraintdef(const_id)
+						)
 						
-					)
-					
-				ELSE
-					format('DROP INDEX %%I.%%I',
-						schema_name,
-						index_name
+					ELSE
+						pg_get_indexdef(index_id)    
+				END AS t_create,
+				CASE
+					WHEN indisprimary
+					THEN
+						format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I',
+							schema_name,
+							table_name,
+							index_name
+							
+						)
 						
-					)
-			END AS  t_drop
-			
-		FROM
+					ELSE
+						format('DROP INDEX %%I.%%I',
+							schema_name,
+							index_name
+							
+						)
+				END AS  t_drop
+				
+			FROM
 
-		(
-		SELECT 
-			tab.relname AS table_name,
-			indx.relname AS index_name,
-			idx.indexrelid index_id,
-			indisprimary,
-			sch.nspname schema_name,
-			src.i_id_source,
-			cns.oid as const_id
+			(
+			SELECT 
+				tab.relname AS table_name,
+				indx.relname AS index_name,
+				idx.indexrelid index_id,
+				indisprimary,
+				sch.nspname schema_name,
+				src.i_id_source,
+				cns.oid as const_id
+				
+			FROM
+				pg_index idx
+				INNER JOIN pg_class indx
+				ON
+					idx.indexrelid=indx.oid
+				INNER JOIN pg_class tab
+				INNER JOIN pg_namespace sch
+				ON 
+					tab.relnamespace=sch.oid
+				
+				ON
+					idx.indrelid=tab.oid
+				INNER JOIN sch_chameleon.t_sources src
+				ON sch.nspname=src.t_dest_schema
+				LEFT OUTER JOIN pg_constraint cns
+				ON 
+						indx.relname=cns.conname
+					AND cns.connamespace=sch.oid
+				
+			WHERE
+				sch.nspname=%s
+			) idx
 			
-		FROM
-			pg_index idx
-			INNER JOIN pg_class indx
-			ON
-				idx.indexrelid=indx.oid
-			INNER JOIN pg_class tab
-			INNER JOIN pg_namespace sch
-			ON 
-				tab.relnamespace=sch.oid
-			
-			ON
-				idx.indrelid=tab.oid
-			INNER JOIN sch_chameleon.t_sources src
-			ON sch.nspname=src.t_dest_schema
-			LEFT OUTER JOIN pg_constraint cns
-			ON 
-					indx.relname=cns.conname
-				AND cns.connamespace=sch.oid
-			
-		WHERE
-			sch.nspname=%s
-		) idx
-		
 		""" + table_limit
 		
 		self.pg_conn.pgsql_cur.execute(sql_get_idx, (self.i_id_source,  self.dest_schema, ))

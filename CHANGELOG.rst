@@ -1,6 +1,11 @@
 changelog 
 *************************
 
+1.0 RC2  -  XX Apr 2017
+............................................
+* Update docstrings in global_lib.py and mysql_lib.py
+* Restore fallback on inserts when the copy batch data fails
+
 1.0 RC1  -  15 Apr 2017
 ............................................
 * add support for primay key defined as column constraint
