@@ -26,6 +26,10 @@ class pg_connection(object):
 		
 	
 	def connect_db(self):
+		"""
+			Connects to PostgreSQL using the parameters stored in pg_pars built adding the key dbname to the self.pg_conn dictionary.
+			The method after the connection creates a database cursor and set the session to autocommit.
+		"""
 		pg_pars=dict(list(self.pg_conn.items())+ list({'dbname':self.pg_database}.items()))
 		strconn="dbname=%(dbname)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % pg_pars
 		self.pgsql_conn = psycopg2.connect(strconn)
@@ -35,22 +39,36 @@ class pg_connection(object):
 		
 	
 	def disconnect_db(self):
+		"""
+			The method disconnects from the database closing the connection.
+		"""
 		self.pgsql_conn.close()
 		
 
 class pg_engine(object):
+	"""
+		The class pg_engine manages the replica initialisation and execution on the PostgreSQL side.
+		
+		The class connects to the database when instantiated and setup several class attributes used by the replica.
+		In particular the class dictionary type_dictionary is used to map the MySQL types to the equivalent PostgreSQL types.
+		Unlike pgloader, which allows the type mapping configuration, the dictionary is hardcoded as the mapping is an effort to keep the replica running as smooth as possible.
+		The class manages the replica catalogue upgrade using the current catalogue version self.cat_version and the list of migrations self.cat_sql.
+		
+		If the catalogue version, stored in sch_chameleon.v_version is different from the value stored in self.cat_version then the method upgrade_service_schema() is executed.
+		
+	"""
 	def __init__(self, global_config, table_metadata, table_file, logger, sql_dir='sql/'):
 		self.sleep_on_reindex = global_config.sleep_on_reindex
 		self.reindex_app_names = global_config.reindex_app_names
 		self.batch_retention = global_config.batch_retention
-		self.logger=logger
-		self.sql_dir=sql_dir
-		self.idx_sequence=0
-		self.pg_conn=pg_connection(global_config)
+		self.logger = logger
+		self.sql_dir = sql_dir
+		self.idx_sequence = 0
+		self.pg_conn = pg_connection(global_config)
 		self.pg_conn.connect_db()
-		self.table_metadata=table_metadata
-		self.table_file=table_file
-		self.type_dictionary={
+		self.table_metadata = table_metadata
+		self.table_file = table_file
+		self.type_dictionary = {
 			'integer':'integer',
 			'mediumint':'bigint',
 			'tinyint':'integer',
@@ -82,12 +100,12 @@ class pg_engine(object):
 			'set':'text', 
 			'json':'text'
 		}
-		self.table_ddl={}
-		self.idx_ddl={}
-		self.type_ddl={}
-		self.pg_charset=self.pg_conn.pg_charset
-		self.cat_version='1.0'
-		self.cat_sql=[
+		self.table_ddl = {}
+		self.idx_ddl = {}
+		self.type_ddl = {}
+		self.pg_charset = self.pg_conn.pg_charset
+		self.cat_version = '1.0'
+		self.cat_sql = [
 			{'version':'base','script': 'create_schema.sql'}, 
 			{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
 			{'version':'0.2','script': 'upgrade/cat_0.2.sql'}, 
@@ -107,6 +125,12 @@ class pg_engine(object):
 		self.table_limit = ['*']
 	
 	def add_source(self, source_name, dest_schema):
+		"""
+			The method add a new source in the replica catalogue. 
+			If the source name is already present an error message is emitted without further actions.
+			:param source_name: The source name stored in the configuration parameter source_name.
+			:param dest_schema: The destination schema stored in the configuration parameter dest_schema.
+		"""
 		sql_source = """
 			SELECT 
 				count(i_id_source)
@@ -138,6 +162,16 @@ class pg_engine(object):
 		sys.exit()
 	
 	def get_source_status(self, source_name):
+		"""
+		Gets the source status usin the source name.
+		Possible values are:
+			ready : the source is registered but the init_replica is not yet done.
+			initialising: init_replica is initialising
+			initialised: init_replica finished and the replica process is ready to start
+			stopped: the replica process is stopped
+			running: the replica process is running
+		:param source_name: The source name stored in the configuration parameter source_name.
+		"""
 		sql_source = """
 					SELECT 
 						enm_status
@@ -156,6 +190,10 @@ class pg_engine(object):
 		return source_status
 		
 	def drop_source(self, source_name):
+		"""
+			Drops the source from the replication catalogue discarding any replica reference.
+			:param source_name: The source name stored in the configuration parameter source_name.
+		"""
 		sql_delete = """ DELETE FROM sch_chameleon.t_sources 
 					WHERE  t_source=%s; """
 		self.pg_conn.pgsql_cur.execute(sql_delete, (source_name, ))
@@ -163,6 +201,11 @@ class pg_engine(object):
 		
 	
 	def set_source_id(self, source_status):
+		"""
+			Sets the source status for the source_name and returns the source identifier and the destination schema.
+			:param source_status: The source status to be set.
+			:returns (source_id,destination_schema):
+		"""
 		sql_source = """
 			UPDATE sch_chameleon.t_sources
 			SET
@@ -172,26 +215,33 @@ class pg_engine(object):
 			RETURNING i_id_source,t_dest_schema
 				;
 			"""
-		source_name=self.pg_conn.global_conf.source_name
+		source_name = self.pg_conn.global_conf.source_name
 		self.pg_conn.pgsql_cur.execute(sql_source, (source_status, source_name))
-		source_data=self.pg_conn.pgsql_cur.fetchone()
+		source_data = self.pg_conn.pgsql_cur.fetchone()
 		try:
-			self.i_id_source=source_data[0]
-			self.dest_schema=source_data[1]
+			self.i_id_source = source_data[0]
+			self.dest_schema = source_data[1]
 		except:
 			print("Source %s is not registered." % source_name)
 			sys.exit()
 	
 			
 	def clean_batch_data(self):
-		sql_delete="""DELETE FROM sch_chameleon.t_replica_batch 
-								WHERE i_id_source=%s;
-							"""
+		"""
+			Removes the replica batch data for the given source id.
+		"""
+		sql_delete = """
+			DELETE FROM sch_chameleon.t_replica_batch 
+			WHERE i_id_source=%s;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_delete, (self.i_id_source, ))
 		
 		
 	def create_schema(self):
-		
+		"""
+			The method drops and creates the destination schema.
+			It also set the search_path for the cursor to the destination schema.
+		"""
 		sql_drop="DROP SCHEMA IF EXISTS "+self.dest_schema+" CASCADE;"
 		sql_create=" CREATE SCHEMA IF NOT EXISTS "+self.dest_schema+";"
 		sql_path=" SET search_path="+self.dest_schema+";"
@@ -200,6 +250,15 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_path)
 	
 	def store_table(self, table_name):
+		"""
+			The method saves the table name along with the primary key definition in the table t_replica_tables.
+			This is required in order to let the replay procedure which primary key to use replaying the update and delete.
+			If the table is without primary key is not stored. 
+			A table without primary key is copied and the indices are create like any other table. 
+			However the replica doesn't work for the tables without primary key.
+			
+			:param table_name: the table name to store in the table  t_replica_tables
+		"""
 		table_data=self.table_metadata[table_name]
 		for index in table_data["indices"]:
 			if index["index_name"]=="PRIMARY":
@@ -226,6 +285,13 @@ class pg_engine(object):
 				self.pg_conn.pgsql_cur.execute(sql_insert, (self.i_id_source, table_name, self.dest_schema, index["index_columns"].strip()))	
 	
 	def unregister_table(self, table_name):
+		"""
+			This method is used when a table have the primary key dropped on MySQL. 
+			The table name is removed from the replicatoin catalogue and the table is renamed.
+			This way any dependency (e.g. views, functions) to the table is preserved but the replica is stopped.
+
+			:param table_name: the table name to remove from t_replica_tables
+		"""
 		self.logger.info("unregistering table %s from the replica catalog" % (table_name,))
 		sql_delete=""" DELETE FROM sch_chameleon.t_replica_tables 
 									WHERE
@@ -243,26 +309,27 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_rename)	
 	
 	def create_tables(self):
-		
-			for table in self.table_ddl:
-				#sql_drop='DROP TABLE IF EXISTS "'+table+'" CASCADE ;'
-				#self.pg_conn.pgsql_cur.execute(sql_drop)
-				try:
-					ddl_enum=self.type_ddl[table]
-					for sql_type in ddl_enum:
-						self.pg_conn.pgsql_cur.execute(sql_type)
-				except psycopg2.Error as e:
-					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-					self.logger.error(sql_type)
-					
-				sql_create=self.table_ddl[table]
-				try:
-					self.pg_conn.pgsql_cur.execute(sql_create)
-				except psycopg2.Error as e:
-					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-					self.logger.error(sql_create)
-				self.store_table(table)
-	
+		"""
+			The method loops trough the list table_ddl and executes the creation scripts.
+			No index is created in this method
+		"""
+		for table in self.table_ddl:
+			try:
+				ddl_enum=self.type_ddl[table]
+				for sql_type in ddl_enum:
+					self.pg_conn.pgsql_cur.execute(sql_type)
+			except psycopg2.Error as e:
+				self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+				self.logger.error(sql_type)
+				
+			sql_create=self.table_ddl[table]
+			try:
+				self.pg_conn.pgsql_cur.execute(sql_create)
+			except psycopg2.Error as e:
+				self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+				self.logger.error(sql_create)
+			self.store_table(table)
+
 	def create_indices(self):
 		self.logger.info("creating the indices")
 		for table in self.idx_ddl:
