@@ -6,6 +6,7 @@ changelog
 * Completed docstrings in global_lib.py and mysql_lib.py
 * Partial writing for docstrings in pg_lib.py
 * Restore fallback on inserts when the copy batch data fails
+* Reorganise documentation in docs
 
 1.0 RC1  -  15 Apr 2017
 ............................................
