@@ -166,11 +166,19 @@ class pg_engine(object):
 		Gets the source status usin the source name.
 		Possible values are:
 			ready : the source is registered but the init_replica is not yet done.
+			
 			initialising: init_replica is initialising
+			
 			initialised: init_replica finished and the replica process is ready to start
+			
 			stopped: the replica process is stopped
+			
 			running: the replica process is running
+			
 		:param source_name: The source name stored in the configuration parameter source_name.
+		:type source_name: string
+		:return: source_status extracted from PostgreSQL
+		:rtype: string
 		"""
 		sql_source = """
 					SELECT 
@@ -202,9 +210,10 @@ class pg_engine(object):
 	
 	def set_source_id(self, source_status):
 		"""
-			Sets the source status for the source_name and returns the source identifier and the destination schema.
+			Sets the source status for the source_name and sets the two class attributes i_id_source and dest_schema.
+			
 			:param source_status: The source status to be set.
-			:returns (source_id,destination_schema):
+			
 		"""
 		sql_source = """
 			UPDATE sch_chameleon.t_sources

@@ -1,9 +1,10 @@
 changelog 
 *************************
 
-1.0 RC2  -  XX Apr 2017
+1.0 RC2  -  26 Apr 2017
 ............................................
-* Update docstrings in global_lib.py and mysql_lib.py
+* Completed docstrings in global_lib.py and mysql_lib.py
+* Partial writing for docstrings in pg_lib.py
 * Restore fallback on inserts when the copy batch data fails
 
 1.0 RC1  -  15 Apr 2017

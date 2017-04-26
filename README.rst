@@ -58,11 +58,15 @@ MySQL: 5.5+
 
 PostgreSQL: 9.5+
 
-* `PyMySQL <https://github.com/PyMySQL/PyMySQL>`_ 
-* `argparse <https://github.com/bewest/argparse>`_
-* `mysql-replication <https://github.com/noplay/python-mysql-replication>`_
-* `psycopg2 <https://github.com/psycopg/psycopg2>`_
-* `PyYAML <https://github.com/yaml/pyyaml>`_
+* `PyMySQL <https://pypi.python.org/pypi/PyMySQL>`_ 
+* `argparse <https://pypi.python.org/pypi/argparse>`_
+* `mysql-replication <https://pypi.python.org/pypi/mysql-replication>`_
+* `psycopg2 <https://pypi.python.org/pypi/psycopg2>`_
+* `PyYAML <https://pypi.python.org/pypi/PyYAML>`_
+* `tabulate <https://pypi.python.org/pypi/tabulate>`_
+
+Optionals for building documentation
+
 * `sphinx <http://www.sphinx-doc.org/en/stable/>`_
 * `sphinx-autobuild <https://github.com/GaretJax/sphinx-autobuild>`_
 
