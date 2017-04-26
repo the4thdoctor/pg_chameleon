@@ -1,22 +1,4 @@
 
-.. image:: images/pgchameleon.png
-
-pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and Python 3.3+
-The system use the library mysql-replication to pull the row images from MySQL which are transformed into a jsonb object. 
-A pl/pgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
-
-The tool requires an  initial replica setup which pulls the data from MySQL in read only mode. 
-This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
-
-pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
-
-
-Current version: **v1.0-RC.2**
-
-
-`Documentation available at python hosted <https://pythonhosted.org/pg_chameleon/>`_
-
-`Release available via pypi <https://pypi.python.org/pypi/pg_chameleon/>`_
 
 Platform and versions
 ****************************

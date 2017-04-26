@@ -325,8 +325,8 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'pg_chameleon', u'pg_chameleon Documentation',
-     author, 'pg_chameleon', 'One line description of project.',
-     'Miscellaneous'),
+     author, 'pg_chameleon', 'MySQL to PostgreSQL replica',
+     'Database'),
 ]
 
 # Documents to append as an appendix to all manuals.
