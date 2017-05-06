@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 pg_chameleon MySQL to PostgreSQL replica
-=======================================
+=========================================================
 
 .. image:: ../images/pgchameleon.png
         :align: right

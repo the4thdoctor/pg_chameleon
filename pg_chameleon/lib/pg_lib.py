@@ -163,8 +163,9 @@ class pg_engine(object):
 	
 	def get_source_status(self, source_name):
 		"""
-		Gets the source status usin the source name.
-		Possible values are:
+			Gets the source status usin the source name.
+			Possible values are:
+
 			ready : the source is registered but the init_replica is not yet done.
 			
 			initialising: init_replica is initialising
@@ -174,11 +175,11 @@ class pg_engine(object):
 			stopped: the replica process is stopped
 			
 			running: the replica process is running
-			
-		:param source_name: The source name stored in the configuration parameter source_name.
-		:type source_name: string
-		:return: source_status extracted from PostgreSQL
-		:rtype: string
+				
+			:param source_name: The source name stored in the configuration parameter source_name.
+			:type source_name: string
+			:return: source_status extracted from PostgreSQL
+			:rtype: string
 		"""
 		sql_source = """
 					SELECT 
