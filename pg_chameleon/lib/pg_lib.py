@@ -340,6 +340,9 @@ class pg_engine(object):
 			self.store_table(table)
 
 	def create_indices(self):
+		"""
+			The method creates the indices using the DDL stored in the class list self.idx_ddl.
+		"""
 		self.logger.info("creating the indices")
 		for table in self.idx_ddl:
 			idx_ddl= self.idx_ddl[table]
@@ -349,6 +352,15 @@ class pg_engine(object):
 				
 	
 	def copy_data(self, table,  csv_file,  my_tables={}):
+		"""
+			The method copy the data into postgresql using psycopg2's copy_expert.
+			The csv_file is a file like object which can be either a  csv file or a string io object, accordingly with the 
+			configuration parameter copy_mode.
+			
+			:param table: the table name, used to get the table's metadata out of my_tables
+			:param csv_file: file like object with the table's data stored in CSV format
+			:param my_tables: table's metadata dictionary 
+		"""
 		column_copy=[]
 		for column in my_tables[table]["columns"]:
 			column_copy.append('"'+column["column_name"]+'"')
@@ -356,6 +368,14 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
 		
 	def insert_data(self, table,  insert_data,  my_tables={}):
+		"""
+			The method is a fallback procedure for when the copy method fails.
+			The procedure performs a row by row insert, very slow but capable to skip the rows with problematic data (e.g. enchoding issues).
+			
+			:param table: the table name, used to get the table's metadata out of my_tables
+			:param csv_file: file like object with the table's data stored in CSV format
+			:param my_tables: table's metadata dictionary 
+		"""
 		column_copy=[]
 		column_marker=[]
 		
@@ -374,8 +394,9 @@ class pg_engine(object):
 					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_head,column_values))
 	
 	def build_idx_ddl(self):
-		
-		""" the function iterates over the list l_pkeys and builds a new list with the statements for pkeys """
+		""" 
+			The method loops over the list l_pkeys and builds a new list with the statements for pkeys 
+		"""
 		for table_name in self.table_metadata:
 			table=self.table_metadata[table_name]
 			
@@ -403,7 +424,9 @@ class pg_engine(object):
 			self.idx_ddl[table_name]=table_idx
 
 	def build_tab_ddl(self):
-		""" the function iterates over the list l_tables and builds a new list with the statements for tables"""
+		""" 
+			The method iterates over the list l_tables and builds a new list with the statements for tables
+		"""
 		
 		for table_name in self.table_metadata:
 			table=self.table_metadata[table_name]
@@ -444,7 +467,9 @@ class pg_engine(object):
 	
 	def get_schema_version(self):
 		"""
-			Gets the service schema version.
+			The method gets the service schema version querying the view sch_chameleon.v_version.
+			The try-except is used in order to get a valid value "base" if the view is missing.
+			This happens only if the schema upgrade is performed from very early pg_chamelon's versions.
 		"""
 		sql_check="""
 			SELECT 
@@ -463,7 +488,18 @@ class pg_engine(object):
 		
 	def upgrade_service_schema(self):
 		"""
-			Upgrade the service schema to the latest version using the upgrade files
+			The method upgrades the service schema to the latest version using the upgrade files if required.
+			
+			The method uses the install_script flag to determine whether an upgrade file should be applied.
+			The variable cat_version stores the schema version. Each element in the class list cat_sql 
+			stores the scripts in the upgrade directory along with the catalogue version associated with the install script.
+			
+			If the current catalogue version stored in cat_version is equal to the script version the install is skipped but the variable
+			install_script is set to true. This way any following install script is executed to upgrade the catalogue to the higher version.
+			
+			The hardcoded 0.7 version is required because that version introduced the multi source feature.
+			As initially the destination schema were not stored in the migration catalogue, the post migration update 
+			is required to save this information in the replica catalogue.
 		"""
 		
 		self.logger.info("Upgrading the service schema")
@@ -479,7 +515,6 @@ class pg_engine(object):
 					file_schema=open(self.sql_dir+script_schema, 'rb')
 					sql_schema=file_schema.read()
 					file_schema.close()
-					print("=================================================")
 					self.pg_conn.pgsql_cur.execute(sql_schema)
 					if script_ver=='0.7':
 						sql_update="""

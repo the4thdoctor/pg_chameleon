@@ -22,11 +22,12 @@ commands = [
 	'detach_replica'
 	]
 command_help = 'Available commands, ' + ','.join(commands)
-table_help= 'Specify the table\'s name to sync. Multiple tables can be specified separated by comma. If omitted all tables will be syncronised.' 
+table_help =  """Specifies the table's name to sync. It's possible to specify multiple table names separated by comma. If the parameter is omitted all tables will be syncronised."""
+config_help =  """Specifies the configuration to use. The configuration shall be specified without extension (e.g. --config foo) and the file foo.yaml should be in ~/.pg_chameleon/config/"""
 
 parser = argparse.ArgumentParser(description='Command line for pg_chameleon.',  add_help=True)
 parser.add_argument('command', metavar='command', type=str, help=command_help)
-parser.add_argument('--config', metavar='config', type=str,  default='default',  required=False)
+parser.add_argument('--config', metavar='config', type=str,  default='default',  required=False, help=config_help)
 parser.add_argument('--table', metavar='table', type=str,  default='*',  required=False, help=table_help)
 
 args = parser.parse_args()
