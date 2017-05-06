@@ -540,6 +540,12 @@ class pg_engine(object):
 					install_script=True
 		
 	def check_service_schema(self):
+		"""
+			The method checks if the sch_chameleon exists
+			
+			:return: count from information_schema.schemata
+			:rtype: integer
+		"""
 		sql_check="""
 			SELECT 
 				count(*)
