@@ -1,4 +1,7 @@
+Download url
+******************************
 
+`pg_chameleon on pypi<https://pypi.python.org/pypi/pg_chameleon>`_ 
 
 Platform and versions
 ****************************
