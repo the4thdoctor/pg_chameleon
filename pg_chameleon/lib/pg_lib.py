@@ -615,6 +615,14 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_schema)
 	
 	def save_master_status(self, master_status, cleanup=False):
+		"""
+			This method saves the master data determining which log table should be used in the next batch.
+			
+			The method performs also a cleanup for the logged events the cleanup parameter is true.
+			
+			:param master_status: the master data with the binlogfile and the log position
+			:param cleanup: if true cleans the not replayed batches. This is useful when resyncing a replica.
+		"""
 		next_batch_id=None
 		sql_tab_log=""" 
 			SELECT 
@@ -794,6 +802,13 @@ class pg_engine(object):
 				self.save_discarded_row(row_data,global_data["batch_id"])
 	
 	def save_discarded_row(self,row_data,batch_id):
+		"""
+			The method saves the discarded row in the table t_discarded_row along with the id_batch.
+			The row is encoded in base64 as the t_row_data is a text field.
+			
+			:param row_data: the row data dictionary
+			:param batch_id: the id batch where the row belongs
+		"""
 		b64_row=base64.b64encode(str(row_data))
 		sql_save="""
 			INSERT INTO sch_chameleon.t_discarded_rows
@@ -810,6 +825,17 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_save,(batch_id,b64_row))
 	
 	def write_batch(self, group_insert):
+		"""
+			Main method for adding the batch data in the log tables. 
+			The row data from group_insert are mogrified in CSV format and stored in
+			the string like object csv_file.
+			
+			psycopg2's copy expert is used to store the event data in PostgreSQL.
+			
+			Should any error occur the procedure fallsback to insert_batch.
+			
+			:param group_insert: the event data built in mysql_engine
+		"""
 		csv_file=io.StringIO()
 		
 		insert_list=[]
@@ -867,6 +893,11 @@ class pg_engine(object):
 			
 		
 	def set_batch_processed(self, id_batch):
+		"""
+			The method updates the flag b_processed and sets the processed timestamp for the given batch id
+			
+			:param id_batch: the id batch to set as processed
+		"""
 		self.logger.debug("updating batch %s to processed" % (id_batch, ))
 		sql_update=""" 
 			UPDATE sch_chameleon.t_replica_batch
@@ -880,6 +911,16 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_update, (id_batch, ))
 		
 	def process_batch(self, replica_batch_size):
+		"""
+			The method calls the function fn_process_batch with the parameters batch size and the id_source.
+			
+			The plpgsql function returns true if there are still rows to process. When all rows are replayed 
+			the method exits.
+			
+			:param replica_batch_size: the max rows to process in a single function call. 
+			
+			
+		"""
 		batch_loop=True
 		sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
 		while batch_loop:
@@ -1079,6 +1120,11 @@ class pg_engine(object):
 
 
 	def truncate_tables(self):
+		"""
+			The method truncate the tables listed in t_index_def. In order to minimise the risk of lock chain
+			the truncate is prepended by a set lock_timeout = 10 seconds. If the lock is not acquired in that time
+			the procedure fallsback to a delete and vacuum. 
+		"""
 		sql_clean=""" 
 			SELECT DISTINCT
 				format('SET lock_timeout=''10s'';TRUNCATE TABLE %%I.%%I CASCADE;',v_schema,v_table) v_truncate,
