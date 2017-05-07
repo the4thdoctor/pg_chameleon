@@ -1,9 +1,12 @@
 Download
 ******************************
 
+
 pg_chameleon `is available on pypi for download <https://pypi.python.org/pypi/pg_chameleon>`_ 
 
 The documentation `is available on pythonhosted <http://pythonhosted.org/pg_chameleon/>`_ 
+
+Current version **1.0**
 
 Platform and versions
 ****************************
