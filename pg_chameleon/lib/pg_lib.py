@@ -1365,6 +1365,12 @@ class pg_engine(object):
 
 
 	def write_ddl(self, token, query_data):
+		"""
+			The method writes the DDL built from the tokenised sql into PostgreSQL.
+			
+			:param token: the tokenised query
+			:param query_data: query's metadata (schema,binlog, etc.)
+		"""
 		sql_path=" SET search_path="+self.dest_schema+";"
 		pg_ddl=sql_path+self.gen_query(token)
 		log_table=query_data["log_table"]
