@@ -581,7 +581,12 @@ class pg_engine(object):
 			self.logger.error("The service schema is already created")
 			
 	def get_status(self):
-		"""the function list the sources with the running status and the eventual lag """
+		"""
+			The metod lists the sources with the running status and the eventual lag 
+			
+			:return: psycopg2 fetchall results 
+			:rtype: psycopg2 tuple
+		"""
 		sql_status="""
 			SELECT
 				t_source,
@@ -600,6 +605,10 @@ class pg_engine(object):
 		return results
 		
 	def drop_service_schema(self):
+		"""
+			The method removes the service schema discarding all the replica references.
+			The replicated tables are kept in place though.
+		"""
 		file_schema=open(self.sql_dir+"drop_schema.sql", 'rb')
 		sql_schema=file_schema.read()
 		file_schema.close()
@@ -702,6 +711,14 @@ class pg_engine(object):
 		return next_batch_id
 		
 	def get_batch_data(self):
+		"""
+			The method updates the batch status to started for the given source_id and returns the 
+			batch informations.
+			
+			:return: psycopg2 fetchall results without any manipulation
+			:rtype: psycopg2 tuple
+			
+		"""
 		sql_batch="""
 			WITH t_created AS
 				(
@@ -732,6 +749,13 @@ class pg_engine(object):
 		return self.pg_conn.pgsql_cur.fetchall()
 	
 	def insert_batch(self,group_insert):
+		"""
+			Fallback method for the batch insert. Each row event is processed
+			individually and any problematic row is discarded into the table t_discarded_rows.
+			The row is encoded in base64 in order to prevent any encoding or type issue.
+			
+			:param group_insert: the event data built in mysql_engine
+		"""
 		self.logger.debug("starting insert loop")
 		for row_data in group_insert:
 			global_data=row_data["global_data"]
@@ -770,7 +794,6 @@ class pg_engine(object):
 				self.save_discarded_row(row_data,global_data["batch_id"])
 	
 	def save_discarded_row(self,row_data,batch_id):
-		print(str(row_data))
 		b64_row=base64.b64encode(str(row_data))
 		sql_save="""
 			INSERT INTO sch_chameleon.t_discarded_rows
@@ -987,7 +1010,7 @@ class pg_engine(object):
 
 	def build_alter_table(self, token):
 		""" 
-			the function builds the alter table statement from the token data.
+			The method builds the alter table statement from the token data.
 			The function currently supports the following statements.
 			DROP TABLE
 			ADD COLUMN 
@@ -1089,8 +1112,18 @@ class pg_engine(object):
 				self.pg_conn.pgsql_cur.execute(st_vacuum)
 
 	def drop_src_indices(self):
-		
-		sql_idx="""SELECT t_drop FROM  sch_chameleon.t_index_def WHERE i_id_source=%s;"""
+		"""
+			The method executes the index drop statements read from the table t_index_def.
+			The method is used when resyncing the replica for removing the indices before the bulk load.
+		"""
+		sql_idx="""
+			SELECT 
+				t_drop 
+			FROM  
+				sch_chameleon.t_index_def 
+			WHERE 
+				i_id_source=%s;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_idx, (self.i_id_source, ))
 		idx_drop=self.pg_conn.pgsql_cur.fetchall()
 		for drop_stat in idx_drop:
@@ -1211,6 +1244,15 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_get_idx, (self.i_id_source,  self.dest_schema, ))
 
 	def drop_primary_key(self, token):
+		"""
+			The method drops the primary key for the table.
+			As tables without primary key cannot be replicated the method calls unregister_table
+			to remove the table from the replica set.
+			The drop constraint statement is not built from the token but generated from the information_schema.
+			
+			
+			:param token: the tokenised query for drop primary key
+		"""
 		self.logger.info("dropping primary key for table %s" % (token["name"],))
 		sql_gen="""
 			SELECT  DISTINCT
@@ -1235,7 +1277,20 @@ class pg_engine(object):
 		
 
 	def gen_query(self, token):
-		""" the function generates the ddl"""
+		""" 
+			The method builds the DDL using the tokenised SQL stored in token.
+			The supported commands are 
+			DROP TABLE
+			TRUNCATE
+			CREATE TABLE
+			ALTER TABLE
+			DROP PRIMARY KEY
+			
+			:param token: A dictionary with the tokenised sql statement
+			:return: query the DDL query in the PostgreSQL dialect
+			:rtype: string
+			
+		"""
 		query=""
 		
 		if token["command"] =="DROP TABLE":
