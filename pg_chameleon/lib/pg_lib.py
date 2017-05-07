@@ -239,6 +239,7 @@ class pg_engine(object):
 	def clean_batch_data(self):
 		"""
 			Removes the replica batch data for the given source id.
+			The method is used to cleanup incomplete batch data in case of crash or replica's unclean restart
 		"""
 		sql_delete = """
 			DELETE FROM sch_chameleon.t_replica_batch 
@@ -561,6 +562,9 @@ class pg_engine(object):
 		return num_schema
 	
 	def create_service_schema(self):
+		"""
+			The method installs the service replica service schema sch_chameleon.
+		"""
 		
 		num_schema=self.check_service_schema()
 		if num_schema[0]==0:
@@ -982,7 +986,25 @@ class pg_engine(object):
 	
 
 	def build_alter_table(self, token):
-		""" the function builds the alter table statement from the token idata"""
+		""" 
+			the function builds the alter table statement from the token data.
+			The function currently supports the following statements.
+			DROP TABLE
+			ADD COLUMN 
+			CHANGE
+			MODIFY
+			
+			The change and modify are potential source of breakage for the replica because of 
+			the mysql implicit fallback data types. 
+			For better understanding please have a look to 
+			
+			http://www.cybertec.at/why-favor-postgresql-over-mariadb-mysql/
+			
+			:param token: A dictionary with the tokenised sql statement
+			:return: query the DDL query in the PostgreSQL dialect
+			:rtype: string
+			
+		"""
 		alter_cmd=[]
 		ddl_enum=[]
 		query_cmd=token["command"]
@@ -1075,7 +1097,18 @@ class pg_engine(object):
 			self.pg_conn.pgsql_cur.execute(drop_stat[0])
 			
 	def create_src_indices(self):
-		sql_idx="""SELECT t_create FROM  sch_chameleon.t_index_def WHERE i_id_source=%s;"""
+		"""
+			The method executes the index DDL read from the table t_index_def.
+			The method is used when resyncing the replica for recreating the indices after the bulk load.
+		"""
+		sql_idx="""
+			SELECT 
+				t_create 
+			FROM  
+				sch_chameleon.t_index_def 
+			WHERE 
+				i_id_source=%s;
+		"""
 		self.pg_conn.pgsql_cur.execute(sql_idx, (self.i_id_source, ))
 		idx_create=self.pg_conn.pgsql_cur.fetchall()
 		for create_stat in idx_create:
@@ -1083,6 +1116,10 @@ class pg_engine(object):
 		
 
 	def get_index_def(self):
+		"""
+			The method inserts in the table t_index_def the create and drop statements for the tables affected by 
+			the resync replica.
+		"""
 		table_limit = ''
 		if self.table_limit[0] != '*':
 			table_limit = self.pg_conn.pgsql_cur.mogrify("""WHERE table_name IN  (SELECT unnest(%s))""",(self.table_limit, )).decode()
@@ -1265,8 +1302,18 @@ class pg_engine(object):
 		
 		
 	def check_reindex(self):
-		"""the function checks if there is any reindex running and holds for  the given number of seconds """
-		sql_check="""SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND application_name = ANY(%s) ;"""
+		"""
+			the function checks if there is any reindex running and holds for  the given number of seconds 
+		"""
+		sql_check="""
+			SELECT 
+				count(*) 
+			FROM 
+				pg_stat_activity 
+			WHERE 
+					datname=current_database() 
+				AND	application_name = ANY(%s) ;
+		"""
 		while True:
 			self.pg_conn.pgsql_cur.execute(sql_check, (self.reindex_app_names, ))
 			reindex_tup = self.pg_conn.pgsql_cur.fetchone()
