@@ -2,10 +2,22 @@ import re
 
 class sql_token(object):
 	"""
-	Class sql_token. Tokenise the sql statements captured by the mysql replication.
-	Each statement is converted in a python dictionary being used by pg_engine.
+	The class tokenises the sql statements captured by mysql_engine.
+	Several regular expressions analyse and build the elements of the token.
+	The DDL support is purposely limited to the following.
+	
+	DROP PRIMARY KEY
+	CREATE (UNIQUE) INDEX/KEY
+	CREATE TABLE
+	ALTER TABLE
+	
+	The regular expression m_fkeys is used to remove any foreign key definition from the sql statement
+	as we don't enforce any foreign key on the PostgreSQL replication.
 	"""
 	def __init__(self):
+		"""
+			Class constructor the regular expressions are compiled and the token lists are initialised.
+		"""
 		self.tokenised=[]
 		self.query_list=[]
 		self.pkey_cols=""
@@ -46,6 +58,9 @@ class sql_token(object):
 		self.m_modify=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		
 	def reset_lists(self):
+		"""
+			The method reset the lists to empty.
+		"""
 		self.tokenised=[]
 		self.query_list=[]
 		
@@ -223,9 +238,28 @@ class sql_token(object):
 		
 	def parse_sql(self, sql_string):
 		"""
-			Splits the sql string in statements using the conventional end of statement marker ;
-			A regular expression greps the words and parentesis and a split converts them in
-			a list. Each list of words is then stored in the list token_list.
+			The method cleans and parses the sql string
+			A regular expression replaces all the default value definitions with a space.
+			Then the statements are split in a list using the statement separator;
+		
+			For each statement a set of regular expressions remove the comments, single and multi line.
+			Parenthesis are surrounded by spaces and commas are rewritten in order to get at least one space after the comma.
+			The statement is then put on a single line and stripped.
+			
+			Six different match are performed on the statement.
+			CREATE TABLE
+			DROP TABLE
+			ALTER TABLE
+			ALTER INDEX
+			DROP PRIMARY KEY
+			TRUNCATE TABLE
+			
+			The match which is successful determines the parsing of the rest of the statement.
+			Each parse builds a dictionary with at least two keys.
+			Name and Command. 
+			Each statement comes with specific keys.
+			
+			When the token dictionary is complete is added to the class list tokenised
 			
 			:param sql_string: The sql string with the sql statements.
 		"""
@@ -249,7 +283,6 @@ class sql_token(object):
 			mdrop_primary = self.m_drop_primary.match(stat_cleanup)
 			mtruncate_table = self.m_truncate_table.match(stat_cleanup)
 			
-			#print stat_cleanup
 			if mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
