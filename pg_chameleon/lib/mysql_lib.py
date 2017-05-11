@@ -142,7 +142,7 @@ class mysql_engine(object):
 				binlogfile=binlogevent.next_binlog
 				position=binlogevent.position
 				self.logger.debug("rotate event. binlogfile %s, position %s. " % (binlogfile, position))
-				if log_file != binlogfile:
+				if log_file != binlogfile or log_position > position:
 					close_batch = True
 				if close_batch:
 					if log_file!=binlogfile:
@@ -159,9 +159,8 @@ class mysql_engine(object):
 					if len(group_insert)>0:
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
-					
+					self.logger.debug("query event. binlogfile %s, position %s.\n--------\n%s\n-------- " % (binlogfile, position, binlogevent.query))
 					self.sql_token.parse_sql(binlogevent.query)
-					
 					for token in self.sql_token.tokenised:
 						event_time=binlogevent.timestamp
 						master_data["File"]=binlogfile
