@@ -142,7 +142,7 @@ class mysql_engine(object):
 				binlogfile=binlogevent.next_binlog
 				position=binlogevent.position
 				self.logger.debug("rotate event. binlogfile %s, position %s. " % (binlogfile, position))
-				if log_file != binlogfile or log_position > position:
+				if log_file != binlogfile:
 					close_batch = True
 				if close_batch:
 					if log_file!=binlogfile:
