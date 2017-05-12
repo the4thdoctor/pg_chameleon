@@ -155,17 +155,18 @@ class mysql_engine(object):
 					my_stream.close()
 					return [master_data, close_batch]
 			elif isinstance(binlogevent, QueryEvent):
+				log_position = binlogevent.packet.log_pos
 				if binlogevent.query.strip().upper() not in self.stat_skip:
 					if len(group_insert)>0:
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
-					self.logger.debug("query event. binlogfile %s, position %s.\n--------\n%s\n-------- " % (binlogfile, position, binlogevent.query))
+					self.logger.debug("query event. binlogfile %s, position %s.\n--------\n%s\n-------- " % (binlogfile, log_position, binlogevent.query))
 					self.sql_token.parse_sql(binlogevent.query)
 					for token in self.sql_token.tokenised:
-						event_time=binlogevent.timestamp
-						master_data["File"]=binlogfile
-						master_data["Position"]=binlogevent.packet.log_pos
-						master_data["Time"]=event_time
+						event_time = binlogevent.timestamp
+						master_data["File"] = binlogfile
+						master_data["Position"] = log_position
+						master_data["Time"] = event_time
 						if len(token)>0:
 							query_data={
 								"binlog":log_file, 
@@ -181,8 +182,6 @@ class mysql_engine(object):
 					if close_batch:
 						my_stream.close()
 						return [master_data, close_batch]
-
-				
 			else:
 				
 				for row in binlogevent.rows:
