@@ -3,8 +3,10 @@ changelog
 
 1.1 - XX May 2017
 ...........................................
+* fix race condition when capturing  queries not tokenised that leave the binglog position unchanged
 * fix race condition when capturing the queries with wrong binglog position
 * fix race condition when rotate event happens with the table_limit enabled
+
 
 1.0 - 07 May 2017
 ............................................
