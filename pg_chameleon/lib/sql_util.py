@@ -72,6 +72,8 @@ class sql_token(object):
 			column_name, the column name
 			data_type, the column's data type
 			is nullable, the value is set always to yes except if the column is primary key ( column name present in key_cols)
+			enum_list,character_maximum_length,numeric_precision are the dimensions associated with the data type.
+			The auto increment is set if there's a match for the auto increment specification.s
 			
 			:param col_def: The column definition
 			:return: col_dic the column dictionary 
@@ -103,7 +105,7 @@ class sql_token(object):
 				col_dic["extra"]="auto_increment"
 			else :
 				col_dic["extra"]=""
-		return c
+		return col_dic
 		
 	
 	def build_key_dic(self, inner_stat, table_name):
@@ -237,7 +239,23 @@ class sql_token(object):
 		return table_dic	
 	
 	def parse_alter_table(self, malter_table):
-		""" """
+		"""
+			The method parse and generates a dictionary from the CREATE TABLE statement.
+			The regular expression m_inner is used to match the statement within the round brackets.
+			
+			This inner_stat is then cleaned from the primary keys, keys indices and foreign keys in order to get
+			the column list.
+			The indices are stored in the dictionary key "indices" using the method build_key_dic.
+			The regular expression m_pars is used for finding and replacing all the commas with the | symbol within the round brackets
+			present in the columns list.
+			At the column list is also appended a comma as required by the regepx used in build_column_dic.
+			The build_column_dic method is then executed and the return value is stored in the dictionary key "columns"
+			
+			:param malter_table: The sql string with the CREATE TABLE statement
+			:param table_name: The table name
+			:return: table_dic the table dictionary tokenised from the CREATE TABLE 
+			:rtype: dictionary
+		"""
 		excluded_names = ['CONSTRAINT', 'PRIMARY']
 		stat_dic={}
 		alter_cmd=[]
