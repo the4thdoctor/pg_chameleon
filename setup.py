@@ -47,6 +47,7 @@ The tool requires an  initial replica setup which pulls the data from MySQL in r
 This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 
 pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
+
 """,
 	author="Federico Campoli",
 	author_email="the4thdoctor.gallifrey@gmail.com",
