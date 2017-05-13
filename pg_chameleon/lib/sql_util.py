@@ -65,6 +65,12 @@ class sql_token(object):
 		self.query_list=[]
 		
 	def parse_column(self, col_def):
+		"""
+			
+			:param col_def: The table name
+			:return: col_dic the column dictionary 
+			:rtype: dictionary
+		"""
 		colmatch = self.m_field.search(col_def)
 		dimmatch = self.m_dimension.search(col_def)
 		col_dic={}
@@ -91,7 +97,7 @@ class sql_token(object):
 				col_dic["extra"]="auto_increment"
 			else :
 				col_dic["extra"]=""
-		return col_dic
+		return c
 		
 	
 	def build_key_dic(self, inner_stat, table_name):
@@ -115,7 +121,7 @@ class sql_token(object):
 			
 			When the dictionary is built is appended to idx_list and finally returned to the calling method parse_create_table.s
 			
-			Otherwise if 
+
 			:param inner_stat: The statement within the round brackets in CREATE TABLE
 			:param table_name: The table name
 			:return: idx_list the list of dictionary with the index definitions
@@ -166,8 +172,18 @@ class sql_token(object):
 		return idx_list
 		
 	def build_column_dic(self, inner_stat):
+		"""
+			The method builds a list of dictionaries with the column definitions.
+			
+			The regular expression m_fields is used to find all the column occurrences and, for each occurrence,
+			the method parse_column is called.
+			If parse_column returns a dictionary, this is appended to the list col_parse.
+			
+			:param inner_stat: The statement within the round brackets in CREATE TABLE
+			:return: cols_parse the list of dictionary with the column definitions
+			:rtype: list
+		"""
 		column_list=self.m_fields.findall(inner_stat)
-		#print inner_stat
 		cols_parse=[]
 		for col_def in column_list:
 			col_def=col_def.strip()
