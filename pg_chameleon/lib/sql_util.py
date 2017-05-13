@@ -66,8 +66,14 @@ class sql_token(object):
 		
 	def parse_column(self, col_def):
 		"""
+			This method parses the column definition searching for the name, the data type and the
+			dimensions.
+			If there's a match the dictionary is built with the keys
+			column_name, the column name
+			data_type, the column's data type
+			is nullable, the value is set always to yes except if the column is primary key ( column name present in key_cols)
 			
-			:param col_def: The table name
+			:param col_def: The column definition
 			:return: col_dic the column dictionary 
 			:rtype: dictionary
 		"""
@@ -111,6 +117,7 @@ class sql_token(object):
 			The method search for primary keys keys and indices defined in the inner_stat.
 			The index name PRIMARY is used to tell pg_engine we are building a primary key.
 			Otherwise the index name is built using the format (uk)idx_tablename[0:20] + counter.
+			If there's a match for a primary key the composing columns are save into pkey_cols.
 			
 			The tablename limitation is required as PostgreSQL enforces a strict limit for the identifier name's lenght.
 			
