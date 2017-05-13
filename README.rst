@@ -1,11 +1,11 @@
-Download
-******************************
-
 
 pg_chameleon `is available on pypi for download <https://pypi.python.org/pypi/pg_chameleon>`_ 
 
 The documentation `is available on pythonhosted <http://pythonhosted.org/pg_chameleon/>`_ 
 
+Discussion forum `available on googlegroups <https://groups.google.com/forum/#!forum/pgchameleon>`_
+
+Please submit your `bug reports on GitHub <https://github.com/the4thdoctor/pg_chameleon>`_.
 
 
 Platform and versions
@@ -92,13 +92,6 @@ The foreign keys from the source MySQL schema are extracted and created initiall
 A second run tries to validate the foreign keys. If an error occurs it gets logged out according to the source configuration. 
 
 
-Test please!
-..............................
-
-This software needs user's feeback. 
-
-The best way to report a bug is to submit the issue GitHub.
-However if you like to get in touch you can ping me on **twitter @4thdoctor_scarf** or if you prefer to chat, on irc I created is a dedicated channel **irc.freenode.net #pgchameleon**.
 
 
 Quick Setup 
