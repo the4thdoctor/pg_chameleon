@@ -240,20 +240,28 @@ class sql_token(object):
 	
 	def parse_alter_table(self, malter_table):
 		"""
-			The method parse and generates a dictionary from the CREATE TABLE statement.
-			The regular expression m_inner is used to match the statement within the round brackets.
+			The method parses the alter table match.
+			As alter table can be composed of multiple commands the original statement (group 0 of the match object)
+			is searched with the regexp m_alter_list.
+			For each element in returned by findall the first word is evaluated as command. The parse alter table 
+			manages the following commands.
+			DROP,ADD,CHANGE,MODIFY.
 			
-			This inner_stat is then cleaned from the primary keys, keys indices and foreign keys in order to get
-			the column list.
-			The indices are stored in the dictionary key "indices" using the method build_key_dic.
-			The regular expression m_pars is used for finding and replacing all the commas with the | symbol within the round brackets
-			present in the columns list.
-			At the column list is also appended a comma as required by the regepx used in build_column_dic.
-			The build_column_dic method is then executed and the return value is stored in the dictionary key "columns"
+			Each command build a dictionary alter_dic with at leaset the keys command and name defined.
+			Those keys are respectively the commant itself and the attribute name affected by the command.
 			
-			:param malter_table: The sql string with the CREATE TABLE statement
-			:param table_name: The table name
-			:return: table_dic the table dictionary tokenised from the CREATE TABLE 
+			ADD defines the keys type and dimension. If type is enum then the dimension key stores the enumeration list.
+			
+			CHANGE defines the key command and then runs a match with m_alter_change. If the match is successful 
+			the following keys are defined.
+			
+			old is the old previous field name
+			new is the new field name
+			type is the new data type
+			dimension the field's dimensions or the enum list if type is enum
+			
+			:param malter_table: The match object returned by the match method against tha alter table statement.
+			:return: stat_dic the alter table dictionary tokenised from the match object.
 			:rtype: dictionary
 		"""
 		excluded_names = ['CONSTRAINT', 'PRIMARY']
