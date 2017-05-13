@@ -96,7 +96,26 @@ class sql_token(object):
 	
 	def build_key_dic(self, inner_stat, table_name):
 		"""
+			The method matches and tokenise the primary key and index/key definitions in the create table's inner statement.
 			
+			As the primary key can be defined as column or table constraint there is an initial match attempt with the regexp m_inline_pkeys.
+			If the match is successful then the primary key dictionary is built from the match data.
+			Otherwise the primary key dictionary is built using the eventual table key definition.
+			
+			The method search for primary keys keys and indices defined in the inner_stat.
+			The index name PRIMARY is used to tell pg_engine we are building a primary key.
+			Otherwise the index name is built using the format (uk)idx_tablename[0:20] + counter.
+			
+			The tablename limitation is required as PostgreSQL enforces a strict limit for the identifier name's lenght.
+			
+			Each key dictionary have three keys. 
+			index_name, the index name or PRIMARY 
+			index_columns, a list with the column names
+			non_unique, follows the MySQL's information schema convention and marks an index if is unique or not.
+			
+			When the dictionary is built is appended to idx_list and finally returned to the calling method parse_create_table.s
+			
+			Otherwise if 
 			:param inner_stat: The statement within the round brackets in CREATE TABLE
 			:param table_name: The table name
 			:return: idx_list the list of dictionary with the index definitions
