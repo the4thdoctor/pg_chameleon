@@ -37,7 +37,7 @@ README
     <./readme.rst>
 
 
-MODULE REFERENCE (wip)
+MODULE REFERENCE
 ***********************************
 
 .. toctree::

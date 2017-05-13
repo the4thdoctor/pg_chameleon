@@ -1,10 +1,10 @@
 changelog 
 *************************
 
-1.1 - XX May 2017
+1.1 - 13 May 2017
 ...........................................
 * fix race condition when capturing  queries not tokenised that leave the binglog position unchanged
-* update docstrings in sql_util.py
+* completed docstrings in sql_util.py
 
 1.0 - 07 May 2017
 ............................................

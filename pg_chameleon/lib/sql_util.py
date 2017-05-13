@@ -260,6 +260,11 @@ class sql_token(object):
 			type is the new data type
 			dimension the field's dimensions or the enum list if type is enum
 			
+			MODIFY works similarly to CHANGE except that the field is not renamed.
+			In that case we have only the keys type and dimension defined along with name and command.s
+			
+			The excluded_names list is used to skip the CONSTRAINT and PRIMARY built along the the match object.
+			
 			:param malter_table: The match object returned by the match method against tha alter table statement.
 			:return: stat_dic the alter table dictionary tokenised from the match object.
 			:rtype: dictionary
