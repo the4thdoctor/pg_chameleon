@@ -59,7 +59,7 @@ class sql_token(object):
 		
 	def reset_lists(self):
 		"""
-			The method reset the lists to empty.
+			The method reset the lists to empty lists after a successful tokenisation.
 		"""
 		self.tokenised=[]
 		self.query_list=[]
@@ -95,6 +95,13 @@ class sql_token(object):
 		
 	
 	def build_key_dic(self, inner_stat, table_name):
+		"""
+			
+			:param inner_stat: The statement within the round brackets in CREATE TABLE
+			:param table_name: The table name
+			:return: idx_list the list of dictionary with the index definitions
+			:rtype: list
+		"""
 		key_dic={}
 		idx_list=[]
 		idx_counter=0
@@ -152,6 +159,23 @@ class sql_token(object):
 		
 	
 	def parse_create_table(self, sql_create, table_name):
+		"""
+			The method parse and generates a dictionary from the CREATE TABLE statement.
+			The regular expression m_inner is used to match the statement within the round brackets.
+			
+			This inner_stat is then cleaned from the primary keys, keys indices and foreign keys in order to get
+			the column list.
+			The indices are stored in the dictionary key "indices" using the method build_key_dic.
+			The regular expression m_pars is used for finding and replacing all the commas with the | symbol within the round brackets
+			present in the columns list.
+			At the column list is also appended a comma as required by the regepx used in build_column_dic.
+			The build_column_dic method is then executed and the return value is stored in the dictionary key "columns"
+			
+			:param sql_create: The sql string with the CREATE TABLE statement
+			:param table_name: The table name
+			:return: table_dic the table dictionary tokenised from the CREATE TABLE 
+			:rtype: dictionary
+		"""
 		
 		m_inner=self.m_inner.search(sql_create)
 		inner_stat=m_inner.group(1).strip()
@@ -162,17 +186,12 @@ class sql_token(object):
 		column_list=self.m_idx.sub( '', column_list)
 		column_list=self.m_fkeys.sub( '', column_list)
 		table_dic["indices"]=self.build_key_dic(inner_stat, table_name)
-		#print table_dic["indices"]
-		#column_list=self.m_dbl_dgt.sub(r"\2|\3",column_list)
 		mpars=self.m_pars.findall(column_list)
 		for match in mpars:
 			new_group=str(match[0]).replace(',', '|')
 			column_list=column_list.replace(match[0], new_group)
 		column_list=column_list+","
-		#print column_list
 		table_dic["columns"]=self.build_column_dic(column_list)
-		#for item in table_dic["columns"]:
-		#	print item
 		return table_dic	
 	
 	def parse_alter_table(self, malter_table):
