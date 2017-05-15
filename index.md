@@ -13,7 +13,7 @@ The tool can initialise the replica pulling out the data from MySQL but this req
 The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
-The latest release is the [v1.0-RC.1](https://github.com/the4thdoctor/pg_chameleon/releases/tag/v1.0-RC.1)
+The latest release is the v1.1
 
 This release is [available on pypi](https://pypi.python.org/pypi/pg_chameleon)
 
