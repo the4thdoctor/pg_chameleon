@@ -625,7 +625,7 @@ class mysql_engine(object):
 				self.logger.debug("Executing query for table %s"  % (table_name, ))
 				self.mysql_con.my_cursor_ubf.execute(sql_out)
 			except:
-				self.logger.error("error when pulling data from %s. sql executed: " % (table_name, sql_out))
+				self.logger.error("error when pulling data from %s. sql executed: %s" % (table_name, sql_out))
 			
 			self.logger.debug("Starting extraction loop for table %s"  % (table_name, ))
 			while True:
