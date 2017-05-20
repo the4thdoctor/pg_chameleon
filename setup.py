@@ -52,6 +52,7 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 	author="Federico Campoli",
 	author_email="the4thdoctor.gallifrey@gmail.com",
 	url="https://github.com/the4thdoctor/pg_chameleon/",
+	license="BSD License",
 	platforms=[
 		"linux"
 	],

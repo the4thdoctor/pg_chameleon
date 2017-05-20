@@ -295,6 +295,7 @@ $BODY$
 				b_started 
 			AND 	b_processed 
 			AND     NOT b_replayed
+			AND     i_id_source=p_i_source_id
 		;
 
 		END IF;
