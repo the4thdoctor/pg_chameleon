@@ -1,6 +1,14 @@
 changelog 
 *************************
 
+
+1.2 - XX XXX 2017
+...........................................
+* fix deadlock when replicating from multiple sources:
+* add source id when cleaning batches
+* add missing marker when outputting failed mysql query in copy_tabl_data
+
+
 1.1 - 13 May 2017
 ...........................................
 * fix race condition when capturing  queries not tokenised that leave the binglog position unchanged
