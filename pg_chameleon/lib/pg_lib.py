@@ -928,7 +928,7 @@ class pg_engine(object):
 			batch_result=self.pg_conn.pgsql_cur.fetchone()
 			batch_loop=batch_result[0]
 			self.logger.debug("Batch loop value %s" % (batch_loop))
-		self.logger.debug("Cleaning replayed batches older than %s" % (self.batch_retention))
+		self.logger.debug("Cleaning replayed batches older than %s for source %s" % (self.batch_retention,  self.i_id_source))
 		sql_cleanup="""
 			DELETE FROM 
 				sch_chameleon.t_replica_batch
@@ -937,9 +937,10 @@ class pg_engine(object):
 				AND b_processed
 				AND b_replayed
 				AND now()-ts_replayed>%s::interval
+				AND i_id_source=%s
 			;
 		"""
-		self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.batch_retention, ))
+		self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.batch_retention, self.i_id_source ))
 
 	def add_foreign_keys(self, source_name, fk_metadata):
 		"""
