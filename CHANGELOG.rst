@@ -7,7 +7,9 @@ changelog
 * fix deadlock when replicating from multiple sources:
 * add source id when cleaning batches
 * add missing marker when outputting failed mysql query in copy_tabl_data
-
+* fix wrong decimal handling in build_tab_ddl
+* add bool to the data dictionary
+* exclude ddl when coming from schemas different from the one replicated
 
 1.1 - 13 May 2017
 ...........................................

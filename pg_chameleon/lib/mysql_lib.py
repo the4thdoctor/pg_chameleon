@@ -84,6 +84,7 @@ class mysql_engine(object):
 		self.pause_on_reindex = global_config.pause_on_reindex
 		self.stat_skip = ['BEGIN', 'COMMIT']
 		self.tables_limit = global_config.tables_limit
+		self.my_schema = global_config.my_database
 	
 	def read_replica(self, batch_data, pg_engine):
 		"""
@@ -138,9 +139,9 @@ class mysql_engine(object):
 			total_events+=1
 			if isinstance(binlogevent, RotateEvent):
 				
-				event_time=binlogevent.timestamp
-				binlogfile=binlogevent.next_binlog
-				position=binlogevent.position
+				event_time = binlogevent.timestamp
+				binlogfile = binlogevent.next_binlog
+				position = binlogevent.position
 				self.logger.debug("rotate event. binlogfile %s, position %s. " % (binlogfile, position))
 				if log_file != binlogfile:
 					close_batch = True
@@ -155,7 +156,11 @@ class mysql_engine(object):
 					my_stream.close()
 					return [master_data, close_batch]
 			elif isinstance(binlogevent, QueryEvent):
-				if binlogevent.query.strip().upper() not in self.stat_skip:
+				try:
+					query_schema = binlogevent.schema.decode()
+				except:
+					query_schema = binlogevent.schema
+				if binlogevent.query.strip().upper() not in self.stat_skip and query_schema == self.my_schema: 
 					log_position = binlogevent.packet.log_pos
 					master_data["File"] = binlogfile
 					master_data["Position"] = log_position

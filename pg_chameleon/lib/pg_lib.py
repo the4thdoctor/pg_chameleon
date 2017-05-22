@@ -98,7 +98,8 @@ class pg_engine(object):
 			'year':'integer', 
 			'enum':'enum', 
 			'set':'text', 
-			'json':'text'
+			'json':'text', 
+			'bool':'boolean', 
 		}
 		self.table_ddl = {}
 		self.idx_ddl = {}
