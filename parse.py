@@ -46,12 +46,9 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #ALTER TABLE table2 CHANGE column1 column2 bigint(20);
 #ALTER TABLE `test_table` MODIFY `test_column` enum('blah','dd') DEFAULT NULL; """
 #statement="""ALTER TABLE `test_table` ADD UNIQUE INDEX `idx_unique` (`log`, `status`);"""
-#statement = """CREATE TABLE test (id integer null auto_increment primary key, `test_col` bigint(20)) ;"""
-#statement = """CREATE TABLE test (id integer auto_increment, primary key(id)  )"""
-statement = """TRUNCATE table     
-
-
-`test`;"""
+statement = """CREATE TABLE test (`id` integer null auto_increment primary key, `test_col` bigint(20)) ;"""
+#statement = """CREATE TABLE test (id integer auto_increment, primary key(`id`)  )"""
+#statement = """TRUNCATE table  `test`;"""
 token_sql=sql_token()
 token_sql.parse_sql(statement)
 print (token_sql.tokenised)

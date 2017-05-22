@@ -10,6 +10,7 @@ changelog
 * fix wrong decimal handling in build_tab_ddl
 * add bool to the data dictionary
 * exclude ddl when coming from schemas different from the one replicated
+* fix wrong quoting when capturing primary key inline
 
 1.1 - 13 May 2017
 ...........................................

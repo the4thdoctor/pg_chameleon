@@ -150,7 +150,7 @@ class sql_token(object):
 		idx=self.m_idx.findall(inner_stat)
 		if pk_match:
 			key_dic["index_name"]='PRIMARY'
-			key_dic["index_columns"] = (pk_match.group(1).strip().split()[0])
+			key_dic["index_columns"] = (pk_match.group(1).strip().split()[0]).replace('`', '"')
 			key_dic["non_unique"]=0
 			self.pkey_cols=key_dic["index_columns"]
 			idx_list.append(dict(list(key_dic.items())))
