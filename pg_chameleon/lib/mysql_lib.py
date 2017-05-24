@@ -181,7 +181,6 @@ class mysql_engine(object):
 								"batch_id":id_batch, 
 								"log_table":log_table
 							}
-							raise KeyError
 							pg_engine.write_ddl(token, query_data)
 							
 						
