@@ -2,7 +2,7 @@ changelog
 *************************
 
 
-1.2 - XX XXX 2017
+1.2 - XX May 2017
 ...........................................
 * fix deadlock when replicating from multiple sources:
 * add source id when cleaning batches
@@ -11,6 +11,7 @@ changelog
 * add bool to the data dictionary
 * exclude ddl when coming from schemas different from the one replicated
 * fix wrong quoting when capturing primary key inline
+* add error handling in read_replica
 
 1.1 - 13 May 2017
 ...........................................
