@@ -3,12 +3,12 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '1.0'::TEXT t_version
+	SELECT '1.2'::TEXT t_version
 ;
 
 
 CREATE TYPE sch_chameleon.en_src_status
-	AS ENUM ('ready', 'initialising','initialised','stopped','running');
+	AS ENUM ('ready', 'initialising','initialised','stopped','running','error');
 
 CREATE TYPE sch_chameleon.en_binlog_event 
 	AS ENUM ('delete', 'update', 'insert','ddl');
@@ -157,7 +157,6 @@ WITH (
 );
 
 CREATE UNIQUE INDEX idx_schema_table_source ON sch_chameleon.t_index_def(i_id_source,v_schema,v_table,v_index);
-	
 	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
@@ -450,6 +449,7 @@ $BODY$
 				b_started 
 			AND 	b_processed 
 			AND     NOT b_replayed
+			AND     i_id_source=p_i_source_id
 		;
 
 		END IF;
