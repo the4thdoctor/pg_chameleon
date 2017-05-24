@@ -147,11 +147,11 @@ class global_config(object):
 					copy_max_memory = str(int(copy_max_memory)*1024*1024*1024)
 				else:
 					print("**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes.")
-					sys.exit()
+					sys.exit(3)
 			self.copy_max_memory = copy_max_memory
 		except KeyError as key_missing:
 			print('Missing key %s in configuration file. check %s/config-example.yaml for reference' % (key_missing, self.config_dir))
-			sys.exit()
+			sys.exit(4)
 	
 	
 	def get_source_name(self, config_name = 'default'):
@@ -399,7 +399,14 @@ class replica_engine(object):
 		
 		self.pg_eng.set_source_id('running')
 		while True:
-			self.my_eng.run_replica(self.pg_eng)
+			try:
+				self.my_eng.run_replica(self.pg_eng)
+			except :
+				self.pg_eng.set_source_id('error')
+				self.logger.error("An error occurred during the replica. %s" % (sys.exc_info(), ))
+				exit=open(self.exit_file, 'w')
+				exit.close()
+				sys.exit(5)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
 			if self.check_file_exit():
 				break

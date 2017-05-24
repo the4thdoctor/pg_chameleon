@@ -105,7 +105,7 @@ class pg_engine(object):
 		self.idx_ddl = {}
 		self.type_ddl = {}
 		self.pg_charset = self.pg_conn.pg_charset
-		self.cat_version = '1.1'
+		self.cat_version = '1.2'
 		self.cat_sql = [
 			{'version':'base','script': 'create_schema.sql'}, 
 			{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -119,6 +119,7 @@ class pg_engine(object):
 			{'version':'0.9','script': 'upgrade/cat_0.9.sql'}, 
 			{'version':'1.0','script': 'upgrade/cat_1.0.sql'}, 
 			{'version':'1.1','script': 'upgrade/cat_1.1.sql'}, 
+			{'version':'1.2','script': 'upgrade/cat_1.2.sql'}, 
 		]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -513,11 +514,18 @@ class pg_engine(object):
 				script_schema=install["script"]
 				self.logger.info("script schema %s, detected schema version %s - install_script:%s " % (script_ver, cat_version, install_script))
 				if install_script==True:
+					sql_view="""
+					CREATE OR REPLACE VIEW sch_chameleon.v_version 
+						AS
+							SELECT %s::TEXT t_version
+					;"""
 					self.logger.info("Installing file version %s" % (script_ver, ))
 					file_schema=open(self.sql_dir+script_schema, 'rb')
 					sql_schema=file_schema.read()
 					file_schema.close()
 					self.pg_conn.pgsql_cur.execute(sql_schema)
+					self.pg_conn.pgsql_cur.execute(sql_view, (script_ver, ))
+					
 					if script_ver=='0.7':
 						sql_update="""
 							UPDATE sch_chameleon.t_sources
