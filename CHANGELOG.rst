@@ -2,7 +2,7 @@ changelog
 *************************
 
 
-1.2 - XX May 2017
+1.2 - 25 May 2017
 ...........................................
 * fix deadlock when replicating from multiple sources:
 * add source id when cleaning batches
@@ -12,6 +12,7 @@ changelog
 * exclude ddl when coming from schemas different from the one replicated
 * fix wrong quoting when capturing primary key inline
 * add error handling in read_replica
+* move the version view management in the pg_engine code
 
 1.1 - 13 May 2017
 ...........................................
