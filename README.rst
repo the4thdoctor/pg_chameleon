@@ -1,4 +1,8 @@
-.. image:: https://img.shields.io/github/issues/the4thdoctor/pg_chameleon.svg   :target: https://github.com/the4thdoctor/pg_chameleon/issues
+.. image:: https://img.shields.io/github/issues/the4thdoctor/pg_chameleon.svg   
+        :target: https://github.com/the4thdoctor/pg_chameleon/issues
+
+
+
 
 pg_chameleon `is available on pypi for download <https://pypi.python.org/pypi/pg_chameleon>`_ 
 
