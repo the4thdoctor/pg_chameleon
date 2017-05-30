@@ -11,7 +11,7 @@
         :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/master/LICENSE
 	
 .. image:: https://img.shields.io/twitter/url/https/github.com/the4thdoctor/pg_chameleon.svg?style=social   
-         :target: https://twitter.com/intent/tweet?text=Wow:&url=%5Bobject%20Object%5D
+         :target: https://twitter.com/intent/tweet?text=#pgchameleon:&url=%5Bobject%20Object%5D
 	
 pg_chameleon `is available on pypi for download <https://pypi.python.org/pypi/pg_chameleon>`_ 
 
