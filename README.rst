@@ -1,7 +1,11 @@
 .. image:: https://img.shields.io/github/issues/the4thdoctor/pg_chameleon.svg   :target: https://github.com/the4thdoctor/pg_chameleon/issues
+
 .. image:: https://img.shields.io/github/forks/the4thdoctor/pg_chameleon.svg   :target: https://github.com/the4thdoctor/pg_chameleon/network
+
 .. image:: https://img.shields.io/github/stars/the4thdoctor/pg_chameleon.svg   :target: https://github.com/the4thdoctor/pg_chameleon/stargazers
+
 .. image:: https://img.shields.io/badge/license-BSD-blue.svg   :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/master/LICENSE
+
 .. image:: https://img.shields.io/twitter/url/https/github.com/the4thdoctor/pg_chameleon.svg?style=social   :target: https://twitter.com/intent/tweet?text=Wow:&url=%5Bobject%20Object%5D
 
 
