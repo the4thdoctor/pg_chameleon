@@ -100,6 +100,7 @@ class pg_engine(object):
 			'set':'text', 
 			'json':'text', 
 			'bool':'boolean', 
+			'boolean':'boolean', 
 		}
 		self.table_ddl = {}
 		self.idx_ddl = {}
