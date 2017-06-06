@@ -106,7 +106,7 @@ class pg_engine(object):
 		self.idx_ddl = {}
 		self.type_ddl = {}
 		self.pg_charset = self.pg_conn.pg_charset
-		self.cat_version = '1.2'
+		self.cat_version = '1.3'
 		self.cat_sql = [
 			{'version':'base','script': 'create_schema.sql'}, 
 			{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -121,6 +121,7 @@ class pg_engine(object):
 			{'version':'1.0','script': 'upgrade/cat_1.0.sql'}, 
 			{'version':'1.1','script': 'upgrade/cat_1.1.sql'}, 
 			{'version':'1.2','script': 'upgrade/cat_1.2.sql'}, 
+			{'version':'1.3','script': 'upgrade/cat_1.3.sql'}, 
 		]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -158,9 +159,24 @@ class pg_engine(object):
 					(
 						%s,
 						%s
-					); 
+					)
+				RETURNING 
+					i_id_source
+				; 
 			"""
 			self.pg_conn.pgsql_cur.execute(sql_add, (source_name, dest_schema ))
+			source_add = self.pg_conn.pgsql_cur.fetchone()
+			sql_update = """
+				UPDATE sch_chameleon.t_sources
+					SET v_log_table=ARRAY[
+						't_log_replica_1_src_%s',
+						't_log_replica_2_src_%s'
+					]
+				WHERE i_id_source=%s
+				;
+			"""
+			self.pg_conn.pgsql_cur.execute(sql_update,  (source_add[0],source_add[0], source_add[0] ))
+			print(source_add[0])
 		else:
 			print("Source %s already registered." % source_name)
 		sys.exit()
@@ -758,11 +774,14 @@ class pg_engine(object):
 			RETURNING
 				i_id_batch,
 				t_binlog_name,
-				i_binlog_position ,
-				v_log_table
+				i_binlog_position,
+				(SELECT v_log_table[1] from sch_chameleon.t_sources WHERE i_id_source=%s) as v_log_table
+				
 			;
 		"""
-		self.pg_conn.pgsql_cur.execute(sql_batch, (self.i_id_source, ))
+		self.pg_conn.pgsql_cur.execute(sql_batch, (self.i_id_source,self.i_id_source ))
+		print(self.pg_conn.pgsql_cur.fetchall())
+		sys.exit()
 		return self.pg_conn.pgsql_cur.fetchall()
 	
 	def insert_batch(self,group_insert):
