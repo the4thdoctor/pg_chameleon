@@ -43,6 +43,8 @@ class pg_connection(object):
 			The method disconnects from the database closing the connection.
 		"""
 		self.pgsql_conn.close()
+	
+	
 		
 
 class pg_engine(object):
@@ -129,6 +131,19 @@ class pg_engine(object):
 			self.upgrade_service_schema()
 		self.table_limit = ['*']
 	
+	def set_application_name(self, action=""):
+		"""
+			The method sets the application name in the replica using the variable self.pg_conn.global_conf.source_name,
+			Making simpler to find the replication processes. If the source name is not set then a generic PGCHAMELEON name is used.
+		"""
+		if self.pg_conn.global_conf.source_name:
+			app_name = "[PGCH] - source: %s, action: %s" % (self.pg_conn.global_conf.source_name, action)
+		else:
+			app_name = "[PGCH]"
+		sql_app_name="""SET application_name=%s; """
+		self.pg_conn.pgsql_cur.execute(sql_app_name, (app_name , ))
+	
+		
 	def add_source(self, source_name, dest_schema):
 		"""
 			The method add a new source in the replica catalogue. 
@@ -769,6 +784,7 @@ class pg_engine(object):
 			
 			:param group_insert: the event data built in mysql_engine
 		"""
+		
 		self.logger.debug("starting insert loop")
 		for row_data in group_insert:
 			global_data=row_data["global_data"]
@@ -842,7 +858,7 @@ class pg_engine(object):
 			:param group_insert: the event data built in mysql_engine
 		"""
 		csv_file=io.StringIO()
-		
+		self.set_application_name("writing batch")
 		insert_list=[]
 		for row_data in group_insert:
 			global_data=row_data["global_data"]
@@ -926,6 +942,7 @@ class pg_engine(object):
 			
 			
 		"""
+		self.set_application_name("replay batch")
 		batch_loop=True
 		sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
 		while batch_loop:
@@ -945,7 +962,9 @@ class pg_engine(object):
 				AND i_id_source=%s
 			;
 		"""
+		self.set_application_name("cleanup old batches")
 		self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.batch_retention, self.i_id_source ))
+		self.set_application_name("idle")
 
 	def add_foreign_keys(self, source_name, fk_metadata):
 		"""
