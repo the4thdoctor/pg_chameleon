@@ -227,8 +227,14 @@ class pg_engine(object):
 			:param source_name: The source name stored in the configuration parameter source_name.
 		"""
 		sql_delete = """ DELETE FROM sch_chameleon.t_sources 
-					WHERE  t_source=%s; """
+					WHERE  t_source=%s
+					RETURNING v_log_table
+					; """
 		self.pg_conn.pgsql_cur.execute(sql_delete, (source_name, ))
+		source_drop = self.pg_conn.pgsql_cur.fetchone()
+		for log_table in source_drop[0]:
+			sql_drop = """DROP TABLE sch_chameleon."%s"; """ % (log_table)
+			self.pg_conn.pgsql_cur.execute(sql_drop)
 	
 		
 	
