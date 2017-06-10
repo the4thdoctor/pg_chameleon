@@ -5,7 +5,6 @@ import os
 import time
 import logging
 from logging.handlers  import TimedRotatingFileHandler
-import smtplib
 from tabulate import tabulate
 from distutils.sysconfig import get_python_lib
 from shutil import copy

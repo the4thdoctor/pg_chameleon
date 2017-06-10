@@ -245,7 +245,7 @@ class mysql_engine(object):
 						
 		my_stream.close()
 		if len(group_insert)>0:
-			self.logger.debug("writing the last %s events" % (total_events, ))
+			self.logger.debug("writing the last %s events" % (len(group_insert), ))
 			pg_engine.write_batch(group_insert)
 			close_batch=True
 		

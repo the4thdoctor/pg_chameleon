@@ -774,7 +774,7 @@ class pg_engine(object):
 				
 			;
 		"""
-		self.pg_conn.pgsql_cur.execute(sql_batch, (self.i_id_source, self.i_id_source, ))
+		self.pg_conn.pgsql_cur.execute(sql_batch, (self.i_id_source, self.i_id_source, self.i_id_source, ))
 		return self.pg_conn.pgsql_cur.fetchall()
 	
 	def insert_batch(self,group_insert):
