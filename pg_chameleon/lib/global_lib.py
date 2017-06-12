@@ -78,7 +78,7 @@ class global_config(object):
 		:param config_name: the configuration file to use. If omitted is set to default.
 	
 	"""
-	def __init__(self,config_name="default"):
+	def __init__(self,config_name="default", debug_mode=False):
 		"""
 			The class  constructor.
 		"""
@@ -181,11 +181,12 @@ class replica_engine(object):
 		The class sets the logging using the configuration parameter.
 		
 	"""
-	def __init__(self, config, stdout=False):
+	def __init__(self, config, debug_mode=False):
 		"""
 			Class constructor
 			:param stdout: forces the logging to stdout even if the logging destination is file
 		"""
+		self.debug_mode = debug_mode
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		self.global_config=global_config(config)
 		self.logger = logging.getLogger(__name__)
@@ -193,13 +194,13 @@ class replica_engine(object):
 		self.logger.propagate = False
 		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(filename)s (%(lineno)s): %(message)s", "%b %e %H:%M:%S")
 		
-		if self.global_config.log_dest=='stdout' or stdout:
+		if self.global_config.log_dest=='stdout' or self.debug_mode:
 			fh=logging.StreamHandler(sys.stdout)
 			
 		elif self.global_config.log_dest=='file':
 			fh = TimedRotatingFileHandler(self.global_config.log_file, when="d",interval=1,backupCount=self.global_config.log_days_keep)
 		
-		if self.global_config.log_level=='debug':
+		if self.global_config.log_level=='debug' or self.debug_mode:
 			fh.setLevel(logging.DEBUG)
 		elif self.global_config.log_level=='info':
 			fh.setLevel(logging.INFO)
@@ -398,14 +399,17 @@ class replica_engine(object):
 		
 		self.pg_eng.set_source_id('running')
 		while True:
-			try:
+			if self.debug_mode:
 				self.my_eng.run_replica(self.pg_eng)
-			except :
-				self.pg_eng.set_source_id('error')
-				self.logger.error("An error occurred during the replica. %s" % (sys.exc_info(), ))
-				exit=open(self.exit_file, 'w')
-				exit.close()
-				sys.exit(5)
+			else:
+				try:
+					self.my_eng.run_replica(self.pg_eng)
+				except :
+					self.pg_eng.set_source_id('error')
+					self.logger.error("An error occurred during the replica. %s" % (sys.exc_info(), ))
+					exit=open(self.exit_file, 'w')
+					exit.close()
+					sys.exit(5)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
 			if self.check_file_exit():
 				break
