@@ -641,7 +641,7 @@ class pg_engine(object):
 				t_source,
 				t_dest_schema,
 				enm_status,
-				extract(epoch from now()-ts_last_event)::integer as i_seconds_behind_master,
+				 date_trunc('seconds',now())-ts_last_event lag,
 				ts_last_event 
 			FROM 
 				sch_chameleon.t_sources
