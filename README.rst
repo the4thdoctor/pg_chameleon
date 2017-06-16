@@ -28,12 +28,9 @@ Platform and versions
 The tool is developed using Linux Slackware 14.2. 
 Is currently tested with python 2.7 and python 3.6.
 
-The  tool is developed using FreeBSD as database server with
+The database server is a FreeBSD  11.0 with MySQL: 5.6 and PostgreSQL: 9.5 
 
-* MySQL: 5.6
-* PostgreSQL: 9.5 
-
-Possible applications
+Example scenarios 
 ..............................
 
 * Analytics 
@@ -45,11 +42,12 @@ Features
 
 * Read the schema and data from MySQL and restore it into a target PostgreSQL schema
 * Setup PostgreSQL to act as a MySQL slave
+* Support for enumerated and binary data types
 * Basic DDL Support (CREATE/DROP/ALTER TABLE, DROP PRIMARY KEY/TRUNCATE)
-* Discards of rubbish data which is saved in the table sch_chameleon.t_discarded_rows
+* Discards of rubbish data coming from the replica. The problematic rows are saved in the table sch_chameleon.t_discarded_rows
 * Replica from multiple MySQL schema or servers 
 * Basic replica monitoring 
-* Detach replica from MySQL
+* Detach replica from MySQL for migration support
 
 
 
