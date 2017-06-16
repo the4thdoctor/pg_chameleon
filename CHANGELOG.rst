@@ -9,6 +9,7 @@ changelog
 * fix regexp for foreign keys when omitting CONSTRAINT keyword
 * change lag display in show_status from seconds to interval for better display
 * add quote_col method in sql_token class to ensure all index columns are correctly quoted
+* add a release_notes file for the details on the releases 1.3+
 
 1.2 - 25 May 2017
 ...........................................
