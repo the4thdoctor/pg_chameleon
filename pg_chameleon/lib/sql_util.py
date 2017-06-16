@@ -31,7 +31,7 @@ class sql_token(object):
 		self.m_ukeys=re.compile(r',\s*UNIQUE\s*KEY\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_keys=re.compile(r',\s*(?:UNIQUE)?\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((?:.*?)\)\s*', re.IGNORECASE)
 		self.m_idx=re.compile(r',\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
-		self.m_fkeys=re.compile(r',\s*(?:CONSTRAINT)\s*`?\w*`?\s*FOREIGN\s*KEY(?:\(?.*\(??)(?:\s*REFERENCES\s*`?\w*`)?(?:ON\s*(?:DELETE|UPDATE)\s*(?:RESTRICT|CASCADE)\s*)?', re.IGNORECASE)
+		self.m_fkeys=re.compile(r',\s*(?:CONSTRAINT)?\s*`?\w*`?\s*FOREIGN\s*KEY(?:\(?.*\(??)(?:\s*REFERENCES\s*`?\w*`)?(?:ON\s*(?:DELETE|UPDATE)\s*(?:RESTRICT|CASCADE)\s*)?', re.IGNORECASE)
 		self.m_inline_pkeys=re.compile(r'(.*?)\bPRIMARY\b\s*\bKEY\b', re.IGNORECASE)
 		
 		#re for fields
@@ -59,7 +59,7 @@ class sql_token(object):
 		
 	def reset_lists(self):
 		"""
-			The method reset the lists to empty lists after a successful tokenisation.
+			The method resets the lists to empty lists after a successful tokenisation.
 		"""
 		self.tokenised=[]
 		self.query_list=[]
@@ -107,6 +107,23 @@ class sql_token(object):
 				col_dic["extra"]=""
 		return col_dic
 		
+	def quote_cols(self, cols):
+		"""
+			The method adds the " quotes to the column names.
+			The string is converted to a list using the split method with the comma separator.
+			The columns are then stripped and quoted with the "".
+			Finally the list elements are rejoined in a string which is returned.
+			The method is used in build_key_dic to sanitise the column names.
+			
+			:param cols: The columns string
+			:return: The columns quoted between ".
+			:rtype: text
+		"""
+		idx_cols = cols.split(',')
+		idx_cols = ['"%s"' % col.strip() for col in idx_cols]
+		quoted_cols = ",".join(idx_cols)
+		return quoted_cols
+	
 	
 	def build_key_dic(self, inner_stat, table_name):
 		"""
@@ -140,32 +157,34 @@ class sql_token(object):
 		idx_list=[]
 		idx_counter=0
 		inner_stat=inner_stat.strip()
-		#print inner_stat
-		pk_match =  self.m_inline_pkeys.match(inner_stat)
-		
-		
 
+		pk_match =  self.m_inline_pkeys.match(inner_stat)
 		pkey=self.m_pkeys.findall(inner_stat)
+
 		ukey=self.m_ukeys.findall(inner_stat)
 		idx=self.m_idx.findall(inner_stat)
+
 		if pk_match:
 			key_dic["index_name"]='PRIMARY'
-			key_dic["index_columns"] = (pk_match.group(1).strip().split()[0]).replace('`', '"')
+			idx_cols = (pk_match.group(1).strip().split()[0]).replace('`', '')
+			key_dic["index_columns"] = self.quote_cols(idx_cols)
 			key_dic["non_unique"]=0
-			self.pkey_cols=key_dic["index_columns"]
+			self.pkey_cols = idx_cols
 			idx_list.append(dict(list(key_dic.items())))
 			key_dic={}
 		elif pkey:
 			key_dic["index_name"]='PRIMARY'
-			key_dic["index_columns"]=pkey[0].replace('`', '"')
+			idx_cols = pkey[0].replace('`', '')
+			key_dic["index_columns"] = self.quote_cols(idx_cols)
 			key_dic["non_unique"]=0
-			self.pkey_cols=key_dic["index_columns"]
+			self.pkey_cols = idx_cols
 			idx_list.append(dict(list(key_dic.items())))
-			key_dic={}
+			key_dic = {}
 		if ukey:
 			for cols in ukey:
-				key_dic["index_name"]='ukidx_'+table_name[0:20]+'_'+str(idx_counter)
-				key_dic["index_columns"]=cols.replace('`', '"')
+				key_dic["index_name"] = 'ukidx_'+table_name[0:20]+'_'+str(idx_counter)
+				idx_cols = cols.replace('`', '"')
+				key_dic["index_columns"] = self.quote_cols(idx_cols)
 				key_dic["non_unique"]=0
 				idx_list.append(dict(list(key_dic.items())))
 				key_dic={}
@@ -173,7 +192,8 @@ class sql_token(object):
 		if idx:
 			for cols in idx:
 				key_dic["index_name"]='idx_'+table_name[0:20]+'_'+str(idx_counter)
-				key_dic["index_columns"]=cols.replace('`', '"')
+				idx_cols = cols.replace('`', '"')
+				key_dic["index_columns"] = self.quote_cols(idx_cols)
 				key_dic["non_unique"]=1
 				idx_list.append(dict(list(key_dic.items())))
 				key_dic={}

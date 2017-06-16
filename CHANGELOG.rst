@@ -5,6 +5,10 @@ changelog
 * each source now uses two dedicated log tables for better performance
 * set descriptive application_name in postgres process to track the replica activity
 * fix race condition when two sources have a batch with the same value in t_replica_batch.ts_created
+* add switch --debug for having the log on console with DEBUG verbosity without need to change configuration file
+* fix regexp for foreign keys when omitting CONSTRAINT keyword
+* change lag display in show_status from seconds to interval for better display
+* add quote_col method in sql_token class to ensure all index columns are correctly quoted
 
 1.2 - 25 May 2017
 ...........................................
