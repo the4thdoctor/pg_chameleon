@@ -4,6 +4,14 @@ RELEASE NOTES
 Version 1.3 
 --------------------------
 
+sync_replica disabled
+.....................................
+
+The sync_replica command have some unexpected behaviour when running in single table mode.
+As the implications need correct addressing with this release the command is temporarly disabled. 
+
+Change in replica storage
+.....................................
 The initial implementation for the relay data was to have two log tables t_log_replica_1 and t_log_replica_2 with the
 replica process accessing one table at a time. 
 
@@ -30,7 +38,7 @@ The migration performs the following operations.
 * removes the field v_log_table from t_replica_batch
 
 Upgrade
-.....................................
+--------------------------
 
 **please read carefully before attempting any upgrade**
 

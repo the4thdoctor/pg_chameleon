@@ -11,6 +11,7 @@ changelog
 * add quote_col method in sql_token class to ensure all index columns are correctly quoted
 * add a release_notes file for the details on the releases 1.3+
 * fix wrong timestamp save when updating the last received event in sources
+* temporarly disable sync_replica because is not working as expected
 
 1.2 - 25 May 2017
 ...........................................

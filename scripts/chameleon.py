@@ -57,8 +57,8 @@ if args.command in commands:
 		replica.stop_replica(allow_restart=False)
 	elif args.command == commands[10]:
 		replica.enable_replica()
-	elif args.command == commands[11]:
-		replica.sync_replica(args.table)
+	#elif args.command == commands[11]:
+	#	replica.sync_replica(args.table)
 	elif args.command == commands[12]:
 		replica.show_status()
 	elif args.command == commands[13]:
