@@ -28,6 +28,15 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 
 `Release available via pypi <https://pypi.python.org/pypi/pg_chameleon/>`_
 
+RELEASE NOTES
+********************
+
+.. toctree::
+   :maxdepth: 2
+
+    <./release_notes.rst>
+
+
 README
 ********************
 
