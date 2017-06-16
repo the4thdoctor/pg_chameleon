@@ -50,19 +50,7 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #statement = """CREATE TABLE TEST(ID integer auto_increment primary key);"""
 #statement = """CREATE TABLE test (id integer auto_increment, primary key(`id`)  )"""
 #statement = """TRUNCATE table  `test`;"""
-statement = """CREATE TABLE transfer_metadata (
-                                id BIGINT PRIMARY KEY NOT NULL AUTO_INCREMENT,
-                                request_id BIGINT NOT NULL,
-                                metadata_key VARCHAR(100) NOT NULL,
-                                value LONGTEXT NOT NULL,
-                                date_created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                expires TIMESTAMP NULL,
-
-                                FOREIGN KEY (request_id) REFERENCES film (film_id),
-                                UNIQUE KEY (request_id, metadata_key),
-                                INDEX (expires)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-"""
+statement = """"""
 token_sql=sql_token()
 token_sql.parse_sql(statement)
 print (token_sql.tokenised)

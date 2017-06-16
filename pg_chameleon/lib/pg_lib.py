@@ -676,10 +676,7 @@ class pg_engine(object):
 		master_data = master_status[0]
 		binlog_name = master_data["File"]
 		binlog_position = master_data["Position"]
-		try:
-			event_time = datetime.datetime.fromtimestamp(master_data["Time"]).isoformat()
-		except:
-			event_time  = None
+		event_time = master_data["Time"]
 		sql_master="""
 			INSERT INTO sch_chameleon.t_replica_batch
 				(
@@ -700,7 +697,7 @@ class pg_engine(object):
 		sql_event="""
 			UPDATE sch_chameleon.t_sources 
 			SET 
-				ts_last_event=%s,
+				ts_last_event=to_timestamp(%s),
 				v_log_table=ARRAY[v_log_table[2],v_log_table[1]]
 				
 			WHERE 
