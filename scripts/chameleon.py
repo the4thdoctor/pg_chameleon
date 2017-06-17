@@ -57,7 +57,8 @@ if args.command in commands:
 		replica.stop_replica(allow_restart=False)
 	elif args.command == commands[10]:
 		replica.enable_replica()
-	#elif args.command == commands[11]:
+	elif args.command == commands[11]:
+		print('Command %s not available. Check http://pythonhosted.org/pg_chameleon/release_notes.html#version-1-3 for more info.' % (args.command, ))
 	#	replica.sync_replica(args.table)
 	elif args.command == commands[12]:
 		replica.show_status()

@@ -7,8 +7,8 @@ Version 1.3
 sync_replica disabled
 .....................................
 
-The sync_replica command have some unexpected behaviour when running in single table mode.
-As the implications need correct addressing with this release the command is temporarly disabled. 
+The sync_replica command do not work as expected when running in single table mode.
+As the issue requires time to be fixed this release temporarly  disables the sync_replica command. 
 
 Change in replica storage
 .....................................

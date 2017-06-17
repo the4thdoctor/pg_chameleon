@@ -1,6 +1,6 @@
 changelog 
 *************************
-1.3 - XX Jun 2017
+1.3 - 17 Jun 2017
 ...........................................
 * each source now uses two dedicated log tables for better performance
 * set descriptive application_name in postgres process to track the replica activity
