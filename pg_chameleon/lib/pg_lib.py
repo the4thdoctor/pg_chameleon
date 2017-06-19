@@ -676,7 +676,10 @@ class pg_engine(object):
 		master_data = master_status[0]
 		binlog_name = master_data["File"]
 		binlog_position = master_data["Position"]
-		event_time = master_data["Time"]
+		try:
+			event_time = master_data["Time"]
+		except:
+			event_time = None
 		sql_master="""
 			INSERT INTO sch_chameleon.t_replica_batch
 				(

@@ -1,5 +1,10 @@
 changelog 
 *************************
+1.3.1 - 19 Jun 2017
+...........................................
+* fix regression in save_master_status when the time is missing in the master's coordinates
+
+
 1.3 - 17 Jun 2017
 ...........................................
 * each source now uses two dedicated log tables for better performance
