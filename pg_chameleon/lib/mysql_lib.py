@@ -156,6 +156,7 @@ class mysql_engine(object):
 					my_stream.close()
 					return [master_data, close_batch]
 			elif isinstance(binlogevent, QueryEvent):
+				event_time = binlogevent.timestamp
 				try:
 					query_schema = binlogevent.schema.decode()
 				except:
