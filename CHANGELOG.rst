@@ -3,7 +3,7 @@ changelog
 1.3.1 - 19 Jun 2017
 ...........................................
 * fix regression in save_master_status when the time is missing in the master's coordinates
-
+* fix missing timestamp for event when capturing a DDL
 
 1.3 - 17 Jun 2017
 ...........................................
