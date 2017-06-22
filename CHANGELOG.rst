@@ -1,5 +1,9 @@
 changelog 
 *************************
+1.4 - XX XXX 2017
+...........................................
+* add varbinary to the type conversion dictionary
+
 1.3.1 - 19 Jun 2017
 ...........................................
 * fix regression in save_master_status when the time is missing in the master's coordinates
