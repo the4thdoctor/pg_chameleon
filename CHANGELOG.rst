@@ -3,6 +3,7 @@ changelog
 1.4 - XX XXX 2017
 ...........................................
 * add varbinary to the type conversion dictionary
+* fix wrong quoting when key field is surrounded by backtick `
 
 1.3.1 - 19 Jun 2017
 ...........................................

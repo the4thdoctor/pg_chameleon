@@ -183,7 +183,7 @@ class sql_token(object):
 		if ukey:
 			for cols in ukey:
 				key_dic["index_name"] = 'ukidx_'+table_name[0:20]+'_'+str(idx_counter)
-				idx_cols = cols.replace('`', '"')
+				idx_cols = cols.replace('`', '')
 				key_dic["index_columns"] = self.quote_cols(idx_cols)
 				key_dic["non_unique"]=0
 				idx_list.append(dict(list(key_dic.items())))
@@ -192,7 +192,7 @@ class sql_token(object):
 		if idx:
 			for cols in idx:
 				key_dic["index_name"]='idx_'+table_name[0:20]+'_'+str(idx_counter)
-				idx_cols = cols.replace('`', '"')
+				idx_cols = cols.replace('`', '')
 				key_dic["index_columns"] = self.quote_cols(idx_cols)
 				key_dic["non_unique"]=1
 				idx_list.append(dict(list(key_dic.items())))
