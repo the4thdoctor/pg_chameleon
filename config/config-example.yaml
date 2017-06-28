@@ -32,7 +32,8 @@ hexify:
     - 'mediumblob'
     - 'longblob'
     - 'binary'
-
+    - 'varbinary'
+    - 'geometry'
  
 pid_dir: '~/.pg_chameleon/pid/'
 

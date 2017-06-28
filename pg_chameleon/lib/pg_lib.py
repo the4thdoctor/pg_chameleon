@@ -104,6 +104,7 @@ class pg_engine(object):
 			'json':'text', 
 			'bool':'boolean', 
 			'boolean':'boolean', 
+			'geometry':'bytea',
 		}
 		self.table_ddl = {}
 		self.idx_ddl = {}
