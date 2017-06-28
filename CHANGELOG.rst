@@ -4,6 +4,8 @@ changelog
 ...........................................
 * add varbinary to the type conversion dictionary
 * fix wrong quoting when key field is surrounded by backtick `
+* add geometry to the supported types
+* add varbinary and geometry to hexify in config-example.yaml
 
 1.3.1 - 19 Jun 2017
 ...........................................
