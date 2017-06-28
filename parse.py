@@ -42,23 +42,13 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #statement="""ALTER TABLE test ADD COLUMN `dkdkd` timestamp NULL;"""
 #statement="""create table test_pk (id int ,PRIMARY KEY  (id) ); """
 #statement="""alter table test change   date_create_new date_create_new timestamp;"""
-#statement="""ALTER TABLE `test_table` MODIFY `test_column` bigint(20) DEFAULT NULL; 
-#ALTER TABLE table2 CHANGE column1 column2 bigint(20);
-#ALTER TABLE `test_table` MODIFY `test_column` enum('blah','dd') DEFAULT NULL; """
-#statement="""ALTER TABLE `test_table` ADD UNIQUE INDEX `idx_unique` (`log`, `status`);"""
-#statement = """CREATE TABLE test (`id` integer null auto_increment primary key, `test_col` bigint(20)) ;"""
-#statement = """CREATE TABLE TEST(ID integer auto_increment primary key);"""
-#statement = """CREATE TABLE test (id integer auto_increment, primary key(`id`)  )"""
-#statement = """TRUNCATE table  `test`;"""
-statement = """"""
+
+
 token_sql=sql_token()
 token_sql.parse_sql(statement)
 print (token_sql.tokenised)
-for token in token_sql.tokenised:
-	print(token)
+#for token in token_sql.tokenised:
 #	if   token["command"]=="ALTER TABLE":
-#		alter_cmd = token["alter_cmd"][0]
-#		if alter_cmd["command"] == "MODIFY" and alter_cmd["type"] == 'enum':
-#			print(alter_cmd["dimension"].split(','))
+#		print(token)
 	#else:	
 	

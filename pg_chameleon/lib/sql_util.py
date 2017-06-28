@@ -289,7 +289,7 @@ class sql_token(object):
 			:return: stat_dic the alter table dictionary tokenised from the match object.
 			:rtype: dictionary
 		"""
-		excluded_names = ['CONSTRAINT', 'PRIMARY']
+		excluded_names = ['CONSTRAINT', 'PRIMARY', 'INDEX']
 		stat_dic={}
 		alter_cmd=[]
 		alter_stat=malter_table.group(0) + ','

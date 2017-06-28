@@ -6,6 +6,7 @@ changelog
 * fix wrong quoting when key field is surrounded by backtick `
 * add geometry to the supported types
 * add varbinary and geometry to hexify in config-example.yaml
+* add INDEX to excluded words when parsing alter table. this prevents the ddl replica to crash when the alter table adds an index
 
 1.3.1 - 19 Jun 2017
 ...........................................
