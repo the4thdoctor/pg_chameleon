@@ -700,10 +700,19 @@ class mysql_engine(object):
 		self.get_master_status()
 	
 	def unlock_tables(self):
-		"""The method unlocks the tables previously locked by lock_tables"""
+		"""
+			The method unlocks the tables previously locked by lock_tables
+		"""
 		t_sql_unlock="UNLOCK TABLES;"
 		self.mysql_con.my_cursor.execute(t_sql_unlock)
-			
+	
+	def sync_tables(self, pg_engine):
+		"""
+			The method syncronise the tables following the similar rules in init_replica. 
+			The tables are stored in the replica catalogue with the snapshot's master coordinates in order to
+			have a consistent replica process.
+			:param pg_engine: The postgresql engine object required for writing the rows in the log tables
+		"""
 			
 	def __del__(self):
 		"""

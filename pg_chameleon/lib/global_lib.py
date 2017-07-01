@@ -489,14 +489,25 @@ class replica_engine(object):
 		self.my_eng.copy_table_data(self.pg_eng, self.global_config.copy_max_memory)
 		self.pg_eng.save_master_status(self.my_eng.master_status, cleanup=True)
 
-	def sync_replica(self, table):
+	def sync_tables(self, table):
 		"""
-			syncronise the table data without destroying them.
-			The process is very similar to the init_replica except for the fact the tables are not dropped.
-			The existing indices are dropped and created after the data load in order to speed up the process.
-			Is possible to restrict the sync to a limited set of tables.
-			
+			syncronise single tables with the mysql master.
+			The process attempts to drop the existing tables or add them if not present.
+			The tables are stored in the replica catalogue with their master's coordinates and are ignored until the replica process reaches
+			the correct position. 
 			:param table: comma separated list of table names to synchronise
+		"""
+		if table != "*":
+			self.my_eng.lock_tables()
+			self.pg_eng.table_limit=table.split(',')
+			self.pg_eng.set_source_id('initialising')
+			self.stop_replica(allow_restart=False)
+			self.pg_eng.set_source_id('initialised')
+			self.my_eng.sync_tables(self.pg_eng)
+			self.my_eng.unlock_tables()
+			self.enable_replica()
+		else:
+			print("You should specify at least one table to synchronise.")
 		"""
 		self.stop_replica(allow_restart=False)
 		self.pg_eng.table_limit=table.split(',')
@@ -508,4 +519,4 @@ class replica_engine(object):
 		self.pg_eng.create_src_indices()
 		self.pg_eng.set_source_id('initialised')
 		self.enable_replica()
-		
+		"""
