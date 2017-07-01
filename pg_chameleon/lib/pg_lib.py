@@ -307,7 +307,7 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_create)
 		self.pg_conn.pgsql_cur.execute(sql_path)
 	
-	def store_table(self, table_name):
+	def store_table(self, table_name, master_data=None):
 		"""
 			The method saves the table name along with the primary key definition in the table t_replica_tables.
 			This is required in order to let the replay procedure which primary key to use replaying the update and delete.

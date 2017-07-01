@@ -12,9 +12,9 @@ VALUES
 (4,'is 42');
 
 /*
-stop the replica then run  call prepare_data then run this additional inserts */
+stop the replica then run  call prepare_data then run this additional inserts 
 
-
+call prepare_data;
 INSERT INTO test_pkeyless (id,value1)
 VALUES
 (5,'rainbow'),
@@ -24,3 +24,8 @@ VALUES
 (9,'rarity')
 ;
 
+
+
+*/
+
+ALTER TABLE `test_pkeyless` ADD COLUMN `id_pkey` INT AUTO_INCREMENT UNIQUE FIRST; 
