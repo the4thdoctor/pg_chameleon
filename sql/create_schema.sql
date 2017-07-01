@@ -289,122 +289,122 @@ $BODY$
 				WHERE
 					i_id_batch=v_r_rows.i_id_batch
 				;
-            ELSE
-    			SELECT 
-    				array_agg(key) evt_fields,
-    				array_agg(value) evt_values
-    				INTO
-    					v_t_fields,
-    					v_t_values
-    			FROM (
-    				SELECT 
-    					key ,
-    					value
-    				FROM 
-    					jsonb_each_text(v_r_rows.jsb_event_data) js_event
-    			     ) js_dat
-    			;
+			ELSE
+				SELECT 
+					array_agg(key) evt_fields,
+					array_agg(value) evt_values
+					INTO
+						v_t_fields,
+						v_t_values
+				FROM (
+					SELECT 
+						key ,
+						value
+					FROM 
+						jsonb_each_text(v_r_rows.jsb_event_data) js_event
+				     ) js_dat
+				;
     
     			
-    			WITH 	t_jsb AS
-    				(
-    					SELECT 
-							CASE
-								WHEN v_r_rows.enm_binlog_event='update'
-								THEN 
-									v_r_rows.jsb_event_update
-							ELSE
-								v_r_rows.jsb_event_data 
-							END jsb_event_data ,
-    						v_r_rows.v_table_pkey v_table_pkey
-    				),
-    				t_subscripts AS
-    				(
-    					SELECT 
-    						generate_subscripts(v_table_pkey,1) sub
-    					FROM 
-    						t_jsb
-    				)
-    			SELECT 
-    				array_to_string(v_table_pkey,','),
-    				''''||array_to_string(array_agg((jsb_event_data->>v_table_pkey[sub])::text),''',''')||'''' as pk_value
-    				INTO 
-    					v_t_pkey,
-    					v_t_vals
-    
-    			FROM
-    				t_subscripts,t_jsb
-    			GROUP BY v_table_pkey
-    			;
+				WITH 	t_jsb AS
+					(
+						SELECT 
+								CASE
+									WHEN v_r_rows.enm_binlog_event='update'
+									THEN 
+										v_r_rows.jsb_event_update
+								ELSE
+									v_r_rows.jsb_event_data 
+								END jsb_event_data ,
+							v_r_rows.v_table_pkey v_table_pkey
+					),
+					t_subscripts AS
+					(
+						SELECT 
+							generate_subscripts(v_table_pkey,1) sub
+						FROM 
+							t_jsb
+					)
+				SELECT 
+					array_to_string(v_table_pkey,','),
+					''''||array_to_string(array_agg((jsb_event_data->>v_table_pkey[sub])::text),''',''')||'''' as pk_value
+					INTO 
+						v_t_pkey,
+						v_t_vals
+	    
+				FROM
+					t_subscripts,t_jsb
+				GROUP BY v_table_pkey
+				;
     			
-    			RAISE DEBUG '% % % % % %',v_r_rows.v_table_name,
-    					v_r_rows.v_schema_name,
-    					v_r_rows.v_table_pkey,
-    					v_r_rows.enm_binlog_event,v_t_fields,v_t_values;
-    			IF v_r_rows.enm_binlog_event='delete'
-    			THEN
-    				v_t_sql_rep=format('DELETE FROM %I.%I WHERE (%s)=(%s) ;',
-    							v_r_rows.v_schema_name,
-    							v_r_rows.v_table_name,
-    							v_r_rows.v_pkey_where,
-    							v_t_vals
-    						);
-    				RAISE DEBUG '%',v_t_sql_rep;
-    			ELSEIF v_r_rows.enm_binlog_event='update'
-    			THEN 
-    				SELECT 
-    					array_to_string(array_agg(format('%I=%L',t_field,t_value)),',') 
-    					INTO
-    						v_t_update
-    				FROM
-    				(
-    					SELECT 
-    						unnest(v_t_fields) t_field, 
-    						unnest(v_t_values) t_value
-    				) t_val
-    				;
+				RAISE DEBUG '% % % % % %',v_r_rows.v_table_name,
+						v_r_rows.v_schema_name,
+						v_r_rows.v_table_pkey,
+						v_r_rows.enm_binlog_event,v_t_fields,v_t_values;
+				IF v_r_rows.enm_binlog_event='delete'
+				THEN
+					v_t_sql_rep:=format('DELETE FROM %I.%I WHERE (%s)=(%s) ;',
+								v_r_rows.v_schema_name,
+								v_r_rows.v_table_name,
+								v_r_rows.v_pkey_where,
+								v_t_vals
+							);
+					RAISE DEBUG '%',v_t_sql_rep;
+				ELSEIF v_r_rows.enm_binlog_event='update'
+				THEN 
+					SELECT 
+						array_to_string(array_agg(format('%I=%L',t_field,t_value)),',') 
+						INTO
+							v_t_update
+					FROM
+					(
+						SELECT 
+							unnest(v_t_fields) t_field, 
+							unnest(v_t_values) t_value
+					) t_val
+					;
     
-    				v_t_sql_rep=format('UPDATE  %I.%I 
-    								SET
-    									%s
-    							WHERE (%s)=(%s) ;',
-    							v_r_rows.v_schema_name,
-    							v_r_rows.v_table_name,
-    							v_t_update,
-    							v_r_rows.v_pkey_where,
-    							v_t_vals
-    						);
-    				RAISE DEBUG '%',v_t_sql_rep;
-    			ELSEIF v_r_rows.enm_binlog_event='insert'
-    			THEN
-    				SELECT 
-    					array_to_string(array_agg(format('%I',t_field)),',') t_field,
-    					array_to_string(array_agg(format('%L',t_value)),',') t_value
-    					INTO
-    						v_t_ins_fld,
-    						v_t_ins_val
-    				FROM
-    				(
-    					SELECT 
-    						unnest(v_t_fields) t_field, 
-    						unnest(v_t_values) t_value
-    				) t_val
-    				;
-    				v_t_sql_rep=format('INSERT INTO  %I.%I 
-    								(
-    									%s
-    								)
-    							VALUES
-    								(
-    									%s
-    								)
-    							;',
-    							v_r_rows.v_schema_name,
-    							v_r_rows.v_table_name,
-    							v_t_ins_fld,
-    							v_t_ins_val
-    							
-    						);
+					v_t_sql_rep=format('UPDATE  %I.%I 
+									SET
+										%s
+								WHERE (%s)=(%s) ;',
+								v_r_rows.v_schema_name,
+								v_r_rows.v_table_name,
+								v_t_update,
+								v_r_rows.v_pkey_where,
+								v_t_vals
+							);
+					RAISE DEBUG '%',v_t_sql_rep;
+				ELSEIF v_r_rows.enm_binlog_event='insert'
+				THEN
+					SELECT 
+						array_to_string(array_agg(format('%I',t_field)),',') t_field,
+						array_to_string(array_agg(format('%L',t_value)),',') t_value
+						INTO
+							v_t_ins_fld,
+							v_t_ins_val
+					FROM
+					(
+						SELECT 
+							unnest(v_t_fields) t_field, 
+							unnest(v_t_values) t_value
+					) t_val
+					;
+					v_t_sql_rep=format('INSERT INTO  %I.%I 
+									(
+										%s
+									)
+								VALUES
+									(
+										%s
+									)
+								;',
+								v_r_rows.v_schema_name,
+								v_r_rows.v_table_name,
+								v_t_ins_fld,
+								v_t_ins_val
+								
+							);
     
     				RAISE DEBUG '%',v_t_sql_rep;
     			END IF;
