@@ -110,7 +110,7 @@ class pg_engine(object):
 		self.idx_ddl = {}
 		self.type_ddl = {}
 		self.pg_charset = self.pg_conn.pg_charset
-		self.cat_version = '1.3'
+		self.cat_version = '1.4'
 		self.cat_sql = [
 			{'version':'base','script': 'create_schema.sql'}, 
 			{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -126,6 +126,7 @@ class pg_engine(object):
 			{'version':'1.1','script': 'upgrade/cat_1.1.sql'}, 
 			{'version':'1.2','script': 'upgrade/cat_1.2.sql'}, 
 			{'version':'1.3','script': 'upgrade/cat_1.3.sql'}, 
+			{'version':'1.4','script': 'upgrade/cat_1.4.sql'},
 		]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
