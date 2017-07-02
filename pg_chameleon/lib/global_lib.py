@@ -498,6 +498,8 @@ class replica_engine(object):
 			:param table: comma separated list of table names to synchronise
 		"""
 		if table != "*":
+			table_limit = table.split(',')
+			self.my_eng.table_limit = table_limit
 			self.my_eng.lock_tables()
 			self.pg_eng.table_limit=table.split(',')
 			self.pg_eng.set_source_id('initialising')
