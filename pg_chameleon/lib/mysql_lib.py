@@ -555,7 +555,7 @@ class mysql_engine(object):
 			insert_data =  self.mysql_con.my_cursor_fallback.fetchall()
 			pg_engine.insert_data(table_name, insert_data , self.my_tables)
 
-	def copy_table_data(self, pg_engine,  copy_max_memory):
+	def copy_table_data(self, pg_engine,  copy_max_memory, lock_tables=True):
 		"""
 			copy the table data from mysql to postgres
 			param pg_engine: The postgresql engine required to write into the postgres database.
@@ -574,11 +574,13 @@ class mysql_engine(object):
 			
 			:param pg_engine: the postgresql engine
 			:param copy_max_memory: The estimated maximum amount of memory to use in a single slice copy
+			:param lock_tables: Specifies whether the tables should be locked before copying the data
 			
 		"""
 		out_file='%s/output_copy.csv' % self.out_dir
 		self.logger.info("locking the tables")
-		self.lock_tables()
+		if lock_tables:
+			self.lock_tables()
 		table_list = []
 		if pg_engine.table_limit[0] == '*':
 			for table_name in self.my_tables:
@@ -669,7 +671,8 @@ class mysql_engine(object):
 				ins_arg.append(copy_limit)
 				self.insert_table_data(pg_engine, ins_arg)
 		self.logger.info("releasing the lock")
-		self.unlock_tables()
+		if lock_tables:
+			self.unlock_tables()
 		try:
 			remove(out_file)
 		except:
@@ -706,13 +709,8 @@ class mysql_engine(object):
 		t_sql_unlock="UNLOCK TABLES;"
 		self.mysql_con.my_cursor.execute(t_sql_unlock)
 	
-	def sync_tables(self, pg_engine):
-		"""
-			The method syncronise the tables following the similar rules in init_replica. 
-			The tables are stored in the replica catalogue with the snapshot's master coordinates in order to
-			have a consistent replica process.
-			:param pg_engine: The postgresql engine object required for writing the rows in the log tables
-		"""
+	
+		
 			
 	def __del__(self):
 		"""

@@ -499,13 +499,16 @@ class replica_engine(object):
 		"""
 		if table != "*":
 			table_limit = table.split(',')
-			self.my_eng.table_limit = table_limit
 			self.my_eng.lock_tables()
-			self.pg_eng.table_limit=table.split(',')
+			self.pg_eng.table_limit=table_limit
 			self.pg_eng.set_source_id('initialising')
 			self.stop_replica(allow_restart=False)
+			self.pg_eng.create_schema()
+			self.pg_eng.build_tab_ddl()
+			self.pg_eng.create_tables()
+			self.my_eng.copy_table_data(self.pg_eng,  self.global_config.copy_max_memory, False)
+			self.pg_eng.create_indices()
 			self.pg_eng.set_source_id('initialised')
-			self.my_eng.sync_tables(self.pg_eng)
 			self.my_eng.unlock_tables()
 			self.enable_replica()
 		else:
