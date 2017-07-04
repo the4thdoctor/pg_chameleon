@@ -329,8 +329,10 @@ class pg_engine(object):
 			binlog_file = None
 			binlog_pos = None
 		table_data=self.table_metadata[table_name]
+		table_no_pk = True
 		for index in table_data["indices"]:
 			if index["index_name"]=="PRIMARY":
+				table_no_pk = False
 				sql_insert=""" 
 					INSERT INTO sch_chameleon.t_replica_tables 
 						(
@@ -366,8 +368,22 @@ class pg_engine(object):
 					binlog_file, 
 					binlog_pos
 					)
-				)	
-	
+				)
+		if table_no_pk:
+			sql_delete = """
+				DELETE FROM sch_chameleon.t_replica_tables
+				WHERE
+						i_id_source=%s
+					AND	v_table_name=%s
+					AND	v_schema_name=%s
+				;
+			"""
+			self.pg_conn.pgsql_cur.execute(sql_delete, (
+				self.i_id_source, 
+				table_name, 
+				self.dest_schema)
+				)
+			
 	def unregister_table(self, table_name):
 		"""
 			This method is used when a table have the primary key dropped on MySQL. 
@@ -412,6 +428,7 @@ class pg_engine(object):
 			except psycopg2.Error as e:
 				self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 				self.logger.error(sql_create)
+				
 			self.store_table(table)
 
 	def create_indices(self):
@@ -1494,3 +1511,33 @@ class pg_engine(object):
 				break;
 			self.logger.info("reindex detected, sleeping %s second(s)" % (self.sleep_on_reindex,))
 			time.sleep(self.sleep_on_reindex)
+	
+	def get_inconsistent_tables(self):
+		"""
+		"""
+		sql_get = """
+			SELECT
+				v_schema_name,				v_table_name,
+				t_binlog_name,
+				i_binlog_position
+			FROM
+				sch_chameleon.t_replica_tables
+			WHERE
+				t_binlog_name IS NOT NULL
+				AND i_binlog_position IS NOT NULL
+				AND i_id_source = %s
+		;
+		"""
+		inc_dic = {}
+		self.pg_conn.pgsql_cur.execute(sql_get, (self.i_id_source, ))
+		inc_results = self.pg_conn.pgsql_cur.fetchall()
+		for table  in inc_results:
+			tab_dic = {}
+			tab_dic["schema"]  = table[0]
+			tab_dic["table"]  = table[1]
+			tab_dic["log_seq"]  = int(table[2].split('.')[1])
+			tab_dic["log_pos"]  = int(table[3])
+			inc_dic[table[1]] = tab_dic
+		return inc_dic
+		
+		

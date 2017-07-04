@@ -116,6 +116,7 @@ class mysql_engine(object):
 		"""
 		table_type_map = self.get_table_type_map()	
 		schema_name = pg_engine.dest_schema
+		inc_tables = pg_engine.get_inconsistent_tables()
 		close_batch = False
 		total_events = 0
 		master_data = {}
@@ -192,12 +193,20 @@ class mysql_engine(object):
 			else:
 				
 				for row in binlogevent.rows:
-					total_events+=1
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
 					table_name=binlogevent.table
 					event_time=binlogevent.timestamp
-					
+					if table_name in inc_tables:
+						log_seq = int(log_file.split('.')[1])
+						log_pos = int(log_position)
+						table_dic = inc_tables[table_name]
+						if log_seq >= table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
+							add_row = True
+							pg_engine.set_consistent_table(table_name)
+							inc_tables = pg_engine.get_inconsistent_tables()
+						else:
+							add_row = False
 					column_map=table_type_map[table_name]
 					global_data={
 										"binlog":log_file, 
@@ -232,7 +241,9 @@ class mysql_engine(object):
 						elif column_type in self.hexify and isinstance(event_update[column_name], bytes):
 							event_update[column_name] = ''
 					event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
-					group_insert.append(event_insert)
+					if add_row:
+						total_events+=1
+						group_insert.append(event_insert)
 					master_data["File"]=log_file
 					master_data["Position"]=log_position
 					master_data["Time"]=event_time
@@ -589,88 +600,90 @@ class mysql_engine(object):
 			table_list = pg_engine.table_limit
 		for table_name in table_list:
 			slice_insert=[]
-			self.logger.info("copying table "+table_name)
-			table=self.my_tables[table_name]
 			
-			table_name=table["name"]
-			table_columns=table["columns"]
-			self.logger.debug("estimating rows in "+table_name)
-			sql_count=""" 
-				SELECT 
-					table_rows,
-					CASE
-						WHEN avg_row_length>0
-						then
-							round(("""+copy_max_memory+"""/avg_row_length))
-					ELSE
-						0
-					END as copy_limit
-				FROM 
-					information_schema.TABLES 
-				WHERE 
-						table_schema=%s 
-					AND	table_type='BASE TABLE'
-					AND table_name=%s 
-				;
-			"""
-			self.mysql_con.my_cursor.execute(sql_count, (self.mysql_con.my_database, table_name))
-			count_rows=self.mysql_con.my_cursor.fetchone()
-			total_rows=count_rows["table_rows"]
-			copy_limit=int(count_rows["copy_limit"])
-			if copy_limit == 0:
-				copy_limit=1000000
-			num_slices=int(total_rows//copy_limit)
-			range_slices=list(range(num_slices+1))
-			total_slices=len(range_slices)
-			slice=range_slices[0]
-			self.logger.debug("%s will be copied in %s slices of %s rows"  % (table_name, total_slices, copy_limit))
-			columns_csv=self.generate_select(table_columns, mode="csv")
-			columns_ins=self.generate_select(table_columns, mode="insert")
-			csv_data=""
-			sql_out="SELECT "+columns_csv+" as data FROM "+table_name+";"
-			self.mysql_con.connect_db_ubf()
 			try:
-				self.logger.debug("Executing query for table %s"  % (table_name, ))
-				self.mysql_con.my_cursor_ubf.execute(sql_out)
-			except:
-				self.logger.error("error when pulling data from %s. sql executed: %s" % (table_name, sql_out))
-			
-			self.logger.debug("Starting extraction loop for table %s"  % (table_name, ))
-			while True:
-				csv_results = self.mysql_con.my_cursor_ubf.fetchmany(copy_limit)
-				if len(csv_results) == 0:
-					break
-				csv_data="\n".join(d[0] for d in csv_results )
-				
-				if self.mysql_con.copy_mode=='direct':
-					csv_file=io.StringIO()
-					csv_file.write(csv_data)
-					csv_file.seek(0)
-
-				if self.mysql_con.copy_mode=='file':
-					csv_file=codecs.open(out_file, 'wb', self.mysql_con.my_charset)
-					csv_file.write(csv_data)
-					csv_file.close()
-					csv_file=open(out_file, 'rb')
-					
+				table=self.my_tables[table_name]
+				self.logger.info("copying table %s" %(table_name))
+				table_name=table["name"]
+				table_columns=table["columns"]
+				self.logger.debug("estimating rows in "+table_name)
+				sql_count=""" 
+					SELECT 
+						table_rows,
+						CASE
+							WHEN avg_row_length>0
+							then
+								round(("""+copy_max_memory+"""/avg_row_length))
+						ELSE
+							0
+						END as copy_limit
+					FROM 
+						information_schema.TABLES 
+					WHERE 
+							table_schema=%s 
+						AND	table_type='BASE TABLE'
+						AND table_name=%s 
+					;
+				"""
+				self.mysql_con.my_cursor.execute(sql_count, (self.mysql_con.my_database, table_name))
+				count_rows=self.mysql_con.my_cursor.fetchone()
+				total_rows=count_rows["table_rows"]
+				copy_limit=int(count_rows["copy_limit"])
+				if copy_limit == 0:
+					copy_limit=1000000
+				num_slices=int(total_rows//copy_limit)
+				range_slices=list(range(num_slices+1))
+				total_slices=len(range_slices)
+				slice=range_slices[0]
+				self.logger.debug("%s will be copied in %s slices of %s rows"  % (table_name, total_slices, copy_limit))
+				columns_csv=self.generate_select(table_columns, mode="csv")
+				columns_ins=self.generate_select(table_columns, mode="insert")
+				csv_data=""
+				sql_out="SELECT "+columns_csv+" as data FROM "+table_name+";"
+				self.mysql_con.connect_db_ubf()
 				try:
-					pg_engine.copy_data(table_name, csv_file, self.my_tables)
+					self.logger.debug("Executing query for table %s"  % (table_name, ))
+					self.mysql_con.my_cursor_ubf.execute(sql_out)
 				except:
-					self.logger.info("table %s error in PostgreSQL copy, saving slice number for the fallback to insert statements " % (table_name, ))
-					slice_insert.append(slice)
+					self.logger.error("error when pulling data from %s. sql executed: %s" % (table_name, sql_out))
+				
+				self.logger.debug("Starting extraction loop for table %s"  % (table_name, ))
+				while True:
+					csv_results = self.mysql_con.my_cursor_ubf.fetchmany(copy_limit)
+					if len(csv_results) == 0:
+						break
+					csv_data="\n".join(d[0] for d in csv_results )
 					
-				self.print_progress(slice+1,total_slices, table_name)
-				slice+=1
-				csv_file.close()
-			self.mysql_con.disconnect_db_ubf()
-			if len(slice_insert)>0:
-				ins_arg=[]
-				ins_arg.append(slice_insert)
-				ins_arg.append(table_name)
-				ins_arg.append(columns_ins)
-				ins_arg.append(copy_limit)
-				self.insert_table_data(pg_engine, ins_arg)
-		self.logger.info("releasing the lock")
+					if self.mysql_con.copy_mode=='direct':
+						csv_file=io.StringIO()
+						csv_file.write(csv_data)
+						csv_file.seek(0)
+
+					if self.mysql_con.copy_mode=='file':
+						csv_file=codecs.open(out_file, 'wb', self.mysql_con.my_charset)
+						csv_file.write(csv_data)
+						csv_file.close()
+						csv_file=open(out_file, 'rb')
+						
+					try:
+						pg_engine.copy_data(table_name, csv_file, self.my_tables)
+					except:
+						self.logger.info("table %s error in PostgreSQL copy, saving slice number for the fallback to insert statements " % (table_name, ))
+						slice_insert.append(slice)
+						
+					self.print_progress(slice+1,total_slices, table_name)
+					slice+=1
+					csv_file.close()
+				self.mysql_con.disconnect_db_ubf()
+				if len(slice_insert)>0:
+					ins_arg=[]
+					ins_arg.append(slice_insert)
+					ins_arg.append(table_name)
+					ins_arg.append(columns_ins)
+					ins_arg.append(copy_limit)
+					self.insert_table_data(pg_engine, ins_arg)
+			except:
+				self.logger.info("the table %s does not exist" %(table_name))
 		if lock_tables:
 			self.unlock_tables()
 		try:
