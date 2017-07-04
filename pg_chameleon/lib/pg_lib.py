@@ -316,6 +316,9 @@ class pg_engine(object):
 			A table without primary key is copied and the indices are create like any other table. 
 			However the replica doesn't work for the tables without primary key.
 			
+			If the class variable master status is set then the master's coordinates are saved along with the table.
+			This happens in general when a table is added to the replica or the data is refreshed with sync_tables.
+			
 			:param table_name: the table name to store in the table  t_replica_tables
 		"""
 		if self.master_status:
