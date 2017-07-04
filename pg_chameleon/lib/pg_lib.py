@@ -133,6 +133,7 @@ class pg_engine(object):
 		if cat_version!=self.cat_version and int(num_schema)>0:
 			self.upgrade_service_schema()
 		self.table_limit = ['*']
+		self.master_status = None
 	
 	def set_application_name(self, action=""):
 		"""
@@ -307,7 +308,7 @@ class pg_engine(object):
 		self.pg_conn.pgsql_cur.execute(sql_create)
 		self.pg_conn.pgsql_cur.execute(sql_path)
 	
-	def store_table(self, table_name, master_data=None):
+	def store_table(self, table_name):
 		"""
 			The method saves the table name along with the primary key definition in the table t_replica_tables.
 			This is required in order to let the replay procedure which primary key to use replaying the update and delete.
@@ -317,6 +318,13 @@ class pg_engine(object):
 			
 			:param table_name: the table name to store in the table  t_replica_tables
 		"""
+		if self.master_status:
+			master_data = self.master_status[0]
+			binlog_file = master_data["File"]
+			binlog_pos = master_data["Position"]
+		else:
+			binlog_file = None
+			binlog_pos = None
 		table_data=self.table_metadata[table_name]
 		for index in table_data["indices"]:
 			if index["index_name"]=="PRIMARY":
@@ -326,21 +334,36 @@ class pg_engine(object):
 							i_id_source,
 							v_table_name,
 							v_schema_name,
-							v_table_pkey
+							v_table_pkey,
+							t_binlog_name,
+							i_binlog_position
 						)
 					VALUES 
 						(
 							%s,
 							%s,
 							%s,
-							ARRAY[%s]
+							ARRAY[%s],
+							%s,
+							%s
 						)
 					ON CONFLICT (i_id_source,v_table_name,v_schema_name)
 						DO UPDATE 
-							SET v_table_pkey=EXCLUDED.v_table_pkey
+							SET 
+								v_table_pkey=EXCLUDED.v_table_pkey,
+								t_binlog_name = EXCLUDED.t_binlog_name,
+								i_binlog_position = EXCLUDED.i_binlog_position
 										;
 								"""
-				self.pg_conn.pgsql_cur.execute(sql_insert, (self.i_id_source, table_name, self.dest_schema, index["index_columns"].strip()))	
+				self.pg_conn.pgsql_cur.execute(sql_insert, (
+					self.i_id_source, 
+					table_name, 
+					self.dest_schema, 
+					index["index_columns"].strip(), 
+					binlog_file, 
+					binlog_pos
+					)
+				)	
 	
 	def unregister_table(self, table_name):
 		"""
@@ -476,8 +499,17 @@ class pg_engine(object):
 		""" 
 			The method iterates over the list l_tables and builds a new list with the statements for tables
 		"""
+		if self.table_limit[0] != '*' :
+			table_metadata = {}
+			for tab in self.table_limit:
+				try:
+					table_metadata[tab] = self.table_metadata[tab]
+				except:
+					pass
+		else:
+			table_metadata = self.table_metadata
 		
-		for table_name in self.table_metadata:
+		for table_name in table_metadata:
 			table=self.table_metadata[table_name]
 			columns=table["columns"]
 			
