@@ -193,6 +193,7 @@ class mysql_engine(object):
 			else:
 				
 				for row in binlogevent.rows:
+					add_row = True
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
 					table_name=binlogevent.table
