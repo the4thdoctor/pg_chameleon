@@ -504,7 +504,6 @@ class replica_engine(object):
 			self.pg_eng.master_status = self.my_eng.master_status
 			self.pg_eng.set_source_id('initialising')
 			self.stop_replica(allow_restart=False)
-			self.pg_eng.create_schema()
 			self.pg_eng.build_tab_ddl()
 			self.pg_eng.create_tables()
 			self.my_eng.copy_table_data(self.pg_eng,  self.global_config.copy_max_memory, False)
