@@ -303,10 +303,9 @@ class pg_engine(object):
 		"""
 		sql_drop="DROP SCHEMA IF EXISTS "+self.dest_schema+" CASCADE;"
 		sql_create=" CREATE SCHEMA IF NOT EXISTS "+self.dest_schema+";"
-		sql_path=" SET search_path="+self.dest_schema+";"
 		self.pg_conn.pgsql_cur.execute(sql_drop)
 		self.pg_conn.pgsql_cur.execute(sql_create)
-		self.pg_conn.pgsql_cur.execute(sql_path)
+		self.set_search_path()
 	
 	def store_table(self, table_name):
 		"""
@@ -408,12 +407,34 @@ class pg_engine(object):
 		self.logger.debug(sql_rename)
 		self.pg_conn.pgsql_cur.execute(sql_rename)	
 	
+	
+	def set_search_path(self):
+		"""
+			The method sets the search path for the connection.
+		"""
+		sql_path=" SET search_path=%s;" % (self.dest_schema, )
+		self.pg_conn.pgsql_cur.execute(sql_path)
+		
+	
+	def drop_tables(self):
+		"""
+			The method drops the tables present in the table_ddl
+		"""
+		self.set_search_path()
+		for table in self.table_ddl:
+			self.logger.debug("dropping table %s " % (table, ))
+			sql_drop = """DROP TABLE IF EXISTS "%s"  CASCADE;""" % (table, )
+			self.pg_conn.pgsql_cur.execute(sql_drop)
+			
+	
 	def create_tables(self):
 		"""
 			The method loops trough the list table_ddl and executes the creation scripts.
 			No index is created in this method
 		"""
+		self.set_search_path()
 		for table in self.table_ddl:
+			self.logger.debug("creating table %s " % (table, ))
 			try:
 				ddl_enum=self.type_ddl[table]
 				for sql_type in ddl_enum:
