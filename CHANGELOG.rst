@@ -7,6 +7,7 @@ changelog
 * add geometry to the supported types
 * add varbinary and geometry to hexify in config-example.yaml
 * add INDEX to excluded words when parsing alter table. this prevents the ddl replica to crash when the alter table adds an index
+* Fix for `Issue #4 <https://github.com/the4thdoctor/pg_chameleon/issues/4>`_  add generic exception when fallback on inserts to trap unexpected data not handled by psycopg2  
 
 1.3.1 - 19 Jun 2017
 ...........................................

@@ -440,6 +440,11 @@ class pg_engine(object):
 			except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(self.pg_conn.pgsql_cur.mogrify(sql_head,column_values))
+			except:
+				self.logger.error("unexpected error when processing the row")
+				self.logger.error(" - > Table: %s" % table)
+				self.logger.error(" - > Insert list: %s" % (','.join(column_copy)) )
+				self.logger.error(" - > Insert values: %s" % (column_values) )
 	
 	def build_idx_ddl(self):
 		""" 
