@@ -514,15 +514,4 @@ class replica_engine(object):
 			self.enable_replica()
 		else:
 			print("You should specify at least one table to synchronise.")
-		"""
-		self.stop_replica(allow_restart=False)
-		self.pg_eng.table_limit=table.split(',')
-		self.pg_eng.set_source_id('initialising')
-		self.pg_eng.get_index_def()
-		self.pg_eng.drop_src_indices()
-		self.pg_eng.truncate_tables()
-		self.copy_table_data()
-		self.pg_eng.create_src_indices()
-		self.pg_eng.set_source_id('initialised')
-		self.enable_replica()
-		"""
+
