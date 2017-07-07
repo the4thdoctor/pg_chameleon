@@ -1,6 +1,6 @@
 changelog 
 *************************
-1.4 - XX XXX 2017
+1.4 - XX Jul 2017
 ...........................................
 * add varbinary to the type conversion dictionary
 * fix wrong quoting when key field is surrounded by backtick `
@@ -8,7 +8,8 @@ changelog
 * add varbinary and geometry to hexify in config-example.yaml
 * add INDEX and UNIQUE to excluded words when parsing alter table. this prevents the ddl replica to crash when the alter table adds an index
 * Fix for `Issue #4 <https://github.com/the4thdoctor/pg_chameleon/issues/4>`_  add generic exception when fallback on inserts to trap unexpected data not handled by psycopg2  
-* 
+* Replace sync_replica with sync_tables. Check the release notes for implementation.
+
 1.3.1 - 19 Jun 2017
 ...........................................
 * fix regression in save_master_status when the time is missing in the master's coordinates
