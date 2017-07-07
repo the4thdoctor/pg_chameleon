@@ -1,6 +1,20 @@
 RELEASE NOTES
 *************************
 
+Version 1.4 
+--------------------------
+sync_replica replaced by sync_tables
+........................................................................
+The command sync_replica is now replaced by sync_tables as this new name better reflects the concept behind the process. 
+The command requires the option --table followed by a comma separated list of table names.
+
+If the specified table is not present in the origin's schema the table is silently skipped. 
+When a table is synchronised the existing copy in the target database is dropped and recreated from scratch.
+In order to get the table in consistent state the log coordinates are saved in the the t_replica_tables. 
+The replica process will ignore the table until the log position reaches the table's snapsot position, 
+ensuring a consistent state for the replica target.
+
+
 Version 1.3 
 --------------------------
 

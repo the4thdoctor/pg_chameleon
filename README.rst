@@ -208,7 +208,7 @@ PostgreSQL connection parameters
 
 Usage
 **********************
-The script chameleon.py requires one of the following commands.
+The scriptt chameleon.py requires one of the following commands.
 
 * drop_schema Drops the service schema sch_chameleon with cascade option. 
 * create_schema Create the service schema sch_chameleon.
@@ -221,7 +221,7 @@ The script chameleon.py requires one of the following commands.
 * stop_replica ends the replica process gracefully
 * disable_replica ends the replica process and disable the restart
 * enable_replica enable the replica process
-* sync_replica sync the data between mysql and postgresql without dropping the tables
+* sync_tables synchronise specific tables to the replica. The tables are dropped and created from scratch. Requires the **-- table** option.
 * show_status displays the replication status for each source, with the lag in seconds and the last received event
 * detach_replica stops the replica stream, discards the replica setup and resets the sequences in PostgreSQL to work as a standalone db. 
 

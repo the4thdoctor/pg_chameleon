@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '1.3'::TEXT t_version
+	SELECT '1.4'::TEXT t_version
 ;
 
 --TYPES
@@ -80,25 +80,6 @@ WITH (
   OIDS=FALSE
 );
 
-CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica_1 
-(
-CONSTRAINT pk_log_replica_1 PRIMARY KEY (i_id_event),
-  CONSTRAINT fk_replica_batch_1 FOREIGN KEY (i_id_batch) 
-	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
-	ON UPDATE RESTRICT ON DELETE CASCADE
-)
-INHERITS (sch_chameleon.t_log_replica)
-;
-
-CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica_2
-(
-CONSTRAINT pk_log_replica_2 PRIMARY KEY (i_id_event),
-  CONSTRAINT fk_replica_batch_2 FOREIGN KEY (i_id_batch) 
-	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
-	ON UPDATE RESTRICT ON DELETE CASCADE
-)
-INHERITS (sch_chameleon.t_log_replica)
-;
 
 CREATE TABLE sch_chameleon.t_replica_tables
 (
@@ -107,6 +88,8 @@ CREATE TABLE sch_chameleon.t_replica_tables
   v_table_name character varying(100) NOT NULL,
   v_schema_name character varying(100) NOT NULL,
   v_table_pkey character varying(100)[] NOT NULL,
+  t_binlog_name text,
+  i_binlog_position integer,
   CONSTRAINT pk_t_replica_tables PRIMARY KEY (i_id_table)
 )
 WITH (
