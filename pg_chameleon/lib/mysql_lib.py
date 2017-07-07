@@ -143,7 +143,7 @@ class mysql_engine(object):
 				event_time = binlogevent.timestamp
 				binlogfile = binlogevent.next_binlog
 				position = binlogevent.position
-				self.logger.debug("rotate event. binlogfile %s, position %s. " % (binlogfile, position))
+				self.logger.debug("ROTATE EVENT - binlogfile %s, position %s. " % (binlogfile, position))
 				if log_file != binlogfile:
 					close_batch = True
 				if close_batch:
@@ -171,19 +171,23 @@ class mysql_engine(object):
 					if len(group_insert)>0:
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
-					self.logger.debug("query event. binlogfile %s, position %s.\n--------\n%s\n-------- " % (binlogfile, log_position, binlogevent.query))
+					self.logger.debug("QUERY EVENT - binlogfile %s, position %s.\n--------\n%s\n-------- " % (binlogfile, log_position, binlogevent.query))
 					self.sql_token.parse_sql(binlogevent.query)
 					for token in self.sql_token.tokenised:
-						event_time = binlogevent.timestamp
-						if len(token)>0:
-							query_data={
-								"binlog":log_file, 
-								"logpos":log_position, 
-								"schema": schema_name, 
-								"batch_id":id_batch, 
-								"log_table":log_table
-							}
-							pg_engine.write_ddl(token, query_data)
+						write_ddl = True
+						if token["name"] in inc_tables:
+							write_ddl = False
+						if write_ddl:
+							event_time = binlogevent.timestamp
+							if len(token)>0:
+								query_data={
+									"binlog":log_file, 
+									"logpos":log_position, 
+									"schema": schema_name, 
+									"batch_id":id_batch, 
+									"log_table":log_table
+								}
+								pg_engine.write_ddl(token, query_data)
 							
 						
 					self.sql_token.reset_lists()
@@ -204,6 +208,7 @@ class mysql_engine(object):
 						table_dic = inc_tables[table_name]
 						if log_seq >= table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
 							add_row = True
+							self.logger.debug("CONSISTENT POINT FOR TABLE REACHED %s - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
 							pg_engine.set_consistent_table(table_name)
 							inc_tables = pg_engine.get_inconsistent_tables()
 						else:
@@ -219,30 +224,30 @@ class mysql_engine(object):
 									}
 					event_data={}
 					event_update={}
-					if isinstance(binlogevent, DeleteRowsEvent):
-						global_data["action"] = "delete"
-						event_data=row["values"]
-					elif isinstance(binlogevent, UpdateRowsEvent):
-						global_data["action"] = "update"
-						event_data=row["after_values"]
-						event_update=row["before_values"]
-					elif isinstance(binlogevent, WriteRowsEvent):
-						global_data["action"] = "insert"
-						event_data=row["values"]
-					for column_name in event_data:
-						column_type=column_map[column_name]
-						if column_type in self.hexify and event_data[column_name]:
-							event_data[column_name]=binascii.hexlify(event_data[column_name]).decode()
-						elif column_type in self.hexify and isinstance(event_data[column_name], bytes):
-							event_data[column_name] = ''
-					for column_name in event_update:
-						column_type=column_map[column_name]
-						if column_type in self.hexify and event_update[column_name]:
-							event_update[column_name]=binascii.hexlify(event_update[column_name]).decode()
-						elif column_type in self.hexify and isinstance(event_update[column_name], bytes):
-							event_update[column_name] = ''
-					event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
 					if add_row:
+						if isinstance(binlogevent, DeleteRowsEvent):
+							global_data["action"] = "delete"
+							event_data=row["values"]
+						elif isinstance(binlogevent, UpdateRowsEvent):
+							global_data["action"] = "update"
+							event_data=row["after_values"]
+							event_update=row["before_values"]
+						elif isinstance(binlogevent, WriteRowsEvent):
+							global_data["action"] = "insert"
+							event_data=row["values"]
+						for column_name in event_data:
+							column_type=column_map[column_name]
+							if column_type in self.hexify and event_data[column_name]:
+								event_data[column_name]=binascii.hexlify(event_data[column_name]).decode()
+							elif column_type in self.hexify and isinstance(event_data[column_name], bytes):
+								event_data[column_name] = ''
+						for column_name in event_update:
+							column_type=column_map[column_name]
+							if column_type in self.hexify and event_update[column_name]:
+								event_update[column_name]=binascii.hexlify(event_update[column_name]).decode()
+							elif column_type in self.hexify and isinstance(event_update[column_name], bytes):
+								event_update[column_name] = ''
+						event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
 						total_events+=1
 						group_insert.append(event_insert)
 					master_data["File"]=log_file

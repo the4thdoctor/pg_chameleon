@@ -1538,12 +1538,41 @@ class pg_engine(object):
 			self.logger.info("reindex detected, sleeping %s second(s)" % (self.sleep_on_reindex,))
 			time.sleep(self.sleep_on_reindex)
 	
+	def set_consistent_table(self, table):
+		"""
+			The method set to NULL the  binlog name and position for the given table.
+			When the table is marked consistent the read replica loop reads and saves the table's row images.
+			
+			:param table: the table name
+		"""
+		sql_set = """
+			UPDATE sch_chameleon.t_replica_tables
+				SET 
+					t_binlog_name = NULL,
+					i_binlog_position = NULL
+			WHERE
+					i_id_source = %s
+				AND	v_table_name = %s
+				AND	v_schema_name = %s
+			;
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_set, (self.i_id_source, table, self.dest_schema))
+		
+	
 	def get_inconsistent_tables(self):
 		"""
+			The method collects the tables in not consistent state.
+			The informations are stored in a dictionary which key is the table's name.
+			The dictionary is used in the read replica loop to determine wheter the table's modifications
+			should be ignored because in not consistent state.
+			
+			:return: a dictionary with the tables in inconsistent state and their snapshot coordinates.
+			:rtype: dictionary
 		"""
 		sql_get = """
 			SELECT
-				v_schema_name,				v_table_name,
+				v_schema_name,				
+				v_table_name,
 				t_binlog_name,
 				i_binlog_position
 			FROM
