@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from version import __version__
 import argparse
 from pg_chameleon import replica_engine
 from pg_chameleon import config_dir
@@ -30,6 +31,7 @@ parser.add_argument('command', metavar='command', type=str, help=command_help)
 parser.add_argument('--config', metavar='config', type=str,  default='default',  required=False, help=config_help)
 parser.add_argument('--table', metavar='table', type=str,  default='*',  required=False, help=table_help)
 parser.add_argument('--debug',  default=False,  required=False, help=debug_help,  action='store_true')
+parser.add_argument('--version', action='version',version='pg_chameleon {version}'.format(version=__version__))
 
 args = parser.parse_args()
 
