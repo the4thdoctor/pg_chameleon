@@ -15,7 +15,7 @@
 	
 pg_chameleon `is available on pypi for download <https://pypi.python.org/pypi/pg_chameleon>`_ 
 
-The documentation `is available on pythonhosted <http://pythonhosted.org/pg_chameleon/>`_ 
+The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`_ 
 
 Live community `available on gitter <https://gitter.im/pg_chameleon/Lobby>`_
 
