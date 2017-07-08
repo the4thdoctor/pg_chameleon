@@ -10,6 +10,7 @@ changelog
 * Fix for `Issue #4 <https://github.com/the4thdoctor/pg_chameleon/issues/4>`_  add generic exception when fallback on inserts to trap unexpected data not handled by psycopg2  
 * Replace sync_replica with sync_tables. Check the release notes for implementation.
 * Add --version to display the program version.
+* Move documentation on ` pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`_ 
 
 1.3.1 - 19 Jun 2017
 ...........................................
