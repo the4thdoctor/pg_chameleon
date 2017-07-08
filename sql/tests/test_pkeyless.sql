@@ -20,7 +20,7 @@ VALUES
 (5,'rainbow'),
 (6,'twilight'),
 (7,'pinkie'),
-(8,'apple')
+(8,'apple'),
 (9,'rarity')
 ;
 
