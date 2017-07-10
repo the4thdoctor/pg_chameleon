@@ -175,8 +175,20 @@ class mysql_engine(object):
 					self.sql_token.parse_sql(binlogevent.query)
 					for token in self.sql_token.tokenised:
 						write_ddl = True
-						if token["name"] in inc_tables:
+						table_name = token["name"] 
+						if table_name in inc_tables:
 							write_ddl = False
+							log_seq = int(log_file.split('.')[1])
+							log_pos = int(log_position)
+							table_dic = inc_tables[table_name]
+							if log_seq > table_dic["log_seq"]:
+								write_ddl = True
+							elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
+								write_ddl = True
+							if write_ddl:
+								self.logger.debug("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
+								pg_engine.set_consistent_table(table_name)
+								inc_tables = pg_engine.get_inconsistent_tables()
 						if write_ddl:
 							event_time = binlogevent.timestamp
 							if len(token)>0:
@@ -203,16 +215,23 @@ class mysql_engine(object):
 					table_name=binlogevent.table
 					event_time=binlogevent.timestamp
 					if table_name in inc_tables:
+						table_consistent = False
 						log_seq = int(log_file.split('.')[1])
 						log_pos = int(log_position)
 						table_dic = inc_tables[table_name]
-						if log_seq >= table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
+						if log_seq > table_dic["log_seq"]:
+							table_consistent = True
+						elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
+							table_consistent = True
+							
+						if table_consistent:
 							add_row = True
-							self.logger.debug("CONSISTENT POINT FOR TABLE REACHED %s - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
+							self.logger.debug("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
 							pg_engine.set_consistent_table(table_name)
 							inc_tables = pg_engine.get_inconsistent_tables()
 						else:
 							add_row = False
+							
 					column_map=table_type_map[table_name]
 					global_data={
 										"binlog":log_file, 
