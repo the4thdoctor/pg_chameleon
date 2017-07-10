@@ -1,5 +1,10 @@
 changelog 
 *************************
+
+1.4.1 XX XX 2017
+.................................
+* fix wrong evaluation in table's consistent state (row and DDL)
+
 1.4 - 08 Jul 2017
 ...........................................
 * add varbinary to the type conversion dictionary
