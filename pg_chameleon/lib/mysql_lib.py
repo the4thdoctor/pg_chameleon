@@ -533,7 +533,7 @@ class mysql_engine(object):
 			index_data=self.get_index_metadata(table["table_name"])
 			dic_table={'name':table["table_name"], 'columns':column_data,  'indices': index_data}
 			self.my_tables[table["table_name"]]=dic_table
-	
+		
 	def print_progress (self, iteration, total, table_name):
 		"""
 			Print the copy progress. 
