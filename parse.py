@@ -42,7 +42,7 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #statement="""ALTER TABLE test ADD COLUMN `dkdkd` timestamp NULL;"""
 #statement="""create table test_pk (id int ,PRIMARY KEY  (id) ); """
 #statement="""alter table test change   date_create_new date_create_new timestamp;"""
-
+statement = """alter table test add column `test_default` varchar(30) not null default 'ok' after `count`; """
 
 token_sql=sql_token()
 token_sql.parse_sql(statement)
