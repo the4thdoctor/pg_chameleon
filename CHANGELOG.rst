@@ -1,6 +1,11 @@
 changelog 
 *************************
 
+1.5 XX XX 2017
+...................................
+
+
+
 1.4.1 XX XX 2017
 .................................
 * fix wrong evaluation in table's consistent state (row and DDL)

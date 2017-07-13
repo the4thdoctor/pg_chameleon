@@ -24,7 +24,7 @@ CREATE   TABLE `test` (
 
 
 ALTER TABLE test
-ADD COLUMN `count` SMALLINT(6) NOT NULL AFTER `test_enum`,
+ADD COLUMN `count` SMALLINT(6) NOT NULL default 3 AFTER `test_enum`,
 ADD COLUMN `log` VARCHAR(12) NOT NULL AFTER `count`,
 ADD COLUMN new_enum ENUM('asd','r') NOT NULL AFTER `log`,
 ADD COLUMN status INT(10) UNSIGNED NOT NULL AFTER `new_enum`;
