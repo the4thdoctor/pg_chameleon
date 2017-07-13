@@ -96,7 +96,7 @@ class pg_engine(object):
 			'decimal':'numeric', 
 			'double':'double precision', 
 			'double precision':'double precision', 
-			'float':'float', 
+			'float':'double precision', 
 			'bit':'integer', 
 			'year':'integer', 
 			'enum':'enum', 
@@ -578,8 +578,8 @@ class pg_engine(object):
 					column_type=enum_type
 				if column_type=="character varying" or column_type=="character":
 					column_type=column_type+"("+str(column["character_maximum_length"])+")"
-				if column_type=='bit' or column_type=='float' or column_type=='numeric':
-					column_type=column_type+"("+str(column["numeric_precision"])+")"
+				if column_type=='numeric':
+					column_type=column_type+"("+str(column["numeric_precision"])+","+str(column["numeric_scale"])+")"
 				if column["extra"]=="auto_increment":
 					column_type="bigserial"
 				ddl_columns.append('"'+column["column_name"]+'" '+column_type+" "+col_is_null )
