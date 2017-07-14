@@ -191,6 +191,7 @@ class mysql_engine(object):
 								inc_tables = pg_engine.get_inconsistent_tables()
 						if write_ddl:
 							event_time = binlogevent.timestamp
+							self.logger.debug("TOKEN: %s" % (token))
 							if len(token)>0:
 								query_data={
 									"binlog":log_file, 

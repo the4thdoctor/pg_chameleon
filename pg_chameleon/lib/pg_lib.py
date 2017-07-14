@@ -1193,9 +1193,13 @@ class pg_engine(object):
 					sql_create_enum="CREATE TYPE "+column_type+" AS ENUM ("+alter_dic["dimension"]+");"
 					ddl_enum.append(sql_drop_enum)
 					ddl_enum.append(sql_create_enum)
-				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
+				if 	column_type in ["character varying", "character", 'numeric', 'bit', 'float']:
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
-				alter_cmd.append("%s \"%s\" %s NULL" % (alter_dic["command"], alter_dic["name"], column_type))	
+				if alter_dic["default"]:
+					default_value = "DEFAULT %s" % alter_dic["default"]
+				else:
+					default_value=""
+				alter_cmd.append("%s \"%s\" %s NULL %s" % (alter_dic["command"], alter_dic["name"], column_type, default_value))	
 			elif alter_dic["command"] == 'CHANGE':
 				sql_rename = ""
 				sql_type = ""

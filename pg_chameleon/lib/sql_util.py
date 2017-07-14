@@ -53,7 +53,7 @@ class sql_token(object):
 		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?.*,?)', re.IGNORECASE)
 		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
-		self.m_default_value=re.compile(r"(\bdefault\b\s*'?(.*)'?)(.*)", re.IGNORECASE)
+		self.m_default_value=re.compile(r"(\bDEFAULT\b)\s*('?\w*'?)\s*", re.IGNORECASE)
 		self.m_alter_change=re.compile(r'\s*`?(\w*)`?\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
 		self.m_drop_primary=re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
 		self.m_modify=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
@@ -313,8 +313,6 @@ class sql_token(object):
 				alter_string = alter_item[1].strip()
 				alter_column=self.m_alter_column.search(alter_string)
 				default_value = self.m_default_value.search(alter_string)
-				print (default_value.groups())
-				print (alter_string)
 				if alter_column:
 					alter_dic["command"] = command
 					alter_dic["name"] = alter_column.group(1).strip().strip('`')
@@ -323,6 +321,10 @@ class sql_token(object):
 						alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 					except:
 						alter_dic["dimension"]=0
+					if default_value:
+						alter_dic["default"] = default_value.group(2)
+					else:
+						alter_dic["default"] = None
 					
 			elif command == 'CHANGE':
 				alter_dic["command"] = command
@@ -381,7 +383,7 @@ class sql_token(object):
 			
 			:param sql_string: The sql string with the sql statements.
 		"""
-		sql_string=re.sub(r'\s+default(.*?),', ' ', sql_string, re.IGNORECASE)
+		#sql_string=re.sub(r'\s+default(.*?),', ' ', sql_string, re.IGNORECASE)
 		statements=sql_string.split(';')
 		for statement in statements:
 			
