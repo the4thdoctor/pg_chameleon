@@ -5,6 +5,7 @@ changelog
 .................................
 * fix wrong evaluation in table's consistent state (row and DDL)
 * fix wrong dimensions when building floating point data types 
+* add indices to the t_log _replica tables in order to speedup the batch cleanup . 
 
 1.4 - 08 Jul 2017
 ...........................................
