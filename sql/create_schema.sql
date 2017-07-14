@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '1.4'::TEXT t_version
+	SELECT '1.5'::TEXT t_version
 ;
 
 --TYPES
@@ -154,25 +154,34 @@ BEGIN
     LOOP
         RAISE DEBUG 'CREATING TABLE %', r_tables.v_log_table;
         t_sql:=format('
-                        CREATE TABLE IF NOT EXISTS sch_chameleon.%I
-                        (
-                        CONSTRAINT pk_%s PRIMARY KEY (i_id_event),
-                          CONSTRAINT fk_%s FOREIGN KEY (i_id_batch) 
-                        	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
-                    	ON UPDATE RESTRICT ON DELETE CASCADE
-                        )
-                        INHERITS (sch_chameleon.t_log_replica)
-                        ;',
+			CREATE TABLE IF NOT EXISTS sch_chameleon.%I
+			(
+			CONSTRAINT pk_%s PRIMARY KEY (i_id_event),
+			  CONSTRAINT fk_%s FOREIGN KEY (i_id_batch) 
+				REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
+			ON UPDATE RESTRICT ON DELETE CASCADE
+			)
+			INHERITS (sch_chameleon.t_log_replica)
+			;',
                         r_tables.v_log_table,
                         r_tables.v_log_table,
                         r_tables.v_log_table
                 );
         EXECUTE t_sql;
+	t_sql:=format('
+			CREATE INDEX IF NOT EXISTS idx_id_batch_%s 
+			ON sch_chameleon.%I (i_id_batch)
+			;',
+			r_tables.v_log_table,
+                        r_tables.v_log_table
+		);
+	EXECUTE t_sql;
     END LOOP;
 END
 $BODY$
 LANGUAGE plpgsql 
 ;
+
 	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
