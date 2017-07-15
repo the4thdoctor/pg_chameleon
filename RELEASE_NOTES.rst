@@ -1,6 +1,17 @@
 RELEASE NOTES
 *************************
 
+Version 1.5
+--------------------------
+The version 1.5 adds the support for default value on the ALTER TABLE...ADD COLUMN command. 
+The previous implementation removed any *default* keyworkd before parsing the sql statement. 
+This behaviour limits the risk of having the replica stopped because of incompatible default conversion (e.g. text to enumeration).
+In order to minimise the impact on the existing installations the configuration adds a new optional parameter ddl_defaults.
+If the parameter ddl_defaults is missing then it defaults to No/False, maintaining the previous behaviour as the default. 
+When ddl_defaults is enabled it haveeffect only on the ALTER TABLE...ADD COLUMN. 
+More DDL could be supported in future releases.
+
+
 Version 1.4 
 --------------------------
 sync_replica replaced by sync_tables
