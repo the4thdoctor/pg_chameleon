@@ -105,6 +105,10 @@ class global_config(object):
 		confdic = yaml.load(conffile.read())
 		conffile.close()
 		try:
+			self.ddl_defaults = confdic["ddl_defaults"]
+		except:
+			self.ddl_defaults = False
+		try:
 			self.source_name = confdic["source_name"]
 			self.dest_schema = confdic["dest_schema"]
 			self.mysql_conn = confdic["mysql_conn"]
