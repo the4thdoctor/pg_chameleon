@@ -1158,6 +1158,39 @@ class pg_engine(object):
 		except:
 			pass
 	
+	def  get_default_value(self, table, column):
+		"""
+			The method gets the default value associated with the table and column removing the cast.
+			:param table: The table name
+			:param table: The column name
+			:return: the default value without the cast or None if there is no default value
+			:rtype: string
+		"""
+		regclass = """ "%s"."%s" """ %(self.dest_schema, table)
+		sql_def_val = """
+			SELECT 
+				(
+					SELECT 
+						split_part(substring(pg_catalog.pg_get_expr(d.adbin, d.adrelid) for 128),'::',1)
+					FROM 
+						pg_catalog.pg_attrdef d
+					WHERE 
+							d.adrelid = a.attrelid 
+						AND d.adnum = a.attnum 
+						AND a.atthasdef
+				) as default_value
+				FROM 
+					pg_catalog.pg_attribute a
+				WHERE 
+						a.attrelid = %s::regclass 
+					AND a.attname=%s 
+					AND NOT a.attisdropped
+			;
+
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_def_val, (regclass, column ))
+		default_value = self.pg_conn.pgsql_cur.fetchone()
+		return default_value[0]
 
 	def build_alter_table(self, token):
 		""" 
@@ -1208,6 +1241,8 @@ class pg_engine(object):
 				old_column=alter_dic["old"]
 				new_column=alter_dic["new"]
 				column_type=self.type_dictionary[alter_dic["type"]]
+				default_value = self.get_default_value(table_name, old_column)
+				print(default_value)
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
 				sql_type = """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s  USING "%s"::%s ;;""" % (table_name, old_column, column_type, old_column, column_type)
@@ -1218,6 +1253,9 @@ class pg_engine(object):
 			elif alter_dic["command"] == 'MODIFY':
 				column_type=self.type_dictionary[alter_dic["type"]]
 				column_name=alter_dic["name"]
+				default_value = self.get_default_value(table_name, column_name)
+				print(default_value)
+				
 				if column_type=="enum":
 					enum_name="enum_"+table_name+"_"+alter_dic["name"]
 					column_type=enum_name
