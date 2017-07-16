@@ -1158,14 +1158,17 @@ class pg_engine(object):
 		except:
 			pass
 	
-	def  get_default_value(self, table, column):
+	def  generate_default_statements(self, table, column, create_column=None):
 		"""
 			The method gets the default value associated with the table and column removing the cast.
 			:param table: The table name
 			:param table: The column name
-			:return: the default value without the cast or None if there is no default value
-			:rtype: string
+			:return: the statements for dropping and creating default value on the affected table
+			:rtype: dictionary
 		"""
+		if not create_column:
+			create_column = column
+		
 		regclass = """ "%s"."%s" """ %(self.dest_schema, table)
 		sql_def_val = """
 			SELECT 
@@ -1190,7 +1193,14 @@ class pg_engine(object):
 		"""
 		self.pg_conn.pgsql_cur.execute(sql_def_val, (regclass, column ))
 		default_value = self.pg_conn.pgsql_cur.fetchone()
-		return default_value[0]
+		if default_value[0]:
+			query_drop_default = """ ALTER TABLE  "%s" ALTER COLUMN "%s" DROP DEFAULT;""" % (table, column)
+			query_add_default = """ ALTER TABLE  "%s" ALTER COLUMN "%s" SET DEFAULT %s ; """ % (table, create_column, default_value[0])
+		else:
+			query_drop_default = ""
+			query_add_default = ""
+				
+		return {'drop':query_drop_default, 'create':query_add_default}
 
 	def build_alter_table(self, token):
 		""" 
@@ -1241,20 +1251,26 @@ class pg_engine(object):
 				old_column=alter_dic["old"]
 				new_column=alter_dic["new"]
 				column_type=self.type_dictionary[alter_dic["type"]]
-				default_value = self.get_default_value(table_name, old_column)
-				print(default_value)
+				default_sql = self.generate_default_statements(table_name, old_column, new_column)
+				if column_type=="enum":
+					enum_name="enum_"+table_name+"_"+alter_dic["name"]
+					column_type=enum_name
+					sql_drop_enum='DROP TYPE IF EXISTS '+column_type+' CASCADE;'
+					sql_create_enum="CREATE TYPE "+column_type+" AS ENUM ("+alter_dic["dimension"]+");"
+					ddl_enum.append(sql_drop_enum)
+					ddl_enum.append(sql_create_enum)
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
 				sql_type = """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s  USING "%s"::%s ;;""" % (table_name, old_column, column_type, old_column, column_type)
 				if old_column != new_column:
 					sql_rename="""ALTER TABLE  "%s" RENAME COLUMN "%s" TO "%s" ;""" % (table_name, old_column, new_column)
-				query=sql_type+sql_rename
+				query=' '.join(ddl_enum) + sql_type+sql_rename
+				query = default_sql["drop"] + query + default_sql["create"]
 				return query
 			elif alter_dic["command"] == 'MODIFY':
 				column_type=self.type_dictionary[alter_dic["type"]]
 				column_name=alter_dic["name"]
-				default_value = self.get_default_value(table_name, column_name)
-				print(default_value)
+				default_sql = self.get_default_value(table_name, column_name)
 				
 				if column_type=="enum":
 					enum_name="enum_"+table_name+"_"+alter_dic["name"]
@@ -1266,6 +1282,7 @@ class pg_engine(object):
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
 				query = ' '.join(ddl_enum) + """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s USING "%s"::%s ;""" % (table_name, column_name, column_type, column_name, column_type)
+				query = default_sql["drop"] + query + default_sql["create"]
 				return query
 		query = ' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
 		return query
