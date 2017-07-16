@@ -4,12 +4,24 @@ RELEASE NOTES
 Version 1.5
 --------------------------
 The version 1.5 adds the support for default value on the ALTER TABLE...ADD COLUMN command. 
-The previous implementation removed any *default* keyworkd before parsing the sql statement. 
-This behaviour limits the risk of having the replica stopped because of incompatible default conversion (e.g. text to enumeration).
-In order to minimise the impact on the existing installations the configuration adds a new optional parameter ddl_defaults.
-If the parameter ddl_defaults is missing then it defaults to No/False, maintaining the previous behaviour as the default. 
-When ddl_defaults is enabled it haveeffect only on the ALTER TABLE...ADD COLUMN. 
-More DDL could be supported in future releases.
+The previous implementation removed any **default** keyworkd before parsing the sql statement.
+Having a default set on PostgreSQL can result, under certain conditions, in the replica to stop.
+The following code shows that the pre existing default cannot be casted automatically to the new type.
+
+.. code-block:: sql
+    
+    CREATE TABLE my_table(value text default 'foo');
+    CREATE TYPE my_enum AS enum('foo','bar');
+    ALTER TABLE my_table ALTER COLUMN value SET DATA TYPE my_enum USING value::my_enum;
+ERROR:  default for column "value" cannot be cast automatically to type my_enum
+
+Following the principle of least astonishment the new behaviour is disabled by default. 
+If you want to enable it add the parameter ddl_defaults to your configuration file.
+
+.. code-block:: yaml
+
+    ddl_defaults: Yes
+
 
 
 Version 1.4 
