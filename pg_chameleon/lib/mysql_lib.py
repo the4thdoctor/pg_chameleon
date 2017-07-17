@@ -407,7 +407,7 @@ class mysql_engine(object):
 					THEN
 						concat('cast(`',column_name,'` AS unsigned)')
 				ELSE
-					concat('`',column_name,'`')
+					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.mysql_con.my_charset +""")')
 				END
 				AS column_csv,
 				CASE
@@ -420,7 +420,8 @@ class mysql_engine(object):
 					THEN
 						concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
 				ELSE
-					concat('`',column_name,'`')
+					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.mysql_con.my_charset +""") AS','`',column_name,'`')
+					
 				END
 				AS column_select
 			FROM 
