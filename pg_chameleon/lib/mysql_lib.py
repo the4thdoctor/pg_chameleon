@@ -273,8 +273,8 @@ class mysql_engine(object):
 					master_data["File"]=log_file
 					master_data["Position"]=log_position
 					master_data["Time"]=event_time
-					if total_events>=self.replica_batch_size:
-						self.logger.debug("total events exceeded %s. Writing batch.: %s  " % (total_events, master_data,  ))
+					if len(group_insert)>=self.replica_batch_size:
+						self.logger.debug("Max rows per batch reached. Writing %s. rows." % (len(group_insert)))
 						total_events=0
 						pg_engine.write_batch(group_insert)
 						group_insert=[]

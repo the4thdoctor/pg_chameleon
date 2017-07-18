@@ -281,6 +281,7 @@ class pg_engine(object):
 		try:
 			self.i_id_source = source_data[0]
 			self.dest_schema = source_data[1]
+			self.source_name = source_name
 		except:
 			print("Source %s is not registered." % source_name)
 			sys.exit()
@@ -789,11 +790,13 @@ class pg_engine(object):
 				
 			WHERE 
 				i_id_source=%s
-			RETURNING v_log_table[1]
+			RETURNING 
+				v_log_table[1],
+				ts_last_event
 			; 
 		"""
 		
-		self.logger.info("saving master data id source: %s log file: %s  log position:%s Last event: %s" % (self.i_id_source, binlog_name, binlog_position, event_time))
+		
 		
 		
 		try:
@@ -810,8 +813,11 @@ class pg_engine(object):
 		try:
 			self.pg_conn.pgsql_cur.execute(sql_event, (event_time, self.i_id_source, ))
 			results = self.pg_conn.pgsql_cur.fetchone()
-			table_file = results[0]
-			self.logger.debug("master data: table file %s, log name: %s, log position: %s " % (table_file, binlog_name, binlog_position))
+			log_table_name = results[0]
+			db_event_time = results[1]
+			self.logger.info("Saved master data for source: %s" %(self.source_name, ) )
+			self.logger.debug("Binlog file: %s  Binlog position:%s" % (binlog_name, binlog_position, ))
+			self.logger.debug("Last event: %s Next log table name: %s" % (db_event_time, log_table_name))
 		
 		
 			
@@ -1030,12 +1036,17 @@ class pg_engine(object):
 		self.set_application_name("replay batch")
 		batch_loop=True
 		sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
+		self.logger.info("Replaying batch for source %s replay size %s rows" % ( self.source_name, replica_batch_size))
 		while batch_loop:
 			self.pg_conn.pgsql_cur.execute(sql_process, (replica_batch_size, self.i_id_source))
 			batch_result=self.pg_conn.pgsql_cur.fetchone()
 			batch_loop=batch_result[0]
-			self.logger.debug("Batch loop value %s" % (batch_loop))
-		self.logger.debug("Cleaning replayed batches older than %s for source %s" % (self.batch_retention,  self.i_id_source))
+			if batch_loop:
+				self.logger.info("Still working on batch for source  %s replay size %s rows" % (self.source_name, replica_batch_size ))
+			else:
+				self.logger.info("Batch replay for source %s is complete" % (self.source_name))
+			
+		self.logger.debug("Cleanup for replayed batches older than %s for source %s" % (self.batch_retention,  self.source_name))
 		sql_cleanup="""
 			DELETE FROM 
 				sch_chameleon.t_replica_batch
