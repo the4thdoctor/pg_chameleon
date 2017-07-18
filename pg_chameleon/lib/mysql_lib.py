@@ -118,7 +118,6 @@ class mysql_engine(object):
 		schema_name = pg_engine.dest_schema
 		inc_tables = pg_engine.get_inconsistent_tables()
 		close_batch = False
-		total_events = 0
 		master_data = {}
 		group_insert = []
 		id_batch = batch_data[0][0]
@@ -137,7 +136,6 @@ class mysql_engine(object):
 		)
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		for binlogevent in my_stream:
-			total_events+=1
 			if isinstance(binlogevent, RotateEvent):
 				
 				event_time = binlogevent.timestamp
@@ -208,7 +206,7 @@ class mysql_engine(object):
 						my_stream.close()
 						return [master_data, close_batch]
 			else:
-				
+				size_insert=0
 				for row in binlogevent.rows:
 					add_row = True
 					log_file=binlogfile
@@ -268,14 +266,14 @@ class mysql_engine(object):
 							elif column_type in self.hexify and isinstance(event_update[column_name], bytes):
 								event_update[column_name] = ''
 						event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
-						total_events+=1
+						size_insert += len(str(event_insert))
 						group_insert.append(event_insert)
 					master_data["File"]=log_file
 					master_data["Position"]=log_position
 					master_data["Time"]=event_time
+					
 					if len(group_insert)>=self.replica_batch_size:
-						self.logger.debug("Max rows per batch reached. Writing %s. rows." % (len(group_insert)))
-						total_events=0
+						self.logger.debug("Max rows per batch reached. Writing %s. rows. group size: %s " % (len(group_insert), size_insert))
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
 						close_batch=True
