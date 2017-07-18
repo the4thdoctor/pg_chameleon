@@ -816,8 +816,10 @@ class pg_engine(object):
 			log_table_name = results[0]
 			db_event_time = results[1]
 			self.logger.info("Saved master data for source: %s" %(self.source_name, ) )
-			self.logger.debug("Binlog file: %s  Binlog position:%s" % (binlog_name, binlog_position, ))
-			self.logger.debug("Last event: %s Next log table name: %s" % (db_event_time, log_table_name))
+			self.logger.debug("Binlog file: %s" % (binlog_name, ))
+			self.logger.debug("Binlog position:%s" % (binlog_position, ))
+			self.logger.debug("Last event: %s" % (db_event_time, ))
+			self.logger.debug("Next log table name: %s" % ( log_table_name, ))
 		
 		
 			
