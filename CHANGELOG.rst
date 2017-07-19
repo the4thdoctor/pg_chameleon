@@ -11,6 +11,7 @@ changelog
 * Improve logging messages to be more descriptive
 * Remove total_events and evaluate whe writing the batch with the real number of events stored from the mysql replica
 * fix ALTER TABLE...CHANGE parsing to lower the data type
+* Fix  `Issue #10 <https://github.com/the4thdoctor/pg_chameleon/issues/10>`_   clarify running replica log messages to describe better what's happening
 
 1.4 - 08 Jul 2017
 ...........................................
