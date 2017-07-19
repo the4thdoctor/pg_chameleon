@@ -334,7 +334,7 @@ class sql_token(object):
 					alter_dic["command"] = command
 					alter_dic["old"] = alter_column.group(1).strip().strip('`')
 					alter_dic["new"] = alter_column.group(2).strip().strip('`')
-					alter_dic["type"] = alter_column.group(3).strip().strip('`')
+					alter_dic["type"] = alter_column.group(3).strip().strip('`').lower()
 					alter_dic["name"] = alter_column.group(1).strip().strip('`')
 					try:
 						alter_dic["dimension"]=alter_column.group(4).replace('|', ',').strip()
