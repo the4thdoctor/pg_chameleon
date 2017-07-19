@@ -8,6 +8,9 @@ changelog
 * add support for DEFAULT value on ADD COLUMN
 * add indices to the t_log _replica tables in order to speedup the batch cleanup 
 * Fix for `Issue #5 <https://github.com/the4thdoctor/pg_chameleon/issues/5>`_   add cast to char with character set in column generation in order to override collation mix. the charset is the mysql general character set
+* Improve logging messages to be more descriptive
+* Remove total_events and evaluate whe writing the batch with the real number of events stored from the mysql replica
+* fix ALTER TABLE...CHANGE parsing to lower the data type
 
 1.4 - 08 Jul 2017
 ...........................................

@@ -43,13 +43,13 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #statement="""create table test_pk (id int ,PRIMARY KEY  (id) ); """
 #statement="""alter table test change   date_create_new date_create_new timestamp;"""
 #statement = """alter table test add column `test_default` varchar(30) not null default 20  """
-statement = """ALTER TABLE test
-ADD COLUMN `count` SMALLINT(6) NULL ,
-ADD COLUMN `log` VARCHAR(12) NULL default 'blah' AFTER `count`,
-ADD COLUMN new_enum ENUM('asd','r') NULL AFTER `log`,
-ADD COLUMN status INT(10) UNSIGNED NULL AFTER `new_enum`
-"""
-
+#statement = """ALTER TABLE test
+#ADD COLUMN `count` SMALLINT(6) NULL ,
+#ADD COLUMN `log` VARCHAR(12) NULL default 'blah' AFTER `count`,
+#ADD COLUMN new_enum ENUM('asd','r') NULL AFTER `log`,
+#ADD COLUMN status INT(10) UNSIGNED NULL AFTER `new_enum`
+#"""
+statement="""ALTER TABLE transfer_lifecycle CHANGE COLUMN enriched ready_for_stats_generation BOOLEAN DEFAULT FALSE"""
 print(statement)
 token_sql=sql_token()
 token_sql.parse_sql(statement)
