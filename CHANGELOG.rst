@@ -11,6 +11,7 @@ changelog
 * Improve logging messages to be more descriptive
 * Remove total_events and evaluate whe writing the batch with the real number of events stored from the mysql replica
 * fix ALTER TABLE...CHANGE parsing to lower the data type
+* add warning when a table is without primary key
 
 1.4 - 08 Jul 2017
 ...........................................
