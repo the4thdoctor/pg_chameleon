@@ -392,6 +392,12 @@ class replica_engine(object):
 			Otherwise sleeps for the amount or seconds set in sleep_loop.
 			
 		"""
+		replica_possible = self.my_eng.check_mysql_config()
+		if replica_possible:
+			self.logger.info("Configuration on MySQL allows replica.")
+		else:
+			print("** FATAL - The mysql configuration do not allow the replica.\n The parameters log_bin, binlog_format  and binlog_row_image are not set correctly.\n Check the documentation for further details.\n http://www.pgchameleon.org/documents/")
+			sys.exit()
 		already_running = self.check_running(write_pid=True)
 		exit_request = self.check_file_exit()
 		
