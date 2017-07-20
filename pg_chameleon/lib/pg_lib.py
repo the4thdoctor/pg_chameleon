@@ -372,6 +372,7 @@ class pg_engine(object):
 					)
 				)
 		if table_no_pk:
+			self.logger.warning("Missing primary key. The table %s will not be replicated." % (table_name,))
 			sql_delete = """
 				DELETE FROM sch_chameleon.t_replica_tables
 				WHERE
