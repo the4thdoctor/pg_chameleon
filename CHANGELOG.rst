@@ -12,6 +12,7 @@ changelog
 * Remove total_events and evaluate whe writing the batch with the real number of events stored from the mysql replica
 * fix ALTER TABLE...CHANGE parsing to lower the data type
 * add warning when a table is without primary key
+* Fix  `Issue #9 <https://github.com/the4thdoctor/pg_chameleon/issues/9>`_   add configuration check for MySQL before starting the replica
 * Fix  `Issue #10 <https://github.com/the4thdoctor/pg_chameleon/issues/10>`_   clarify running replica log messages to describe better what's happening
 
 1.4 - 08 Jul 2017
