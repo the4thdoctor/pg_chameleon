@@ -243,6 +243,7 @@ class mysql_engine(object):
 					event_data={}
 					event_update={}
 					if add_row:
+						event_insert = {}
 						if isinstance(binlogevent, DeleteRowsEvent):
 							global_data["action"] = "delete"
 							event_data=row["values"]
@@ -268,15 +269,18 @@ class mysql_engine(object):
 						event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
 						size_insert += len(str(event_insert))
 						group_insert.append(event_insert)
+						
 					master_data["File"]=log_file
 					master_data["Position"]=log_position
 					master_data["Time"]=event_time
 					
 					if len(group_insert)>=self.replica_batch_size:
-						self.logger.debug("Max rows per batch reached. Writing %s. rows. group size: %s " % (len(group_insert), size_insert))
+						self.logger.debug("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
 						pg_engine.write_batch(group_insert)
+						size_insert=0
 						group_insert=[]
 						close_batch=True
+						
 						
 						
 		my_stream.close()
