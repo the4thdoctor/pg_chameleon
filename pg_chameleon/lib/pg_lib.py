@@ -1216,6 +1216,76 @@ class pg_engine(object):
 				
 		return {'drop':query_drop_default, 'create':query_add_default}
 
+	def build_enum_ddl(self, enm_dic):
+		"""
+			The method builds the enum DDL using the token data. 
+			The postgresql system catalog  is queried to determine whether the enum exists and need
+			alter rather create.
+		"""
+		#enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list}
+		sql_check_enum = """
+			SELECT 
+				typ.typcategory,
+				typ.typname,
+				sch_typ.nspname as typschema,
+				CASE 
+					WHEN typ.typcategory='E'
+					THEN
+					(
+						SELECT 
+							array_agg(enumlabel) 
+						FROM 
+							pg_enum 
+						WHERE 
+							enumtypid=typ.oid
+					)
+				END enum_list
+			FROM
+				pg_attribute col
+				INNER JOIN pg_class tab
+					ON col.attrelid = tab. oid
+				INNER JOIN pg_namespace sch
+					ON  sch.oid = tab.relnamespace
+				INNER JOIN pg_type typ
+					ON typ.oid=col.atttypid
+				INNER JOIN pg_namespace sch_typ
+					ON  sch_typ.oid = typ.typnamespace
+
+			WHERE
+					tab.relname=%s
+				AND	sch.nspname=%s
+				AND	col.attname=%s
+				AND	NOT col.attisdropped
+				AND	col.attnum>0
+			;
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_check_enum, (enm_dic['table'], self.dest_schema,  enm_dic['column']))
+		type_data=self.pg_conn.pgsql_cur.fetchone()
+		print(type_data)
+		return_dic = {}
+		pre_alter = ""
+		post_alter = ""
+		column_type = enm_dic["type"]
+		enum_name="enum_%s_%s" % (enm_dic['table'], enm_dic['column'])
+		if type_data[0] == 'E' and enm_dic["type"] == 'enum':
+			self.logger.debug('The column is an enum, altering the type')
+			
+			new_enums = [val.strip() for val in enm_dic["enum_list"] if val.strip() not in type_data[3]]
+			for enumeration in  new_enums:
+				
+		elif type_data[0] != 'E' and enm_dic["type"] == 'enum':
+			self.logger.debug('The column will be altered in enum, creating the type')
+			pre_alter = "CREATE TYPE \"%s\" AS ENUM (%s);" % (enum_name, enm_dic["enum_elements"])
+			column_type = enum_name
+		elif type_data[0] == 'E' and enm_dic["type"] != 'enum':
+			self.logger.debug('The column is no longer an enum, dropping the type')
+		
+		return_dic["column_type"] = column_type
+		return_dic["pre_alter"] = pre_alter
+		return_dic["post_alter"]  = post_alter
+		sys.exit()
+		return return_dic
+		
 	def build_alter_table(self, token):
 		""" 
 			The method builds the alter table statement from the token data.
@@ -1236,8 +1306,10 @@ class pg_engine(object):
 			:rtype: string
 			
 		"""
-		alter_cmd=[]
-		ddl_enum=[]
+		alter_cmd = []
+		ddl_enum = []
+		ddl_pre_alter = []
+		ddl_post_alter = []
 		query_cmd=token["command"]
 		table_name=token["name"]
 		for alter_dic in token["alter_cmd"]:
@@ -1248,7 +1320,6 @@ class pg_engine(object):
 				if column_type=="enum":
 					enum_name="enum_"+table_name+"_"+alter_dic["name"]
 					column_type=enum_name
-					sql_drop_enum='DROP TYPE IF EXISTS '+column_type+' CASCADE;'
 					sql_create_enum="CREATE TYPE "+column_type+" AS ENUM ("+alter_dic["dimension"]+");"
 					ddl_enum.append(sql_drop_enum)
 					ddl_enum.append(sql_create_enum)
@@ -1265,7 +1336,7 @@ class pg_engine(object):
 				old_column=alter_dic["old"]
 				new_column=alter_dic["new"]
 				column_type=self.type_dictionary[alter_dic["type"]]
-				#default_sql = self.generate_default_statements(table_name, old_column, new_column)
+				default_sql = self.generate_default_statements(table_name, old_column, new_column)
 				if column_type=="enum":
 					enum_name="enum_"+table_name+"_"+alter_dic["name"]
 					column_type=enum_name
@@ -1279,24 +1350,27 @@ class pg_engine(object):
 				if old_column != new_column:
 					sql_rename="""ALTER TABLE  "%s" RENAME COLUMN "%s" TO "%s" ;""" % (table_name, old_column, new_column)
 				query=' '.join(ddl_enum) + sql_type+sql_rename
-				#query = default_sql["drop"] + query + default_sql["create"]
+				query = default_sql["drop"] + query + default_sql["create"]
 				return query
 			elif alter_dic["command"] == 'MODIFY':
-				column_type=self.type_dictionary[alter_dic["type"]]
-				column_name=alter_dic["name"]
-				#default_sql = self.get_default_value(table_name, column_name)
-				
-				if column_type=="enum":
-					enum_name="enum_"+table_name+"_"+alter_dic["name"]
-					column_type=enum_name
-					sql_drop_enum='DROP TYPE IF EXISTS '+column_type+' CASCADE;'
-					sql_create_enum="CREATE TYPE "+column_type+" AS ENUM ("+alter_dic["dimension"]+");"
-					ddl_enum.append(sql_drop_enum)
-					ddl_enum.append(sql_create_enum)
+				column_type = self.type_dictionary[alter_dic["type"]]
+				column_name = alter_dic["name"]
+				enum_list = alter_dic["dimension"].replace("'", "").split(",")
+				default_sql = self.generate_default_statements(table_name, column_name)
+				enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list, 'enum_elements':alter_dic["dimension"]}
+				enm_alter = self.build_enum_ddl(enm_dic)
+
+				ddl_pre_alter.append(enm_alter["pre_alter"])
+				ddl_pre_alter.append(default_sql["drop"])
+				ddl_post_alter.append(enm_alter["post_alter"])
+				ddl_post_alter.append(default_sql["create"])
+				column_type= enm_alter["column_type"]
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
-				query = ' '.join(ddl_enum) + """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s USING "%s"::%s ;""" % (table_name, column_name, column_type, column_name, column_type)
-				#query = default_sql["drop"] + query + default_sql["create"]
+				query = ' '.join(ddl_pre_alter)
+				query +=  """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s USING "%s"::%s ;""" % (table_name, column_name, column_type, column_name, column_type)
+				query += ' '.join(ddl_post_alter)
+				
 				return query
 		query = ' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
 		return query

@@ -24,5 +24,7 @@ ADD COLUMN status_2 INT(10) UNSIGNED NULL AFTER `new_enum`;
 DELETE FROM test WHERE value1='the answer';
 UPDATE test SET value2 = 'world' WHERE value1 = 'hello';
 alter table test add constraint dd unique(value2);
+/*
 ALTER TABLE `test` MODIFY `log` enum('blah','dd') DEFAULT 'blah'; 
 #TRUNCATE TABLE `test`;
+*/
