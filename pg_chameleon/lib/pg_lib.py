@@ -1271,8 +1271,11 @@ class pg_engine(object):
 			self.logger.debug('The column is an enum, altering the type')
 			
 			new_enums = [val.strip() for val in enm_dic["enum_list"] if val.strip() not in type_data[3]]
+			sql_add = []
 			for enumeration in  new_enums:
-				
+				sql_add =  """ALTER TYPE "%s"."%s" ADD VALUE '%s';""" % (type_data[2], enum_name, enumeration) 
+				self.pg_conn.pgsql_cur.execute(sql_add)
+			column_type = enum_name
 		elif type_data[0] != 'E' and enm_dic["type"] == 'enum':
 			self.logger.debug('The column will be altered in enum, creating the type')
 			pre_alter = "CREATE TYPE \"%s\" AS ENUM (%s);" % (enum_name, enm_dic["enum_elements"])
@@ -1283,7 +1286,6 @@ class pg_engine(object):
 		return_dic["column_type"] = column_type
 		return_dic["pre_alter"] = pre_alter
 		return_dic["post_alter"]  = post_alter
-		sys.exit()
 		return return_dic
 		
 	def build_alter_table(self, token):
