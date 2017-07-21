@@ -1265,7 +1265,7 @@ class pg_engine(object):
 				old_column=alter_dic["old"]
 				new_column=alter_dic["new"]
 				column_type=self.type_dictionary[alter_dic["type"]]
-				default_sql = self.generate_default_statements(table_name, old_column, new_column)
+				#default_sql = self.generate_default_statements(table_name, old_column, new_column)
 				if column_type=="enum":
 					enum_name="enum_"+table_name+"_"+alter_dic["name"]
 					column_type=enum_name
@@ -1279,12 +1279,12 @@ class pg_engine(object):
 				if old_column != new_column:
 					sql_rename="""ALTER TABLE  "%s" RENAME COLUMN "%s" TO "%s" ;""" % (table_name, old_column, new_column)
 				query=' '.join(ddl_enum) + sql_type+sql_rename
-				query = default_sql["drop"] + query + default_sql["create"]
+				#query = default_sql["drop"] + query + default_sql["create"]
 				return query
 			elif alter_dic["command"] == 'MODIFY':
 				column_type=self.type_dictionary[alter_dic["type"]]
 				column_name=alter_dic["name"]
-				default_sql = self.get_default_value(table_name, column_name)
+				#default_sql = self.get_default_value(table_name, column_name)
 				
 				if column_type=="enum":
 					enum_name="enum_"+table_name+"_"+alter_dic["name"]
@@ -1296,7 +1296,7 @@ class pg_engine(object):
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
 				query = ' '.join(ddl_enum) + """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s USING "%s"::%s ;""" % (table_name, column_name, column_type, column_name, column_type)
-				query = default_sql["drop"] + query + default_sql["create"]
+				#query = default_sql["drop"] + query + default_sql["create"]
 				return query
 		query = ' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
 		return query
