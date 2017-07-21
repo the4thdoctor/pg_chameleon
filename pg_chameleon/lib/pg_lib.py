@@ -1372,7 +1372,8 @@ class pg_engine(object):
 				query = ' '.join(ddl_pre_alter)
 				query +=  """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s USING "%s"::%s ;""" % (table_name, column_name, column_type, column_name, column_type)
 				query += ' '.join(ddl_post_alter)
-				
+				print(query)
+				sys.exit()
 				return query
 		query = ' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
 		return query
