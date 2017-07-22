@@ -181,12 +181,13 @@ class replica_engine(object):
 		The class sets the logging using the configuration parameter.
 		
 	"""
-	def __init__(self, config, debug_mode=False):
+	def __init__(self, config, debug_mode=False, nolock=False):
 		"""
 			Class constructor
 			:param stdout: forces the logging to stdout even if the logging destination is file
 		"""
 		self.debug_mode = debug_mode
+		self.nolock=nolock
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		self.global_config=global_config(config)
 		self.logger = logging.getLogger(__name__)
@@ -405,7 +406,7 @@ class replica_engine(object):
 		
 		self.pg_eng.set_source_id('running')
 		while True:
-			if self.debug_mode:
+			if self.debug_mode or self.nolock:
 				self.my_eng.run_replica(self.pg_eng)
 			else:
 				try:
