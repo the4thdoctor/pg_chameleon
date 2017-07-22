@@ -1219,8 +1219,13 @@ class pg_engine(object):
 	def build_enum_ddl(self, enm_dic):
 		"""
 			The method builds the enum DDL using the token data. 
-			The postgresql system catalog  is queried to determine whether the enum exists and need
-			alter rather create.
+			The postgresql system catalog  is queried to determine whether the enum exists and needs to be altered.
+			The alter is not written in the replica log table but executed as single statement as PostgreSQL do not allow the alter being part of a multi command
+			SQL.
+			
+			:param enm_dic: a dictionary with the enumeration details
+			:return: a dictionary with the pre_alter and post_alter statements (e.g. pre alter create type , post alter drop type)
+			:rtype: dictionary
 		"""
 		#enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list}
 		sql_check_enum = """
@@ -1282,6 +1287,7 @@ class pg_engine(object):
 			column_type = enum_name
 		elif type_data[0] == 'E' and enm_dic["type"] != 'enum':
 			self.logger.debug('The column is no longer an enum, dropping the type')
+			post_alter = "DROP TYPE \"%s\" " % (enum_name)
 		
 		return_dic["column_type"] = column_type
 		return_dic["pre_alter"] = pre_alter
@@ -1357,7 +1363,8 @@ class pg_engine(object):
 			elif alter_dic["command"] == 'MODIFY':
 				column_type = self.type_dictionary[alter_dic["type"]]
 				column_name = alter_dic["name"]
-				enum_list = alter_dic["dimension"].replace("'", "").split(",")
+				
+				enum_list = str(alter_dic["dimension"]).replace("'", "").split(",")
 				default_sql = self.generate_default_statements(table_name, column_name)
 				enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list, 'enum_elements':alter_dic["dimension"]}
 				enm_alter = self.build_enum_ddl(enm_dic)
@@ -1372,8 +1379,6 @@ class pg_engine(object):
 				query = ' '.join(ddl_pre_alter)
 				query +=  """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s USING "%s"::%s ;""" % (table_name, column_name, column_type, column_name, column_type)
 				query += ' '.join(ddl_post_alter)
-				print(query)
-				sys.exit()
 				return query
 		query = ' '.join(ddl_enum)+" "+query_cmd + ' '+ table_name+ ' ' +', '.join(alter_cmd)+" ;"
 		return query
