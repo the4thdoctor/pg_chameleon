@@ -5,7 +5,7 @@ changelog
 .................................
 * fix wrong evaluation in table's consistent state (row and DDL)
 * fix wrong dimensions when building floating point data types 
-* add support for DEFAULT value on ADD COLUMN
+* add support for DEFAULT value on ADD COLUMN,CHANGE,MODIFY
 * add indices to the t_log _replica tables in order to speedup the batch cleanup 
 * Fix for `Issue #5 <https://github.com/the4thdoctor/pg_chameleon/issues/5>`_   add cast to char with character set in column generation in order to override collation mix. the charset is the mysql general character set
 * Improve logging messages to be more descriptive

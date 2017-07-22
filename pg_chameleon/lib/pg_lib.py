@@ -1316,11 +1316,12 @@ class pg_engine(object):
 		"""
 		alter_cmd = []
 		ddl_enum = []
-		ddl_pre_alter = []
-		ddl_post_alter = []
+		
 		query_cmd=token["command"]
 		table_name=token["name"]
 		for alter_dic in token["alter_cmd"]:
+			ddl_pre_alter = []
+			ddl_post_alter = []
 			if alter_dic["command"] == 'DROP':
 				alter_cmd.append("%(command)s %(name)s CASCADE" % alter_dic)
 			elif alter_dic["command"] == 'ADD':
@@ -1329,7 +1330,6 @@ class pg_engine(object):
 					enum_name="enum_"+table_name+"_"+alter_dic["name"]
 					column_type=enum_name
 					sql_create_enum="CREATE TYPE "+column_type+" AS ENUM ("+alter_dic["dimension"]+");"
-					ddl_enum.append(sql_drop_enum)
 					ddl_enum.append(sql_create_enum)
 				if 	column_type in ["character varying", "character", 'numeric', 'bit', 'float']:
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
@@ -1343,23 +1343,31 @@ class pg_engine(object):
 				sql_type = ""
 				old_column=alter_dic["old"]
 				new_column=alter_dic["new"]
+				column_name = old_column
+				enum_list = str(alter_dic["dimension"]).replace("'", "").split(",")
+				
 				column_type=self.type_dictionary[alter_dic["type"]]
 				default_sql = self.generate_default_statements(table_name, old_column, new_column)
-				if column_type=="enum":
-					enum_name="enum_"+table_name+"_"+alter_dic["name"]
-					column_type=enum_name
-					sql_drop_enum='DROP TYPE IF EXISTS '+column_type+' CASCADE;'
-					sql_create_enum="CREATE TYPE "+column_type+" AS ENUM ("+alter_dic["dimension"]+");"
-					ddl_enum.append(sql_drop_enum)
-					ddl_enum.append(sql_create_enum)
+				enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list, 'enum_elements':alter_dic["dimension"]}
+				enm_alter = self.build_enum_ddl(enm_dic)
+
+				ddl_pre_alter.append(enm_alter["pre_alter"])
+				ddl_pre_alter.append(default_sql["drop"])
+				ddl_post_alter.append(enm_alter["post_alter"])
+				ddl_post_alter.append(default_sql["create"])
+				column_type= enm_alter["column_type"]
+				
 				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
 				sql_type = """ALTER TABLE "%s" ALTER COLUMN "%s" SET DATA TYPE %s  USING "%s"::%s ;;""" % (table_name, old_column, column_type, old_column, column_type)
 				if old_column != new_column:
 					sql_rename="""ALTER TABLE  "%s" RENAME COLUMN "%s" TO "%s" ;""" % (table_name, old_column, new_column)
-				query=' '.join(ddl_enum) + sql_type+sql_rename
-				query = default_sql["drop"] + query + default_sql["create"]
+					
+				query = ' '.join(ddl_pre_alter)
+				query += sql_type+sql_rename
+				query += ' '.join(ddl_post_alter)
 				return query
+
 			elif alter_dic["command"] == 'MODIFY':
 				column_type = self.type_dictionary[alter_dic["type"]]
 				column_name = alter_dic["name"]
@@ -1752,4 +1760,27 @@ class pg_engine(object):
 			inc_dic[table[1]] = tab_dic
 		return inc_dic
 		
+		
+	def delete_table_events(self):
+		"""
+			The method removes the events from the log table for specific table and source. 
+			Is used to cleanup any residual event for a a synced table in the replica_engine's sync_table method.
+		"""
+		sql_clean = """
+			DELETE FROM sch_chameleon.t_log_replica
+			WHERE 
+				i_id_event IN (
+							SELECT 
+								log.i_id_event
+							FROM
+								sch_chameleon.t_replica_batch bat
+								INNER JOIN sch_chameleon.t_log_replica log
+									ON  log.i_id_batch=bat.i_id_batch
+							WHERE
+									log.v_table_name=ANY(%s)
+								AND 	bat.i_id_source=%s
+						)
+			;
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_clean, (self.table_limit, self.i_id_source, ))
 		

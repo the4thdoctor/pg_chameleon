@@ -26,5 +26,7 @@ UPDATE test SET value2 = 'world' WHERE value1 = 'hello';
 alter table test add constraint dd unique(value2);
 /*
 ALTER TABLE `test` MODIFY `log` enum('blah','dd') DEFAULT 'blah'; 
+
+ALTER TABLE `test` CHANGE `status` `status_enm` enum('blah','dd') DEFAULT 'blah'; 
 #TRUNCATE TABLE `test`;
 */

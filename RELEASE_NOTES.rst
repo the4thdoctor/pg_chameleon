@@ -3,26 +3,14 @@ RELEASE NOTES
 
 Version 1.5
 --------------------------
-The version 1.5 adds the support for default value for the DDL ALTER TABLE...ADD COLUMN. 
+The version 1.5 adds the support for default value for the DDL ALTER TABLE...ADD COLUMN, CHANGE and MODIFY. 
 The previous implementation removed any **default** keyworkd before parsing the sql statement.
-Having a default set on PostgreSQL can result, under certain conditions, in the replica stop.
-The following code shows how the pre existing default cannot be casted automatically to the new type.
 
-.. code-block:: sql
-    
-    CREATE TABLE my_table(value text default 'foo');
-    CREATE TYPE my_enum AS enum('foo','bar');
-    ALTER TABLE my_table ALTER COLUMN value SET DATA TYPE my_enum USING value::my_enum;
-ERROR:  default for column "value" cannot be cast automatically to type my_enum
+The child tables of t_log _replica have now indices on the i_id_batch field. This will speed up the cleanup for replayed batches.
 
-Any change of data type on a  MySQL field with a default data type can result in a replica stop.
+Several bug fixes, check the changelog for the details.
 
-Following the principle of least astonishment the new behaviour is disabled by default. 
-If you want to enable it add the parameter ddl_defaults to your configuration file.
 
-.. code-block:: yaml
-
-    ddl_defaults: Yes
 
 
 

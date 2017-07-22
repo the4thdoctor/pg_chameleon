@@ -519,6 +519,7 @@ class replica_engine(object):
 			self.pg_eng.create_tables()
 			self.my_eng.copy_table_data(self.pg_eng,  self.global_config.copy_max_memory, False)
 			self.pg_eng.create_indices()
+			self.pg_eng.delete_table_events()
 			self.pg_eng.set_source_id('initialised')
 			self.my_eng.unlock_tables()
 			self.enable_replica()
