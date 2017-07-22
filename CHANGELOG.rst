@@ -14,7 +14,7 @@ changelog
 * add warning when a table is without primary key
 * Fix  `Issue #9 <https://github.com/the4thdoctor/pg_chameleon/issues/9>`_   add configuration check for MySQL before starting the replica
 * Fix  `Issue #10 <https://github.com/the4thdoctor/pg_chameleon/issues/10>`_   clarify running replica log messages to describe better what's happening
-* Add --nolock option as per request on `Issue #13 <https://github.com/the4thdoctor/pg_chameleon/issues/13>`_ When started with -
+* Add --nolock option as per request on `Issue #13 <https://github.com/the4thdoctor/pg_chameleon/issues/13>`_ When started with --nolock the replica will not generate the lock file in case of error.
 
 1.4 - 08 Jul 2017
 ...........................................
