@@ -12,11 +12,6 @@ out_dir: /tmp
 source_name: 'default'
 dest_schema: 'my_schema'
 
-# the parameter enables the support for the default values in DDL replica
-# Read the release notes before enabling it!
-ddl_defaults: No
-
-
 
 #seconds between each replica loop
 sleep_loop: 10 

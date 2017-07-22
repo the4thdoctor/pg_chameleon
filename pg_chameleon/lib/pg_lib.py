@@ -66,7 +66,6 @@ class pg_engine(object):
 		self.logger = logger
 		self.sql_dir = sql_dir
 		self.idx_sequence = 0
-		self.ddl_defaults = global_config.ddl_defaults
 		self.pg_conn = pg_connection(global_config)
 		self.pg_conn.connect_db()
 		self.table_metadata = table_metadata
@@ -1333,7 +1332,7 @@ class pg_engine(object):
 					ddl_enum.append(sql_create_enum)
 				if 	column_type in ["character varying", "character", 'numeric', 'bit', 'float']:
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
-				if alter_dic["default"] and self.ddl_defaults:
+				if alter_dic["default"]:
 					default_value = "DEFAULT %s" % alter_dic["default"]
 				else:
 					default_value=""
