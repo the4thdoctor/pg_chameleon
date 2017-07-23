@@ -1262,6 +1262,7 @@ class pg_engine(object):
 		pre_alter = ""
 		post_alter = ""
 		column_type = enm_dic["type"]
+		self.logger.debug(enm_dic)
 		if type_data:
 			if type_data[0] == 'E' and enm_dic["type"] == 'enum':
 				self.logger.debug('There is already the enum %s, altering the type')
@@ -1278,7 +1279,11 @@ class pg_engine(object):
 			elif type_data[0] == 'E' and enm_dic["type"] != 'enum':
 				self.logger.debug('The column is no longer an enum, dropping the type')
 				post_alter = "DROP TYPE \"%s\" " % (enum_name)
-		
+		elif not type_data and enm_dic["type"] == 'enum':
+				self.logger.debug('Creating a new enumeration type %s' % (enum_name))
+				pre_alter = "CREATE TYPE \"%s\" AS ENUM (%s);" % (enum_name, enm_dic["enum_elements"])
+				column_type = enum_name
+
 		return_dic["column_type"] = column_type
 		return_dic["pre_alter"] = pre_alter
 		return_dic["post_alter"]  = post_alter
