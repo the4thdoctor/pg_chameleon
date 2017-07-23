@@ -1,7 +1,7 @@
 changelog 
 *************************
 
-1.5 XX Jul 2017
+1.5 23 Jul 2017
 .................................
 * fix wrong evaluation in table's consistent state (row and DDL)
 * fix wrong dimensions when building floating point data types 
