@@ -1,6 +1,10 @@
 changelog 
 *************************
 
+1.6 XX XXX XXX
+.................................
+* fix wrong table name when parsing **CREATE TABLE schema_name.table_name**
+
 1.5 23 Jul 2017
 .................................
 * fix wrong evaluation in table's consistent state (row and DDL)
