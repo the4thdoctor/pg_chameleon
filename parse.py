@@ -50,10 +50,14 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #ADD COLUMN status INT(10) UNSIGNED NULL AFTER `new_enum`
 #"""
 
+statement = """
+
+"""
+
 print(statement)
 token_sql=sql_token()
 token_sql.parse_sql(statement)
-print (token_sql.tokenised)
+print (token_sql.tokenised[0]["name"])
 #for token in token_sql.tokenised:
 #	if   token["command"]=="ALTER TABLE":
 #		print(token)

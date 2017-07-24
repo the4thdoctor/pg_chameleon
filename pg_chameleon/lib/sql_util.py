@@ -46,7 +46,7 @@ class sql_token(object):
 		self.m_autoinc=re.compile(r'(AUTO_INCREMENT)', re.IGNORECASE)
 		
 		#re for query type
-		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
+		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:(?:`)?(?:\w*)(?:`)?\.)?(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_truncate_table=re.compile(r'(TRUNCATE)\s*(?:TABLE)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_alter_index=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+(?:UNIQUE)?\s*?(?:INDEX).*,?)', re.IGNORECASE)
