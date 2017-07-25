@@ -4,6 +4,7 @@ changelog
 1.6 XX XXX XXX
 .................................
 * fix wrong table name when parsing **CREATE TABLE schema_name.table_name**
+* fix missing parse for numeric_scale in sql_utils
 
 1.5 23 Jul 2017
 .................................

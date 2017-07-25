@@ -416,6 +416,7 @@ class replica_engine(object):
 					self.logger.error("An error occurred during the replica. %s" % (sys.exc_info(), ))
 					exit=open(self.exit_file, 'w')
 					exit.close()
+					raise
 					sys.exit(5)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
 			if self.check_file_exit():

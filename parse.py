@@ -51,15 +51,13 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #"""
 
 statement = """
-
 """
 
 print(statement)
 token_sql=sql_token()
 token_sql.parse_sql(statement)
-print (token_sql.tokenised[0]["name"])
-#for token in token_sql.tokenised:
-#	if   token["command"]=="ALTER TABLE":
-#		print(token)
+for token in token_sql.tokenised:
+	for column in token["columns"]:
+		print(column)
 	#else:	
 	

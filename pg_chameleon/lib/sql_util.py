@@ -88,9 +88,19 @@ class sql_token(object):
 			col_dic["data_type"]=colmatch.group(2).lower().strip()
 			col_dic["is_nullable"]="YES"
 			if dimmatch:
-				col_dic["enum_list"]=dimmatch.group(1).replace('|', ',').strip()
-				col_dic["character_maximum_length"]=dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
-				col_dic["numeric_precision"]=dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
+				dimensions = dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
+				enum_list = dimmatch.group(1).replace('|', ',').strip()
+				numeric_dims = dimensions.split(',')
+				numeric_precision = numeric_dims[0].strip()
+				try:
+					numeric_scale = numeric_dims[1].strip()
+				except:
+					numeric_scale = 0
+				
+				col_dic["enum_list"] = enum_list
+				col_dic["character_maximum_length"] = dimensions
+				col_dic["numeric_precision"]=numeric_precision
+				col_dic["numeric_scale"]=numeric_scale
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			pkey_list=self.pkey_cols.split(',')
