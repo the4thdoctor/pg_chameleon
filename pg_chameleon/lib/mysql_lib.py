@@ -276,6 +276,7 @@ class mysql_engine(object):
 					
 					if len(group_insert)>=self.replica_batch_size:
 						self.logger.debug("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
+						self.logger.debug("Master coordinates: %s" % (master_data, ))
 						pg_engine.write_batch(group_insert)
 						size_insert=0
 						group_insert=[]

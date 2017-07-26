@@ -507,6 +507,8 @@ class replica_engine(object):
 		"""
 		if table != "*":
 			table_limit = table.split(',')
+			self.my_eng.mysql_con.tables_limit = table_limit
+			self.my_eng.get_table_metadata()
 			self.my_eng.lock_tables()
 			self.pg_eng.table_limit = table_limit
 			self.pg_eng.master_status = self.my_eng.master_status
