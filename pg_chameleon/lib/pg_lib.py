@@ -21,7 +21,8 @@ class pg_connection(object):
 		self.pg_database=self.global_conf.pg_database
 		self.dest_schema=self.global_conf.my_database
 		self.pg_connection=None
-		self.pg_cursor=None
+		self.pgsql_cur=None
+		self.pgsql_cur_replay=None
 		self.pg_charset=self.global_conf.pg_charset
 		
 	
@@ -37,13 +38,26 @@ class pg_connection(object):
 		self.pgsql_conn .set_client_encoding(self.pg_charset)
 		self.pgsql_cur=self.pgsql_conn .cursor()
 		
+		
+		self.pgsql_conn_replay = psycopg2.connect(strconn)
+		self.pgsql_conn_replay.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+		self.pgsql_conn_replay.set_client_encoding(self.pg_charset)
+		self.pgsql_cur_replay=self.pgsql_conn_replay.cursor()
+		
+		
+	def disconnect_db(self):
+		"""
+			The method disconnects from the database closing the connection.
+		"""
+		self.pgsql_conn.close()
+		self.pgsql_conn_replay.close()
+		
 	
 	def disconnect_db(self):
 		"""
 			The method disconnects from the database closing the connection.
 		"""
 		self.pgsql_conn.close()
-	
 	
 		
 
@@ -1035,13 +1049,12 @@ class pg_engine(object):
 			
 			
 		"""
-		self.set_application_name("replay batch")
 		batch_loop=True
 		sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
 		self.logger.info("Replaying batch for source %s replay size %s rows" % ( self.source_name, replica_batch_size))
 		while batch_loop:
-			self.pg_conn.pgsql_cur.execute(sql_process, (replica_batch_size, self.i_id_source))
-			batch_result=self.pg_conn.pgsql_cur.fetchone()
+			self.pg_conn.pgsql_cur_replay.execute(sql_process, (replica_batch_size, self.i_id_source))
+			batch_result=self.pg_conn.pgsql_cur_replay.fetchone()
 			batch_loop=batch_result[0]
 			if batch_loop:
 				self.logger.info("Still working on batch for source  %s replay size %s rows" % (self.source_name, replica_batch_size ))
@@ -1060,9 +1073,8 @@ class pg_engine(object):
 				AND i_id_source=%s
 			;
 		"""
-		self.set_application_name("cleanup old batches")
-		self.pg_conn.pgsql_cur.execute(sql_cleanup, (self.batch_retention, self.i_id_source ))
-		self.set_application_name("idle")
+		self.pg_conn.pgsql_cur_replay.execute(sql_cleanup, (self.batch_retention, self.i_id_source ))
+		
 
 	def add_foreign_keys(self, source_name, fk_metadata):
 		"""

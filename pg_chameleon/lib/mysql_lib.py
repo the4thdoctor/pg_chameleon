@@ -338,6 +338,8 @@ class mysql_engine(object):
 		
 		:param pg_engine: The postgresql engine object required for storing the master coordinates and replaying the batches
 		"""
+		#self.mysql_con.connect_db()
+		#pg_engine.pg_conn.connect_db()
 		if self.pause_on_reindex:
 			pg_engine.check_reindex()
 		batch_data=pg_engine.get_batch_data()
@@ -362,7 +364,7 @@ class mysql_engine(object):
 					pg_engine.set_batch_processed(id_batch)
 					self.id_batch=None
 		self.logger.debug("replaying batch.")
-		pg_engine.process_batch(self.replica_batch_size)
+		#pg_engine.process_batch(self.replica_batch_size)
 
 	def get_table_type_map(self):
 		"""
