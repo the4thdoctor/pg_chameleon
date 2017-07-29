@@ -45,7 +45,7 @@ if args.command in commands:
 	elif args.command == commands[1]:
 		replica.init_replica()
 	elif args.command == commands[2]:
-		replica.run_replica()
+		replica.run_replica_thread()
 	elif args.command == commands[3]:
 		replica.upgrade_service_schema()
 	elif args.command == commands[4]:

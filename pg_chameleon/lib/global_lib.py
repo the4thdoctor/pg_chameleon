@@ -8,7 +8,7 @@ from logging.handlers  import TimedRotatingFileHandler
 from tabulate import tabulate
 from distutils.sysconfig import get_python_lib
 from shutil import copy
-
+import threading
 
 class config_dir(object):
 	""" 
@@ -376,7 +376,44 @@ class replica_engine(object):
 				file_pid.close()
 			process_running=False
 		return process_running
+	
+	def read_replica(self):
+		while True:
+			self.my_eng.run_replica(self.pg_eng)
+			time.sleep(self.sleep_loop)
+	
+	def replay_replica(self):
+		while True:
+			self.pg_eng.process_batch(self.global_config.replica_batch_size)
+			time.sleep(self.sleep_loop)
+	def run_replica_thread(self):
+		"""
+			Threaded version of run replica.
+		"""
+		replica_possible = self.my_eng.check_mysql_config()
+		if replica_possible:
+			self.logger.info("Configuration on MySQL allows replica.")
+		else:
+			print("** FATAL - The mysql configuration do not allow the replica.\n The parameters log_bin, binlog_format  and binlog_row_image are not set correctly.\n Check the documentation for further details.\n http://www.pgchameleon.org/documents/")
+			sys.exit()
+		already_running = self.check_running(write_pid=True)
+		exit_request = self.check_file_exit()
 		
+		if already_running:
+			sys.exit()
+		if exit_request:
+			self.pg_eng.set_source_id('stopped')
+			sys.exit()
+		self.pg_eng.set_source_id('running')
+		read_replica = threading.Thread(target=self.read_replica, name='read_replica')
+		read_replica.setDaemon(True)
+		replay_replica = threading.Thread(target=self.replay_replica, name='replay_replica')
+		replay_replica.setDaemon(True)
+		read_replica.start()
+		#replay_replica.start()
+		time.sleep(3500)
+	
+	
 	def run_replica(self):
 		"""
 			The method starts and run the replica loop. 
