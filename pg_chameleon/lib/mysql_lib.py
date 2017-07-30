@@ -363,6 +363,7 @@ class mysql_engine(object):
 					self.id_batch=None
 		self.logger.debug("replaying batch.")
 		pg_engine.process_batch(self.replica_batch_size)
+		
 
 	def get_table_type_map(self):
 		"""

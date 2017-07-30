@@ -211,11 +211,11 @@ FROM
 		i_id_event,
 		v_table_name,
 		v_schema_name,
-		string_agg(quote_ident((r_event).key),',') as t_cols,
-		string_agg(quote_literal(jsb_event_data->>(r_event).key),',') as t_events,
-		string_agg(format('%I=%L',(r_event).key,jsb_event_update->>(r_event).key),',') as  t_update,
-		string_agg(quote_literal(jsb_event_data->>v_pkey_where),',') as pkey_data,
-		string_agg(quote_ident(v_pkey_where),',') as pkey_fields,
+		string_agg(distinct quote_ident((r_event).key),',') as t_cols,
+		string_agg(distinct quote_literal(jsb_event_data->>(r_event).key),',') as t_events,
+		string_agg(distinct format('%I=%L',(r_event).key,jsb_event_update->>(r_event).key),',') as  t_update,
+		string_agg(distinct quote_literal(jsb_event_data->>v_pkey_where),',') as pkey_data,
+		string_agg(distinct quote_ident(v_pkey_where),',') as pkey_fields,
 		enm_binlog_event,
 		t_query,
 		ts_event_datetime
@@ -277,10 +277,16 @@ ORDER BY ts_event_datetime
 ;
 
 
-
-INSERT INTO my_schema.test (id,last_update,value1,value2) VALUES ('1','2017-07-30 16:05:50','dave','hello');
-INSERT INTO my_schema.test (id,last_update,value1,value2) VALUES ('2','2017-07-30 16:05:50','knock knock','neo');
-INSERT INTO my_schema.test (id,last_update,value1,value2) VALUES ('2017-07-30 16:05:50','3','phoenix','the');
-INSERT INTO my_schema.test (id,last_update,value1,value2) VALUES ('2017-07-30 16:05:50','4','is 42','the answer');
-DELETE FROM my_schema.test WHERE (id) =('4');
-UPDATE my_schema.test SET id='1',last_update='2017-07-30 16:05:50',log='blah',new_enum=NULL,status=NULL,status_2=NULL,value1='hello',value2='dave' WHERE (id) =('1');
+UPDATE my_schema.film_actor SET actor_id='1',film_id='1',last_update='2006-02-15 05:05:03' WHERE actor_id='1' AND film_id='1';
+ SET search_path=my_schema; DROP TABLE IF EXISTS "test";
+ SET search_path=my_schema;CREATE TABLE "test" ("id" bigserial NOT NULL,"value1" character varying(45) NOT NULL,"value2" character varying(45) NOT NULL,"last_update" timestamp without time zone NOT NULL);ALTER TABLE "test" ADD CONSTRAINT "pk_test_0" PRIMAR (...)
+INSERT INTO my_schema.test (value2,last_update,id,value1) VALUES ('dave','2017-07-30 21:31:18','1','hello');
+INSERT INTO my_schema.test (id,value1,value2,last_update) VALUES ('2','knock knock','neo','2017-07-30 21:31:18');
+INSERT INTO my_schema.test (value2,id,value1,last_update) VALUES ('phoenix','3','the','2017-07-30 21:31:18');
+INSERT INTO my_schema.test (id,value1,value2,last_update) VALUES ('4','the answer','is 42','2017-07-30 21:31:18');
+ SET search_path=my_schema;   ALTER TABLE test ADD "count" integer NULL , ADD "log" character varying(12) NULL DEFAULT 'blah', ADD "new_enum" enum_test_new_enum NULL , ADD "status" integer NULL  ; DROP TYPE "enum_test_log"   
+ SET search_path=my_schema;ALTER TABLE test DROP count CASCADE, ADD "status_2" integer NULL  ;
+DELETE FROM my_schema.test WHERE id='4';
+UPDATE my_schema.test SET id='1',last_update='2017-07-30 21:31:18',log='blah',new_enum=NULL,status=NULL,status_2=NULL,value1='hello',value2='dave' WHERE id='1';
+ SET search_path=my_schema; ALTER TABLE "test" ALTER COLUMN "log" SET DATA TYPE enum_test_log USING "log"::enum_test_log ; 
+ SET search_path=my_schema; TRUNCATE TABLE "test" CASCADE;

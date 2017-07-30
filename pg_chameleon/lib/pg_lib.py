@@ -1037,7 +1037,8 @@ class pg_engine(object):
 		"""
 		self.set_application_name("replay batch")
 		batch_loop=True
-		sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
+		#sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
+		sql_process="""SELECT sch_chameleon.fn_process_batch_v2(%s,%s);"""
 		self.logger.info("Replaying batch for source %s replay size %s rows" % ( self.source_name, replica_batch_size))
 		while batch_loop:
 			self.pg_conn.pgsql_cur.execute(sql_process, (replica_batch_size, self.i_id_source))
