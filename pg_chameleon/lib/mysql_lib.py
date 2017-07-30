@@ -364,7 +364,7 @@ class mysql_engine(object):
 					self.logger.debug("updating processed flag for id_batch %s", (id_batch))
 					pg_engine.set_batch_processed(id_batch)
 					self.id_batch=None
-		
+
 
 	def get_table_type_map(self):
 		"""
