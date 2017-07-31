@@ -266,28 +266,39 @@ $BODY$
 
 		IF v_i_replayed=0 AND v_i_ddl=0
 		THEN
+<<<<<<< 4d3438102c559b55a0e3c42a1d5fb123edec5e61
 <<<<<<< 98364345ea29577df3de6311fc350e8f57876fe9
+=======
+>>>>>>> improve performance for the replay plpgsql function
 			DELETE FROM sch_chameleon.t_log_replica
 			WHERE
     			    i_id_batch=v_i_id_batch
 			;
 				
 			GET DIAGNOSTICS v_i_skipped = ROW_COUNT;
+<<<<<<< 4d3438102c559b55a0e3c42a1d5fb123edec5e61
 =======
+=======
+
+>>>>>>> improve performance for the replay plpgsql function
 			UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 
 				b_replayed=True,
+				i_skipped=v_i_skipped,
 				ts_replayed=clock_timestamp()
 				
 			WHERE
 				i_id_batch=v_i_id_batch
 			;
+
+			
+
 			v_b_loop=False;
 		ELSE
 			UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 
-				i_ddl=i_ddl+v_i_ddl,
-				i_replayed=i_replayed+v_i_replayed,
+				i_ddl=coalesce(i_ddl,0)+v_i_ddl,
+				i_replayed=coalesce(i_replayed,0)+v_i_replayed,
 				ts_replayed=clock_timestamp()
 			WHERE
 				i_id_batch=v_r_rows.i_id_batch
