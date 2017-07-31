@@ -110,7 +110,7 @@ class pg_engine(object):
 		self.idx_ddl = {}
 		self.type_ddl = {}
 		self.pg_charset = self.pg_conn.pg_charset
-		self.cat_version = '1.5'
+		self.cat_version = '1.6'
 		self.cat_sql = [
 			{'version':'base','script': 'create_schema.sql'}, 
 			{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -128,6 +128,7 @@ class pg_engine(object):
 			{'version':'1.3','script': 'upgrade/cat_1.3.sql'}, 
 			{'version':'1.4','script': 'upgrade/cat_1.4.sql'},
 			{'version':'1.5','script': 'upgrade/cat_1.5.sql'},
+			{'version':'1.6','script': 'upgrade/cat_1.6.sql'},
 		]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -1037,8 +1038,7 @@ class pg_engine(object):
 		"""
 		self.set_application_name("replay batch")
 		batch_loop=True
-		#sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
-		sql_process="""SELECT sch_chameleon.fn_process_batch_v2(%s,%s);"""
+		sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
 		self.logger.info("Replaying batch for source %s replay size %s rows" % ( self.source_name, replica_batch_size))
 		while batch_loop:
 			self.pg_conn.pgsql_cur.execute(sql_process, (replica_batch_size, self.i_id_source))
