@@ -1038,6 +1038,33 @@ class pg_engine(object):
 			;
 		"""
 		self.pg_conn.pgsql_cur.execute(sql_update, (id_batch, ))
+		self.logger.debug("collecting events id for batch %s " % (id_batch, ))
+		sql_collect_events = """
+			INSERT INTO
+				sch_chameleon.t_batch_events
+				(
+					i_id_batch,
+					i_id_event
+				)
+			SELECT
+				i_id_batch,
+				array_agg(i_id_event)
+			FROM
+			(
+				SELECT 
+					i_id_batch,
+					i_id_event,
+					ts_event_datetime
+				FROM 
+					sch_chameleon.t_log_replica 
+				WHERE i_id_batch=%s
+				ORDER BY ts_event_datetime
+			) t_event
+			GROUP BY
+					i_id_batch
+			;
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_collect_events, (id_batch, ))
 		
 	def process_batch(self, replica_batch_size):
 		"""
