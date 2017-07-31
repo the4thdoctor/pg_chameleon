@@ -1,11 +1,12 @@
 changelog 
 *************************
 
-1.6 XX XXX XXX
+1.6 XX Aug 2017
 .................................
 * fix wrong table name when parsing **CREATE TABLE schema_name.table_name**
 * fix missing parse for numeric_scale in sql_utils
 * lock only the affected tables when running sync_tables
+* improve performance for the replay plpgsql function
 
 1.5 23 Jul 2017
 .................................
