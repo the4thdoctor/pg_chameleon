@@ -142,6 +142,21 @@ WITH (
 
 CREATE UNIQUE INDEX idx_schema_table_source ON sch_chameleon.t_index_def(i_id_source,v_schema,v_table,v_index);
 
+
+CREATE TABLE sch_chameleon.t_batch_events
+(
+	i_id_batch	bigint NOT NULL,
+	I_id_event	bigint[] NOT NULL,
+	CONSTRAINT pk_t_batch_id_events PRIMARY KEY (i_id_batch)
+)
+;
+
+ALTER TABLE sch_chameleon.t_batch_events
+	ADD CONSTRAINT fk_t_batch_id_events_i_id_batch FOREIGN KEY (i_id_batch)
+	REFERENCES sch_chameleon.t_replica_batch(i_id_batch)
+	ON UPDATE RESTRICT ON DELETE CASCADE
+	;
+
 --FUNCTIONS
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_refresh_parts() 
 RETURNS VOID as 
@@ -182,6 +197,7 @@ $BODY$
 LANGUAGE plpgsql 
 ;
 
+
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
 $BODY$
@@ -195,6 +211,8 @@ $BODY$
 		v_i_replayed		integer;
 		v_i_skipped		integer;
 		v_i_ddl		integer;
+		v_i_evt_replay	bigint[];
+		v_i_evt_queue		bigint[];
 	BEGIN
 		v_b_loop:=FALSE;
 		v_i_replayed:=0;
@@ -216,6 +234,27 @@ $BODY$
 			LIMIT 1
 			)
 		;
+		
+		
+
+		v_i_evt_replay:=(
+			SELECT 
+				i_id_event[1:p_i_max_events] 
+			FROM 
+				sch_chameleon.t_batch_events 
+			WHERE 
+				i_id_batch=v_i_id_batch
+		);
+
+		v_i_evt_queue:=(
+			SELECT 
+				i_id_event[p_i_max_events+1:array_length(i_id_event,1)] 
+			FROM 
+				sch_chameleon.t_batch_events 
+			WHERE 
+				i_id_batch=v_i_id_batch
+		);
+
 		IF v_i_id_batch IS NULL 
 		THEN
 			RETURN v_b_loop;
@@ -231,7 +270,7 @@ $BODY$
 					WHEN enm_binlog_event = 'insert'
 					THEN
 						format(
-							'INSERT INTO %I.%I (%s) VALUES (%s) ;',
+							'INSERT INTO %I.%I (%s) VALUES (%s);',
 							v_schema_name,
 							v_table_name,
 							array_to_string(t_colunm,','),
@@ -329,8 +368,8 @@ $BODY$
 												tab.v_table_name=log.v_table_name
 											AND tab.v_schema_name=log.v_schema_name
 								WHERE
-									log.i_id_batch=v_i_id_batch
-								LIMIT p_i_max_events
+										log.i_id_batch=v_i_id_batch
+									AND 	log.i_id_event=ANY(v_i_evt_replay) 
 							) t_log
 							
 					) t_pkey
@@ -366,10 +405,7 @@ $BODY$
 			END IF;
 			
 			
-			DELETE FROM sch_chameleon.t_log_replica
-			WHERE
-				i_id_event=v_r_rows.i_id_event
-			;
+			
 			
 		END LOOP;
 		
@@ -393,7 +429,10 @@ $BODY$
 				i_id_batch=v_i_id_batch
 			;
 
-			
+			DELETE FROM sch_chameleon.t_batch_events
+			WHERE
+				i_id_batch=v_i_id_batch
+			;
 
 			v_b_loop=False;
 		ELSE
@@ -405,9 +444,28 @@ $BODY$
 			WHERE
 				i_id_batch=v_r_rows.i_id_batch
 			;
+
+			UPDATE sch_chameleon.t_batch_events
+				SET
+					i_id_event = v_i_evt_queue
+			WHERE
+				i_id_batch=v_i_id_batch
+			;
+
+			DELETE FROM sch_chameleon.t_log_replica
+			WHERE
+					i_id_batch=v_i_id_batch
+				AND 	i_id_event=ANY(v_i_evt_replay) 
+			;
+			
 			v_b_loop=True;
+
+
+			
 		END IF;
 
+		
+		
 		RETURN v_b_loop;
 
 	
