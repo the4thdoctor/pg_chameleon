@@ -198,6 +198,8 @@ LANGUAGE plpgsql
 ;
 
 
+
+	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
 $BODY$
@@ -370,6 +372,7 @@ $BODY$
 								WHERE
 										log.i_id_batch=v_i_id_batch
 									AND 	log.i_id_event=ANY(v_i_evt_replay) 
+								
 							) t_log
 							
 					) t_pkey
@@ -395,6 +398,7 @@ $BODY$
 					t_pk_data,
 					t_pk_update
 			) t_sql
+		ORDER BY i_id_event
 		LOOP 	
 			EXECUTE  v_r_rows.t_sql;
 			IF v_r_rows.enm_binlog_event='ddl'
