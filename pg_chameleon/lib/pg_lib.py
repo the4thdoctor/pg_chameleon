@@ -1009,7 +1009,8 @@ class pg_engine(object):
 		
 	def set_batch_processed(self, id_batch):
 		"""
-			The method updates the flag b_processed and sets the processed timestamp for the given batch id
+			The method updates the flag b_processed and sets the processed timestamp for the given batch id.
+			The event ids are aggregated into the table t_batch_events used by the replay function.
 			
 			:param id_batch: the id batch to set as processed
 		"""
@@ -1035,12 +1036,19 @@ class pg_engine(object):
 			SELECT
 				i_id_batch,
 				array_agg(i_id_event)
-			FROM 
-				sch_chameleon.t_log_replica 
-			WHERE 
-				i_id_batch=%s
+			FROM
+			(
+				SELECT 
+					i_id_batch,
+					i_id_event,
+					ts_event_datetime
+				FROM 
+					sch_chameleon.t_log_replica 
+				WHERE i_id_batch=%s
+				ORDER BY ts_event_datetime
+			) t_event
 			GROUP BY
-				i_id_batch
+					i_id_batch
 			;
 		"""
 		self.pg_conn.pgsql_cur.execute(sql_collect_events, (id_batch, ))
