@@ -294,7 +294,27 @@ $BODY$
 
 			
 		END IF;
-
+		
+		v_i_id_batch:= (
+			SELECT 
+				i_id_batch 
+			FROM ONLY
+				sch_ninja.t_replica_batch  
+			WHERE 
+					b_started 
+				AND	b_processed 
+				AND	NOT b_replayed
+				AND	i_id_source=p_i_source_id
+			ORDER BY 
+				ts_created 
+			LIMIT 1
+		)
+		;
+		
+		IF v_i_id_batch IS NOT NULL
+		THEN
+			v_b_loop=True;
+		END IF;
 		
 		
 		RETURN v_b_loop;
