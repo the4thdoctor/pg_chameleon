@@ -386,6 +386,7 @@ class replica_engine(object):
 		while True:
 			self.pg_eng.process_batch(self.global_config.replica_batch_size)
 			time.sleep(self.sleep_loop)
+			
 	def run_replica_thread(self):
 		"""
 			Threaded version of run replica.
@@ -410,8 +411,12 @@ class replica_engine(object):
 		replay_replica = threading.Thread(target=self.replay_replica, name='replay_replica')
 		replay_replica.setDaemon(True)
 		read_replica.start()
-		#replay_replica.start()
-		time.sleep(3500)
+		replay_replica.start()
+		while True:
+			if self.check_file_exit():
+				self.pg_eng.set_source_id('stopped')
+				sys.exit()
+			time.sleep(self.sleep_loop)
 	
 	
 	def run_replica(self):
