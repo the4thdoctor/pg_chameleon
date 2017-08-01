@@ -11,21 +11,28 @@ ALTER TABLE sch_chameleon.t_batch_events
 	REFERENCES sch_chameleon.t_replica_batch(i_id_batch)
 	ON UPDATE RESTRICT ON DELETE CASCADE
 	;
-
-INSERT INTO	sch_chameleon.t_batch_events
+INSERT INTO
+	sch_chameleon.t_batch_events
 	(
 		i_id_batch,
 		i_id_event
 	)
-SELECT 
+SELECT
 	i_id_batch,
-	array_agg(i_id_event) 
-FROM 
-	sch_chameleon.t_log_replica 
-GROUP BY 
-	i_id_batch
+	array_agg(i_id_event)
+FROM
+	(
+		SELECT 
+			i_id_batch,
+			i_id_event,
+			ts_event_datetime
+		FROM 
+			sch_chameleon.t_log_replica 
+		ORDER BY ts_event_datetime
+	) t_event
+GROUP BY
+		i_id_batch
 ;
-
 	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
