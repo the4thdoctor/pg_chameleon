@@ -379,7 +379,10 @@ class replica_engine(object):
 	
 	def read_replica(self):
 		while True:
-			self.my_eng.run_replica(self.pg_eng)
+			try:
+				self.my_eng.run_replica(self.pg_eng)
+			except:
+				break
 			
 			exit_request = self.check_file_exit()
 			if exit_request:
@@ -391,7 +394,7 @@ class replica_engine(object):
 			try:
 				self.pg_eng.process_batch(self.global_config.replica_batch_size)
 			except:
-				self.stop_replica()
+				break
 			exit_request = self.check_file_exit()
 			if exit_request:
 				break
@@ -466,9 +469,11 @@ class replica_engine(object):
 		while True:
 			if self.debug_mode or self.nolock:
 				self.my_eng.run_replica(self.pg_eng)
+				self.pg_eng.process_batch(self.global_config.replica_batch_size)
 			else:
 				try:
 					self.my_eng.run_replica(self.pg_eng)
+					self.pg_eng.process_batch(self.global_config.replica_batch_size)
 				except :
 					self.pg_eng.set_source_id('error')
 					self.logger.error("An error occurred during the replica. %s" % (sys.exc_info(), ))

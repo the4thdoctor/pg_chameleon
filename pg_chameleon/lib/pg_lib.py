@@ -29,6 +29,8 @@ class pg_connection(object):
 	def connect_db(self):
 		"""
 			Connects to PostgreSQL using the parameters stored in pg_pars built adding the key dbname to the self.pg_conn dictionary.
+			This method's connection and cursors are widely used in the procedure except for the replay process which uses a 
+			dedicated connection and cursor.
 			The method after the connection creates a database cursor and set the session to autocommit.
 		"""
 		pg_pars=dict(list(self.pg_conn.items())+ list({'dbname':self.pg_database}.items()))
@@ -37,8 +39,16 @@ class pg_connection(object):
 		self.pgsql_conn .set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 		self.pgsql_conn .set_client_encoding(self.pg_charset)
 		self.pgsql_cur=self.pgsql_conn .cursor()
-		
-		
+	
+	def connect_replay_db(self):
+		"""
+			Connects to PostgreSQL using the parameters stored in pg_pars built adding the key dbname to the self.pg_conn dictionary.
+			The method after the connection creates a database cursor and set the session to autocommit.
+			This method creates an additional connection and cursor used by the replay process. 
+
+		"""
+		pg_pars=dict(list(self.pg_conn.items())+ list({'dbname':self.pg_database}.items()))
+		strconn="dbname=%(dbname)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % pg_pars
 		self.pgsql_conn_replay = psycopg2.connect(strconn)
 		self.pgsql_conn_replay.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 		self.pgsql_conn_replay.set_client_encoding(self.pg_charset)
@@ -47,17 +57,16 @@ class pg_connection(object):
 		
 	def disconnect_db(self):
 		"""
-			The method disconnects from the database closing the connection.
+			The method disconnects from the main database connection.
 		"""
 		self.pgsql_conn.close()
+	
+	def disconnect_replay_db(self):
+		"""
+			The method disconnects from the replay database connection.
+		"""
 		self.pgsql_conn_replay.close()
 		
-	
-	def disconnect_db(self):
-		"""
-			The method disconnects from the database closing the connection.
-		"""
-		self.pgsql_conn.close()
 	
 		
 
@@ -151,7 +160,7 @@ class pg_engine(object):
 		self.table_limit = ['*']
 		self.master_status = None
 	
-	def set_application_name(self, action=""):
+	def set_application_name(self, action="", conn_type='main'):
 		"""
 			The method sets the application name in the replica using the variable self.pg_conn.global_conf.source_name,
 			Making simpler to find the replication processes. If the source name is not set then a generic PGCHAMELEON name is used.
@@ -161,7 +170,10 @@ class pg_engine(object):
 		else:
 			app_name = "[PGCH]"
 		sql_app_name="""SET application_name=%s; """
-		self.pg_conn.pgsql_cur.execute(sql_app_name, (app_name , ))
+		if conn_type == 'main':
+			self.pg_conn.pgsql_cur.execute(sql_app_name, (app_name , ))
+		elif conn_type == 'replay':
+			self.pg_conn.pgsql_cur_replay.execute(sql_app_name, (app_name , ))
 	
 		
 	def add_source(self, source_name, dest_schema):
@@ -1018,7 +1030,7 @@ class pg_engine(object):
 			self.logger.error(csv_data)
 			self.logger.error("fallback to inserts")
 			self.insert_batch(group_insert)
-			
+		self.set_application_name("idle")
 			
 		
 	def set_batch_processed(self, id_batch):
@@ -1081,15 +1093,22 @@ class pg_engine(object):
 		batch_loop=True
 		sql_process="""SELECT sch_chameleon.fn_process_batch(%s,%s);"""
 		self.logger.info("Replaying batch for source %s replay size %s rows" % ( self.source_name, replica_batch_size))
+		
 		while batch_loop:
-			self.pg_conn.pgsql_cur_replay.execute(sql_process, (replica_batch_size, self.i_id_source))
-			batch_result=self.pg_conn.pgsql_cur_replay.fetchone()
-			batch_loop=batch_result[0]
+			try:
+				self.set_application_name("replay batch", "replay")
+				self.pg_conn.pgsql_cur_replay.execute(sql_process, (replica_batch_size, self.i_id_source))
+				batch_result=self.pg_conn.pgsql_cur_replay.fetchone()
+				batch_loop=batch_result[0]
+			except:
+				self.pg_conn.connect_replay_db()
+			
 			if batch_loop:
 				self.logger.info("Still working on batch for source  %s replay size %s rows" % (self.source_name, replica_batch_size ))
 			else:
 				self.logger.info("Batch replay for source %s is complete" % (self.source_name))
-			
+		
+		self.set_application_name("cleanup batch", "replay")
 		self.logger.debug("Cleanup for replayed batches older than %s for source %s" % (self.batch_retention,  self.source_name))
 		sql_cleanup="""
 			DELETE FROM 
@@ -1103,7 +1122,7 @@ class pg_engine(object):
 			;
 		"""
 		self.pg_conn.pgsql_cur_replay.execute(sql_cleanup, (self.batch_retention, self.i_id_source ))
-		
+		self.set_application_name("idle", "replay")
 
 	def add_foreign_keys(self, source_name, fk_metadata):
 		"""
