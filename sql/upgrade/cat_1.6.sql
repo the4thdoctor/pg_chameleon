@@ -278,11 +278,14 @@ $BODY$
 		ELSE
 			UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 
+				b_replayed=True,
 				i_ddl=coalesce(i_ddl,0)+v_i_ddl,
 				i_replayed=coalesce(i_replayed,0)+v_i_replayed,
+				i_skipped=v_i_skipped,
 				ts_replayed=clock_timestamp()
+				
 			WHERE
-				i_id_batch=v_r_rows.i_id_batch
+				i_id_batch=v_i_id_batch
 			;
 
 			UPDATE sch_chameleon.t_batch_events

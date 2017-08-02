@@ -221,23 +221,25 @@ $BODY$
 		v_i_ddl:=0;
 		v_i_skipped:=0;
 		
+		
 		v_i_id_batch:= (
 			SELECT 
-				i_id_batch 
-			FROM ONLY
-				sch_chameleon.t_replica_batch  
+				bat.i_id_batch 
+			FROM 
+				sch_chameleon.t_replica_batch bat
+				INNER JOIN  sch_chameleon.t_batch_events evt
+				ON
+					evt.i_id_batch=bat.i_id_batch
 			WHERE 
-					b_started 
-				AND	b_processed 
-				AND	NOT b_replayed
-				AND	i_id_source=p_i_source_id
+					bat.b_started 
+				AND	bat.b_processed 
+				AND	NOT bat.b_replayed
+				AND	bat.i_id_source=p_i_source_id
 			ORDER BY 
-				ts_created 
+				bat.ts_created 
 			LIMIT 1
 			)
 		;
-		
-		
 
 		v_i_evt_replay:=(
 			SELECT 
@@ -426,6 +428,8 @@ $BODY$
 			UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 
 				b_replayed=True,
+				i_ddl=coalesce(i_ddl,0)+v_i_ddl,
+				i_replayed=coalesce(i_replayed,0)+v_i_replayed,
 				i_skipped=v_i_skipped,
 				ts_replayed=clock_timestamp()
 				
@@ -467,27 +471,31 @@ $BODY$
 
 			
 		END IF;
-
+		
 		v_i_id_batch:= (
 			SELECT 
-				i_id_batch 
-			FROM ONLY
-				sch_ninja.t_replica_batch  
+				bat.i_id_batch 
+			FROM 
+				sch_chameleon.t_replica_batch bat
+				INNER JOIN  sch_chameleon.t_batch_events evt
+				ON
+					evt.i_id_batch=bat.i_id_batch
 			WHERE 
-					b_started 
-				AND	b_processed 
-				AND	NOT b_replayed
-				AND	i_id_source=p_i_source_id
+					bat.b_started 
+				AND	bat.b_processed 
+				AND	NOT bat.b_replayed
+				AND	bat.i_id_source=p_i_source_id
 			ORDER BY 
-				ts_created 
+				bat.ts_created 
 			LIMIT 1
-		)
+			)
 		;
 		
 		IF v_i_id_batch IS NOT NULL
 		THEN
 			v_b_loop=True;
 		END IF;
+		
 		
 		RETURN v_b_loop;
 
