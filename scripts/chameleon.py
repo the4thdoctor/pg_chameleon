@@ -28,6 +28,8 @@ table_help =  """Specifies the table's name to sync. It's possible to specify mu
 config_help =  """Specifies the configuration to use. The configuration shall be specified without extension (e.g. --config foo) and the file foo.yaml should be in ~/.pg_chameleon/config/"""
 debug_help = """Enables the debug mode.The log output is stdout and in debug verbosity. The lock file creation on error is skipped as well."""
 nolock_help = """Do not create the lock file on error, allowing the replica to be restarted immediately. """
+thread_help = """  When specified the replica process starts two threads and manages the read and replay indipendently."""
+
 parser = argparse.ArgumentParser(description='Command line for pg_chameleon.',  add_help=True)
 parser.add_argument('command', metavar='command', type=str, help=command_help)
 parser.add_argument('--config', metavar='config', type=str,  default='default',  required=False, help=config_help)
@@ -35,7 +37,7 @@ parser.add_argument('--table', metavar='table', type=str,  default='*',  require
 parser.add_argument('--debug',  default=False,  required=False, help=nolock_help,  action='store_true')
 parser.add_argument('--nolock',  default=False,  required=False, help=debug_help,  action='store_true')
 parser.add_argument('--version', action='version',version='pg_chameleon {version}'.format(version=__version__))
-
+parser.add_argument('--thread',  default=False,  required=False, help=thread_help,  action='store_true')
 args = parser.parse_args()
 
 if args.command in commands:
@@ -45,7 +47,10 @@ if args.command in commands:
 	elif args.command == commands[1]:
 		replica.init_replica()
 	elif args.command == commands[2]:
-		replica.run_replica_thread()
+		if args.thread:
+			replica.run_replica_thread()
+		else:
+			replica.run_replica()
 	elif args.command == commands[3]:
 		replica.upgrade_service_schema()
 	elif args.command == commands[4]:
