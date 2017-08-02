@@ -380,11 +380,21 @@ class replica_engine(object):
 	def read_replica(self):
 		while True:
 			self.my_eng.run_replica(self.pg_eng)
+			
+			exit_request = self.check_file_exit()
+			if exit_request:
+				break
 			time.sleep(self.sleep_loop)
-	
+			
 	def replay_replica(self):
 		while True:
-			self.pg_eng.process_batch(self.global_config.replica_batch_size)
+			try:
+				self.pg_eng.process_batch(self.global_config.replica_batch_size)
+			except:
+				self.stop_replica()
+			exit_request = self.check_file_exit()
+			if exit_request:
+				break
 			time.sleep(self.sleep_loop)
 			
 	def run_replica_thread(self):
@@ -413,9 +423,15 @@ class replica_engine(object):
 		read_replica.start()
 		replay_replica.start()
 		while True:
-			if self.check_file_exit():
+			read_alive = read_replica.isAlive()
+			replay_alive = read_replica.isAlive()
+			self.logger.info("Read thread running: %s - Replay thread running: %s" %(read_alive, replay_alive))
+			if not read_alive and not replay_alive:
 				self.pg_eng.set_source_id('stopped')
-				sys.exit()
+				break
+			if (read_alive and not replay_alive) or (not read_alive and replay_alive):
+				self.stop_replica()
+				break
 			time.sleep(self.sleep_loop)
 	
 	
