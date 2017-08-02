@@ -1,3 +1,10 @@
+ALTER TABLE 	sch_chameleon.t_log_replica DROP ts_my_event_time bigint ;
+ALTER TABLE 	sch_chameleon.t_log_replica ADD i_my_event_time bigint ;
+
+ALTER TABLE sch_chameleon.t_sources ADD ts_last_replay timestamp without time zone;
+ALTER TABLE sch_chameleon.t_sources RENAME COLUMN ts_last_event TO ts_last_received;
+
+
 CREATE TABLE sch_chameleon.t_batch_events
 (
 	i_id_batch	bigint NOT NULL,
@@ -49,6 +56,7 @@ $BODY$
 		v_i_ddl		integer;
 		v_i_evt_replay	bigint[];
 		v_i_evt_queue		bigint[];
+		v_ts_evt_source	timestamp without time zone;
 	BEGIN
 		v_b_loop:=FALSE;
 		v_i_replayed:=0;
@@ -83,7 +91,8 @@ $BODY$
 			WHERE 
 				i_id_batch=v_i_id_batch
 		);
-
+		
+		
 		v_i_evt_queue:=(
 			SELECT 
 				i_id_event[p_i_max_events+1:array_length(i_id_event,1)] 
@@ -93,6 +102,17 @@ $BODY$
 				i_id_batch=v_i_id_batch
 		);
 
+		v_ts_evt_source:=(
+			SELECT 
+				to_timestamp(i_my_event_time)
+			FROM	
+				sch_chameleon.t_log_replica
+			WHERE
+					i_id_event=v_i_evt_replay[p_i_max_events]
+				AND	i_id_batch=v_i_id_batch
+		);
+		
+		
 		IF v_i_id_batch IS NULL 
 		THEN
 			RETURN v_b_loop;
@@ -204,7 +224,7 @@ $BODY$
 									INNER JOIN sch_chameleon.t_replica_tables tab
 										ON
 												tab.v_table_name=log.v_table_name
-											AND tab.v_schema_name=log.v_schema_name
+											AND	tab.v_schema_name=log.v_schema_name
 								WHERE
 										log.i_id_batch=v_i_id_batch
 									AND 	log.i_id_event=ANY(v_i_evt_replay) 
@@ -249,7 +269,13 @@ $BODY$
 			
 		END LOOP;
 		
-
+		UPDATE sch_chameleon.t_sources 
+			SET
+				ts_last_replay=v_ts_evt_source
+		WHERE 	
+			i_id_source=p_i_source_id
+		;
+		
 		IF v_i_replayed=0 AND v_i_ddl=0
 		THEN
 			DELETE FROM sch_chameleon.t_log_replica

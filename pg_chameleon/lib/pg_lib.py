@@ -726,8 +726,10 @@ class pg_engine(object):
 				t_source,
 				t_dest_schema,
 				enm_status,
-				 date_trunc('seconds',now())-ts_last_event lag,
-				ts_last_event 
+				 date_trunc('seconds',now())-ts_last_received lag,
+				ts_last_received,
+				ts_last_received-ts_last_replay,
+				ts_last_replay
 			FROM 
 				sch_chameleon.t_sources
 			ORDER BY 
@@ -786,14 +788,14 @@ class pg_engine(object):
 		sql_event="""
 			UPDATE sch_chameleon.t_sources 
 			SET 
-				ts_last_event=to_timestamp(%s),
+				ts_last_received=to_timestamp(%s),
 				v_log_table=ARRAY[v_log_table[2],v_log_table[1]]
 				
 			WHERE 
 				i_id_source=%s
 			RETURNING 
 				v_log_table[1],
-				ts_last_event
+				ts_last_received
 			; 
 		"""
 		
@@ -959,7 +961,7 @@ class pg_engine(object):
 			event_data=row_data["event_data"]
 			event_update=row_data["event_update"]
 			log_table=global_data["log_table"]
-			insert_list.append(self.pg_conn.pgsql_cur.mogrify("%s,%s,%s,%s,%s,%s,%s,%s" ,  (
+			insert_list.append(self.pg_conn.pgsql_cur.mogrify("%s,%s,%s,%s,%s,%s,%s,%s,%s" ,  (
 						global_data["batch_id"], 
 						global_data["table"],  
 						self.dest_schema, 
@@ -967,7 +969,9 @@ class pg_engine(object):
 						global_data["binlog"], 
 						global_data["logpos"], 
 						json.dumps(event_data, cls=pg_encoder), 
-						json.dumps(event_update, cls=pg_encoder)
+						json.dumps(event_update, cls=pg_encoder), 
+						global_data["event_time"], 
+						
 					)
 				)
 			)
@@ -977,7 +981,6 @@ class pg_engine(object):
 		csv_file.seek(0)
 		try:
 			
-			#self.pg_conn.pgsql_cur.execute(sql_insert)
 			sql_copy="""
 				COPY "sch_chameleon"."""+log_table+""" 
 					(
@@ -988,7 +991,8 @@ class pg_engine(object):
 						t_binlog_name, 
 						i_binlog_position, 
 						jsb_event_data,
-						jsb_event_update
+						jsb_event_update,
+						i_my_event_time
 					) 
 				FROM 
 					STDIN 
