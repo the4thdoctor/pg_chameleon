@@ -1,4 +1,3 @@
-ALTER TABLE 	sch_chameleon.t_log_replica DROP ts_my_event_time bigint ;
 ALTER TABLE 	sch_chameleon.t_log_replica ADD i_my_event_time bigint ;
 
 ALTER TABLE sch_chameleon.t_sources ADD ts_last_replay timestamp without time zone;
