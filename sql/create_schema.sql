@@ -21,7 +21,8 @@ CREATE TABLE sch_chameleon.t_sources
 	t_source		text NOT NULL,
 	t_dest_schema   text NOT NULL,
 	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
-	ts_last_event timestamp without time zone,
+	ts_last_received timestamp without time zone,
+	ts_last_replay timestamp without time zone,
 	v_log_table character varying[] ,
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
 )
@@ -70,7 +71,8 @@ CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
   ts_event_datetime timestamp without time zone NOT NULL DEFAULT clock_timestamp(),
   jsb_event_data jsonb,
   jsb_event_update jsonb,
-   t_query TEXT NULL,
+  t_query text,
+  i_my_event_time bigint,
   CONSTRAINT pk_log_replica PRIMARY KEY (i_id_event),
   CONSTRAINT fk_replica_batch FOREIGN KEY (i_id_batch) 
 	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
@@ -198,7 +200,6 @@ LANGUAGE plpgsql
 ;
 
 
-
 	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
@@ -215,6 +216,7 @@ $BODY$
 		v_i_ddl		integer;
 		v_i_evt_replay	bigint[];
 		v_i_evt_queue		bigint[];
+		v_ts_evt_source	timestamp without time zone;
 	BEGIN
 		v_b_loop:=FALSE;
 		v_i_replayed:=0;
@@ -249,7 +251,8 @@ $BODY$
 			WHERE 
 				i_id_batch=v_i_id_batch
 		);
-
+		
+		
 		v_i_evt_queue:=(
 			SELECT 
 				i_id_event[p_i_max_events+1:array_length(i_id_event,1)] 
@@ -259,6 +262,17 @@ $BODY$
 				i_id_batch=v_i_id_batch
 		);
 
+		v_ts_evt_source:=(
+			SELECT 
+				to_timestamp(i_my_event_time)
+			FROM	
+				sch_chameleon.t_log_replica
+			WHERE
+					i_id_event=v_i_evt_replay[p_i_max_events]
+				AND	i_id_batch=v_i_id_batch
+		);
+		
+		
 		IF v_i_id_batch IS NULL 
 		THEN
 			RETURN v_b_loop;
@@ -370,7 +384,7 @@ $BODY$
 									INNER JOIN sch_chameleon.t_replica_tables tab
 										ON
 												tab.v_table_name=log.v_table_name
-											AND tab.v_schema_name=log.v_schema_name
+											AND	tab.v_schema_name=log.v_schema_name
 								WHERE
 										log.i_id_batch=v_i_id_batch
 									AND 	log.i_id_event=ANY(v_i_evt_replay) 
@@ -415,7 +429,13 @@ $BODY$
 			
 		END LOOP;
 		
-
+		UPDATE sch_chameleon.t_sources 
+			SET
+				ts_last_replay=v_ts_evt_source
+		WHERE 	
+			i_id_source=p_i_source_id
+		;
+		
 		IF v_i_replayed=0 AND v_i_ddl=0
 		THEN
 			DELETE FROM sch_chameleon.t_log_replica
@@ -428,8 +448,6 @@ $BODY$
 			UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 
 				b_replayed=True,
-				i_ddl=coalesce(i_ddl,0)+v_i_ddl,
-				i_replayed=coalesce(i_replayed,0)+v_i_replayed,
 				i_skipped=v_i_skipped,
 				ts_replayed=clock_timestamp()
 				
@@ -446,11 +464,14 @@ $BODY$
 		ELSE
 			UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 
+				b_replayed=True,
 				i_ddl=coalesce(i_ddl,0)+v_i_ddl,
 				i_replayed=coalesce(i_replayed,0)+v_i_replayed,
+				i_skipped=v_i_skipped,
 				ts_replayed=clock_timestamp()
+				
 			WHERE
-				i_id_batch=v_r_rows.i_id_batch
+				i_id_batch=v_i_id_batch
 			;
 
 			UPDATE sch_chameleon.t_batch_events
