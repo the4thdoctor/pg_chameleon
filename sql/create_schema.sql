@@ -524,4 +524,3 @@ $BODY$
 	END;
 $BODY$
 LANGUAGE plpgsql;
-

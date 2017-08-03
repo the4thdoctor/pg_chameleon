@@ -752,7 +752,7 @@ class pg_engine(object):
 				t_source,
 				t_dest_schema,
 				enm_status,
-				 date_trunc('seconds',now())-ts_last_received lag,
+				date_trunc('seconds',now())-ts_last_received lag,
 				ts_last_received,
 				ts_last_received-ts_last_replay,
 				ts_last_replay

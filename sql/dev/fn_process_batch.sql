@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch_v2(integer,integer)
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
 $BODY$
 	DECLARE
@@ -101,17 +101,24 @@ $BODY$
 				enm_binlog_event
 			FROM
 			(
+<<<<<<< HEAD
 <<<<<<< 98364345ea29577df3de6311fc350e8f57876fe9
 				SELECT
 =======
 				SELECT 
 >>>>>>> new function seems to work properly
+=======
+				SELECT
+>>>>>>> 16ec83d0b6f3e30ab282c65489405f1ae01609e9
 					i_id_event,
 					i_id_batch,
 					v_table_name,
 					v_schema_name,
 					enm_binlog_event,
+<<<<<<< HEAD
 <<<<<<< 98364345ea29577df3de6311fc350e8f57876fe9
+=======
+>>>>>>> 16ec83d0b6f3e30ab282c65489405f1ae01609e9
 					t_query,
 					ts_event_datetime,
 					t_pk_data,
@@ -189,6 +196,7 @@ $BODY$
 						t_query,
 						ts_event_datetime
 				) t_columns
+<<<<<<< HEAD
 =======
 					array_agg(quote_ident(t_column)) AS t_colunm,
 					array_agg(quote_literal(jsb_event_data->>t_column)) as t_event_data,
@@ -225,6 +233,8 @@ $BODY$
 					
 				) t_dat
 >>>>>>> new function seems to work properly
+=======
+>>>>>>> 16ec83d0b6f3e30ab282c65489405f1ae01609e9
 				GROUP BY
 					i_id_event,
 					i_id_batch,
@@ -232,16 +242,22 @@ $BODY$
 					v_schema_name,
 					enm_binlog_event,
 					t_query,
+<<<<<<< HEAD
 <<<<<<< 98364345ea29577df3de6311fc350e8f57876fe9
+=======
+>>>>>>> 16ec83d0b6f3e30ab282c65489405f1ae01609e9
 					ts_event_datetime,
 					t_pk_data,
 					t_pk_update
 			) t_sql
+<<<<<<< HEAD
 =======
 					ts_event_datetime
 				ORDER BY ts_event_datetime
 			) t_query
 >>>>>>> new function seems to work properly
+=======
+>>>>>>> 16ec83d0b6f3e30ab282c65489405f1ae01609e9
 		LOOP 	
 			EXECUTE  v_r_rows.t_sql;
 			IF v_r_rows.enm_binlog_event='ddl'
@@ -252,6 +268,7 @@ $BODY$
 			END IF;
 			
 			
+<<<<<<< HEAD
 <<<<<<< 98364345ea29577df3de6311fc350e8f57876fe9
 			
 =======
@@ -260,22 +277,29 @@ $BODY$
 				i_id_event=v_r_rows.i_id_event
 			;
 >>>>>>> new function seems to work properly
+=======
+			
+>>>>>>> 16ec83d0b6f3e30ab282c65489405f1ae01609e9
 			
 		END LOOP;
 		
 
 		IF v_i_replayed=0 AND v_i_ddl=0
 		THEN
+<<<<<<< HEAD
 <<<<<<< 4d3438102c559b55a0e3c42a1d5fb123edec5e61
 <<<<<<< 98364345ea29577df3de6311fc350e8f57876fe9
 =======
 >>>>>>> improve performance for the replay plpgsql function
+=======
+>>>>>>> 16ec83d0b6f3e30ab282c65489405f1ae01609e9
 			DELETE FROM sch_chameleon.t_log_replica
 			WHERE
     			    i_id_batch=v_i_id_batch
 			;
 				
 			GET DIAGNOSTICS v_i_skipped = ROW_COUNT;
+<<<<<<< HEAD
 <<<<<<< 4d3438102c559b55a0e3c42a1d5fb123edec5e61
 =======
 =======
@@ -306,6 +330,8 @@ $BODY$
 			v_b_loop=True;
 		END IF;
 >>>>>>> new function seems to work properly
+=======
+>>>>>>> 16ec83d0b6f3e30ab282c65489405f1ae01609e9
 
 			UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 
