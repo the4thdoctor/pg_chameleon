@@ -7,6 +7,7 @@ changelog
 * fix missing parse for numeric_scale in sql_utils
 * lock only the affected tables when running sync_tables
 * improve performance for the replay plpgsql function
+* fix replica crash when parsing **ALTER TABLE...DROP FOREIGN KEY**
 
 1.5 23 Jul 2017
 .................................

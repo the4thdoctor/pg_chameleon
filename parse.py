@@ -50,14 +50,14 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #ADD COLUMN status INT(10) UNSIGNED NULL AFTER `new_enum`
 #"""
 
-statement = """
-"""
+statement = """ALTER TABLE foo DROP FOREIGN KEY fk_trigger_bar,ADD COLUMN `count` SMALLINT(6) NULL;"""
 
 print(statement)
 token_sql=sql_token()
 token_sql.parse_sql(statement)
 for token in token_sql.tokenised:
-	for column in token["columns"]:
-		print(column)
+	print (token)
+#	for column in token["columns"]:
+#		print(column)
 	#else:	
-	
+
