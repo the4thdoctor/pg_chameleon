@@ -46,12 +46,12 @@ class sql_token(object):
 		self.m_autoinc=re.compile(r'(AUTO_INCREMENT)', re.IGNORECASE)
 		
 		#re for query type
-		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
+		self.m_create_table=re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:(?:`)?(?:\w*)(?:`)?\.)?(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table=re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_truncate_table=re.compile(r'(TRUNCATE)\s*(?:TABLE)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_alter_index=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+(?:UNIQUE)?\s*?(?:INDEX).*,?)', re.IGNORECASE)
 		self.m_alter_table=re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?.*,?)', re.IGNORECASE)
-		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
+		self.m_alter_list=re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))\s*(FOREIGN\s*KEY)?\s*(.*?,)', re.IGNORECASE)
 		self.m_alter_column=re.compile(r'\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
 		self.m_default_value=re.compile(r"(\bDEFAULT\b)\s*('?\w*'?)\s*", re.IGNORECASE)
 		self.m_alter_change=re.compile(r'\s*`?(\w*)`?\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
@@ -88,9 +88,19 @@ class sql_token(object):
 			col_dic["data_type"]=colmatch.group(2).lower().strip()
 			col_dic["is_nullable"]="YES"
 			if dimmatch:
-				col_dic["enum_list"]=dimmatch.group(1).replace('|', ',').strip()
-				col_dic["character_maximum_length"]=dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
-				col_dic["numeric_precision"]=dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
+				dimensions = dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
+				enum_list = dimmatch.group(1).replace('|', ',').strip()
+				numeric_dims = dimensions.split(',')
+				numeric_precision = numeric_dims[0].strip()
+				try:
+					numeric_scale = numeric_dims[1].strip()
+				except:
+					numeric_scale = 0
+				
+				col_dic["enum_list"] = enum_list
+				col_dic["character_maximum_length"] = dimensions
+				col_dic["numeric_precision"]=numeric_precision
+				col_dic["numeric_scale"]=numeric_scale
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
 			pkey_list=self.pkey_cols.split(',')
@@ -290,7 +300,7 @@ class sql_token(object):
 			:return: stat_dic the alter table dictionary tokenised from the match object.
 			:rtype: dictionary
 		"""
-		excluded_names = ['CONSTRAINT', 'PRIMARY', 'INDEX', 'UNIQUE' ]
+		excluded_names = ['CONSTRAINT', 'PRIMARY', 'INDEX', 'UNIQUE', 'FOREIGN KEY' ]
 		stat_dic={}
 		alter_cmd=[]
 		alter_stat=malter_table.group(0) + ','

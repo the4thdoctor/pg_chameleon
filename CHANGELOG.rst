@@ -1,6 +1,15 @@
 changelog 
 *************************
 
+1.6 XX Aug 2017
+.................................
+* fix wrong table name when parsing **CREATE TABLE schema_name.table_name**
+* fix missing parse for numeric_scale in sql_utils
+* lock only the affected tables when running sync_tables
+* improve performance for the replay plpgsql function
+* fix replica crash when parsing **ALTER TABLE...DROP FOREIGN KEY**
+* add change lag to read lag and add replay  lag to the show_status view
+
 1.5 23 Jul 2017
 .................................
 * fix wrong evaluation in table's consistent state (row and DDL)

@@ -110,7 +110,7 @@ class pg_engine(object):
 		self.idx_ddl = {}
 		self.type_ddl = {}
 		self.pg_charset = self.pg_conn.pg_charset
-		self.cat_version = '1.5'
+		self.cat_version = '1.6'
 		self.cat_sql = [
 			{'version':'base','script': 'create_schema.sql'}, 
 			{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -128,6 +128,7 @@ class pg_engine(object):
 			{'version':'1.3','script': 'upgrade/cat_1.3.sql'}, 
 			{'version':'1.4','script': 'upgrade/cat_1.4.sql'},
 			{'version':'1.5','script': 'upgrade/cat_1.5.sql'},
+			{'version':'1.6','script': 'upgrade/cat_1.6.sql'},
 		]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -725,8 +726,10 @@ class pg_engine(object):
 				t_source,
 				t_dest_schema,
 				enm_status,
-				 date_trunc('seconds',now())-ts_last_event lag,
-				ts_last_event 
+				 date_trunc('seconds',now())-ts_last_received lag,
+				ts_last_received,
+				ts_last_received-ts_last_replay,
+				ts_last_replay
 			FROM 
 				sch_chameleon.t_sources
 			ORDER BY 
@@ -785,14 +788,14 @@ class pg_engine(object):
 		sql_event="""
 			UPDATE sch_chameleon.t_sources 
 			SET 
-				ts_last_event=to_timestamp(%s),
+				ts_last_received=to_timestamp(%s),
 				v_log_table=ARRAY[v_log_table[2],v_log_table[1]]
 				
 			WHERE 
 				i_id_source=%s
 			RETURNING 
 				v_log_table[1],
-				ts_last_event
+				ts_last_received
 			; 
 		"""
 		
@@ -880,23 +883,36 @@ class pg_engine(object):
 		
 		self.logger.debug("starting insert loop")
 		for row_data in group_insert:
-			global_data=row_data["global_data"]
-			event_data=row_data["event_data"]
-			event_update=row_data["event_update"]
-			log_table=global_data["log_table"]
+			global_data = row_data["global_data"]
+			event_data = row_data["event_data"]
+			event_update = row_data["event_update"]
+			log_table = global_data["log_table"]
+			event_time = global_data["event_time"]
 			sql_insert="""
 				INSERT INTO sch_chameleon."""+log_table+"""
-				(
-					i_id_batch, 
-					v_table_name, 
-					v_schema_name, 
-					enm_binlog_event, 
-					t_binlog_name, 
-					i_binlog_position, 
-					jsb_event_data,
-					jsb_event_update
-				)
-				VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+					(
+						i_id_batch, 
+						v_table_name, 
+						v_schema_name, 
+						enm_binlog_event, 
+						t_binlog_name, 
+						i_binlog_position, 
+						jsb_event_data,
+						jsb_event_update,
+						i_my_event_time
+					)
+					VALUES 
+						(
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s
+						)
 				;						
 			"""
 			try:
@@ -908,7 +924,8 @@ class pg_engine(object):
 						global_data["binlog"], 
 						global_data["logpos"], 
 						json.dumps(event_data, cls=pg_encoder), 
-						json.dumps(event_update, cls=pg_encoder)
+						json.dumps(event_update, cls=pg_encoder), 
+						event_time
 					)
 				)
 			except:
@@ -958,7 +975,7 @@ class pg_engine(object):
 			event_data=row_data["event_data"]
 			event_update=row_data["event_update"]
 			log_table=global_data["log_table"]
-			insert_list.append(self.pg_conn.pgsql_cur.mogrify("%s,%s,%s,%s,%s,%s,%s,%s" ,  (
+			insert_list.append(self.pg_conn.pgsql_cur.mogrify("%s,%s,%s,%s,%s,%s,%s,%s,%s" ,  (
 						global_data["batch_id"], 
 						global_data["table"],  
 						self.dest_schema, 
@@ -966,7 +983,9 @@ class pg_engine(object):
 						global_data["binlog"], 
 						global_data["logpos"], 
 						json.dumps(event_data, cls=pg_encoder), 
-						json.dumps(event_update, cls=pg_encoder)
+						json.dumps(event_update, cls=pg_encoder), 
+						global_data["event_time"], 
+						
 					)
 				)
 			)
@@ -976,7 +995,6 @@ class pg_engine(object):
 		csv_file.seek(0)
 		try:
 			
-			#self.pg_conn.pgsql_cur.execute(sql_insert)
 			sql_copy="""
 				COPY "sch_chameleon"."""+log_table+""" 
 					(
@@ -987,7 +1005,8 @@ class pg_engine(object):
 						t_binlog_name, 
 						i_binlog_position, 
 						jsb_event_data,
-						jsb_event_update
+						jsb_event_update,
+						i_my_event_time
 					) 
 				FROM 
 					STDIN 
@@ -1008,7 +1027,8 @@ class pg_engine(object):
 		
 	def set_batch_processed(self, id_batch):
 		"""
-			The method updates the flag b_processed and sets the processed timestamp for the given batch id
+			The method updates the flag b_processed and sets the processed timestamp for the given batch id.
+			The event ids are aggregated into the table t_batch_events used by the replay function.
 			
 			:param id_batch: the id batch to set as processed
 		"""
@@ -1023,6 +1043,33 @@ class pg_engine(object):
 			;
 		"""
 		self.pg_conn.pgsql_cur.execute(sql_update, (id_batch, ))
+		self.logger.debug("collecting events id for batch %s " % (id_batch, ))
+		sql_collect_events = """
+			INSERT INTO
+				sch_chameleon.t_batch_events
+				(
+					i_id_batch,
+					i_id_event
+				)
+			SELECT
+				i_id_batch,
+				array_agg(i_id_event)
+			FROM
+			(
+				SELECT 
+					i_id_batch,
+					i_id_event,
+					ts_event_datetime
+				FROM 
+					sch_chameleon.t_log_replica 
+				WHERE i_id_batch=%s
+				ORDER BY ts_event_datetime
+			) t_event
+			GROUP BY
+					i_id_batch
+			;
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_collect_events, (id_batch, ))
 		
 	def process_batch(self, replica_batch_size):
 		"""

@@ -169,7 +169,7 @@ class mysql_engine(object):
 					if len(group_insert)>0:
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
-					self.logger.debug("QUERY EVENT - binlogfile %s, position %s.\n--------\n%s\n-------- " % (binlogfile, log_position, binlogevent.query))
+					self.logger.info("QUERY EVENT - binlogfile %s, position %s.\n--------\n%s\n-------- " % (binlogfile, log_position, binlogevent.query))
 					self.sql_token.parse_sql(binlogevent.query)
 					for token in self.sql_token.tokenised:
 						write_ddl = True
@@ -184,7 +184,7 @@ class mysql_engine(object):
 							elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
 								write_ddl = True
 							if write_ddl:
-								self.logger.debug("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
+								self.logger.info("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
 								pg_engine.set_consistent_table(table_name)
 								inc_tables = pg_engine.get_inconsistent_tables()
 						if write_ddl:
@@ -238,7 +238,8 @@ class mysql_engine(object):
 										"schema": schema_name, 
 										"table": table_name, 
 										"batch_id":id_batch, 
-										"log_table":log_table
+										"log_table":log_table, 
+										"event_time":event_time
 									}
 					event_data={}
 					event_update={}
@@ -276,6 +277,7 @@ class mysql_engine(object):
 					
 					if len(group_insert)>=self.replica_batch_size:
 						self.logger.debug("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
+						self.logger.debug("Master coordinates: %s" % (master_data, ))
 						pg_engine.write_batch(group_insert)
 						size_insert=0
 						group_insert=[]
@@ -362,6 +364,7 @@ class mysql_engine(object):
 					self.id_batch=None
 		self.logger.debug("replaying batch.")
 		pg_engine.process_batch(self.replica_batch_size)
+		
 
 	def get_table_type_map(self):
 		"""

@@ -416,6 +416,7 @@ class replica_engine(object):
 					self.logger.error("An error occurred during the replica. %s" % (sys.exc_info(), ))
 					exit=open(self.exit_file, 'w')
 					exit.close()
+					raise
 					sys.exit(5)
 			self.logger.info("batch complete. sleeping %s second(s)" % (self.sleep_loop, ))
 			if self.check_file_exit():
@@ -447,16 +448,18 @@ class replica_engine(object):
 			list the replica status using the configuration files and the replica catalogue
 		"""
 		source_status=self.pg_eng.get_status()
-		tab_headers = ['Config file',  'Destination schema',  'Status' ,  'Lag',  'Last received event']
+		tab_headers = ['Config file',  'Destination schema',  'Status' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
 		tab_body = []
 			
 		for status in source_status:
 			source_name = status[0]
 			dest_schema = status[1]
 			source_status = status[2]
-			lag = status[3]
-			last_received_event = status[4]
-			tab_row = [source_name, dest_schema, source_status, lag, last_received_event ]
+			read_lag = status[3]
+			last_read = status[4]
+			replay_lag = status[5]
+			last_replay = status[6]
+			tab_row = [source_name, dest_schema, source_status, read_lag, last_read,  replay_lag, last_replay]
 			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers))
 		
@@ -506,6 +509,8 @@ class replica_engine(object):
 		"""
 		if table != "*":
 			table_limit = table.split(',')
+			self.my_eng.mysql_con.tables_limit = table_limit
+			self.my_eng.get_table_metadata()
 			self.my_eng.lock_tables()
 			self.pg_eng.table_limit = table_limit
 			self.pg_eng.master_status = self.my_eng.master_status

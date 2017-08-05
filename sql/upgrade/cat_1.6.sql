@@ -1,148 +1,7 @@
---CREATE SCHEMA
-CREATE SCHEMA IF NOT EXISTS sch_chameleon;
+ALTER TABLE 	sch_chameleon.t_log_replica ADD i_my_event_time bigint ;
 
---VIEWS
-CREATE OR REPLACE VIEW sch_chameleon.v_version 
- AS
-	SELECT '1.6'::TEXT t_version
-;
-
---TYPES
-CREATE TYPE sch_chameleon.en_src_status
-	AS ENUM ('ready', 'initialising','initialised','stopped','running','error');
-
-CREATE TYPE sch_chameleon.en_binlog_event 
-	AS ENUM ('delete', 'update', 'insert','ddl');
-
---TABLES/INDICES	
-CREATE TABLE sch_chameleon.t_sources
-(
-	i_id_source	bigserial,
-	t_source		text NOT NULL,
-	t_dest_schema   text NOT NULL,
-	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
-	ts_last_received timestamp without time zone,
-	ts_last_replay timestamp without time zone,
-	v_log_table character varying[] ,
-	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
-)
-;
-
-CREATE UNIQUE INDEX idx_t_sources_t_source ON sch_chameleon.t_sources(t_source);
-CREATE UNIQUE INDEX idx_t_sources_t_dest_schema ON sch_chameleon.t_sources(t_dest_schema);
-
-
-CREATE TABLE sch_chameleon.t_replica_batch
-(
-  i_id_batch bigserial NOT NULL,
-  i_id_source bigint NOT NULL,
-  t_binlog_name text,
-  i_binlog_position integer,
-  b_started boolean NOT NULL DEFAULT False,
-  b_processed boolean NOT NULL DEFAULT False,
-  b_replayed boolean NOT NULL DEFAULT False,
-  ts_created timestamp without time zone NOT NULL DEFAULT clock_timestamp(),
-  ts_processed timestamp without time zone ,
-  ts_replayed timestamp without time zone ,
-  i_replayed bigint NULL,
-  i_skipped bigint NULL,
-  i_ddl bigint NULL,
-  CONSTRAINT pk_t_batch PRIMARY KEY (i_id_batch)
-)
-WITH (
-  OIDS=FALSE
-);
-
-CREATE UNIQUE INDEX idx_t_replica_batch_binlog_name_position 
-    ON sch_chameleon.t_replica_batch  (i_id_source,t_binlog_name,i_binlog_position);
-
-CREATE UNIQUE INDEX idx_t_replica_batch_ts_created
-	ON sch_chameleon.t_replica_batch (i_id_source,ts_created);
-
-CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
-(
-  i_id_event bigserial NOT NULL,
-  i_id_batch bigserial NOT NULL,
-  v_table_name character varying(100) NOT NULL,
-  v_schema_name character varying(100) NOT NULL,
-  enm_binlog_event sch_chameleon.en_binlog_event NOT NULL,
-  t_binlog_name text,
-  i_binlog_position integer,
-  ts_event_datetime timestamp without time zone NOT NULL DEFAULT clock_timestamp(),
-  jsb_event_data jsonb,
-  jsb_event_update jsonb,
-  t_query text,
-  i_my_event_time bigint,
-  CONSTRAINT pk_log_replica PRIMARY KEY (i_id_event),
-  CONSTRAINT fk_replica_batch FOREIGN KEY (i_id_batch) 
-	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
-	ON UPDATE RESTRICT ON DELETE CASCADE
-)
-WITH (
-  OIDS=FALSE
-);
-
-
-CREATE TABLE sch_chameleon.t_replica_tables
-(
-  i_id_table bigserial NOT NULL,
-  i_id_source bigint NOT NULL,
-  v_table_name character varying(100) NOT NULL,
-  v_schema_name character varying(100) NOT NULL,
-  v_table_pkey character varying(100)[] NOT NULL,
-  t_binlog_name text,
-  i_binlog_position integer,
-  CONSTRAINT pk_t_replica_tables PRIMARY KEY (i_id_table)
-)
-WITH (
-  OIDS=FALSE
-);
-
-CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
-	ON sch_chameleon.t_replica_tables (i_id_source,v_table_name,v_schema_name);
-
-
-CREATE TABLE sch_chameleon.t_discarded_rows
-(
-	i_id_row		bigserial,
-	i_id_batch	bigint NOT NULL,
-	ts_discard	timestamp with time zone NOT NULL DEFAULT clock_timestamp(),
-	t_row_data	text,
-	CONSTRAINT pk_t_discarded_rows PRIMARY KEY (i_id_row)
-)
-;
-	
-	
-ALTER TABLE sch_chameleon.t_replica_batch
-	ADD CONSTRAINT fk_t_replica_batch_i_id_source FOREIGN KEY (i_id_source)
-	REFERENCES sch_chameleon.t_sources (i_id_source)
-	ON UPDATE RESTRICT ON DELETE CASCADE
-	;
-
-ALTER TABLE sch_chameleon.t_replica_tables
-	ADD CONSTRAINT fk_t_replica_tables_i_id_source FOREIGN KEY (i_id_source)
-	REFERENCES sch_chameleon.t_sources (i_id_source)
-	ON UPDATE RESTRICT ON DELETE CASCADE
-	;
-
-
-
-CREATE TABLE sch_chameleon.t_index_def
-(
-  i_id_def bigserial NOT NULL,
-  i_id_source bigint NOT NULL,
-  v_schema character varying(100),
-  v_table character varying(100),
-  v_index character varying(100),
-  t_create	text,
-  t_drop	text,
-  CONSTRAINT pk_t_index_def PRIMARY KEY (i_id_def)
-)
-WITH (
-  OIDS=FALSE
-);
-
-CREATE UNIQUE INDEX idx_schema_table_source ON sch_chameleon.t_index_def(i_id_source,v_schema,v_table,v_index);
+ALTER TABLE sch_chameleon.t_sources ADD ts_last_replay timestamp without time zone;
+ALTER TABLE sch_chameleon.t_sources RENAME COLUMN ts_last_event TO ts_last_received;
 
 
 CREATE TABLE sch_chameleon.t_batch_events
@@ -158,48 +17,28 @@ ALTER TABLE sch_chameleon.t_batch_events
 	REFERENCES sch_chameleon.t_replica_batch(i_id_batch)
 	ON UPDATE RESTRICT ON DELETE CASCADE
 	;
-
---FUNCTIONS
-CREATE OR REPLACE FUNCTION sch_chameleon.fn_refresh_parts() 
-RETURNS VOID as 
-$BODY$
-DECLARE
-    t_sql text;
-    r_tables record;
-BEGIN
-    FOR r_tables IN SELECT unnest(v_log_table) as v_log_table FROM sch_chameleon.t_sources
-    LOOP
-        RAISE DEBUG 'CREATING TABLE %', r_tables.v_log_table;
-        t_sql:=format('
-			CREATE TABLE IF NOT EXISTS sch_chameleon.%I
-			(
-			CONSTRAINT pk_%s PRIMARY KEY (i_id_event),
-			  CONSTRAINT fk_%s FOREIGN KEY (i_id_batch) 
-				REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
-			ON UPDATE RESTRICT ON DELETE CASCADE
-			)
-			INHERITS (sch_chameleon.t_log_replica)
-			;',
-                        r_tables.v_log_table,
-                        r_tables.v_log_table,
-                        r_tables.v_log_table
-                );
-        EXECUTE t_sql;
-	t_sql:=format('
-			CREATE INDEX IF NOT EXISTS idx_id_batch_%s 
-			ON sch_chameleon.%I (i_id_batch)
-			;',
-			r_tables.v_log_table,
-                        r_tables.v_log_table
-		);
-	EXECUTE t_sql;
-    END LOOP;
-END
-$BODY$
-LANGUAGE plpgsql 
+INSERT INTO
+	sch_chameleon.t_batch_events
+	(
+		i_id_batch,
+		i_id_event
+	)
+SELECT
+	i_id_batch,
+	array_agg(i_id_event)
+FROM
+	(
+		SELECT 
+			i_id_batch,
+			i_id_event,
+			ts_event_datetime
+		FROM 
+			sch_chameleon.t_log_replica 
+		ORDER BY ts_event_datetime
+	) t_event
+GROUP BY
+		i_id_batch
 ;
-
-
 	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
