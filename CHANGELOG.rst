@@ -8,6 +8,7 @@ changelog
 * lock only the affected tables when running sync_tables
 * improve performance for the replay plpgsql function
 * fix replica crash when parsing **ALTER TABLE...DROP FOREIGN KEY**
+* add change lag to read lag and add replay  lag to the show_status view
 
 1.5 23 Jul 2017
 .................................
