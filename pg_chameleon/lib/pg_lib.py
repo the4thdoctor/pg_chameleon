@@ -883,23 +883,36 @@ class pg_engine(object):
 		
 		self.logger.debug("starting insert loop")
 		for row_data in group_insert:
-			global_data=row_data["global_data"]
-			event_data=row_data["event_data"]
-			event_update=row_data["event_update"]
-			log_table=global_data["log_table"]
+			global_data = row_data["global_data"]
+			event_data = row_data["event_data"]
+			event_update = row_data["event_update"]
+			log_table = global_data["log_table"]
+			event_time = global_data["event_time"]
 			sql_insert="""
 				INSERT INTO sch_chameleon."""+log_table+"""
-				(
-					i_id_batch, 
-					v_table_name, 
-					v_schema_name, 
-					enm_binlog_event, 
-					t_binlog_name, 
-					i_binlog_position, 
-					jsb_event_data,
-					jsb_event_update
-				)
-				VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+					(
+						i_id_batch, 
+						v_table_name, 
+						v_schema_name, 
+						enm_binlog_event, 
+						t_binlog_name, 
+						i_binlog_position, 
+						jsb_event_data,
+						jsb_event_update,
+						i_my_event_time
+					)
+					VALUES 
+						(
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s
+						)
 				;						
 			"""
 			try:
@@ -911,7 +924,8 @@ class pg_engine(object):
 						global_data["binlog"], 
 						global_data["logpos"], 
 						json.dumps(event_data, cls=pg_encoder), 
-						json.dumps(event_update, cls=pg_encoder)
+						json.dumps(event_update, cls=pg_encoder), 
+						event_time
 					)
 				)
 			except:
