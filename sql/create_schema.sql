@@ -464,7 +464,6 @@ $BODY$
 		ELSE
 			UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 
-				b_replayed=True,
 				i_ddl=coalesce(i_ddl,0)+v_i_ddl,
 				i_replayed=coalesce(i_replayed,0)+v_i_replayed,
 				i_skipped=v_i_skipped,
