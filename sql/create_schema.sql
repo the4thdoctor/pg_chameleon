@@ -199,8 +199,6 @@ $BODY$
 LANGUAGE plpgsql 
 ;
 
-
-	
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_process_batch(integer,integer)
 RETURNS BOOLEAN AS
 $BODY$
@@ -429,13 +427,15 @@ $BODY$
 			
 		END LOOP;
 		
-		UPDATE sch_chameleon.t_sources 
-			SET
-				ts_last_replay=v_ts_evt_source
-		WHERE 	
-			i_id_source=p_i_source_id
-		;
-		
+		IF v_ts_evt_source IS NOT NULL
+		THEN
+			UPDATE sch_chameleon.t_sources 
+				SET
+					ts_last_replay=v_ts_evt_source
+			WHERE 	
+				i_id_source=p_i_source_id
+			;
+		END IF;
 		IF v_i_replayed=0 AND v_i_ddl=0
 		THEN
 			DELETE FROM sch_chameleon.t_log_replica

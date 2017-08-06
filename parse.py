@@ -51,7 +51,15 @@ ALTER TABLE `test` DROP PRIMARY KEY;
 #"""
 
 statement = """ALTER TABLE foo DROP FOREIGN KEY fk_trigger_bar,ADD COLUMN `count` SMALLINT(6) NULL;"""
-
+statement = """ALTER TABLE test
+ADD `count` SMALLINT(6) NULL ,
+ADD COLUMN `log` VARCHAR(12) default 'blah' NULL AFTER `count`,
+ADD COLUMN new_enum ENUM('asd','r') NULL AFTER `log`,
+ADD COLUMN status INT(10) UNSIGNED NULL AFTER `new_enum`,
+DROP FOREIGN            KEY fk_trigger_bar,
+add primary key,
+drop unique index asdf
+"""
 print(statement)
 token_sql=sql_token()
 token_sql.parse_sql(statement)
