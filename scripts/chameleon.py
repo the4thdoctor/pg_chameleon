@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from pkg_resources import get_distribution
 __version__ = get_distribution('pg_chameleon').version
-import argparse, sys
+import argparse
 from pg_chameleon import replica_engine
 from pg_chameleon import config_dir
 configdir = config_dir()

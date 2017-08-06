@@ -10,9 +10,9 @@
 .. image:: https://img.shields.io/badge/license-BSD-blue.svg   
         :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/master/LICENSE
 	
-.. image:: https://img.shields.io/twitter/url/https/github.com/the4thdoctor/pg_chameleon.svg?style=social   
-         :target: https://twitter.com/intent/tweet?text=pgchameleon:&url=%5Bobject%20Object%5D
-	
+.. image:: https://travis-ci.org/the4thdoctor/pg_chameleon.svg?branch=ver1.6
+    :target: https://travis-ci.org/the4thdoctor/pg_chameleon
+    
 pg_chameleon `is available on pypi for download <https://pypi.python.org/pypi/pg_chameleon>`_ 
 
 The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`_ 
