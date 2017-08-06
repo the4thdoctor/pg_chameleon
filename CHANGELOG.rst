@@ -9,6 +9,8 @@ changelog
 * improve performance for the replay plpgsql function
 * fix replica crash when parsing **ALTER TABLE...DROP FOREIGN KEY**
 * add change lag to read lag and add replay  lag to the show_status view
+* add TravisCI configuration to the source tree
+* add set_config for initial config dir creation (needed by the CI tests)
 
 1.5 23 Jul 2017
 .................................

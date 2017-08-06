@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e 
 here=`dirname $0`
-chameleon.py 
+chameleon.py set_config
 cp ${here}/test.yaml ~/.pg_chameleon/config/ 
 chameleon.py create_schema --config test
 chameleon.py add_source --config test

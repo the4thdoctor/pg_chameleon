@@ -21,7 +21,8 @@ commands = [
 	'enable_replica', 
 	'sync_tables', 
 	'show_status' , 
-	'detach_replica'
+	'detach_replica', 
+	'set_config'
 	]
 command_help = 'Available commands, ' + ','.join(commands)
 table_help =  """Specifies the table's name to sync. It's possible to specify multiple table names separated by comma. If the parameter is omitted all tables will be syncronised."""
@@ -68,3 +69,5 @@ if args.command in commands:
 		replica.show_status()
 	elif args.command == commands[13]:
 		replica.detach_replica()
+	elif args.command == commands[14]:
+		configdir.set_config()
