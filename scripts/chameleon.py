@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from pkg_resources import get_distribution
 __version__ = get_distribution('pg_chameleon').version
-import argparse
+import argparse, sys
 from pg_chameleon import replica_engine
 from pg_chameleon import config_dir
 configdir = config_dir()
@@ -39,7 +39,10 @@ parser.add_argument('--version', action='version',version='pg_chameleon {version
 
 args = parser.parse_args()
 
-if args.command in commands:
+if args.command == commands[14]:
+		configdir.set_config()
+elif args.command in commands:
+	
 	replica = replica_engine(args.config, args.debug, args.nolock)
 	if args.command == commands[0]:
 		replica.create_service_schema()
@@ -69,5 +72,4 @@ if args.command in commands:
 		replica.show_status()
 	elif args.command == commands[13]:
 		replica.detach_replica()
-	elif args.command == commands[14]:
-		configdir.set_config()
+	
