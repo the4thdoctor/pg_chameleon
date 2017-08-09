@@ -295,13 +295,13 @@ class sql_token(object):
 			MODIFY works similarly to CHANGE except that the field is not renamed.
 			In that case we have only the keys type and dimension defined along with name and command.s
 			
-			The excluded_names list is used to skip the CONSTRAINT,INDEX and PRIMARY built along the the match object.
+			The class's regular expression self.m_ignore_keywords is used to skip the CONSTRAINT,INDEX and PRIMARY and FOREIGN KEY KEYWORDS in the
+			alter command.
 			
 			:param malter_table: The match object returned by the match method against tha alter table statement.
 			:return: stat_dic the alter table dictionary tokenised from the match object.
 			:rtype: dictionary
 		"""
-		excluded_names = ['CONSTRAINT', 'PRIMARY', 'INDEX', 'UNIQUE', 'FOREIGN KEY' ]
 		stat_dic={}
 		alter_cmd=[]
 		alter_stat=malter_table.group(0) + ','
@@ -316,6 +316,7 @@ class sql_token(object):
 		for alter_item in alter_list:
 			alter_dic={}
 			m_ignore_item = self.m_ignore_keywords.search(alter_item[1])
+			
 			if not m_ignore_item:
 				command = (alter_item[0].split())[0].upper().strip()
 				if command == 'DROP':
@@ -364,7 +365,7 @@ class sql_token(object):
 						except:
 							alter_dic["dimension"]=0
 				alter_cmd.append(alter_dic)
-				stat_dic["alter_cmd"]=alter_cmd
+			stat_dic["alter_cmd"]=alter_cmd
 		return stat_dic
 		
 	def parse_sql(self, sql_string):
