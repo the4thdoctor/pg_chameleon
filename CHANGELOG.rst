@@ -7,10 +7,12 @@ changelog
 * fix missing parse for numeric_scale in sql_utils
 * lock only the affected tables when running sync_tables
 * improve performance for the replay plpgsql function
-* fix replica crash when parsing **ALTER TABLE...DROP FOREIGN KEY**
-* add change lag to read lag and add replay  lag to the show_status view
+* add change lag to read lag and add replay  lag  in the the show_status output
 * add TravisCI configuration to the source tree
 * add set_config for initial config dir creation (needed by the CI tests)
+* add a regexp match to exclude the keywords in the parse alter  table 
+* add **FOREIGN KEY** to the excluded keyworkds when parsing alter table
+
 
 1.5 23 Jul 2017
 .................................

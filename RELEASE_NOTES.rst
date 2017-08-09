@@ -1,6 +1,21 @@
 RELEASE NOTES
 *************************
 
+Version 1.6
+--------------------------
+The version 1.6 rewrites completely the replay function's logic. The initial implementation used massively the SELECT INTO 
+to fet the jsonb structure. As this approach generates a change of memory context and because this happened **for each logged row**,
+on high activity databases the load imposed on the memory and the CPU was not acceptable.
+The new implementation collects the receiving row structures from the information schema and using the format function, builds the DDL on the fly
+meanwhile reading from the jsonb objects. The function is also more readable and shorter than the initial version. Tests proved that the speed replay 
+improved sensibly with, at same time, a lower load on the CPU.
+
+The show_status output now shows the read and replay lags. This change gives a better understanding on the replica lag, similarly to the show slave command
+in mysql. The change is also a preparation for the threaded read and replay feature which will appear in the version 1.7.
+
+The version also add several bug fixes. Check the changelog for the details.
+
+
 Version 1.5
 --------------------------
 The version 1.5 adds the support for default value for the DDL ALTER TABLE...ADD COLUMN, CHANGE and MODIFY. 
@@ -9,8 +24,6 @@ The previous implementation removed any **default** keyworkd before parsing the 
 The child tables of t_log _replica have now indices on the i_id_batch field. This will speed up the cleanup for replayed batches.
 
 Several bug fixes, check the changelog for the details.
-
-
 
 
 
