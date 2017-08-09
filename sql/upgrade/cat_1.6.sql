@@ -107,7 +107,7 @@ $BODY$
 			FROM	
 				sch_chameleon.t_log_replica
 			WHERE
-					i_id_event=v_i_evt_replay[p_i_max_events]
+					i_id_event=v_i_evt_replay[array_length(v_i_evt_replay,1)]
 				AND	i_id_batch=v_i_id_batch
 		);
 		
