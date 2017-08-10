@@ -592,7 +592,11 @@ class pg_engine(object):
 			self.table_ddl[table["name"]]=ddl_head+def_columns+ddl_tail
 	
 
-
+	def get_data_type(self, data_type):
+		try:
+			column_type=self.type_override[data_type]
+		except:
+			column_type=self.type_dictionary[data_type]
 	
 	def get_schema_version(self):
 		"""

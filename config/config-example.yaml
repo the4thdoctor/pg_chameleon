@@ -68,4 +68,7 @@ pg_conn:
     user: replication_username
     password: never_commit_passwords
  
-
+type_override:
+    tinyint:
+        dimension: 1
+        typedest: boolean
