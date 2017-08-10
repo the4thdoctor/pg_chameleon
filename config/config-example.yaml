@@ -69,6 +69,5 @@ pg_conn:
     password: never_commit_passwords
  
 type_override:
-    tinyint:
-        dimension: 1
+    "tinyint(1)":
         typedest: boolean
