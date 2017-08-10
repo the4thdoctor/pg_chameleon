@@ -60,6 +60,7 @@ DROP FOREIGN            KEY fk_trigger_bar,
 add primary key,
 drop unique index asdf
 """
+statement="""alter table kp_web_log add key idx_idx_mobile(idx_mobile)"""
 print(statement)
 token_sql=sql_token()
 token_sql.parse_sql(statement)
