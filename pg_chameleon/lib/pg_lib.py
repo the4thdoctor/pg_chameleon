@@ -573,7 +573,7 @@ class pg_engine(object):
 					col_is_null="NOT NULL"
 				else:
 					col_is_null="NULL"
-				column_type=self.get_data_type(column)
+				column_type=self.get_data_type(column, table)
 				if column_type=="enum":
 					enum_type="enum_"+table["name"]+"_"+column["column_name"]
 					sql_drop_enum='DROP TYPE IF EXISTS '+enum_type+' CASCADE;'
@@ -593,10 +593,16 @@ class pg_engine(object):
 			self.table_ddl[table["name"]]=ddl_head+def_columns+ddl_tail
 	
 
-	def get_data_type(self, column):
+	def get_data_type(self, column, table):
 		try:
 			type_override = self.type_override[column["column_type"]]
-			column_type = type_override["typedest"]
+			override_to = type_override["override_to"]
+			override_tables = type_override["override_tables"]
+			
+			if override_tables[0] == '*' or table in override_tables:
+				column_type = override_to
+			else:
+				column_type = self.type_dictionary[column["data_type"]]
 		except:
 			column_type = self.type_dictionary[column["data_type"]]
 		return column_type

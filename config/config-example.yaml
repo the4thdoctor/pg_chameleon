@@ -71,6 +71,5 @@ pg_conn:
 type_override:
     "tinyint(1)":
         override_to: boolean
-        apply_tables:
-            - *
-
+        override_tables:
+            - "*"
