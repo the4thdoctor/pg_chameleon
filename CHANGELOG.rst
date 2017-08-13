@@ -1,13 +1,19 @@
 changelog 
 *************************
 
-1.6 XX Aug 2017
+1.6 13 Aug 2017
 .................................
 * fix wrong table name when parsing **CREATE TABLE schema_name.table_name**
 * fix missing parse for numeric_scale in sql_utils
 * lock only the affected tables when running sync_tables
 * improve performance for the replay plpgsql function
-* fix replica crash when parsing **ALTER TABLE...DROP FOREIGN KEY**
+* rename *change lag* to *read lag* and add *replay  lag*  in the the *show_status* output
+* add `TravisCI configuration <https://travis-ci.org/the4thdoctor/pg_chameleon>`_ to the source tree
+* add set_config for initial config dir creation (needed by the CI tests)
+* add a regexp match to exclude the keywords in the parse alter  table 
+* add **FOREIGN KEY** to the excluded keyworkds when parsing alter table
+* fix `Issue #22 <https://github.com/the4thdoctor/pg_chameleon/issues/22>`_ add **KEY** to the excluded keyworkds when parsing alter table
+
 
 1.5 23 Jul 2017
 .................................
@@ -34,7 +40,7 @@ changelog
 * Fix for `Issue #4 <https://github.com/the4thdoctor/pg_chameleon/issues/4>`_  add generic exception when fallback on inserts to trap unexpected data not handled by psycopg2  
 * Replace sync_replica with sync_tables. Check the release notes for implementation.
 * Add --version to display the program version.
-* Move documentation on ` pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`_ 
+* Move documentation on `pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`_ 
 
 1.3.1 - 19 Jun 2017
 ...........................................

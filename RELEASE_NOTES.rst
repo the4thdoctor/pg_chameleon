@@ -1,6 +1,34 @@
 RELEASE NOTES
 *************************
 
+Version 1.6
+--------------------------
+The version 1.6 rewrites completely the replay function. The original implementation used massively the SELECT INTO 
+to determine the jsonb structure. This approach generates a change of memory context  **for each logged row**.
+On high write databases the load imposed on the memory and the CPU was just not acceptable.
+The new implementation collects the receiving row structures from the information schema and using the format function, builds the DDL on the fly
+meanwhile reading from the jsonb objects. The function is also more readable and shorter than the initial version. Tests proved that the speed replay 
+improved sensibly generating at same time a lower load level the CPU.
+
+The show_status output now shows the read and replay lags. This change gives a better understanding of the replica lag, in away more similar to the MySQL's show slave command.
+The change is also a preparation for the threaded read and replay feature which will appear in the version 1.7.
+
+The version also add several bug fixes thanks to the user's feedback. 
+Check the changelog for the details.
+
+Upgrade
+--------------------------
+The upgrade procedure happens automatically when the chameleon.py is executed after the package's upgrade.
+
+The change adds a new field to the log table, creates a new table used for collecting the event ids and reload the replay function.
+
+Like for the version 1.3 before the upgrade stop the all the replica processes and take a backup of the sch_chameleon schema.
+
+This will allow you to rollback the version if something goes wrong.
+
+
+
+
 Version 1.5
 --------------------------
 The version 1.5 adds the support for default value for the DDL ALTER TABLE...ADD COLUMN, CHANGE and MODIFY. 
@@ -9,8 +37,6 @@ The previous implementation removed any **default** keyworkd before parsing the 
 The child tables of t_log _replica have now indices on the i_id_batch field. This will speed up the cleanup for replayed batches.
 
 Several bug fixes, check the changelog for the details.
-
-
 
 
 

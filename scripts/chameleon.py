@@ -21,7 +21,8 @@ commands = [
 	'enable_replica', 
 	'sync_tables', 
 	'show_status' , 
-	'detach_replica'
+	'detach_replica', 
+	'set_config'
 	]
 command_help = 'Available commands, ' + ','.join(commands)
 table_help =  """Specifies the table's name to sync. It's possible to specify multiple table names separated by comma. If the parameter is omitted all tables will be syncronised."""
@@ -40,7 +41,10 @@ parser.add_argument('--version', action='version',version='pg_chameleon {version
 parser.add_argument('--thread',  default=False,  required=False, help=thread_help,  action='store_true')
 args = parser.parse_args()
 
-if args.command in commands:
+if args.command == commands[14]:
+		configdir.set_config()
+elif args.command in commands:
+	
 	replica = replica_engine(args.config, args.debug, args.nolock)
 	if args.command == commands[0]:
 		replica.create_service_schema()
@@ -73,3 +77,4 @@ if args.command in commands:
 		replica.show_status()
 	elif args.command == commands[13]:
 		replica.detach_replica()
+	

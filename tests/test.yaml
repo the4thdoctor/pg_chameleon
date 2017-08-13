@@ -1,0 +1,71 @@
+---
+#global settings
+my_server_id: 100
+replica_batch_size: 1000
+batch_retention: '1 day'
+copy_max_memory: 300M
+my_database:  sakila
+pg_database: db_test
+#copy mode when initialising, it can be file (dumps to out_dir a csv file) or direct (copy the file in memory)
+copy_mode: 'file'  
+out_dir: /tmp
+source_name: 'default'
+dest_schema: 'my_schema'
+
+
+#seconds between each replica loop
+sleep_loop: 2
+
+#Pause the replica for the given amount of seconds if a reindex process is found
+pause_on_reindex: Yes
+sleep_on_reindex: 30
+
+#list the application names which are supposed to reindex the database
+reindex_app_names:
+    - 'reindexdb'
+    - 'my_custom_reindex'
+
+hexify: 
+    - 'blob'
+    - 'tinyblob'
+    - 'mediumblob'
+    - 'longblob'
+    - 'binary'
+    - 'varbinary'
+    - 'geometry'
+ 
+pid_dir: '~/.pg_chameleon/pid/'
+
+
+log_dir: '~/.pg_chameleon/logs/'
+log_level: 'debug'
+log_dest: 'stdout'
+log_days_keep: 10
+#log_dest: 'file'
+#log_level: 'info'
+#log_level: 'debug'
+
+
+#mysql connection's charset. 
+my_charset: 'utf8'
+#postgresql connection's charset. 
+pg_charset: 'utf8'
+#include tables only
+tables_limit:
+    
+
+#mysql slave setup
+mysql_conn:
+    host: localhost
+    port: 3306
+    user: usr_test
+    passwd: test
+
+#postgres connection
+pg_conn:
+    host: localhost
+    port: 5432
+    user: usr_test
+    password: test
+ 
+
