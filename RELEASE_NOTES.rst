@@ -16,6 +16,18 @@ The change is also a preparation for the threaded read and replay feature which 
 The version also add several bug fixes thanks to the user's feedback. 
 Check the changelog for the details.
 
+Upgrade
+--------------------------
+The upgrade procedure happens automatically when the chameleon.py is executed after the package's upgrade.
+
+The change adds a new field to the log table, creates a new table used for collecting the event ids and reload the replay function.
+
+Like for the version 1.3 before the upgrade stop the all the replica processes and take a backup of the sch_chameleon schema.
+
+This will allow you to rollback the version if something goes wrong.
+
+
+
 
 Version 1.5
 --------------------------
