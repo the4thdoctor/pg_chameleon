@@ -363,7 +363,12 @@ class sql_token(object):
 						try:
 							alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 						except:
-							alter_dic["dimension"]=0
+							alter_dic["dimension"] = 0
+				alter_dic["data_type"] = alter_dic["type"]
+				if alter_dic["dimension"] == 0:
+					alter_dic["column_type"] = alter_dic["type"]
+				else:
+					alter_dic["column_type"] = "%s(%s)" % (alter_dic["type"], alter_dic["dimension"])
 				alter_cmd.append(alter_dic)
 			stat_dic["alter_cmd"]=alter_cmd
 		return stat_dic
