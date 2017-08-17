@@ -80,6 +80,8 @@ class sql_token(object):
 			:param col_def: The column definition
 			:return: col_dic the column dictionary 
 			:rtype: dictionary
+			
+
 		"""
 		colmatch = self.m_field.search(col_def)
 		dimmatch = self.m_dimension.search(col_def)

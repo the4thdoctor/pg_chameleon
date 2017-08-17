@@ -594,6 +594,14 @@ class pg_engine(object):
 	
 
 	def get_data_type(self, column, table):
+		""" 
+			The method determines whether the specified type has to be overridden or not.
+			
+			:param column: the column dictionary extracted from the information_schema or build in the sql_parser class
+			:param table: the table name 
+			:return: the postgresql converted column type
+			:rtype: string
+		"""
 		try:
 			type_override = self.type_override[column["column_type"]]
 			override_to = type_override["override_to"]
@@ -612,6 +620,9 @@ class pg_engine(object):
 			The method gets the service schema version querying the view sch_chameleon.v_version.
 			The try-except is used in order to get a valid value "base" if the view is missing.
 			This happens only if the schema upgrade is performed from very early pg_chamelon's versions.
+			
+			:return: the catalogg version
+			:rtype: string
 		"""
 		sql_check="""
 			SELECT 
