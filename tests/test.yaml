@@ -68,4 +68,7 @@ pg_conn:
     user: usr_test
     password: test
  
+type_override:
+    "tinyint(1)":
+        typedest: boolean
 

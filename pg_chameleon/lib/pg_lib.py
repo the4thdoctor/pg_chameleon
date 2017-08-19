@@ -86,6 +86,7 @@ class pg_engine(object):
 		self.sleep_on_reindex = global_config.sleep_on_reindex
 		self.reindex_app_names = global_config.reindex_app_names
 		self.batch_retention = global_config.batch_retention
+		self.type_override = global_config.type_override
 		self.logger = logger
 		self.sql_dir = sql_dir
 		self.idx_sequence = 0
@@ -598,7 +599,7 @@ class pg_engine(object):
 					col_is_null="NOT NULL"
 				else:
 					col_is_null="NULL"
-				column_type=self.type_dictionary[column["data_type"]]
+				column_type = self.get_data_type(column, table)
 				if column_type=="enum":
 					enum_type="enum_"+table["name"]+"_"+column["column_name"]
 					sql_drop_enum='DROP TYPE IF EXISTS '+enum_type+' CASCADE;'
@@ -618,13 +619,36 @@ class pg_engine(object):
 			self.table_ddl[table["name"]]=ddl_head+def_columns+ddl_tail
 	
 
-
+	def get_data_type(self, column, table):
+		""" 
+			The method determines whether the specified type has to be overridden or not.
+			
+			:param column: the column dictionary extracted from the information_schema or build in the sql_parser class
+			:param table: the table name 
+			:return: the postgresql converted column type
+			:rtype: string
+		"""
+		try:
+			type_override = self.type_override[column["column_type"]]
+			override_to = type_override["override_to"]
+			override_tables = type_override["override_tables"]
+			
+			if override_tables[0] == '*' or table in override_tables:
+				column_type = override_to
+			else:
+				column_type = self.type_dictionary[column["data_type"]]
+		except:
+			column_type = self.type_dictionary[column["data_type"]]
+		return column_type
 	
 	def get_schema_version(self):
 		"""
 			The method gets the service schema version querying the view sch_chameleon.v_version.
 			The try-except is used in order to get a valid value "base" if the view is missing.
 			This happens only if the schema upgrade is performed from very early pg_chamelon's versions.
+			
+			:return: the catalogg version
+			:rtype: string
 		"""
 		sql_check="""
 			SELECT 
@@ -1388,17 +1412,16 @@ class pg_engine(object):
 			
 		"""
 		alter_cmd = []
-		ddl_enum = []
 		ddl_pre_alter = []
 		ddl_post_alter = []
-			
 		query_cmd=token["command"]
 		table_name=token["name"]
 		for alter_dic in token["alter_cmd"]:
 			if alter_dic["command"] == 'DROP':
 				alter_cmd.append("%(command)s %(name)s CASCADE" % alter_dic)
 			elif alter_dic["command"] == 'ADD':
-				column_type = self.type_dictionary[alter_dic["type"]]
+				
+				column_type=self.get_data_type(alter_dic, table_name)
 				column_name = alter_dic["name"]
 				enum_list = str(alter_dic["dimension"]).replace("'", "").split(",")
 				enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list, 'enum_elements':alter_dic["dimension"]}
@@ -1421,7 +1444,7 @@ class pg_engine(object):
 				column_name = old_column
 				enum_list = str(alter_dic["dimension"]).replace("'", "").split(",")
 				
-				column_type=self.type_dictionary[alter_dic["type"]]
+				column_type=self.get_data_type(alter_dic, table_name)
 				default_sql = self.generate_default_statements(table_name, old_column, new_column)
 				enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list, 'enum_elements':alter_dic["dimension"]}
 				enm_alter = self.build_enum_ddl(enm_dic)
@@ -1444,7 +1467,7 @@ class pg_engine(object):
 				return query
 
 			elif alter_dic["command"] == 'MODIFY':
-				column_type = self.type_dictionary[alter_dic["type"]]
+				column_type=self.get_data_type(alter_dic, table_name)
 				column_name = alter_dic["name"]
 				
 				enum_list = str(alter_dic["dimension"]).replace("'", "").split(",")

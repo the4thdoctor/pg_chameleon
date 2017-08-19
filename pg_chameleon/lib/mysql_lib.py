@@ -424,6 +424,7 @@ class mysql_engine(object):
 				column_default,
 				ordinal_position,
 				data_type,
+				column_type,
 				character_maximum_length,
 				extra,
 				column_key,

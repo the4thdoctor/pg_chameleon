@@ -122,6 +122,7 @@ class global_config(object):
 			self.log_dest = confdic["log_dest"]
 			self.log_days_keep = confdic["log_days_keep"]
 			self.out_dir = confdic["out_dir"]
+			self.type_override = confdic["type_override"]
 			
 			self.sleep_loop = confdic["sleep_loop"]
 			self.pause_on_reindex = confdic["pause_on_reindex"]

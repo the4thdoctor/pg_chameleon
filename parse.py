@@ -56,11 +56,13 @@ ADD `count` SMALLINT(6) NULL ,
 ADD COLUMN `log` VARCHAR(12) default 'blah' NULL AFTER `count`,
 ADD COLUMN new_enum ENUM('asd','r') NULL AFTER `log`,
 ADD COLUMN status INT(10) UNSIGNED NULL AFTER `new_enum`,
+ADD COLUMN mydate datetime NULL AFTER `status`,
+ADD COLUMN mytstamp timestamp NULL AFTER `status`,
 DROP FOREIGN            KEY fk_trigger_bar,
 add primary key,
 drop unique index asdf
 """
-statement="""alter table kp_web_log add key idx_idx_mobile(idx_mobile)"""
+#statement="""alter table kp_web_log add key idx_idx_mobile(idx_mobile)"""
 print(statement)
 token_sql=sql_token()
 token_sql.parse_sql(statement)
