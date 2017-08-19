@@ -84,6 +84,7 @@ class sql_token(object):
 		colmatch = self.m_field.search(col_def)
 		dimmatch = self.m_dimension.search(col_def)
 		col_dic={}
+		dimensions = None
 		if colmatch:
 			col_dic["column_name"]=colmatch.group(1).strip("`").strip()
 			col_dic["data_type"]=colmatch.group(2).lower().strip()
@@ -117,6 +118,11 @@ class sql_token(object):
 				col_dic["extra"]="auto_increment"
 			else :
 				col_dic["extra"]=""
+			if dimensions:
+				col_dic["column_type"] = "%s(%s)" % (col_dic["data_type"], dimensions)
+			else:
+				col_dic["column_type"] = "%s" % (col_dic["data_type"])
+			
 		return col_dic
 		
 	def quote_cols(self, cols):
@@ -364,11 +370,12 @@ class sql_token(object):
 							alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 						except:
 							alter_dic["dimension"] = 0
-				alter_dic["data_type"] = alter_dic["type"]
-				if alter_dic["dimension"] == 0:
-					alter_dic["column_type"] = alter_dic["type"]
-				else:
-					alter_dic["column_type"] = "%s(%s)" % (alter_dic["type"], alter_dic["dimension"])
+				if command != 'DROP':
+					alter_dic["data_type"] = alter_dic["type"]
+					if alter_dic["dimension"] == 0:
+						alter_dic["column_type"] = alter_dic["type"]
+					else:
+						alter_dic["column_type"] = "%s(%s)" % (alter_dic["type"], alter_dic["dimension"])
 				alter_cmd.append(alter_dic)
 			stat_dic["alter_cmd"]=alter_cmd
 		return stat_dic

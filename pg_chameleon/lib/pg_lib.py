@@ -102,6 +102,7 @@ class pg_engine(object):
 			'int':'integer',
 			'bigint':'bigint',
 			'varchar':'character varying',
+			'character varying':'character varying',
 			'text':'text',
 			'char':'character',
 			'datetime':'timestamp without time zone',
