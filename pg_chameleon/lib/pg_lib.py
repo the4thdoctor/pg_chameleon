@@ -1140,11 +1140,12 @@ class pg_engine(object):
 		while batch_loop:
 			try:
 				self.set_application_name("replay batch", "replay")
-				self.pg_conn.pgsql_cur_replay.execute(sql_process, (replica_batch_size, self.i_id_source))
-				batch_result=self.pg_conn.pgsql_cur_replay.fetchone()
-				batch_loop=batch_result[0]
 			except:
 				self.pg_conn.connect_replay_db()
+				
+			self.pg_conn.pgsql_cur_replay.execute(sql_process, (replica_batch_size, self.i_id_source))
+			batch_result=self.pg_conn.pgsql_cur_replay.fetchone()
+			batch_loop=batch_result[0]
 			
 			if batch_loop:
 				self.logger.info("Still working on batch for source  %s replay size %s rows" % (self.source_name, replica_batch_size ))
