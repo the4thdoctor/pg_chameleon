@@ -468,6 +468,10 @@ class mysql_engine(object):
 						data_type IN ('bit')
 					THEN
 						concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
+					WHEN 
+						data_type IN ('datetime','timestamp','date')
+					THEN
+						concat('coalesce(nullif(`',column_name,'`,"0000-00-00 00:00:00"),"1970-01-01 00:00:00") AS `',column_name,'`')
 					
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.mysql_con.my_charset +""") AS','`',column_name,'`')
