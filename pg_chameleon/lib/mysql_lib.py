@@ -417,6 +417,11 @@ class mysql_engine(object):
 			The data types included in hexlify are hex encoded on the fly.
 			
 			:param table: The table name.
+			
+			'datetime':'timestamp without time zone',
+			'date':'date',
+			'timestamp':'timestamp without time zone',
+			
 		"""
 		sql_columns="""
 			SELECT 
@@ -445,6 +450,11 @@ class mysql_engine(object):
 						data_type IN ('bit')
 					THEN
 						concat('cast(`',column_name,'` AS unsigned)')
+					WHEN 
+						data_type IN ('datetime','timestamp','date')
+					THEN
+						concat('coalesce(nullif(`',column_name,'`,"0000-00-00 00:00:00"),"1970-01-01 00:00:00")')
+
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.mysql_con.my_charset +""")')
 				END
@@ -458,6 +468,7 @@ class mysql_engine(object):
 						data_type IN ('bit')
 					THEN
 						concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
+					
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.mysql_con.my_charset +""") AS','`',column_name,'`')
 					
