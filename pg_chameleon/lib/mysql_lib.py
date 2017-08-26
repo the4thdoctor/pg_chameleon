@@ -453,7 +453,7 @@ class mysql_engine(object):
 					WHEN 
 						data_type IN ('datetime','timestamp','date')
 					THEN
-						concat('coalesce(nullif(`',column_name,'`,"0000-00-00 00:00:00"),"1970-01-01 00:00:00")')
+						concat('nullif(`',column_name,'`,"0000-00-00 00:00:00")')
 
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.mysql_con.my_charset +""")')
@@ -471,7 +471,7 @@ class mysql_engine(object):
 					WHEN 
 						data_type IN ('datetime','timestamp','date')
 					THEN
-						concat('coalesce(nullif(`',column_name,'`,"0000-00-00 00:00:00"),"1970-01-01 00:00:00") AS `',column_name,'`')
+						concat('nullif(`',column_name,'`,"0000-00-00 00:00:00") AS `',column_name,'`')
 					
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.mysql_con.my_charset +""") AS','`',column_name,'`')
