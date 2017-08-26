@@ -1,5 +1,9 @@
 changelog 
 *************************
+1.7 XX Sep 2017
+.................................
+* add optional threaded mode for read and replay 
+* fix for `Issue #16 <https://github.com/the4thdoctor/pg_chameleon/issues/22>`_ when running init_replica convert to NULL 0000-00-00 00:00:00 values if the data type is date or datetime
 
 1.6 13 Aug 2017
 .................................
