@@ -461,12 +461,14 @@ class replica_engine(object):
 		exit_request = self.check_file_exit()
 		
 		if already_running:
+			self.logger.error("The replica is already running")
 			sys.exit()
 		if exit_request:
 			self.pg_eng.set_source_id('stopped')
 			sys.exit()
 		
 		self.pg_eng.set_source_id('running')
+		
 		while True:
 			if self.debug_mode or self.nolock:
 				self.my_eng.run_replica(self.pg_eng)

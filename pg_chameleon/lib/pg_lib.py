@@ -9,7 +9,13 @@ import time
 import base64
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
-		if isinstance(obj, datetime.time) or isinstance(obj, datetime.datetime) or  isinstance(obj, datetime.date) or isinstance(obj, decimal.Decimal) or isinstance(obj, datetime.timedelta):
+		if 	isinstance(obj, datetime.time) or \
+			isinstance(obj, datetime.datetime) or  \
+			isinstance(obj, datetime.date) or \
+			isinstance(obj, decimal.Decimal) or \
+			isinstance(obj, datetime.timedelta) or \
+			isinstance(obj, set):
+				
 			return str(obj)
 		return json.JSONEncoder.default(self, obj)
 

@@ -62,7 +62,15 @@ DROP FOREIGN            KEY fk_trigger_bar,
 add primary key,
 drop unique index asdf
 """
-#statement="""alter table kp_web_log add key idx_idx_mobile(idx_mobile)"""
+statement="""
+CREATE TABLE film_text (
+  film_id SMALLINT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  PRIMARY KEY  (film_id),
+  FULLTEXT KEY idx_title_description (title,description)
+)ENGINE=InnoDB DEFAULT CHARSET=utf8
+"""
 print(statement)
 token_sql=sql_token()
 token_sql.parse_sql(statement)
