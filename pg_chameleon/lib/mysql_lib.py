@@ -165,7 +165,6 @@ class mysql_engine(object):
 					master_data["File"] = binlogfile
 					master_data["Position"] = log_position
 					master_data["Time"] = event_time
-					close_batch=True
 					if len(group_insert)>0:
 						pg_engine.write_batch(group_insert)
 						group_insert=[]
@@ -199,6 +198,7 @@ class mysql_engine(object):
 									"log_table":log_table
 								}
 								pg_engine.write_ddl(token, query_data)
+								close_batch=True
 							
 						
 					self.sql_token.reset_lists()
