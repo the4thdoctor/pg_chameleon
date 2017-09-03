@@ -3,9 +3,14 @@ RELEASE NOTES
 
 Version 1.7
 --------------------------
-The version 1.7 supports the optional threaded read and replay. To enable the threaded execution just add --thread when running start_replica. 
-The date fields with the values **0000-00-00 00:00:00** are set to NULL when the replica is initialised, reflecting the same behaviour of the mysql python replica library.
-This release adds a basic handling of data type override during the init replica and the ddl parsing as requested in `Issue #21 <https://github.com/the4thdoctor/pg_chameleon/issues/21>` 
+The version 1.7 supports the optional threaded read and replay. To enable the threaded execution just add ``--thread`` when running start_replica. 
+
+e.g. ``chameleon.py start_replica --config default --thread``
+
+The date fields with the values ``0000-00-00 00:00:00`` are set to ``NULL`` when the replica is initialised, reflecting the same behaviour of the mysql python replica library.
+
+This release adds a basic handling of data type override during the init replica and the ddl parsing as requested in `Issue #21 <https://github.com/the4thdoctor/pg_chameleon/issues/21>`_.
+
 
 The variable type_override maps the mysql data types with the corresponding postgresql data type and the tables where the override is applied.
 The following example overrides tinyint(1) to boolean for all tables and tinyint(3) to smallint only for the tables foo and bar.
@@ -24,9 +29,9 @@ The following example overrides tinyint(1) to boolean for all tables and tinyint
 	    - "bar"
 
 
-As there is no validation for the data type when replied if any incopatible value is sent trough this mechaninsm the replica will break.
+As there is no validation for the data type when replied if **any incompatible value is sent trough this mechaninsm the replica will break**.
 
-Finally there are several improvements on the ddl parsing. 
+Several improvements have been made for ddl parsing. 
 
 
 Version 1.6
@@ -45,7 +50,7 @@ The version also add several bug fixes thanks to the user's feedback.
 Check the changelog for the details.
 
 Upgrade
---------------------------
+........................................................................
 The upgrade procedure happens automatically when the chameleon.py is executed after the package's upgrade.
 
 The change adds a new field to the log table, creates a new table used for collecting the event ids and reload the replay function.
@@ -119,7 +124,7 @@ The migration performs the following operations.
 * removes the field v_log_table from t_replica_batch
 
 Upgrade
---------------------------
+........................................................................
 
 **please read carefully before attempting any upgrade**
 
@@ -135,7 +140,7 @@ Upgrade steps
 * When the upgrade is finished start the replica process as usual
 
 Rollback
-.....................................
+=================
 
 If something goes wrong in the upgrade process you shall restore the sch_chameleon's backup, 
 Then you should downgrade the installation to pg_chameleon 1.2 and start the replica as usual.
