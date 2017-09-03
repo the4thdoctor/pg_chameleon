@@ -168,6 +168,26 @@ way the program acts.
 * log_days_keep: specifies the amount how many days to keep the logs which are rotated automatically on a daily basis
 * batch_retention the max retention for the replayed batches rows in t_replica_batch. The field accepts any valid interval accepted by PostgreSQL
 * out_dir the directory where the csv files are dumped during the init_replica process if the copy mode is file
+* type_override maps the mysql data types with the corresponding postgresql data type and the tables where the override is applied
+
+The following example overrides tinyint(1) to boolean for all tables and tinyint(3) to smallint only for the tables foo and bar.
+
+.. code-block:: yaml
+
+    type_override:
+      "tinyint(1)":
+        override_to: boolean
+        override_tables:
+            - "*"
+      "tinyint(3)":
+        override_to: smallint
+        override_tables:
+            - "foo"
+	    - "bar"
+
+
+As there is no validation for the data type when replied if any incopatible value is sent trough this mechaninsm the replica will break.
+
 
 Reindex detection example setup
 
