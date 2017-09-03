@@ -1,6 +1,20 @@
 RELEASE NOTES
 *************************
 
+Version 1.7
+--------------------------
+* add optional threaded mode for read and replay as requested in 
+* fix for `Issue #16 <https://github.com/the4thdoctor/pg_chameleon/issues/22>`_ when running init_replica convert to NULL 0000-00-00 00:00:00 values if the data type is date or datetime
+* Handling of datatypes when migrating schema as requested in `Issue #21 <https://github.com/the4thdoctor/pg_chameleon/issues/21>`_
+
+The version 1.7 supports the optional threaded read and replay. To enable the threaded execution just add --thread when running start_replica. 
+The date fields with the values **0000-00-00 00:00:00** are set to NULL when the replica is initialised, reflecting the same behaviour of the mysql python replica library.
+Another feature added is the basic handling of data type override during the init replica and the 
+
+
+Finally there are several improvements on the ddl parsing. 
+
+
 Version 1.6
 --------------------------
 The version 1.6 rewrites completely the replay function. The original implementation used massively the SELECT INTO 
