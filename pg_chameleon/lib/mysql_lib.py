@@ -187,6 +187,8 @@ class mysql_engine(object):
 								pg_engine.set_consistent_table(table_name)
 								inc_tables = pg_engine.get_inconsistent_tables()
 						if write_ddl:
+							self.get_table_metadata()
+							pg_engine.table_metadata = self.my_tables
 							event_time = binlogevent.timestamp
 							self.logger.debug("TOKEN: %s" % (token))
 							if len(token)>0:

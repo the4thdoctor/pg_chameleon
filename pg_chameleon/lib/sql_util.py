@@ -388,7 +388,7 @@ class sql_token(object):
 		for rename in rename_statement.split(','):
 			mrename_items = self.m_rename_items.search(rename.strip())
 			if mrename_items:
-				rename_list.append([item.strip().replace('`', '"') for item in mrename_items.groups()])
+				rename_list.append([item.strip().replace('`', '') for item in mrename_items.groups()])
 		return rename_list
 		
 	def parse_sql(self, sql_string):
@@ -420,7 +420,6 @@ class sql_token(object):
 			:param sql_string: The sql string with the sql statements.
 		"""
 		statements=sql_string.split(';')
-		print(statements)
 		for statement in statements:
 			stat_dic={}
 			stat_cleanup=re.sub(r'/\*.*?\*/', '', statement, re.DOTALL)
