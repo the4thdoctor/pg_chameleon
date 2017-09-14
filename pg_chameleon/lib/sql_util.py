@@ -438,9 +438,14 @@ class sql_token(object):
 			mdrop_primary = self.m_drop_primary.match(stat_cleanup)
 			mtruncate_table = self.m_truncate_table.match(stat_cleanup)
 			if mrename_table:
-				stat_dic["command"] = "RENAME"
-				stat_dic["name"] = "TABLE"
-				stat_dic["rename_list"] = self.parse_rename_table(mrename_table.group(2))
+				
+				rename_list = self.parse_rename_table(mrename_table.group(2))
+				for rename_table in rename_list:
+					stat_dic["command"] = "RENAME TABLE"
+					stat_dic["name"] = rename_table[0]
+					stat_dic["new_name"] = rename_table[1]
+					self.tokenised.append(stat_dic)
+					stat_dic = {}
 			elif mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command

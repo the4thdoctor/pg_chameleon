@@ -1720,16 +1720,20 @@ class pg_engine(object):
 			
 		"""
 		query=""
-		if token["command"] =="RENAME" and  token["name"] == "TABLE":
-			rename_list = []
-			for rename_pair in token["rename_list"]:
-				tbl_src = rename_pair[0]
-				tbl_dst = rename_pair[1]
-				sql_alter = """ALTER TABLE "%s" RENAME TO "%s" """ % (tbl_src, tbl_dst)
-				rename_list.append(sql_alter)
-				sql_alter = ""
-			if len(rename_list) > 0:
-				query = ";".join(rename_list)
+		if token["command"] =="RENAME TABLE":
+			query = """ALTER TABLE "%s" RENAME TO "%s" """ % (token["name"], token["new_name"])
+			#rename_list = []
+			#for rename_pair in token["rename_list"]:
+			#	tbl_src = rename_pair[0]
+			#	tbl_dst = rename_pair[1]
+			#	sql_alter = """ALTER TABLE "%s" RENAME TO "%s" """ % (tbl_src, tbl_dst)
+			#	rename_list.append(sql_alter)
+			#	sql_alter = ""
+			#if len(rename_list) > 0:
+			#	query = ";".join(rename_list)
+			
+			
+			
 		elif token["command"] =="DROP TABLE":
 			query=" %(command)s IF EXISTS \"%(name)s\";" % token
 		elif token["command"] =="TRUNCATE":
