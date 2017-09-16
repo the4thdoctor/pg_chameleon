@@ -384,6 +384,15 @@ class sql_token(object):
 		return stat_dic
 	
 	def parse_rename_table(self, rename_statement):
+		"""
+			The method parses the rename statements storing in a list the 
+			old and the new table name. 
+			
+			:param rename_statement: The statement string without the RENAME TABLE 
+			:return: rename_list, a list with the old/new table names inside
+			:rtype: list
+			
+		"""
 		rename_list = []
 		for rename in rename_statement.split(','):
 			mrename_items = self.m_rename_items.search(rename.strip())
@@ -438,7 +447,6 @@ class sql_token(object):
 			mdrop_primary = self.m_drop_primary.match(stat_cleanup)
 			mtruncate_table = self.m_truncate_table.match(stat_cleanup)
 			if mrename_table:
-				
 				rename_list = self.parse_rename_table(mrename_table.group(2))
 				for rename_table in rename_list:
 					stat_dic["command"] = "RENAME TABLE"
