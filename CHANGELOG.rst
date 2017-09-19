@@ -1,5 +1,10 @@
 changelog 
 *************************
+1.8 XX Sep 2017
+.............................
+* Fix wrong check in thread alive when running with --thread option
+* Add support for RENAME statement
+
 1.7 03 Sep 2017
 .................................
 * add optional threaded mode for read and replay as requested in `Issue #14 <https://github.com/the4thdoctor/pg_chameleon/issues/14>`_
