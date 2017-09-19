@@ -1722,6 +1722,10 @@ class pg_engine(object):
 		query=""
 		if token["command"] =="RENAME TABLE":
 			query = """ALTER TABLE "%s" RENAME TO "%s" """ % (token["name"], token["new_name"])	
+			try:
+				self.table_metadata[token["new_name"]]
+			except KeyError:
+				self.table_metadata[token["new_name"]] = self.table_metadata[token["name"]]
 			self.store_table(token["new_name"])
 		elif token["command"] =="DROP TABLE":
 			query=" %(command)s IF EXISTS \"%(name)s\";" % token
