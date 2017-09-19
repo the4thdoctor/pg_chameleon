@@ -420,7 +420,7 @@ class pg_engine(object):
 				table_name, 
 				self.dest_schema)
 				)
-			
+		
 	def unregister_table(self, table_name):
 		"""
 			This method is used when a table have the primary key dropped on MySQL. 
@@ -1721,19 +1721,8 @@ class pg_engine(object):
 		"""
 		query=""
 		if token["command"] =="RENAME TABLE":
-			query = """ALTER TABLE "%s" RENAME TO "%s" """ % (token["name"], token["new_name"])
-			#rename_list = []
-			#for rename_pair in token["rename_list"]:
-			#	tbl_src = rename_pair[0]
-			#	tbl_dst = rename_pair[1]
-			#	sql_alter = """ALTER TABLE "%s" RENAME TO "%s" """ % (tbl_src, tbl_dst)
-			#	rename_list.append(sql_alter)
-			#	sql_alter = ""
-			#if len(rename_list) > 0:
-			#	query = ";".join(rename_list)
-			
-			
-			
+			query = """ALTER TABLE "%s" RENAME TO "%s" """ % (token["name"], token["new_name"])	
+			self.store_table(token["new_name"])
 		elif token["command"] =="DROP TABLE":
 			query=" %(command)s IF EXISTS \"%(name)s\";" % token
 		elif token["command"] =="TRUNCATE":
@@ -1800,7 +1789,6 @@ class pg_engine(object):
 			;
 		"""
 		self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
-		
 		
 		
 	def check_reindex(self):
