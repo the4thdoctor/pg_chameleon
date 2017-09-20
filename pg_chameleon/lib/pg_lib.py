@@ -560,11 +560,12 @@ class pg_engine(object):
 			indices=table["indices"]
 			table_idx=[]
 			for index in indices:
+				table_timestamp = str(int(time.time()))
 				indx=index["index_name"]
 				index_columns=index["index_columns"]
 				non_unique=index["non_unique"]
 				if indx=='PRIMARY':
-					pkey_name="pk_"+table_name[0:20]+"_"+str(self.idx_sequence)
+					pkey_name="pk_"+table_name[0:10]+"_"+table_timestamp+"_"+str(self.idx_sequence)
 					pkey_def='ALTER TABLE "'+table_name+'" ADD CONSTRAINT "'+pkey_name+'" PRIMARY KEY ('+index_columns+') ;'
 					table_idx.append(pkey_def)
 				else:
@@ -572,7 +573,7 @@ class pg_engine(object):
 						unique_key='UNIQUE'
 					else:
 						unique_key=''
-					index_name='"idx_'+indx[0:20]+table_name[0:20]+"_"+str(self.idx_sequence)+'"'
+					index_name='"idx_'+indx[0:10]+table_name[0:10]+"_"+table_timestamp+"_"+str(self.idx_sequence)+'"'
 					idx_def='CREATE '+unique_key+' INDEX '+ index_name+' ON "'+table_name+'" ('+index_columns+');'
 					table_idx.append(idx_def)
 				self.idx_sequence+=1
