@@ -1,6 +1,6 @@
-include config/config-example.yaml
+include configuration/config-example.yaml
+include connection/connection-example.yaml
 include sql/create_schema.sql
 include sql/drop_schema.sql
 include sql/upgrade/*.sql
 include LICENSE
-include version.py

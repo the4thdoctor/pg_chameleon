@@ -1,0 +1,9 @@
+---
+#global settings
+my_server_id: 100
+replica_batch_size: 1000
+batch_retention: '1 day'
+copy_max_memory: 300M
+copy_mode: 'file'  
+out_dir: /tmp
+pid_dir: '~/.pg_chameleon/pid/'
