@@ -1,9 +1,39 @@
 ---
 #global settings
-my_server_id: 100
-replica_batch_size: 1000
-batch_retention: '1 day'
 copy_max_memory: 300M
 copy_mode: 'file'  
 out_dir: /tmp
 pid_dir: '~/.pg_chameleon/pid/'
+
+#postgres  destination connection
+pg_conn:
+    host: "localhost"
+    port: "5432"    
+    user: "usr_replica"
+    password: "never_commit_passwords"
+    database: "db_replica"
+    charset: "utf8"
+    
+
+sources:
+    example:
+        db_conn:
+                host: "localhost"
+                port: "3306"
+                user: "usr_replica"
+                password: "never_commit_passwords"
+                database:  "db_replica"
+                charset: 'utf8'
+        schema_mappings:
+                my_schema:dest_schema
+        limit_tables:
+        skip_tables:
+        copy_max_memory: "300M"
+        grant_select_to:
+            - usr_readonly
+        create_views_in_schema:
+            - sch_readonly
+        lock_timeout: "120s"
+        my_server_id: 100
+        replica_batch_size: 1000
+        batch_retention: '1 day'

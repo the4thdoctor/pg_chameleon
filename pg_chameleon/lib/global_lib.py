@@ -1,5 +1,6 @@
 import yaml
 import os
+import sys
 from shutil import copy
 from distutils.sysconfig import get_python_lib
 
@@ -40,10 +41,11 @@ class replica_engine(object):
 			
 		]
 		self.args = args
-		self.set_config()
+		self.set_configuration_files()
 		self.args = args
-	
-	def set_config(self):
+		self.load_config()
+		
+	def set_configuration_files(self):
 		""" 
 			The method loops the list self.conf_dirs creating them only if they are missing.
 			
@@ -75,14 +77,33 @@ class replica_engine(object):
 			print ("copying configuration  example in %s" % self.local_conf_example)
 			copy(self.global_conf_example, self.local_conf_example)
 	
+	def load_config(self):
+		""" 
+			The method loads the configuration from the file specified in the args.config parameter.
+		"""
+		local_confdir = "%s/.pg_chameleon/configuration/" % os.path.expanduser('~')	
+		self.config_file = '%s/%s.yml'%(local_confdir, self.args.config)
+		
+		if not os.path.isfile(self.config_file):
+			print("**FATAL - configuration file missing. Please ensure the file %s is present." % (self.config_file))
+			sys.exit()
+		
+		config_file = open(self.config_file, 'r')
+		self.config = yaml.load(config_file.read())
+		config_file.close()
+		
+	
+	
 	def show_config(self):
 		"""
 			The method loads the current configuration and displays the status in tabular output
 		"""
+		config_list = [item for item in self.config if item not in ['pg_conn', 'sources']]
 		tab_body = []
 		tab_headers = ['Parameter', 'Value']
-		tab_row = ['foo', 'bar']
-		tab_body.append(tab_row)
+		for item in config_list:
+			tab_row = [item, self.config[item]]
+			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers))
 		
 		
