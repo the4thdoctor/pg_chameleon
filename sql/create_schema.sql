@@ -21,16 +21,35 @@ CREATE TABLE sch_chameleon.t_sources
 	t_source				text NOT NULL,
 	jsb_schema_mappings	jsonb NOT NULL,
 	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
-	--ts_last_received timestamp without time zone,
-	--ts_last_replay timestamp without time zone,
 	v_log_table character varying[] ,
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
 )
 ;
 
-CREATE UNIQUE INDEX idx_t_sources_t_source ON sch_chameleon.t_sources(t_source);
---CREATE UNIQUE INDEX idx_t_sources_t_dest_schema ON sch_chameleon.t_sources(t_dest_schema);
+CREATE TABLE sch_chameleon.t_last_received
+(
+	i_id_source			bigserial,
+	ts_last_received timestamp without time zone,
+	CONSTRAINT pk_t_last_received PRIMARY KEY (i_id_source),
+	CONSTRAINT fk_last_received_id_source FOREIGN KEY (i_id_source) 
+	REFERENCES  sch_chameleon.t_sources(i_id_sourceh)
+	ON UPDATE RESTRICT ON DELETE CASCADE
+)
+;
 
+CREATE TABLE sch_chameleon.t_last_replayed
+(
+	i_id_source			bigserial,
+	ts_last_replayed timestamp without time zone,
+	CONSTRAINT pk_t_last_replayed PRIMARY KEY (i_id_source),
+	CONSTRAINT fk_last_replayed_id_source FOREIGN KEY (i_id_source) 
+	REFERENCES  sch_chameleon.t_sources(i_id_sourceh)
+	ON UPDATE RESTRICT ON DELETE CASCADE
+)
+;
+
+
+CREATE UNIQUE INDEX idx_t_sources_t_source ON sch_chameleon.t_sources(t_source);
 
 CREATE TABLE sch_chameleon.t_replica_batch
 (
@@ -78,11 +97,9 @@ CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
 	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
 	ON UPDATE RESTRICT ON DELETE CASCADE
 )
-WITH (
-  OIDS=FALSE
-);
+;
 
-
+/*
 CREATE TABLE sch_chameleon.t_replica_tables
 (
   i_id_table bigserial NOT NULL,
@@ -101,7 +118,7 @@ WITH (
 CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
 	ON sch_chameleon.t_replica_tables (i_id_source,v_table_name,v_schema_name);
 
-
+*/
 CREATE TABLE sch_chameleon.t_discarded_rows
 (
 	i_id_row		bigserial,
@@ -125,24 +142,6 @@ ALTER TABLE sch_chameleon.t_replica_tables
 	ON UPDATE RESTRICT ON DELETE CASCADE
 	;
 
-
-
-CREATE TABLE sch_chameleon.t_index_def
-(
-  i_id_def bigserial NOT NULL,
-  i_id_source bigint NOT NULL,
-  v_schema character varying(100),
-  v_table character varying(100),
-  v_index character varying(100),
-  t_create	text,
-  t_drop	text,
-  CONSTRAINT pk_t_index_def PRIMARY KEY (i_id_def)
-)
-WITH (
-  OIDS=FALSE
-);
-
-CREATE UNIQUE INDEX idx_schema_table_source ON sch_chameleon.t_index_def(i_id_source,v_schema,v_table,v_index);
 
 
 CREATE TABLE sch_chameleon.t_batch_events
