@@ -93,18 +93,42 @@ class replica_engine(object):
 		config_file.close()
 		
 	
-	
+	def show_sources(self):
+		"""
+			The method shows the sources available in the configuration file.
+		"""
+		for item in self.config["sources"]:
+			print("\n")
+			print (tabulate([], headers=["Source %s" % item]))
+			tab_headers = ['Parameter', 'Value']
+			tab_body = []
+			source = self.config["sources"][item]
+			config_list = [param for param in source if param not in ['db_conn']]
+			connection_list = [param for param  in source["db_conn"] if param not in ['password']]
+			for parameter in config_list:
+				tab_row = [parameter, source[parameter]]
+				tab_body.append(tab_row)
+			for param in connection_list:
+				tab_row = [param, source["db_conn"][param]]
+				tab_body.append(tab_row)
+		
+			print(tabulate(tab_body, headers=tab_headers))
+		
 	def show_config(self):
 		"""
 			The method loads the current configuration and displays the status in tabular output
 		"""
 		config_list = [item for item in self.config if item not in ['pg_conn', 'sources']]
+		connection_list = [item for item in self.config["pg_conn"] if item not in ['password']]
 		tab_body = []
 		tab_headers = ['Parameter', 'Value']
 		for item in config_list:
 			tab_row = [item, self.config[item]]
 			tab_body.append(tab_row)
+		for item in connection_list:
+			tab_row = [item, self.config["pg_conn"][item]]
+			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers))
-		
+		self.show_sources()
 		
 		

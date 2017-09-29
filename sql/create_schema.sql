@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '1.6'::TEXT t_version
+	SELECT '2.0.0'::TEXT t_version
 ;
 
 --TYPES
@@ -17,19 +17,19 @@ CREATE TYPE sch_chameleon.en_binlog_event
 --TABLES/INDICES	
 CREATE TABLE sch_chameleon.t_sources
 (
-	i_id_source	bigserial,
-	t_source		text NOT NULL,
-	t_dest_schema   text NOT NULL,
+	i_id_source			bigserial,
+	t_source				text NOT NULL,
+	jsb_schema_mappings	jsonb NOT NULL,
 	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
-	ts_last_received timestamp without time zone,
-	ts_last_replay timestamp without time zone,
+	--ts_last_received timestamp without time zone,
+	--ts_last_replay timestamp without time zone,
 	v_log_table character varying[] ,
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
 )
 ;
 
 CREATE UNIQUE INDEX idx_t_sources_t_source ON sch_chameleon.t_sources(t_source);
-CREATE UNIQUE INDEX idx_t_sources_t_dest_schema ON sch_chameleon.t_sources(t_dest_schema);
+--CREATE UNIQUE INDEX idx_t_sources_t_dest_schema ON sch_chameleon.t_sources(t_dest_schema);
 
 
 CREATE TABLE sch_chameleon.t_replica_batch
