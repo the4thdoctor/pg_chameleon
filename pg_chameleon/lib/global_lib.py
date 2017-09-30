@@ -21,9 +21,6 @@ class replica_engine(object):
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
 		
-		local_conn = "%s/connection/" % cham_dir 
-		self.global_conn_example = '%s/pg_chameleon/connection/connection-example.yml' % python_lib
-		self.local_conn_example = '%s/connection-example.yml' % local_conn
 		
 		local_conf = "%s/configuration/" % cham_dir 
 		self.global_conf_example = '%s/pg_chameleon/configuration/config-example.yml' % python_lib
@@ -34,7 +31,6 @@ class replica_engine(object):
 		
 		self.conf_dirs=[
 			cham_dir, 
-			local_conn, 
 			local_conf, 
 			local_logs, 
 			local_pid, 
@@ -61,14 +57,7 @@ class replica_engine(object):
 				print ("creating directory %s" % confdir)
 				os.mkdir(confdir)
 		
-		if os.path.isfile(self.local_conn_example):
-			if os.path.getctime(self.global_conn_example)>os.path.getctime(self.local_conn_example):
-				print ("updating connection example with %s" % self.local_conn_example)
-				copy(self.global_conn_example, self.local_conn_example)
-		else:
-			print ("copying connection  example in %s" % self.local_conn_example)
-			copy(self.global_conn_example, self.local_conn_example)
-		
+				
 		if os.path.isfile(self.local_conf_example):
 			if os.path.getctime(self.global_conf_example)>os.path.getctime(self.local_conf_example):
 				print ("updating configuration example with %s" % self.local_conf_example)

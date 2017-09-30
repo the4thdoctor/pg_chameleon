@@ -25,7 +25,7 @@ sources:
                 database:  "db_replica"
                 charset: 'utf8'
         schema_mappings:
-                my_schema:dest_schema
+                my_schema: dest_schema
         limit_tables:
         skip_tables:
         copy_max_memory: "300M"
