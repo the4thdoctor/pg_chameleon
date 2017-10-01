@@ -26,7 +26,7 @@ Platform and versions
 ****************************
 
 The tool is developed using Linux Slackware 14.2. 
-Is currently tested with python 2.7 and python 3.6.
+
 
 The database server is a FreeBSD  11.0 with MySQL: 5.6 and PostgreSQL: 9.5 
 
@@ -54,7 +54,7 @@ Features
 Requirements
 ******************
 
-Python: CPython 2.7/3.3+ on Linux
+Python: CPython 3.3+ on Linux
 
 MySQL: 5.5+
 
@@ -78,8 +78,6 @@ Caveats
 ..............................
 The replica requires the tables to have a primary key. Tables without primary key are initialised during the init_replica process but the replica
 doesn't update them.
-
-Multiple replica sources are supported. However is required a separate process for each replica. Each replica must have a unique destination schema in PostgreSQL.
 
 The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
 If the copy process fails for memory error check the failing table's row length and the number of rows for each slice. 
