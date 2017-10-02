@@ -67,7 +67,7 @@ class pg_engine(object):
 		}
 		self.dest_conn = None
 		self.pgsql_conn = None
-	
+		self.logger = None
 	def __del__(self):
 		"""
 			Class destructor, tries to disconnect the postgresql connection.
@@ -88,15 +88,47 @@ class pg_engine(object):
 			self.pgsql_cur = self.pgsql_conn .cursor()
 			
 		else:
-			print("Undefined connection parameters. Please fix it.")
+			self.logger.error("There is no database connection available.")
 			sys.exit()
 
 	def disconnect_db(self):
 		"""
 			The method disconnects the postgres connection if there is any active. Otherwise issues a warning.
-			Todo: Need to change the print in logging.
 		"""
 		if self.pgsql_conn:
+			self.logger.debug("Trying to disconnect from the destination database.")
 			self.pgsql_conn.close()
 		else:
-			print("Warning, there is no database connection to disconnect.")
+			self.logger.warning("Warning, there is no database connection to disconnect.")
+
+	def create_replica_schema(self):
+		"""
+			The method installs the replica schema sch_chameleon if not already  present.
+		"""
+		self.logger.debug("Trying to connect to the destination database.")
+		self.connect_db()
+		num_schema = self.check_replica_schema()[0]
+		if num_schema == 0:
+			self.logger.debug("Creating the replica schema.")
+		else:
+			self.logger.warning("The replica schema is already present.")
+	
+	def check_replica_schema(self):
+		"""
+			The method checks if the sch_chameleon exists
+			
+			:return: count from information_schema.schemata
+			:rtype: integer
+		"""
+		sql_check="""
+			SELECT 
+				count(*)
+			FROM 
+				information_schema.schemata  
+			WHERE 
+				schema_name='sch_chameleon'
+		"""
+			
+		self.pgsql_cur.execute(sql_check)
+		num_schema = self.pgsql_cur.fetchone()
+		return num_schema

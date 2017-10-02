@@ -1,7 +1,11 @@
 ---
 #global settings
 pid_dir: '~/.pg_chameleon/pid/'
+log_dir: '~/.pg_chameleon/logs/'
+log_dest: stdout
+log_level: debug
 log_days_keep: 10
+
 
 #postgres  destination connection
 pg_conn:

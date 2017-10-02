@@ -9,35 +9,6 @@ import logging
 from logging.handlers  import TimedRotatingFileHandler
 
 
-class replica_logging(object):
-	def __init(self):
-		self.logger=None
-
-	def init_logger(self, log_dest,log_level,log_days_keep, log_dir, connkey, debug_mode):
-		"""
-			
-		"""
-		log_file= '%s/%s.log' % (log_dir,connkey)
-		log_file = os.path.expanduser(log_file)
-		self.logger = logging.getLogger(__name__)
-		#self.logger.setLevel(logging.DEBUG)
-		self.logger.propagate = False
-		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(filename)s (%(lineno)s): %(message)s", "%b %e %H:%M:%S")
-		
-		if log_dest=='stdout' or debug_mode:
-			fh=logging.StreamHandler(sys.stdout)
-			
-		elif log_dest=='file':
-			fh = TimedRotatingFileHandler(log_file, when="d",interval=1,backupCount=log_days_keep)
-		
-		if log_level=='debug' or debug_mode:
-			fh.setLevel(logging.DEBUG)
-		elif log_level=='info':
-			fh.setLevel(logging.INFO)
-			
-		fh.setFormatter(formatter)
-		self.logger.addHandler(fh)
-		return fh
 
 class replica_engine(object):
 	"""
@@ -74,6 +45,8 @@ class replica_engine(object):
 		self.load_config()
 		self.pg_engine = pg_engine()
 		self.pg_engine.dest_conn = self.config["pg_conn"]
+		self.logger = self.init_logger()
+		self.pg_engine.logger = self.logger
 		
 	def set_configuration_files(self):
 		""" 
@@ -158,4 +131,36 @@ class replica_engine(object):
 		"""
 			The method creates the replica schema in the destination database.
 		"""
-		slf.pg_engine.create_replica_schema()
+		self.logger.info("Trying to create replica schema")
+		self.pg_engine.create_replica_schema()
+		
+		
+		
+	def init_logger(self):
+		log_dir = self.config["log_dir"] 
+		log_level = self.config["log_level"] 
+		log_dest = self.config["log_dest"] 
+		log_days_keep = self.config["log_days_keep"] 
+		log_name = self.args.config
+		debug_mode = self.args.debug
+
+		log_file = os.path.expanduser('%s/%s.log' % (log_dir,log_name))
+		logger = logging.getLogger(__name__)
+		logger.setLevel(logging.DEBUG)
+		logger.propagate = False
+		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(filename)s (%(lineno)s): %(message)s", "%b %e %H:%M:%S")
+		
+		if log_dest=='stdout' or debug_mode:
+			fh=logging.StreamHandler(sys.stdout)
+			
+		elif log_dest=='file':
+			fh = TimedRotatingFileHandler(log_file, when="d",interval=1,backupCount=log_days_keep)
+		
+		if log_level=='debug' or debug_mode:
+			fh.setLevel(logging.DEBUG)
+		elif log_level=='info':
+			fh.setLevel(logging.INFO)
+			
+		fh.setFormatter(formatter)
+		logger.addHandler(fh)
+		return logger
