@@ -7,12 +7,13 @@ from pg_chameleon import replica_engine
 commands = [
 	'show_config',
 	'show_sources',
-	'create_service_schema',
-	'drop_service_schema',
-	'upgrade_service_schema',
+	'create_replica_schema',
+	'drop_replica_schema',
+	'upgrade_replica_schema',
 	'add_source',
-	'update_schema_mappings',
+	'drop_source',
 	'init_replica',
+	'update_schema_mappings',
 	'refresh_schema',
 	'sync_table',
 	

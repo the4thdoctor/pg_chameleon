@@ -3,9 +3,41 @@ import os
 import sys
 from shutil import copy
 from distutils.sysconfig import get_python_lib
-
-
 from tabulate import tabulate
+from pg_chameleon import pg_engine
+import logging
+from logging.handlers  import TimedRotatingFileHandler
+
+
+class replica_logging(object):
+	def __init(self):
+		self.logger=None
+
+	def init_logger(self, log_dest,log_level,log_days_keep, log_dir, connkey, debug_mode):
+		"""
+			
+		"""
+		log_file= '%s/%s.log' % (log_dir,connkey)
+		log_file = os.path.expanduser(log_file)
+		self.logger = logging.getLogger(__name__)
+		#self.logger.setLevel(logging.DEBUG)
+		self.logger.propagate = False
+		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(filename)s (%(lineno)s): %(message)s", "%b %e %H:%M:%S")
+		
+		if log_dest=='stdout' or debug_mode:
+			fh=logging.StreamHandler(sys.stdout)
+			
+		elif log_dest=='file':
+			fh = TimedRotatingFileHandler(log_file, when="d",interval=1,backupCount=log_days_keep)
+		
+		if log_level=='debug' or debug_mode:
+			fh.setLevel(logging.DEBUG)
+		elif log_level=='info':
+			fh.setLevel(logging.INFO)
+			
+		fh.setFormatter(formatter)
+		self.logger.addHandler(fh)
+		return fh
 
 class replica_engine(object):
 	"""
@@ -40,6 +72,8 @@ class replica_engine(object):
 		self.set_configuration_files()
 		self.args = args
 		self.load_config()
+		self.pg_engine = pg_engine()
+		self.pg_engine.dest_conn = self.config["pg_conn"]
 		
 	def set_configuration_files(self):
 		""" 
@@ -120,4 +154,8 @@ class replica_engine(object):
 		print(tabulate(tab_body, headers=tab_headers))
 		self.show_sources()
 		
-		
+	def create_replica_schema(self):
+		"""
+			The method creates the replica schema in the destination database.
+		"""
+		slf.pg_engine.create_replica_schema()
