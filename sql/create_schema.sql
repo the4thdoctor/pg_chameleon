@@ -88,8 +88,8 @@ CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
   t_binlog_name text,
   i_binlog_position integer,
   ts_event_datetime timestamp without time zone NOT NULL DEFAULT clock_timestamp(),
-  jsb_event_data jsonb,
-  jsb_event_update jsonb,
+  jsb_event_after jsonb,
+  jsb_event_before jsonb,
   t_query text,
   i_my_event_time bigint,
   CONSTRAINT pk_log_replica PRIMARY KEY (i_id_event),
@@ -124,6 +124,8 @@ CREATE TABLE sch_chameleon.t_discarded_rows
 	i_id_row		bigserial,
 	i_id_batch	bigint NOT NULL,
 	ts_discard	timestamp with time zone NOT NULL DEFAULT clock_timestamp(),
+	v_table_name character varying(100) NOT NULL,
+        v_schema_name character varying(100) NOT NULL,
 	t_row_data	text,
 	CONSTRAINT pk_t_discarded_rows PRIMARY KEY (i_id_row)
 )
