@@ -134,6 +134,12 @@ class replica_engine(object):
 		self.logger.info("Trying to create replica schema")
 		self.pg_engine.create_replica_schema()
 		
+	def drop_replica_schema(self):
+		"""
+			The method removes the replica schema from the destination database.
+		"""
+		self.logger.info("Dropping the replica schema")
+		self.pg_engine.drop_replica_schema()
 		
 		
 	def init_logger(self):

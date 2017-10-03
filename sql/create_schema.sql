@@ -32,7 +32,7 @@ CREATE TABLE sch_chameleon.t_last_received
 	ts_last_received timestamp without time zone,
 	CONSTRAINT pk_t_last_received PRIMARY KEY (i_id_source),
 	CONSTRAINT fk_last_received_id_source FOREIGN KEY (i_id_source) 
-	REFERENCES  sch_chameleon.t_sources(i_id_sourceh)
+	REFERENCES  sch_chameleon.t_sources(i_id_source)
 	ON UPDATE RESTRICT ON DELETE CASCADE
 )
 ;
@@ -43,7 +43,7 @@ CREATE TABLE sch_chameleon.t_last_replayed
 	ts_last_replayed timestamp without time zone,
 	CONSTRAINT pk_t_last_replayed PRIMARY KEY (i_id_source),
 	CONSTRAINT fk_last_replayed_id_source FOREIGN KEY (i_id_source) 
-	REFERENCES  sch_chameleon.t_sources(i_id_sourceh)
+	REFERENCES  sch_chameleon.t_sources(i_id_source)
 	ON UPDATE RESTRICT ON DELETE CASCADE
 )
 ;
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
 )
 ;
 
-/*
+
 CREATE TABLE sch_chameleon.t_replica_tables
 (
   i_id_table bigserial NOT NULL,
@@ -118,7 +118,7 @@ WITH (
 CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
 	ON sch_chameleon.t_replica_tables (i_id_source,v_table_name,v_schema_name);
 
-*/
+
 CREATE TABLE sch_chameleon.t_discarded_rows
 (
 	i_id_row		bigserial,

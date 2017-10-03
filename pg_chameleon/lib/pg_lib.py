@@ -99,7 +99,7 @@ class pg_engine(object):
 			self.logger.debug("Trying to disconnect from the destination database.")
 			self.pgsql_conn.close()
 		else:
-			self.logger.warning("Warning, there is no database connection to disconnect.")
+			self.logger.debug("There is no database connection to disconnect.")
 
 	def create_replica_schema(self):
 		"""
@@ -110,8 +110,25 @@ class pg_engine(object):
 		num_schema = self.check_replica_schema()[0]
 		if num_schema == 0:
 			self.logger.debug("Creating the replica schema.")
+			file_schema = open(self.sql_dir+"create_schema.sql", 'rb')
+			sql_schema = file_schema.read()
+			file_schema.close()
+			self.pgsql_cur.execute(sql_schema)
+		
 		else:
 			self.logger.warning("The replica schema is already present.")
+	
+	def drop_replica_schema(self):
+		"""
+			The method removes the service schema discarding all the replica references.
+			The replicated tables are kept in place though.
+		"""
+		self.logger.debug("Trying to connect to the destination database.")
+		self.connect_db()
+		file_schema = open(self.sql_dir+"drop_schema.sql", 'rb')
+		sql_schema = file_schema.read()
+		file_schema.close()
+		self.pgsql_cur.execute(sql_schema)
 	
 	def check_replica_schema(self):
 		"""
