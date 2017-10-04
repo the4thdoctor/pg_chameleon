@@ -149,3 +149,66 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_check)
 		num_schema = self.pgsql_cur.fetchone()
 		return num_schema
+	
+	def add_source(self):
+		"""
+			The method adds a new source to the replication catalog.
+			The method calls the function fn_refresh_parts() which generates the log tables used by the replica.
+			If the source is already present a warning is issued and no other action is performed.
+		"""
+		self.logger.debug("Checking if the source %s already exists" % self.source)
+		self.connect_db()
+		sql_check = """
+			SELECT 
+				count(*) 
+			FROM 
+				sch_chameleon.t_sources 
+			WHERE 
+				t_source=%s;
+		"""
+		self.pgsql_cur.execute(sql_check, (self.source, ))
+		num_sources = self.pgsql_cur.fetchone()
+		if num_sources[0] == 0:
+			self.logger.debug("Adding source %s " % self.source)
+			schema_mappings = json.dumps(self.sources[self.source]["schema_mappings"])
+			log_table_1 = "t_log_replica_%s_1" % self.source
+			log_table_2 = "t_log_replica_%s_2" % self.source
+			sql_add = """
+				INSERT INTO sch_chameleon.t_sources 
+					( 
+						t_source,
+						jsb_schema_mappings,
+						v_log_table
+					) 
+				VALUES 
+					(
+						%s,
+						%s,
+						ARRAY[%s,%s]
+					)
+				; 
+			"""
+			self.pgsql_cur.execute(sql_add, (self.source, schema_mappings, log_table_1, log_table_2))
+			
+			sql_parts = """SELECT sch_chameleon.fn_refresh_parts() ;"""
+			self.pgsql_cur.execute(sql_parts)
+			
+		self.logger.warning("The source %s already exists" % self.source)
+
+	def drop_source(self):
+		"""
+			The method deletes the source from the replication catalogue.
+			The log tables are dropped as well, discarding any replica reference for the source.
+		"""
+		self.logger.debug("Deleting the source %s " % self.source)
+		self.connect_db()
+		
+		sql_delete = """ DELETE FROM sch_chameleon.t_sources 
+					WHERE  t_source=%s
+					RETURNING v_log_table
+					; """
+		self.pgsql_cur.execute(sql_delete, (self.source, ))
+		source_drop = self.pgsql_cur.fetchone()
+		for log_table in source_drop[0]:
+			sql_drop = """DROP TABLE sch_chameleon."%s"; """ % (log_table)
+			self.pgsql_cur.execute(sql_drop)

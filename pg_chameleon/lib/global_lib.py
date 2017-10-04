@@ -47,6 +47,8 @@ class replica_engine(object):
 		self.pg_engine.dest_conn = self.config["pg_conn"]
 		self.logger = self.init_logger()
 		self.pg_engine.logger = self.logger
+		self.pg_engine.source = self.args.source
+		self.pg_engine.sources = self.config["sources"]
 		
 	def set_configuration_files(self):
 		""" 
@@ -140,7 +142,26 @@ class replica_engine(object):
 		"""
 		self.logger.info("Dropping the replica schema")
 		self.pg_engine.drop_replica_schema()
-		
+	
+	def add_source(self):
+		"""
+			The method adds a new replication source. A pre existence check is performed
+		"""
+		if self.args.source == "*":
+			print("You must specify a source name with the argument --source")
+		else:
+			self.logger.info("Trying to add a new source")
+			self.pg_engine.add_source()
+			
+	def drop_source(self):
+		"""
+			The method removes a replication source from the catalogue.
+		"""
+		if self.args.source == "*":
+			print("You must specify a source name with the argument --source")
+		else:
+			self.logger.info("Trying to remove the source")
+			self.pg_engine.drop_source()
 		
 	def init_logger(self):
 		log_dir = self.config["log_dir"] 
