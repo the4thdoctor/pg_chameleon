@@ -10,13 +10,13 @@ from distutils.sysconfig import get_python_lib
 
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
-		if 	isinstance(obj, datetime.time) or \
-			isinstance(obj, datetime.datetime) or  \
-			isinstance(obj, datetime.date) or \
-			isinstance(obj, decimal.Decimal) or \
-			isinstance(obj, datetime.timedelta) or \
-			isinstance(obj, set):
-				
+		if 		isinstance(obj, datetime.time) or \
+				isinstance(obj, datetime.datetime) or  \
+				isinstance(obj, datetime.date) or \
+				isinstance(obj, decimal.Decimal) or \
+				isinstance(obj, datetime.timedelta) or \
+				isinstance(obj, set):
+					
 			return str(obj)
 		return json.JSONEncoder.default(self, obj)
 
@@ -150,14 +150,51 @@ class pg_engine(object):
 		num_schema = self.pgsql_cur.fetchone()
 		return num_schema
 	
-	def add_source(self):
+	def check_schema_mappings(self):
 		"""
-			The method adds a new source to the replication catalog.
-			The method calls the function fn_refresh_parts() which generates the log tables used by the replica.
-			If the source is already present a warning is issued and no other action is performed.
+			The method checks if there is already a destination schema in the stored schema mappings.
+			As each schema should be managed by one mapping only, if the method returns None  then
+			the source can be store safely. Otherwise the action. The method doesn't take any decision
+			leaving this to the calling methods.
+			The method assumes there is a database connection active.
 		"""
-		self.logger.debug("Checking if the source %s already exists" % self.source)
-		self.connect_db()
+		schema_mappings = json.dumps(self.sources[self.source]["schema_mappings"])
+		sql_check = """
+			WITH t_check  AS
+			(
+					SELECT 
+						(jsonb_each_text(jsb_schema_mappings)).value AS dest_schema
+					FROM 
+						sch_chameleon.t_sources
+				UNION ALL
+					SELECT 
+						value AS dest_schema 
+					FROM 
+						json_each_text(%s::json) 
+			)
+		SELECT 
+			count(dest_schema),
+			dest_schema 
+		FROM 
+			t_check 
+		GROUP BY 
+			dest_schema
+		HAVING 
+			count(dest_schema)>1
+		;
+		"""
+		self.pgsql_cur.execute(sql_check, (schema_mappings, ))
+		check_mappings = self.pgsql_cur.fetchone()
+		return check_mappings
+		
+	def check_source(self):
+		"""
+			The method checks if the source name stored in the class variable self.source is already present.
+			As this method is used in both add and drop source it just retuns the count of the sources.
+			Any decision about the source is left to the calling method.
+			The method assumes there is a database connection active.
+			
+		"""
 		sql_check = """
 			SELECT 
 				count(*) 
@@ -168,32 +205,48 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_check, (self.source, ))
 		num_sources = self.pgsql_cur.fetchone()
-		if num_sources[0] == 0:
-			self.logger.debug("Adding source %s " % self.source)
-			schema_mappings = json.dumps(self.sources[self.source]["schema_mappings"])
-			log_table_1 = "t_log_replica_%s_1" % self.source
-			log_table_2 = "t_log_replica_%s_2" % self.source
-			sql_add = """
-				INSERT INTO sch_chameleon.t_sources 
-					( 
-						t_source,
-						jsb_schema_mappings,
-						v_log_table
-					) 
-				VALUES 
-					(
-						%s,
-						%s,
-						ARRAY[%s,%s]
-					)
-				; 
-			"""
-			self.pgsql_cur.execute(sql_add, (self.source, schema_mappings, log_table_1, log_table_2))
-			
-			sql_parts = """SELECT sch_chameleon.fn_refresh_parts() ;"""
-			self.pgsql_cur.execute(sql_parts)
-			
-		self.logger.warning("The source %s already exists" % self.source)
+		return num_sources[0]
+	
+	def add_source(self):
+		"""
+			The method adds a new source to the replication catalog.
+			The method calls the function fn_refresh_parts() which generates the log tables used by the replica.
+			If the source is already present a warning is issued and no other action is performed.
+		"""
+		self.logger.debug("Checking if the source %s already exists" % self.source)
+		self.connect_db()
+		num_sources = self.check_source()
+		
+		if num_sources == 0:
+			check_mappings = self.check_schema_mappings()
+			if check_mappings:
+				self.logger.error("Could not register the source %s. There is a duplicate destination schema in the schema mappings." % self.source)
+			else:
+				self.logger.debug("Adding source %s " % self.source)
+				schema_mappings = json.dumps(self.sources[self.source]["schema_mappings"])
+				log_table_1 = "t_log_replica_%s_1" % self.source
+				log_table_2 = "t_log_replica_%s_2" % self.source
+				sql_add = """
+					INSERT INTO sch_chameleon.t_sources 
+						( 
+							t_source,
+							jsb_schema_mappings,
+							v_log_table
+						) 
+					VALUES 
+						(
+							%s,
+							%s,
+							ARRAY[%s,%s]
+						)
+					; 
+				"""
+				self.pgsql_cur.execute(sql_add, (self.source, schema_mappings, log_table_1, log_table_2))
+				
+				sql_parts = """SELECT sch_chameleon.fn_refresh_parts() ;"""
+				self.pgsql_cur.execute(sql_parts)
+		else:
+			self.logger.warning("The source %s already exists" % self.source)
 
 	def drop_source(self):
 		"""
@@ -202,13 +255,25 @@ class pg_engine(object):
 		"""
 		self.logger.debug("Deleting the source %s " % self.source)
 		self.connect_db()
-		
-		sql_delete = """ DELETE FROM sch_chameleon.t_sources 
-					WHERE  t_source=%s
-					RETURNING v_log_table
-					; """
-		self.pgsql_cur.execute(sql_delete, (self.source, ))
-		source_drop = self.pgsql_cur.fetchone()
-		for log_table in source_drop[0]:
-			sql_drop = """DROP TABLE sch_chameleon."%s"; """ % (log_table)
-			self.pgsql_cur.execute(sql_drop)
+		num_sources = self.check_source()
+		if num_sources == 1:
+			sql_delete = """ DELETE FROM sch_chameleon.t_sources 
+						WHERE  t_source=%s
+						RETURNING v_log_table
+						; """
+			self.pgsql_cur.execute(sql_delete, (self.source, ))
+			source_drop = self.pgsql_cur.fetchone()
+			for log_table in source_drop[0]:
+				sql_drop = """DROP TABLE sch_chameleon."%s"; """ % (log_table)
+				try:
+					self.pgsql_cur.execute(sql_drop)
+				except:
+					self.logger.debug("Could not drop the table sch_chameleon.%s you may need to remove it manually." % log_table)
+		else:
+			self.logger.debug("There is no source %s registered in the replica catalogue" % self.source)
+			
+			
+			
+			
+			
+			

@@ -21,6 +21,7 @@ class replica_engine(object):
 		"""
 			Class constructor.
 		"""
+		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
 		
@@ -160,8 +161,14 @@ class replica_engine(object):
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
 		else:
-			self.logger.info("Trying to remove the source")
-			self.pg_engine.drop_source()
+			drp_msg = 'Dropping the source %s will remove drop any replica reference.\n Are you sure? YES/No\n'  % self.args.source
+			drop_src = input(drp_msg)
+			if drop_src == 'YES':
+				self.logger.info("Trying to remove the source")
+				self.pg_engine.drop_source()
+			elif drop_src in  self.lst_yes:
+				print('Please type YES all uppercase to confirm')
+			
 		
 	def init_logger(self):
 		log_dir = self.config["log_dir"] 
