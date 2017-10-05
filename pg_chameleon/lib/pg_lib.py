@@ -68,6 +68,7 @@ class pg_engine(object):
 		self.dest_conn = None
 		self.pgsql_conn = None
 		self.logger = None
+		
 	def __del__(self):
 		"""
 			Class destructor, tries to disconnect the postgresql connection.

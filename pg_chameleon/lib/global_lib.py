@@ -4,7 +4,7 @@ import sys
 from shutil import copy
 from distutils.sysconfig import get_python_lib
 from tabulate import tabulate
-from pg_chameleon import pg_engine
+from pg_chameleon import pg_engine, mysql_source
 import logging
 from logging.handlers  import TimedRotatingFileHandler
 
@@ -44,12 +44,17 @@ class replica_engine(object):
 		self.set_configuration_files()
 		self.args = args
 		self.load_config()
+		
+		#pg_engine instance initialisation
 		self.pg_engine = pg_engine()
 		self.pg_engine.dest_conn = self.config["pg_conn"]
 		self.logger = self.init_logger()
 		self.pg_engine.logger = self.logger
 		self.pg_engine.source = self.args.source
 		self.pg_engine.sources = self.config["sources"]
+		
+		#mysql_source instance initialisation
+		self.mysql_source = mysql_source()
 		
 	def set_configuration_files(self):
 		""" 
@@ -169,7 +174,16 @@ class replica_engine(object):
 			elif drop_src in  self.lst_yes:
 				print('Please type YES all uppercase to confirm')
 			
-		
+	def init_replica(self):
+		"""
+			The method  initialise a replica for a given source and configuration. 
+			If the source is omitted the method aborts the action
+		"""
+		if self.args.source == "*":
+			print("You must specify a source name with the argument --source")
+		else:
+			self.logger.info("Initialising the replica for source %s" % self.args.source)
+			
 	def init_logger(self):
 		log_dir = self.config["log_dir"] 
 		log_level = self.config["log_level"] 
