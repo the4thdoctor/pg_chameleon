@@ -55,6 +55,11 @@ class replica_engine(object):
 		
 		#mysql_source instance initialisation
 		self.mysql_source = mysql_source()
+		self.mysql_source.source = self.args.source
+		self.mysql_source.pg_engine = self.pg_engine
+		self.mysql_source.logger = self.logger
+		self.mysql_source.sources = self.config["sources"]
+		self.mysql_source.type_override = self.config["type_override"]
 		
 	def set_configuration_files(self):
 		""" 
@@ -183,6 +188,7 @@ class replica_engine(object):
 			print("You must specify a source name with the argument --source")
 		else:
 			self.logger.info("Initialising the replica for source %s" % self.args.source)
+			self.mysql_source.init_replica()
 			
 	def init_logger(self):
 		log_dir = self.config["log_dir"] 
