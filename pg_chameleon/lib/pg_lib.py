@@ -273,8 +273,27 @@ class pg_engine(object):
 		else:
 			self.logger.debug("There is no source %s registered in the replica catalogue" % self.source)
 			
+	def get_schema_list(self):
+		"""
+			The method gets the list of source schemas for the given source.
+			The list is the one stored in the table sch_chameleon.t_sources. 
+			Any change in the configuration file is ignored
+			The method assumes there is a database connection active.
+		"""
+		self.logger.debug("Collecting schema list for source %s" % self.source)
+		sql_get_schema = """
+			SELECT 
+				(jsonb_each_text(jsb_schema_mappings)).key
+			FROM 
+				sch_chameleon.t_sources
+			WHERE 
+				t_source=%s;
 			
-			
+		"""
+		self.pgsql_cur.execute(sql_get_schema, (self.source, ))
+		schema_list = [schema[0] for schema in self.pgsql_cur.fetchall()]
+		self.logger.debug("Found origin's replication schemas %s" % ', '.join(schema_list))
+		return schema_list
 			
 			
 			

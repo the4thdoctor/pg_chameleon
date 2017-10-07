@@ -4,9 +4,9 @@ class mysql_source(object):
 	def __init__(self):
 		"""
 			Class constructor, the method sets the class variables and configure the
-			operating parameters from the args provided to the class.
+			operating parameters from the args provided t the class.
 		"""
-		self.my_tables = []
+		self.schema_tables = {}
 	
 	def __del__(self):
 		"""
@@ -69,7 +69,59 @@ class mysql_source(object):
 		except:
 			self.logger.debug("There is no database connection to disconnect.")
 
+	def build_table_exceptions(self):
+		"""
+			The method builds two dictionaries from the limit_tables and skip tables values set for the source.
+			The dictionaries are intended to be used in the get_table_list to cleanup the list of tables per schema.
+			
+			
+		"""
+		self.limit_tables = {}
+		self.skip_tables = {}
+		limit_tables = self.source_config["limit_tables"]
+		skip_tables = self.source_config["skip_tables"]
+		table_limit = [table.split('.') for table in limit_tables]
+		table_skip = [table.split('.') for table in skip_tables]
+		for table_list in table_limit:
+			list_exclude = []
+			try:
+				list_exclude = self.limit_tables[table_list[0]] 
+				list_exclude.append(table_list[1])
+			except KeyError:
+				list_exclude.append(table_list[1])
+			self.limit_tables[table_list[0]]  = list_exclude
+				
+		for table_list in table_skip:
+			list_exclude = []
+			try:
+				list_exclude = self.skip_tables[table_list[0]] 
+				list_exclude.append(table_list[1])
+			except KeyError:
+				list_exclude.append(table_list[1])
+			self.skip_tables[table_list[0]]  = list_exclude
+				
+		print (self.limit_tables)
 
+	def get_table_list(self):
+		"""
+			The method pulls the table list from the information_schema. 
+			The list is stored in a dictionary  which key is the table's schema.
+		"""
+		sql_tables="""
+			SELECT 
+				table_name
+			FROM 
+				information_schema.TABLES 
+			WHERE 
+					table_type='BASE TABLE' 
+				AND table_schema=%s
+			;
+		"""
+		for schema in self.schema_list:
+			self.cursor_buffered.execute(sql_tables, (schema))
+			table_list = [table["table_name"] for table in self.cursor_buffered.fetchall()]
+			self.schema_tables[schema] = table_list
+		
 		
 		
 	def init_replica(self):
@@ -79,7 +131,10 @@ class mysql_source(object):
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.source_config = self.sources[self.source]
 		self.connect_db_buffered()
-		self.connect_db_unbuffered()
+		self.pg_engine.connect_db()
+		self.schema_list = self.pg_engine.get_schema_list()
+		self.build_table_exceptions()
+		self.get_table_list()
 
 
 
