@@ -133,6 +133,19 @@ class mysql_source(object):
 			
 			self.schema_tables[schema] = table_list
 	
+	def create_loading_schemas(self):
+		"""
+			Creates the loading schemas in the destination database and associated tables listed in the dictionary
+			self.schema_tables.
+			The method builds a dictionary which associates the destination schema to the loading schema. 
+			The loading_schema is named after the destination schema plus with the prefix _ and the _tmp suffix.
+			As postgresql allows, by default up to 64  characters for an identifier, the original schema is truncated to 59 characters,
+			in order to fit the maximum identifier's length.
+			
+		"""
+		for schema in self.schema_list:
+			loading_schema = "_%s_tmp" % schema[0:59]
+			print (schema, loading_schema)
 		
 	def init_replica(self):
 		"""
@@ -145,6 +158,6 @@ class mysql_source(object):
 		self.schema_list = self.pg_engine.get_schema_list()
 		self.build_table_exceptions()
 		self.get_table_list()
-		
+		self.create_loading_schemas()
 
 
