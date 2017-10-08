@@ -276,7 +276,7 @@ class pg_engine(object):
 	def get_schema_list(self):
 		"""
 			The method gets the list of source schemas for the given source.
-			The list is the one stored in the table sch_chameleon.t_sources. 
+			The list is generated using the mapping in sch_chameleon.t_sources. 
 			Any change in the configuration file is ignored
 			The method assumes there is a database connection active.
 		"""
@@ -294,6 +294,27 @@ class pg_engine(object):
 		schema_list = [schema[0] for schema in self.pgsql_cur.fetchall()]
 		self.logger.debug("Found origin's replication schemas %s" % ', '.join(schema_list))
 		return schema_list
+	
+	def get_schema_mappings(self):
+		"""
+			The method gets the schema mappings for the given source.
+			The list is the one stored in the table sch_chameleon.t_sources. 
+			Any change in the configuration file is ignored
+			The method assumes there is a database connection active.
+		"""
+		self.logger.debug("Collecting schema mappings for source %s" % self.source)
+		sql_get_schema = """
+			SELECT 
+				jsb_schema_mappings
+			FROM 
+				sch_chameleon.t_sources
+			WHERE 
+				t_source=%s;
+			
+		"""
+		self.pgsql_cur.execute(sql_get_schema, (self.source, ))
+		schema_mappings = self.pgsql_cur.fetchone()
+		return schema_mappings[0]
 			
 			
 			

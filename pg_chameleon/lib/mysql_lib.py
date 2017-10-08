@@ -7,6 +7,9 @@ class mysql_source(object):
 			operating parameters from the args provided t the class.
 		"""
 		self.schema_tables = {}
+		self.schema_mappings = {}
+		self.schema_loading = {}
+		self.schema_list = []
 	
 	def __del__(self):
 		"""
@@ -144,9 +147,10 @@ class mysql_source(object):
 			
 		"""
 		for schema in self.schema_list:
-			loading_schema = "_%s_tmp" % schema[0:59]
-			print (schema, loading_schema)
-		
+			loading_schema = "_%s_tmp" % self.schema_mappings[schema][0:59]
+			print(schema, loading_schema)
+			
+		print(self.schema_mappings)
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given sources
@@ -155,7 +159,8 @@ class mysql_source(object):
 		self.source_config = self.sources[self.source]
 		self.connect_db_buffered()
 		self.pg_engine.connect_db()
-		self.schema_list = self.pg_engine.get_schema_list()
+		self.schema_mappings = self.pg_engine.get_schema_mappings()
+		self.schema_list = [schema for schema in self.schema_mappings]
 		self.build_table_exceptions()
 		self.get_table_list()
 		self.create_loading_schemas()
