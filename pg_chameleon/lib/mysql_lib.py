@@ -136,7 +136,7 @@ class mysql_source(object):
 			
 			self.schema_tables[schema] = table_list
 	
-	def create_loading_schemas(self):
+	def create_destination_schemas(self):
 		"""
 			Creates the loading schemas in the destination database and associated tables listed in the dictionary
 			self.schema_tables.
@@ -144,13 +144,28 @@ class mysql_source(object):
 			The loading_schema is named after the destination schema plus with the prefix _ and the _tmp suffix.
 			As postgresql allows, by default up to 64  characters for an identifier, the original schema is truncated to 59 characters,
 			in order to fit the maximum identifier's length.
-			
+			The mappings are stored in the class dictionary schema_loading.
 		"""
 		for schema in self.schema_list:
-			loading_schema = "_%s_tmp" % self.schema_mappings[schema][0:59]
-			print(schema, loading_schema)
+			destination_schema = self.schema_mappings[schema]
+			loading_schema = "_%s_tmp" % destination_schema[0:59]
+			self.schema_loading[schema] = {'destination':destination_schema, 'loading':loading_schema}
+			self.logger.debug("Creating the schema %s." % loading_schema)
+			self.pg_engine.create_database_schema(loading_schema)
+			self.logger.debug("Creating the schema %s." % destination_schema)
+			self.pg_engine.create_database_schema(destination_schema)
 			
-		print(self.schema_mappings)
+	def drop_loading_schemas(self):
+		"""
+			The method drops the loading schemas from the destination database.
+			The drop is performed on the schemas generated in create_destination_schemas. 
+			The method assumes the class dictionary schema_loading is correctly set.
+		"""
+		for schema in self.schema_loading:
+			loading_schema = self.schema_loading[schema]["loading"]
+			self.logger.debug("Dropping the schema %s." % loading_schema)
+			self.pg_engine.drop_database_schema(loading_schema, True)
+
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given sources
@@ -163,6 +178,7 @@ class mysql_source(object):
 		self.schema_list = [schema for schema in self.schema_mappings]
 		self.build_table_exceptions()
 		self.get_table_list()
-		self.create_loading_schemas()
+		self.create_destination_schemas()
+		self.drop_loading_schemas()
 
 

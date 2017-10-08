@@ -1,4 +1,5 @@
 import psycopg2
+from psycopg2 import sql
 import sys
 import json
 import datetime
@@ -316,5 +317,30 @@ class pg_engine(object):
 		schema_mappings = self.pgsql_cur.fetchone()
 		return schema_mappings[0]
 			
+	def create_database_schema(self, schema_name):
+		"""
+			The method creates a database schema.
+			The create schema is issued with the clause IF NOT EXISTS.
+			Should the schema be already present the create is skipped.
 			
+			:param schema_name: The schema name to be created. 
+		"""
+		sql_create = sql.SQL("CREATE SCHEMA IF NOT EXISTS {};").format(sql.Identifier(schema_name))
+		self.pgsql_cur.execute(sql_create)
+	
+	def drop_database_schema(self, schema_name, cascade):
+		"""
+			The method drops a database schema.
+			The drop can be either schema is issued with the clause IF NOT EXISTS.
+			Should the schema be already present the create is skipped.
 			
+			:param schema_name: The schema name to be created. 
+			:param schema_name: If true the schema is dropped with the clause cascade. 
+		"""
+		if cascade:
+			cascade_clause = "CASCADE"
+		else:
+			cascade_clause = ""
+		sql_drop = "DROP SCHEMA IF EXISTS {} %s;" % cascade_clause
+		sql_drop = sql.SQL(sql_drop).format(sql.Identifier(schema_name))
+		self.pgsql_cur.execute(sql_drop)
