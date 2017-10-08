@@ -1,6 +1,6 @@
 changelog 
 *************************
-1.8 XX Sep 2017
+1.8 XX Oct 2017
 .............................
 * Fix wrong check in thread alive when running with --thread option
 * Add support for RENAME statement
