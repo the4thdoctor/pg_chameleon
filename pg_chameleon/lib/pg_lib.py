@@ -296,6 +296,11 @@ class pg_engine(object):
 		self.logger.debug("Found origin's replication schemas %s" % ', '.join(schema_list))
 		return schema_list
 	
+	def create_table(self, table_metadata, destination_schema):
+		"""
+			The method create a table, without indices on the destination schema specified by destination_schema.
+		"""
+	
 	def get_schema_mappings(self):
 		"""
 			The method gets the schema mappings for the given source.

@@ -166,6 +166,61 @@ class mysql_source(object):
 			self.logger.debug("Dropping the schema %s." % loading_schema)
 			self.pg_engine.drop_database_schema(loading_schema, True)
 
+	def get_table_metadata(self, table, schema):
+		"""
+			The method builds the table's metadata querying the information_schema.
+			The data is returned as a dictionary.
+			
+			:param table: The table name
+			:param schema: The table's schema
+			:return: table's metadata as a cursor dictionary
+			:rtype: dictionary
+		"""
+		sql_metadata="""
+			SELECT 
+				column_name,
+				column_default,
+				ordinal_position,
+				data_type,
+				column_type,
+				character_maximum_length,
+				extra,
+				column_key,
+				is_nullable,
+				numeric_precision,
+				numeric_scale,
+				CASE 
+					WHEN data_type="enum"
+				THEN	
+					SUBSTRING(COLUMN_TYPE,5)
+				END AS enum_list
+			FROM 
+				information_schema.COLUMNS 
+			WHERE 
+					table_schema=%s
+				AND	table_name=%s
+			ORDER BY 
+				ordinal_position
+			;
+		"""
+		self.cursor_buffered.execute(sql_metadata, (schema, table))
+		table_metadata=self.cursor_buffered.fetchall()
+		return table_metadata
+
+
+	def create_destination_tables(self):
+		"""
+			The method creates the destination tables in the loading schema.
+			The tables names are looped using the values stored in the class dictionary schema_tables.
+		"""
+		for schema in self.schema_tables:
+			loading_schema = self.schema_loading[schema]["loading"]
+			destination_schema = self.schema_loading[schema]["destination"]
+			table_list = self.schema_tables[schema]
+			for table in table_list:
+				table_metadata = self.get_table_metadata(table, schema)
+				self.pg_engine.create_table(table_metadata, loading_schema)
+		
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given sources
@@ -179,6 +234,7 @@ class mysql_source(object):
 		self.build_table_exceptions()
 		self.get_table_list()
 		self.create_destination_schemas()
+		self.create_destination_tables()
 		self.drop_loading_schemas()
 
 
