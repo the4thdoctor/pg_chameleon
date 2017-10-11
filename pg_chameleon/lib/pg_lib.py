@@ -296,10 +296,59 @@ class pg_engine(object):
 		self.logger.debug("Found origin's replication schemas %s" % ', '.join(schema_list))
 		return schema_list
 	
-	def create_table(self, table_metadata, destination_schema):
+	def create_table(self, table_metadata,table_name,  destination_schema):
 		"""
 			The method create a table, without indices on the destination schema specified by destination_schema.
+			
 		"""
+		ddl_head='CREATE TABLE "%s"."%s" (' % (destination_schema, table_name)
+		ddl_tail=");"
+		ddl_columns=[]
+		ddl_enum=[]
+		for column in table_metadata:
+			if column["is_nullable"]=="NO":
+					col_is_null="NOT NULL"
+			else:
+				col_is_null="NULL"
+			column_type = self.get_data_type(column, table_name)
+			if column_type=="enum":
+				enum_type="enum_"+table_name+"_"+column["column_name"]
+				sql_drop_enum='DROP TYPE IF EXISTS '+enum_type+' CASCADE;'
+				sql_create_enum="CREATE TYPE "+enum_type+" AS ENUM "+column["enum_list"]+";"
+				ddl_enum.append(sql_drop_enum)
+				ddl_enum.append(sql_create_enum)
+				column_type=enum_type
+			if column_type=="character varying" or column_type=="character":
+				column_type=column_type+"("+str(column["character_maximum_length"])+")"
+			if column_type=='numeric':
+				column_type=column_type+"("+str(column["numeric_precision"])+","+str(column["numeric_scale"])+")"
+			if column["extra"]=="auto_increment":
+				column_type="bigserial"
+			ddl_columns.append('"'+column["column_name"]+'" '+column_type+" "+col_is_null )
+		def_columns=str(',').join(ddl_columns)
+		print(ddl_head+def_columns+ddl_tail)
+		
+	def get_data_type(self, column, table):
+		""" 
+			The method determines whether the specified type has to be overridden or not.
+			
+			:param column: the column dictionary extracted from the information_schema or build in the sql_parser class
+			:param table: the table name 
+			:return: the postgresql converted column type
+			:rtype: string
+		"""
+		try:
+			type_override = self.type_override[column["column_type"]]
+			override_to = type_override["override_to"]
+			override_tables = type_override["override_tables"]
+			
+			if override_tables[0] == '*' or table in override_tables:
+				column_type = override_to
+			else:
+				column_type = self.type_dictionary[column["data_type"]]
+		except KeyError:
+			column_type = self.type_dictionary[column["data_type"]]
+		return column_type
 	
 	def get_schema_mappings(self):
 		"""

@@ -51,6 +51,7 @@ class replica_engine(object):
 		self.logger = self.init_logger()
 		self.pg_engine.logger = self.logger
 		self.pg_engine.source = self.args.source
+		self.pg_engine.type_override = self.config["type_override"]
 		self.pg_engine.sources = self.config["sources"]
 		
 		#mysql_source instance initialisation
