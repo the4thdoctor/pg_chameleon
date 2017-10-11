@@ -235,6 +235,8 @@ class mysql_source(object):
 		self.get_table_list()
 		self.create_destination_schemas()
 		self.create_destination_tables()
+		self.pg_engine.schema_loading = self.schema_loading
+		self.pg_engine.swap_schemas()
 		self.drop_loading_schemas()
 
 
