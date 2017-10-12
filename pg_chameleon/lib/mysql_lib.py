@@ -324,6 +324,7 @@ class mysql_source(object):
 		self.logger.debug("Executing query for table %s.%s"  % (schema, table ))
 		self.cursor_unbuffered.execute(sql_csv)
 		print (self.cursor_unbuffered.fetchone())
+		self.cursor_unbuffered.close()
 		
 		self.logger.debug("unlocking the table `%s`.`%s`" % (schema, table) )
 		sql_unlock = "UNLOCK TABLES;" 
