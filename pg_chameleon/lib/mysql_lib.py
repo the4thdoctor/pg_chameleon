@@ -1,3 +1,4 @@
+import sys
 import io
 import pymysql
 class mysql_source(object):
@@ -10,6 +11,7 @@ class mysql_source(object):
 		self.schema_mappings = {}
 		self.schema_loading = {}
 		self.schema_list = []
+		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
 		"""
 			copy_max_memory: 300M
 			copy_mode: 'file'  
@@ -37,6 +39,7 @@ class mysql_source(object):
 			charset = db_conn["charset"],
 			cursorclass=pymysql.cursors.DictCursor
 		)
+		self.charset = db_conn["charset"]
 		self.cursor_buffered = self.conn_buffered.cursor()
 		self.cursor_buffered_fallback = self.conn_buffered.cursor()
 	
@@ -46,11 +49,9 @@ class mysql_source(object):
 			
 		"""
 		try:
-			self.logger.debug("Trying to disconnect the buffered connection from the destination database.")
 			self.conn_buffered.close()
 		except:
-			self.logger.debug("There is no database connection to disconnect.")
-
+			pass
 	
 	def connect_db_unbuffered(self):
 		"""
@@ -58,14 +59,15 @@ class mysql_source(object):
 			The connection is made using the unbuffered cursor factory.
 		"""
 		db_conn = self.source_config["db_conn"]
-		self.conn_buffered=pymysql.connect(
+		self.conn_unbuffered=pymysql.connect(
 			host = db_conn["host"],
 			user = db_conn["user"],
 			password = db_conn["password"],
 			charset = db_conn["charset"],
 			cursorclass=pymysql.cursors.SSCursor
 		)
-		self.cursor_unbuffered = self.conn_buffered.cursor()
+		self.charset = db_conn["charset"]
+		self.cursor_unbuffered = self.conn_unbuffered.cursor()
 		
 		
 	def disconnect_db_unbuffered(self):
@@ -73,10 +75,9 @@ class mysql_source(object):
 			The method disconnects any unbuffered connection from the mysql database.
 		"""
 		try:
-			self.logger.debug("Trying to disconnect the unbuffered connection from the destination database.")
 			self.conn_unbuffered.close()
 		except:
-			self.logger.debug("There is no database connection to disconnect.")
+			pass
 
 	def build_table_exceptions(self):
 		"""
@@ -171,7 +172,7 @@ class mysql_source(object):
 			loading_schema = self.schema_loading[schema]["loading"]
 			self.logger.debug("Dropping the schema %s." % loading_schema)
 			self.pg_engine.drop_database_schema(loading_schema, True)
-
+		
 	def get_table_metadata(self, table, schema):
 		"""
 			The method builds the table's metadata querying the information_schema.
@@ -226,20 +227,126 @@ class mysql_source(object):
 				table_metadata = self.get_table_metadata(table, schema)
 				self.pg_engine.create_table(table_metadata, table, loading_schema)
 	
+	
+	def generate_select_statements(self, schema, table):
+		"""
+			The generates the csv output and the statements output for the given schema and table.
+			The method assumes there is a buffered database connection active.
+			
+			:param schema: the origin's schema
+			:param table: the table name 
+			:return: the select list statements for the copy to csv and  the fallback to inserts.
+			:rtype: dictionary
+		"""
+		select_columns = {}
+		sql_select="""
+			SELECT 
+				CASE
+					WHEN 
+						data_type IN ('"""+"','".join(self.hexify)+"""')
+					THEN
+						concat('hex(',column_name,')')
+					WHEN 
+						data_type IN ('bit')
+					THEN
+						concat('cast(`',column_name,'` AS unsigned)')
+					WHEN 
+						data_type IN ('datetime','timestamp','date')
+					THEN
+						concat('nullif(`',column_name,'`,"0000-00-00 00:00:00")')
+
+				ELSE
+					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""")')
+				END
+				AS select_csv,
+				CASE
+					WHEN 
+						data_type IN ('"""+"','".join(self.hexify)+"""')
+					THEN
+						concat('hex(',column_name,') AS','`',column_name,'`')
+					WHEN 
+						data_type IN ('bit')
+					THEN
+						concat('cast(`',column_name,'` AS unsigned) AS','`',column_name,'`')
+					WHEN 
+						data_type IN ('datetime','timestamp','date')
+					THEN
+						concat('nullif(`',column_name,'`,"0000-00-00 00:00:00") AS `',column_name,'`')
+					
+				ELSE
+					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""") AS','`',column_name,'`')
+					
+				END
+				AS select_stat
+			FROM 
+				information_schema.COLUMNS 
+			WHERE 
+				table_schema=%s
+				AND 	table_name=%s
+			ORDER BY 
+				ordinal_position
+			;
+		"""
+		self.cursor_buffered.execute(sql_select, (schema, table))
+		select_data = self.cursor_buffered.fetchall()
+		select_csv = ["COALESCE(REPLACE(%s, '\"', '\"\"'),'NULL') " % statement["select_csv"] for statement in select_data]
+		select_stat = [statement["select_csv"] for statement in select_data]
+		
+		select_columns["select_csv"] = "REPLACE(CONCAT('\"',CONCAT_WS('\",\"',%s),'\"'),'\"NULL\"','NULL')" % ','.join(select_csv)
+		select_columns["select_stat"]  = ','.join(select_stat)
+		return select_columns
+		
+	
+	def copy_data(self, schema, table):
+		"""
+			The method copy the data between the origin and destination table.
+			The method locks the table read only mode and  gets the log coordinates which are returned to the calling method.
+			
+			:param schema: the origin's schema
+			:param table: the table name 
+			:return: the log coordinates for the given table
+			:rtype: dictionary
+		"""
+		self.connect_db_buffered()
+		self.connect_db_unbuffered()
+		out_file='%s/%s_%s.csv' % (self.out_dir, schema, table )
+		self.logger.debug("locking the table `%s`.`%s`" % (schema, table) )
+		sql_lock = "FLUSH TABLES `%s`.`%s` WITH READ LOCK;" %(schema, table)
+		self.logger.debug("collecting the master's coordinates for table `%s`.`%s`" % (schema, table) )
+		self.cursor_buffered.execute(sql_lock)
+		sql_master = "SHOW MASTER STATUS;" 
+		self.cursor_buffered.execute(sql_master)
+		master_status = self.cursor_buffered.fetchall()
+		select_columns = self.generate_select_statements(schema, table)
+		csv_data = ""
+		sql_csv = "SELECT %s as data FROM `%s`.`%s`;" % (select_columns["select_csv"], schema, table)
+		
+		self.logger.debug("Executing query for table %s.%s"  % (schema, table ))
+		self.cursor_unbuffered.execute(sql_csv)
+		print (self.cursor_unbuffered.fetchone())
+		
+		self.logger.debug("unlocking the table `%s`.`%s`" % (schema, table) )
+		sql_unlock = "UNLOCK TABLES;" 
+		self.cursor_buffered.execute(sql_unlock)
+		
+		self.disconnect_db_buffered()
+		self.disconnect_db_unbuffered()
+		return master_status
+		
+	
 	def copy_tables(self):
 		"""
 			The method copies the data between tables, from the mysql schema to the corresponding
 			postgresql loading schema. Before the copy starts the table is locked and then the lock is released.
 		"""
-		out_file='%s/output_copy.csv' % self.out_dir
-		self.logger.info("locking the tables")
+		
 		
 		for schema in self.schema_tables:
 			loading_schema = self.schema_loading[schema]["loading"]
 			table_list = self.schema_tables[schema]
 			for table in table_list:
 				self.logger.debug("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
-		
+				master_status = self.copy_data(schema, table)
 	
 	def init_replica(self):
 		"""
@@ -248,6 +355,7 @@ class mysql_source(object):
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.source_config = self.sources[self.source]
 		self.out_dir = self.source_config["out_dir"]
+		self.hexify = [] + self.hexify_always
 		self.connect_db_buffered()
 		self.pg_engine.connect_db()
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
@@ -257,13 +365,15 @@ class mysql_source(object):
 		self.create_destination_schemas()
 		try:
 			self.create_destination_tables()
+			self.disconnect_db_buffered()
 			self.copy_tables()
 			self.pg_engine.schema_loading = self.schema_loading
 			self.pg_engine.swap_schemas()
+			self.drop_loading_schemas()
 		except:
 			self.drop_loading_schemas()
 			raise
-		self.drop_loading_schemas()
+		
 		
 
 

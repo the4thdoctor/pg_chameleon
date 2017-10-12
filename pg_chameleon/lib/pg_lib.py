@@ -95,13 +95,12 @@ class pg_engine(object):
 
 	def disconnect_db(self):
 		"""
-			The method disconnects the postgres connection if there is any active. Otherwise issues a warning.
+			The method disconnects the postgres connection if there is any active. Otherwise ignore it.
 		"""
 		if self.pgsql_conn:
-			self.logger.debug("Trying to disconnect from the destination database.")
 			self.pgsql_conn.close()
 		else:
-			self.logger.debug("There is no database connection to disconnect.")
+			pass
 
 	def create_replica_schema(self):
 		"""
@@ -344,6 +343,8 @@ class pg_engine(object):
 	def get_data_type(self, column, table):
 		""" 
 			The method determines whether the specified type has to be overridden or not.
+			
+			:todo: check the table is correctly matched against the schema.
 			
 			:param column: the column dictionary extracted from the information_schema or built in the sql_parser class
 			:param table: the table name 
