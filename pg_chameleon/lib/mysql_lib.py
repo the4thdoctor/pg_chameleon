@@ -10,6 +10,12 @@ class mysql_source(object):
 		self.schema_mappings = {}
 		self.schema_loading = {}
 		self.schema_list = []
+		"""
+			copy_max_memory: 300M
+			copy_mode: 'file'  
+			out_dir: /tmp
+		"""
+		
 	
 	def __del__(self):
 		"""
@@ -215,18 +221,33 @@ class mysql_source(object):
 		"""
 		for schema in self.schema_tables:
 			loading_schema = self.schema_loading[schema]["loading"]
-			destination_schema = self.schema_loading[schema]["destination"]
 			table_list = self.schema_tables[schema]
 			for table in table_list:
 				table_metadata = self.get_table_metadata(table, schema)
 				self.pg_engine.create_table(table_metadata, table, loading_schema)
+	
+	def copy_tables(self):
+		"""
+			The method copies the data between tables, from the mysql schema to the corresponding
+			postgresql loading schema. Before the copy starts the table is locked and then the lock is released.
+		"""
+		out_file='%s/output_copy.csv' % self.out_dir
+		self.logger.info("locking the tables")
 		
+		for schema in self.schema_tables:
+			loading_schema = self.schema_loading[schema]["loading"]
+			table_list = self.schema_tables[schema]
+			for table in table_list:
+				self.logger.debug("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
+		
+	
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given sources
 		"""
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.source_config = self.sources[self.source]
+		self.out_dir = self.source_config["out_dir"]
 		self.connect_db_buffered()
 		self.pg_engine.connect_db()
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
@@ -234,9 +255,15 @@ class mysql_source(object):
 		self.build_table_exceptions()
 		self.get_table_list()
 		self.create_destination_schemas()
-		self.create_destination_tables()
-		self.pg_engine.schema_loading = self.schema_loading
-		self.pg_engine.swap_schemas()
+		try:
+			self.create_destination_tables()
+			self.copy_tables()
+			self.pg_engine.schema_loading = self.schema_loading
+			self.pg_engine.swap_schemas()
+		except:
+			self.drop_loading_schemas()
+			raise
 		self.drop_loading_schemas()
+		
 
 
