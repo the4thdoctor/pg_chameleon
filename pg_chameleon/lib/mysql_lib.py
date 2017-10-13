@@ -308,7 +308,29 @@ class mysql_source(object):
 			:rtype: dictionary
 		"""
 		self.connect_db_buffered()
-		self.connect_db_unbuffered()
+		
+		self.logger.debug("estimating rows in %s.%s" % (schema , table))
+		sql_rows = """ 
+			SELECT 
+				table_rows,
+				CASE
+					WHEN avg_row_length>0
+					then
+						round(({}/avg_row_length))
+				ELSE
+					0
+				END as copy_limit
+			FROM 
+				information_schema.TABLES 
+			WHERE 
+					table_schema=%s 
+				AND	table_type='BASE TABLE'
+				AND table_name=%s 
+			;
+		"""
+		sql_rows = sql_rows.format(self.copy_max_memory)
+		self.cursor_buffered.execute(sql_rows, (schema, table))
+		print(self.cursor_buffered.fetchall())
 		out_file='%s/%s_%s.csv' % (self.out_dir, schema, table )
 		self.logger.debug("locking the table `%s`.`%s`" % (schema, table) )
 		sql_lock = "FLUSH TABLES `%s`.`%s` WITH READ LOCK;" %(schema, table)
@@ -322,8 +344,9 @@ class mysql_source(object):
 		sql_csv = "SELECT %s as data FROM `%s`.`%s`;" % (select_columns["select_csv"], schema, table)
 		
 		self.logger.debug("Executing query for table %s.%s"  % (schema, table ))
+		self.connect_db_unbuffered()
 		self.cursor_unbuffered.execute(sql_csv)
-		print (self.cursor_unbuffered.fetchone())
+		self.cursor_unbuffered.fetchall()
 		self.cursor_unbuffered.close()
 		
 		self.logger.debug("unlocking the table `%s`.`%s`" % (schema, table) )
@@ -349,6 +372,30 @@ class mysql_source(object):
 				self.logger.debug("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
 				master_status = self.copy_data(schema, table)
 	
+	def set_copy_max_memory(self):
+		"""
+			The method sets the class variable self.copy_max_memory using the value stored in the 
+			source setting.
+
+		"""
+		copy_max_memory = str(self.source_config["copy_max_memory"])[:-1]
+		copy_scale = str(self.source_config["copy_max_memory"])[-1]
+		try:
+			int(copy_scale)
+			copy_max_memory = self.source_config["copy_max_memory"]
+		except:
+			if copy_scale =='k':
+				copy_max_memory = str(int(copy_max_memory)*1024)
+			elif copy_scale =='M':
+				copy_max_memory = str(int(copy_max_memory)*1024*1024)
+			elif copy_scale =='G':
+				copy_max_memory = str(int(copy_max_memory)*1024*1024*1024)
+			else:
+				print("**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes.")
+				sys.exit(3)
+		self.copy_max_memory = copy_max_memory
+		
+	
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given sources
@@ -356,6 +403,7 @@ class mysql_source(object):
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.source_config = self.sources[self.source]
 		self.out_dir = self.source_config["out_dir"]
+		self.set_copy_max_memory()
 		self.hexify = [] + self.hexify_always
 		self.connect_db_buffered()
 		self.pg_engine.connect_db()
