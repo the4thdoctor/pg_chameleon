@@ -1,6 +1,9 @@
 import sys
 import io
 import pymysql
+import codecs
+from os import remove
+
 class mysql_source(object):
 	def __init__(self):
 		"""
@@ -277,7 +280,8 @@ class mysql_source(object):
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""") AS','`',column_name,'`')
 					
 				END
-				AS select_stat
+				AS select_stat,
+				column_name
 			FROM 
 				information_schema.COLUMNS 
 			WHERE 
@@ -291,9 +295,10 @@ class mysql_source(object):
 		select_data = self.cursor_buffered.fetchall()
 		select_csv = ["COALESCE(REPLACE(%s, '\"', '\"\"'),'NULL') " % statement["select_csv"] for statement in select_data]
 		select_stat = [statement["select_csv"] for statement in select_data]
-		
+		column_list = ['"%s"' % statement["column_name"] for statement in select_data]
 		select_columns["select_csv"] = "REPLACE(CONCAT('\"',CONCAT_WS('\",\"',%s),'\"'),'\"NULL\"','NULL')" % ','.join(select_csv)
 		select_columns["select_stat"]  = ','.join(select_stat)
+		select_columns["column_list"]  = ','.join(column_list)
 		return select_columns
 		
 	
@@ -307,6 +312,8 @@ class mysql_source(object):
 			:return: the log coordinates for the given table
 			:rtype: dictionary
 		"""
+		slice_insert = []
+		loading_schema = self.schema_loading[schema]["loading"]
 		self.connect_db_buffered()
 		
 		self.logger.debug("estimating rows in %s.%s" % (schema , table))
@@ -330,7 +337,17 @@ class mysql_source(object):
 		"""
 		sql_rows = sql_rows.format(self.copy_max_memory)
 		self.cursor_buffered.execute(sql_rows, (schema, table))
-		print(self.cursor_buffered.fetchall())
+		count_rows = self.cursor_buffered.fetchone()
+		total_rows = count_rows["table_rows"]
+		copy_limit = int(count_rows["copy_limit"])
+		if copy_limit == 0:
+			copy_limit=1000000
+		num_slices=int(total_rows//copy_limit)
+		range_slices=list(range(num_slices+1))
+		total_slices=len(range_slices)
+		slice=range_slices[0]
+		self.logger.debug("The table %s.%s will be copied in %s  estimated slice(s) of %s rows"  % (schema, table, total_slices, copy_limit))
+
 		out_file='%s/%s_%s.csv' % (self.out_dir, schema, table )
 		self.logger.debug("locking the table `%s`.`%s`" % (schema, table) )
 		sql_lock = "FLUSH TABLES `%s`.`%s` WITH READ LOCK;" %(schema, table)
@@ -342,22 +359,141 @@ class mysql_source(object):
 		select_columns = self.generate_select_statements(schema, table)
 		csv_data = ""
 		sql_csv = "SELECT %s as data FROM `%s`.`%s`;" % (select_columns["select_csv"], schema, table)
-		
+		column_list = select_columns["column_list"]
 		self.logger.debug("Executing query for table %s.%s"  % (schema, table ))
 		self.connect_db_unbuffered()
 		self.cursor_unbuffered.execute(sql_csv)
-		self.cursor_unbuffered.fetchall()
+		while True:
+			csv_results = self.cursor_unbuffered.fetchmany(copy_limit)
+			if len(csv_results) == 0:
+				break
+			csv_data="\n".join(d[0] for d in csv_results )
+			
+			if self.copy_mode == 'direct':
+				csv_file = io.StringIO()
+				csv_file.write(csv_data)
+				csv_file.seek(0)
+
+			if self.copy_mode == 'file':
+				csv_file = codecs.open(out_file, 'wb', self.charset)
+				csv_file.write(csv_data)
+				csv_file.close()
+				csv_file = open(out_file, 'rb')
+			try:
+				self.pg_engine.copy_data(csv_file, loading_schema, table, column_list)
+			except:
+				self.logger.info("Table %s.%s error in PostgreSQL copy, saving slice number for the fallback to insert statements " %  (loading_schema, table ))
+				slice_insert.append(slice)
+				
+			self.print_progress(slice+1,total_slices, schema, table)
+			slice+=1
+
+			csv_file.close()
 		self.cursor_unbuffered.close()
+		self.disconnect_db_unbuffered()
+		if len(slice_insert)>0:
+			ins_arg={}
+			ins_arg["slice_insert"] = slice_insert
+			ins_arg["table"] = table
+			ins_arg["schema"] = schema
+			ins_arg["select_stat"] = select_columns["select_stat"]
+			ins_arg["column_list"] = column_list
+			ins_arg["copy_limit"] = copy_limit
+			self.insert_table_data(ins_arg)
+		
 		
 		self.logger.debug("unlocking the table `%s`.`%s`" % (schema, table) )
 		sql_unlock = "UNLOCK TABLES;" 
 		self.cursor_buffered.execute(sql_unlock)
-		
 		self.disconnect_db_buffered()
-		self.disconnect_db_unbuffered()
+		
+		try:
+			remove(out_file)
+		except:
+			pass
 		return master_status
+	
+	def insert_table_data(self, ins_arg):
+		"""
+			This method is a fallback procedure whether copy_table_data fails.
+			The ins_args is a list with the informations required to run the select for building the insert
+			statements and the slices's start and stop.
+			The process is performed in memory and can take a very long time to complete.
+			
+			:param pg_engine: the postgresql engine
+			:param ins_arg: the list with the insert arguments (slice_insert, schema, table, select_stat,column_list, copy_limit)
+		"""
+		slice_insert= ins_arg["slice_insert"]
+		table = ins_arg["table"]
+		schema = ins_arg["schema"]
+		select_stat = ins_arg["select_stat"]
+		column_list = ins_arg["column_list"]
+		copy_limit = ins_arg["copy_limit"] 
+		self.connect_db_unbuffered()
+		loading_schema = self.schema_loading[schema]["loading"]
+		num_insert = 1
+		for slice in slice_insert:
+			self.logger.info("Executing inserts in %s.%s. Slice %s. Rows per slice %s." %  (loading_schema, table, num_insert, copy_limit ,   ))
+			offset = slice*copy_limit
+			sql_fallback = "SELECT %s FROM `%s`.`%s` LIMIT %s, %s;" % (select_stat, schema, table, offset, copy_limit)
+			self.cursor_unbuffered.execute(sql_fallback)
+			insert_data =  self.cursor_unbuffered.fetchall()
+			self.pg_engine.insert_data(loading_schema, table, insert_data , column_list)
+			self.cursor_unbuffered.close()
+			num_insert +=1
+		self.disconnect_db_unbuffered()
 		
 	
+	def print_progress (self, iteration, total, schema, table):
+		"""
+			Print the copy progress in slices and estimated total slices. 
+			In order to reduce noise when the log level is info only the tables copied in multiple slices
+			get the print progress.
+			
+			:param iteration: The slice number currently processed
+			:param total: The estimated total slices
+			:param table_name: The table name
+		"""
+		if iteration>=total:
+			total = iteration
+		if total>1:
+			self.logger.info("Table %s.%s copied %s slice of %s" % (schema, table, iteration, total))
+		else:
+			self.logger.debug("Table %s.%s copied %s slice of %s" % (schema, table, iteration, total))
+			
+	def create_indices(self, schema, table):
+		"""
+			The method copy the data between the origin and destination table.
+			The method locks the table read only mode and  gets the log coordinates which are returned to the calling method.
+			
+			:param schema: the origin's schema
+			:param table: the table name 
+			:return: the table and schema name with the primary key.
+			:rtype: dictionary
+		"""
+		self.connect_db_buffered()
+		self.logger.debug("Creating indices on table %s.%s " % (schema, table))
+		sql_index = """
+			SELECT 
+				index_name,
+				non_unique,
+				GROUP_CONCAT(column_name ORDER BY seq_in_index) as index_columns
+			FROM
+				information_schema.statistics
+			WHERE
+					table_schema=%s
+				AND 	table_name=%s
+				AND	index_type = 'BTREE'
+			GROUP BY 
+				table_name,
+				non_unique,
+				index_name
+			;
+		"""
+		self.cursor_buffered.execute(sql_index, (schema, table))
+		index_data = self.cursor_buffered.fetchall()
+		print(index_data)
+		self.disconnect_db_buffered()
 	def copy_tables(self):
 		"""
 			The method copies the data between tables, from the mysql schema to the corresponding
@@ -371,6 +507,8 @@ class mysql_source(object):
 			for table in table_list:
 				self.logger.debug("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
 				master_status = self.copy_data(schema, table)
+				table_data = self.create_indices(schema, table)
+				
 	
 	def set_copy_max_memory(self):
 		"""
@@ -403,6 +541,7 @@ class mysql_source(object):
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.source_config = self.sources[self.source]
 		self.out_dir = self.source_config["out_dir"]
+		self.copy_mode = self.source_config["copy_mode"]
 		self.set_copy_max_memory()
 		self.hexify = [] + self.hexify_always
 		self.connect_db_buffered()

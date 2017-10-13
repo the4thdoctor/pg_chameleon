@@ -400,6 +400,49 @@ class pg_engine(object):
 		schema_mappings = self.pgsql_cur.fetchone()
 		return schema_mappings[0]
 	
+	def copy_data(self, csv_file, schema, table, column_list):
+		"""
+			The method copy the data into postgresql using psycopg2's copy_expert.
+			The csv_file is a file like object which can be either a  csv file or a string io object, accordingly with the 
+			configuration parameter copy_mode.
+			The method assumes there is a database connection active.
+			
+			:param csv_file: file like object with the table's data stored in CSV format
+			:param schema: the schema used in the COPY FROM command
+			:param table: the table name used in the COPY FROM command
+			:param column_list: A string with the list of columns to use in the COPY FROM command already quoted and comma separated
+		"""
+		sql_copy='COPY "%s"."%s" (%s) FROM STDIN WITH NULL \'NULL\' CSV QUOTE \'"\' DELIMITER \',\' ESCAPE \'"\' ; ' % (schema, table, column_list)		
+		self.pgsql_cur.copy_expert(sql_copy,csv_file)
+		
+	def insert_data(self, schema, table, insert_data , column_list):
+		"""
+			The method is a fallback procedure for when the copy method fails.
+			The procedure performs a row by row insert, very slow but capable to skip the rows with problematic data (e.g. encoding issues).
+			
+			:param schema: the schema name where table belongs
+			:param table: the table name where the data should be inserted
+			:param insert_data: a list of records extracted from the database using the unbuffered cursor
+			:param column_list: the list of column names quoted  for the inserts
+		"""
+		sample_row = insert_data[0]
+		column_marker=','.join(['%s' for column in sample_row])
+		
+		sql_head='INSERT INTO "%s"."%s"(%s) VALUES (%s);' % (schema, table, column_list, column_marker)
+		for data_row in insert_data:
+			try:
+				self.pgsql_cur.execute(sql_head,data_row)	
+			except psycopg2.Error as e:
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error(self.pgsql_cur.mogrify(sql_head,data_row))
+			except:
+				self.logger.error("unexpected error when processing the row")
+				self.logger.error(" - > Table: %s.%s" % (schema, table))
+				self.logger.error(" - > Insert list: %s" % (column_list))
+				self.logger.error(" - > Insert values: %s" % (','.join(data_row)) )
+	
+	
+	
 	def swap_schemas(self):
 		"""
 			The method  loops over the schema_loading class dictionary and 
