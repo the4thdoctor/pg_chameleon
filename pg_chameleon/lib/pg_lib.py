@@ -69,6 +69,7 @@ class pg_engine(object):
 		self.dest_conn = None
 		self.pgsql_conn = None
 		self.logger = None
+		self.idx_sequence = 0
 		
 	def __del__(self):
 		"""
@@ -441,8 +442,46 @@ class pg_engine(object):
 				self.logger.error(" - > Insert list: %s" % (column_list))
 				self.logger.error(" - > Insert values: %s" % (','.join(data_row)) )
 	
-	
-	
+	def create_indices(self, schema, table, index_data):
+		"""
+			The method loops odver the list index_data and creates the indices on the table 
+			specified with schema and table parameters.
+			The method assumes there is a database connection active.
+			
+			:param schema: the schema name where table belongs
+			:param table: the table name where the data should be inserted
+			:param index_data: a list of dictionaries with the index metadata for the given table.
+			:return: a list with the eventual column(s) used as primary key
+			:rtype: list
+		"""
+		idx_ddl = {}
+		table_primary = []
+		for index in index_data:
+				table_timestamp = str(int(time.time()))
+				indx = index["index_name"]
+				self.logger.debug("Building DDL for index %s" % (indx))
+				index_columns = ['"%s"' %  column for column in index["index_columns"].split(',')]
+				non_unique = index["non_unique"]
+				if indx =='PRIMARY':
+					pkey_name = "pk_%s_%s_%s " % (table[0:10],table_timestamp,  self.idx_sequence)
+					pkey_def = 'ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" PRIMARY KEY (%s) ;' % (schema, table, pkey_name, ','.join(index_columns))
+					idx_ddl[pkey_name] = pkey_def
+					table_primary = index_columns
+				else:
+					if non_unique == 0:
+						unique_key = 'UNIQUE'
+					else:
+						unique_key = ''
+					index_name='idx_%s_%s_%s_%s' % (indx[0:10], table[0:10], table_timestamp, self.idx_sequence)
+					idx_def='CREATE %s INDEX "%s" ON "%s"."%s" (%s);' % (unique_key, index_name, schema, table, ','.join(index_columns) )
+					idx_ddl[index_name] = idx_def
+				self.idx_sequence+=1
+		for index in idx_ddl:
+			self.logger.debug("Building index %s" % (index))
+			self.pgsql_cur.execute(idx_ddl[index])	
+			
+		return table_primary	
+		
 	def swap_schemas(self):
 		"""
 			The method  loops over the schema_loading class dictionary and 

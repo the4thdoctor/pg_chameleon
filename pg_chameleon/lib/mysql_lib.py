@@ -15,11 +15,6 @@ class mysql_source(object):
 		self.schema_loading = {}
 		self.schema_list = []
 		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
-		"""
-			copy_max_memory: 300M
-			copy_mode: 'file'  
-			out_dir: /tmp
-		"""
 		
 	
 	def __del__(self):
@@ -471,6 +466,7 @@ class mysql_source(object):
 			:return: the table and schema name with the primary key.
 			:rtype: dictionary
 		"""
+		loading_schema = self.schema_loading[schema]["loading"]
 		self.connect_db_buffered()
 		self.logger.debug("Creating indices on table %s.%s " % (schema, table))
 		sql_index = """
@@ -492,8 +488,10 @@ class mysql_source(object):
 		"""
 		self.cursor_buffered.execute(sql_index, (schema, table))
 		index_data = self.cursor_buffered.fetchall()
-		print(index_data)
+		table_pkey = self.pg_engine.create_indices(loading_schema, table, index_data)
 		self.disconnect_db_buffered()
+		
+		
 	def copy_tables(self):
 		"""
 			The method copies the data between tables, from the mysql schema to the corresponding
