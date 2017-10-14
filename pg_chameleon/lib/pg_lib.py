@@ -296,7 +296,7 @@ class pg_engine(object):
 		self.logger.debug("Found origin's replication schemas %s" % ', '.join(schema_list))
 		return schema_list
 	
-	def build_create_table(self, table_metadata,table_name,  destination_schema):
+	def build_create_table(self, table_metadata,table_name,  schema):
 		"""
 			The method builds the create table statement with any enumeration associated.
 			The returned value is a dictionary with the optional enumeration's ddl and the create table without indices or primary keys.
@@ -309,6 +309,7 @@ class pg_engine(object):
 			:return: a dictionary with the optional create statements for enumerations and the create table
 			:rtype: dictionary
 		"""
+		destination_schema = self.schema_loading[schema]["loading"]
 		ddl_head = 'CREATE TABLE "%s"."%s" (' % (destination_schema, table_name)
 		ddl_tail = ");"
 		ddl_columns = []
@@ -319,7 +320,7 @@ class pg_engine(object):
 					col_is_null="NOT NULL"
 			else:
 				col_is_null="NULL"
-			column_type = self.get_data_type(column, table_name)
+			column_type = self.get_data_type(column, schema, table_name)
 			if column_type == "enum":
 				enum_type = '"%s"."enum_%s_%s"' % (destination_schema, table_name[0:20], column["column_name"][0:20])
 				sql_drop_enum = 'DROP TYPE IF EXISTS %s CASCADE;' % enum_type
@@ -341,23 +342,25 @@ class pg_engine(object):
 
 		
 		
-	def get_data_type(self, column, table):
+	def get_data_type(self, column, schema,  table):
 		""" 
 			The method determines whether the specified type has to be overridden or not.
 			
 			:todo: check the table is correctly matched against the schema.
 			
 			:param column: the column dictionary extracted from the information_schema or built in the sql_parser class
+			:param schema: the schema name 
 			:param table: the table name 
 			:return: the postgresql converted column type
 			:rtype: string
 		"""
 		try:
+			
+			table_full = "%s.%s" % (schema, table)
 			type_override = self.type_override[column["column_type"]]
 			override_to = type_override["override_to"]
 			override_tables = type_override["override_tables"]
-			
-			if override_tables[0] == '*' or table in override_tables:
+			if override_tables[0] == '*' or table_full in override_tables:
 				column_type = override_to
 			else:
 				column_type = self.type_dictionary[column["data_type"]]
@@ -365,15 +368,15 @@ class pg_engine(object):
 			column_type = self.type_dictionary[column["data_type"]]
 		return column_type
 	
-	def create_table(self,  table_metadata,table_name,  destination_schema):
+	def create_table(self,  table_metadata,table_name,  schema):
 		"""
 			Executes the create table returned by build_create_table on the destination_schema.
 			
 			:param table_metadata: the column dictionary extracted from the source's information_schema or builty by the sql_parser class
 			:param table_name: the table name 
 			:param destination_schema: the schema where the table belongs
-					"""
-		table_ddl = self.build_create_table( table_metadata,table_name,  destination_schema)
+		"""
+		table_ddl = self.build_create_table( table_metadata,table_name,  schema)
 		enum_ddl = table_ddl["enum"] 
 		table_ddl = table_ddl["table"] 
 		for enum_statement in enum_ddl:

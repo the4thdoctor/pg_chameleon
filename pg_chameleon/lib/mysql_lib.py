@@ -219,11 +219,10 @@ class mysql_source(object):
 			The tables names are looped using the values stored in the class dictionary schema_tables.
 		"""
 		for schema in self.schema_tables:
-			loading_schema = self.schema_loading[schema]["loading"]
 			table_list = self.schema_tables[schema]
 			for table in table_list:
 				table_metadata = self.get_table_metadata(table, schema)
-				self.pg_engine.create_table(table_metadata, table, loading_schema)
+				self.pg_engine.create_table(table_metadata, table, schema)
 	
 	
 	def generate_select_statements(self, schema, table):
@@ -578,10 +577,10 @@ class mysql_source(object):
 		self.get_table_list()
 		self.create_destination_schemas()
 		try:
+			self.pg_engine.schema_loading = self.schema_loading
 			self.create_destination_tables()
 			self.disconnect_db_buffered()
 			self.copy_tables()
-			self.pg_engine.schema_loading = self.schema_loading
 			self.pg_engine.swap_schemas()
 			self.pg_engine.clean_batch_data()
 			self.pg_engine.save_master_status(master_batch)
