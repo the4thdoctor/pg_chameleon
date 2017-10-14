@@ -490,6 +490,7 @@ class mysql_source(object):
 		index_data = self.cursor_buffered.fetchall()
 		table_pkey = self.pg_engine.create_indices(loading_schema, table, index_data)
 		self.disconnect_db_buffered()
+		return table_pkey
 		
 		
 	def copy_tables(self):
@@ -501,11 +502,13 @@ class mysql_source(object):
 		
 		for schema in self.schema_tables:
 			loading_schema = self.schema_loading[schema]["loading"]
+			destination_schema = self.schema_loading[schema]["destination"]
 			table_list = self.schema_tables[schema]
 			for table in table_list:
-				self.logger.debug("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
+				self.logger.info("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
 				master_status = self.copy_data(schema, table)
-				table_data = self.create_indices(schema, table)
+				table_pkey = self.create_indices(schema, table)
+				self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
 				
 	
 	def set_copy_max_memory(self):
@@ -536,6 +539,7 @@ class mysql_source(object):
 		"""
 			The method performs a full init replica for the given sources
 		"""
+		
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.source_config = self.sources[self.source]
 		self.out_dir = self.source_config["out_dir"]
@@ -544,6 +548,7 @@ class mysql_source(object):
 		self.hexify = [] + self.hexify_always
 		self.connect_db_buffered()
 		self.pg_engine.connect_db()
+		self.pg_engine.set_source_status("initialising")
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
 		self.schema_list = [schema for schema in self.schema_mappings]
 		self.build_table_exceptions()

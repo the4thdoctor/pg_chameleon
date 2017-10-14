@@ -401,6 +401,113 @@ class pg_engine(object):
 		schema_mappings = self.pgsql_cur.fetchone()
 		return schema_mappings[0]
 	
+	def set_source_status(self, source_status):
+		"""
+			Sets the source status for the source_name and sets the two class attributes i_id_source and dest_schema.
+			
+			:param source_status: The source status to be set.
+			
+		"""
+		sql_source = """
+			UPDATE sch_chameleon.t_sources
+			SET
+				enm_status=%s
+			WHERE
+				t_source=%s
+			RETURNING i_id_source
+				;
+			"""
+		self.pgsql_cur.execute(sql_source, (source_status, self.source, ))
+		source_data = self.pgsql_cur.fetchone()
+		
+
+		try:
+			self.i_id_source = source_data[0]
+		except:
+			print("Source %s is not registered." % self.source)
+			sys.exit()
+	
+	
+	def store_table(self, schema, table, table_pkey, master_status):
+		"""
+			The method saves the table name along with the primary key definition in the table t_replica_tables.
+			This is required in order to let the replay procedure which primary key to use replaying the update and delete.
+			If the table is without primary key is not stored. 
+			A table without primary key is copied and the indices are create like any other table. 
+			However the replica doesn't work for the tables without primary key.
+			
+			If the class variable master status is set then the master's coordinates are saved along with the table.
+			This happens in general when a table is added to the replica or the data is refreshed with sync_tables.
+			
+			:param schema: the schema name to store in the table  t_replica_tables
+			:param table: the table name to store in the table  t_replica_tables
+			:param table_pkey: a list with the primary key's columns. empty if there's no pkey
+			:param master_status: the master status data .
+		"""
+		if master_status:
+			master_data = master_status[0]
+			binlog_file = master_data["File"]
+			binlog_pos = master_data["Position"]
+		else:
+			binlog_file = None
+			binlog_pos = None
+			
+		
+		if len(table_pkey) > 0:
+			sql_insert = """ 
+				INSERT INTO sch_chameleon.t_replica_tables 
+					(
+						i_id_source,
+						v_table_name,
+						v_schema_name,
+						v_table_pkey,
+						t_binlog_name,
+						i_binlog_position
+					)
+				VALUES 
+					(
+						%s,
+						%s,
+						%s,
+						%s,
+						%s,
+						%s
+					)
+				ON CONFLICT (i_id_source,v_table_name,v_schema_name)
+					DO UPDATE 
+						SET 
+							v_table_pkey=EXCLUDED.v_table_pkey,
+							t_binlog_name = EXCLUDED.t_binlog_name,
+							i_binlog_position = EXCLUDED.i_binlog_position
+									;
+							"""
+			self.pgsql_cur.execute(sql_insert, (
+				self.i_id_source, 
+				table, 
+				schema, 
+				table_pkey, 
+				binlog_file, 
+				binlog_pos
+				)
+			)
+		else:
+			self.logger.warning("Missing primary key. The table %s will not be replicated." % (schema, table,))
+			sql_delete = """
+				DELETE FROM sch_chameleon.t_replica_tables
+				WHERE
+						i_id_source=%s
+					AND	v_table_name=%s
+					AND	v_schema_name=%s
+				;
+			"""
+			self.pgsql_cur.execute(sql_delete, (
+				self.i_id_source, 
+				table, 
+				schema)
+				)
+		
+
+	
 	def copy_data(self, csv_file, schema, table, column_list):
 		"""
 			The method copy the data into postgresql using psycopg2's copy_expert.
@@ -460,7 +567,7 @@ class pg_engine(object):
 				table_timestamp = str(int(time.time()))
 				indx = index["index_name"]
 				self.logger.debug("Building DDL for index %s" % (indx))
-				index_columns = ['"%s"' %  column for column in index["index_columns"].split(',')]
+				index_columns = index["index_columns"].split(',')
 				non_unique = index["non_unique"]
 				if indx =='PRIMARY':
 					pkey_name = "pk_%s_%s_%s " % (table[0:10],table_timestamp,  self.idx_sequence)
@@ -477,7 +584,7 @@ class pg_engine(object):
 					idx_ddl[index_name] = idx_def
 				self.idx_sequence+=1
 		for index in idx_ddl:
-			self.logger.debug("Building index %s" % (index))
+			self.logger.info("Building index %s on %s.%s" % (index, schema, table))
 			self.pgsql_cur.execute(idx_ddl[index])	
 			
 		return table_primary	
@@ -495,8 +602,12 @@ class pg_engine(object):
 			sql_dest_to_tmp = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(schema_destination), sql.Identifier(schema_temporary))
 			sql_load_to_dest = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(schema_loading), sql.Identifier(schema_destination))
 			sql_tmp_to_load = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(schema_temporary), sql.Identifier(schema_loading))
+			self.logger.info("Swapping schema %s with %s" % (schema_destination, schema_loading))
+			self.logger.debug("Renaming schema %s in %s" % (schema_destination, schema_temporary))
 			self.pgsql_cur.execute(sql_dest_to_tmp)
+			self.logger.debug("Renaming schema %s in %s" % (schema_loading, schema_destination))
 			self.pgsql_cur.execute(sql_load_to_dest)
+			self.logger.debug("Renaming schema %s in %s" % (schema_temporary, schema_loading))
 			self.pgsql_cur.execute(sql_tmp_to_load)
 	
 	def create_database_schema(self, schema_name):
