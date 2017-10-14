@@ -404,6 +404,7 @@ class pg_engine(object):
 	def set_source_status(self, source_status):
 		"""
 			Sets the source status for the source_name and sets the two class attributes i_id_source and dest_schema.
+			The method assumes there is a database connection active.
 			
 			:param source_status: The source status to be set.
 			
@@ -427,6 +428,62 @@ class pg_engine(object):
 			print("Source %s is not registered." % self.source)
 			sys.exit()
 	
+	def clean_batch_data(self):
+		"""
+			This method removes all the batch data for the source id stored in the class varible self.i_id_source.
+			
+			The method assumes there is a database connection active.
+		"""
+		sql_cleanup = """
+			DELETE FROM sch_chameleon.t_replica_batch WHERE i_id_source=%s;
+		"""
+		self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
+	
+	def save_master_status(self, master_status):
+		"""
+			This method saves the master data determining which log table should be used in the next batch.
+			The method assumes there is a database connection active.
+			
+			:param master_status: the master data with the binlogfile and the log position
+			:return: the batch id or none if no batch has been created
+			:rtype: integer
+		"""
+		next_batch_id = None
+		master_data = master_status[0]
+		binlog_name = master_data["File"]
+		binlog_position = master_data["Position"]
+		try:
+			event_time = master_data["Time"]
+		except:
+			event_time = None
+		
+		sql_master = """
+			INSERT INTO sch_chameleon.t_replica_batch
+				(
+					i_id_source,
+					t_binlog_name, 
+					i_binlog_position
+				)
+			VALUES 
+				(
+					%s,
+					%s,
+					%s
+				)
+			RETURNING i_id_batch
+			;
+		"""
+		
+		try:
+			self.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position))
+			results =self.pgsql_cur.fetchone()
+			next_batch_id=results[0]
+		except psycopg2.Error as e:
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error(self.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position)))
+		
+		return next_batch_id
+
 	
 	def store_table(self, schema, table, table_pkey, master_status):
 		"""

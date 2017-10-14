@@ -297,6 +297,33 @@ class mysql_source(object):
 		return select_columns
 		
 	
+	def lock_table(self, schema, table):
+		"""
+			The method flushes the given table with read lock.
+			The method assumes there is a database connection active.
+			
+			:param schema: the origin's schema
+			:param table: the table name 
+			
+		"""
+		self.logger.debug("locking the table `%s`.`%s`" % (schema, table) )
+		sql_lock = "FLUSH TABLES `%s`.`%s` WITH READ LOCK;" %(schema, table)
+		self.logger.debug("collecting the master's coordinates for table `%s`.`%s`" % (schema, table) )
+		self.cursor_buffered.execute(sql_lock)
+		
+	def get_master_coordinates(self):
+		"""
+			The method gets the master's coordinates and return them stored in a dictionary.
+			The method assumes there is a database connection active.
+			
+			:return: the master's log coordinates for the given table
+			:rtype: dictionary
+		"""
+		sql_master = "SHOW MASTER STATUS;" 
+		self.cursor_buffered.execute(sql_master)
+		master_status = self.cursor_buffered.fetchall()
+		return master_status
+		
 	def copy_data(self, schema, table):
 		"""
 			The method copy the data between the origin and destination table.
@@ -344,13 +371,8 @@ class mysql_source(object):
 		self.logger.debug("The table %s.%s will be copied in %s  estimated slice(s) of %s rows"  % (schema, table, total_slices, copy_limit))
 
 		out_file='%s/%s_%s.csv' % (self.out_dir, schema, table )
-		self.logger.debug("locking the table `%s`.`%s`" % (schema, table) )
-		sql_lock = "FLUSH TABLES `%s`.`%s` WITH READ LOCK;" %(schema, table)
-		self.logger.debug("collecting the master's coordinates for table `%s`.`%s`" % (schema, table) )
-		self.cursor_buffered.execute(sql_lock)
-		sql_master = "SHOW MASTER STATUS;" 
-		self.cursor_buffered.execute(sql_master)
-		master_status = self.cursor_buffered.fetchall()
+		self.lock_table(schema, table)
+		master_status = self.get_master_coordinates()
 		select_columns = self.generate_select_statements(schema, table)
 		csv_data = ""
 		sql_csv = "SELECT %s as data FROM `%s`.`%s`;" % (select_columns["select_csv"], schema, table)
@@ -547,6 +569,7 @@ class mysql_source(object):
 		self.set_copy_max_memory()
 		self.hexify = [] + self.hexify_always
 		self.connect_db_buffered()
+		master_batch = self.get_master_coordinates()
 		self.pg_engine.connect_db()
 		self.pg_engine.set_source_status("initialising")
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
@@ -560,6 +583,8 @@ class mysql_source(object):
 			self.copy_tables()
 			self.pg_engine.schema_loading = self.schema_loading
 			self.pg_engine.swap_schemas()
+			self.pg_engine.clean_batch_data()
+			self.pg_engine.save_master_status(master_batch)
 			self.drop_loading_schemas()
 		except:
 			self.drop_loading_schemas()
