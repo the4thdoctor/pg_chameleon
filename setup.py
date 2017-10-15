@@ -93,6 +93,7 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 		'psycopg2>=2.7.0', 
 		'PyYAML>=3.11', 
 		'tabulate>=0.7.7', 
+		'daemonize>=2.4.7', 
 					
 	],
 	data_files = data_files, 

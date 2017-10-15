@@ -7,7 +7,7 @@ from tabulate import tabulate
 from pg_chameleon import pg_engine, mysql_source
 import logging
 from logging.handlers  import TimedRotatingFileHandler
-
+from daemonize import Daemonize
 
 
 class replica_engine(object):
@@ -188,8 +188,18 @@ class replica_engine(object):
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
 		else:
+			if self.config["log_dest"]  == 'stdout' or self.args.debug:
+				foreground = True
+			else:
+				foreground = False
+				print("Init replica process for source %s started." % (self.args.source))
+			keep_fds = [self.logger_fds]
+			init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
 			self.logger.info("Initialising the replica for source %s" % self.args.source)
-			self.mysql_source.init_replica()
+			init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
+			init_daemon.start()
+				
+		
 			
 	def init_logger(self):
 		log_dir = self.config["log_dir"] 
@@ -218,4 +228,5 @@ class replica_engine(object):
 			
 		fh.setFormatter(formatter)
 		logger.addHandler(fh)
+		self.logger_fds = fh.stream.fileno()
 		return logger
