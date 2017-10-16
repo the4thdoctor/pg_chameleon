@@ -1,3 +1,4 @@
+import pprint 
 import yaml
 import os
 import sys
@@ -128,8 +129,9 @@ class replica_engine(object):
 		"""
 			The method loads the current configuration and displays the status in tabular output
 		"""
-		config_list = [item for item in self.config if item not in ['pg_conn', 'sources']]
+		config_list = [item for item in self.config if item not in ['pg_conn', 'sources', 'type_override']]
 		connection_list = [item for item in self.config["pg_conn"] if item not in ['password']]
+		type_override = pprint.pformat(self.config['type_override'], width = 20)
 		tab_body = []
 		tab_headers = ['Parameter', 'Value']
 		for item in config_list:
@@ -138,6 +140,8 @@ class replica_engine(object):
 		for item in connection_list:
 			tab_row = [item, self.config["pg_conn"][item]]
 			tab_body.append(tab_row)
+		tab_row = ['type_override', type_override]
+		tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers))
 		self.show_sources()
 		
@@ -199,7 +203,19 @@ class replica_engine(object):
 			init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
 			init_daemon.start()
 				
+	
+	def show_status(self):
+		"""
+			list the replica status using the configuration files and the replica catalogue
+		"""
+		print(self.args)
 		
+		#configuration_status=self.pg_engine.get_status()
+		#tab_headers = ['Configuration',  'Destination schema',  'Status' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
+		#tab_body = []
+			
+		#print(tabulate(tab_body, headers=tab_headers))
+	
 			
 	def init_logger(self):
 		log_dir = self.config["log_dir"] 

@@ -585,8 +585,10 @@ class mysql_source(object):
 			self.pg_engine.clean_batch_data()
 			self.pg_engine.save_master_status(master_batch)
 			self.drop_loading_schemas()
+			self.pg_engine.set_source_status("initialised")
 		except:
 			self.drop_loading_schemas()
+			self.pg_engine.set_source_status("error")
 			raise
 		
 		

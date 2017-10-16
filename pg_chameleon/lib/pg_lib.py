@@ -406,7 +406,7 @@ class pg_engine(object):
 	
 	def set_source_status(self, source_status):
 		"""
-			Sets the source status for the source_name and sets the two class attributes i_id_source and dest_schema.
+			The method updates the source status for the source_name and sets the class attribute i_id_source.
 			The method assumes there is a database connection active.
 			
 			:param source_status: The source status to be set.
@@ -430,6 +430,31 @@ class pg_engine(object):
 		except:
 			print("Source %s is not registered." % self.source)
 			sys.exit()
+	
+	def set_source_id(self):
+		"""
+			The method sets the class attribute i_id_source for the self.source.
+			The method assumes there is a database connection active.
+		"""
+		sql_source = """
+			UPDATE sch_chameleon.t_sources
+			SET
+				enm_status=%s
+			WHERE
+				t_source=%s
+			RETURNING i_id_source
+				;
+			"""
+		self.pgsql_cur.execute(sql_source, (source_status, self.source, ))
+		source_data = self.pgsql_cur.fetchone()
+		
+
+		try:
+			self.i_id_source = source_data[0]
+		except:
+			print("Source %s is not registered." % self.source)
+			sys.exit()
+	
 	
 	def clean_batch_data(self):
 		"""
