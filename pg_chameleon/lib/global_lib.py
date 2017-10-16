@@ -208,14 +208,22 @@ class replica_engine(object):
 		"""
 			list the replica status using the configuration files and the replica catalogue
 		"""
-		print(self.args)
+		configuration_status = self.pg_engine.get_status()
+		tab_headers = ['Source id',  'Source name',  'Status' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
+		tab_body = []
 		
-		#configuration_status=self.pg_engine.get_status()
-		#tab_headers = ['Configuration',  'Destination schema',  'Status' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
-		#tab_body = []
-			
-		#print(tabulate(tab_body, headers=tab_headers))
-	
+		for status in configuration_status:
+			source_id = status[0]
+			source_name = status[1]
+			source_status = status[2]
+			read_lag = status[3]
+			last_read = status[4]
+			replay_lag = status[5]
+			last_replay = status[6]
+			tab_row = [source_id, source_name,  source_status, read_lag, last_read,  replay_lag, last_replay]
+			tab_body.append(tab_row)
+		print(tabulate(tab_body, headers=tab_headers))
+		
 			
 	def init_logger(self):
 		log_dir = self.config["log_dir"] 

@@ -577,6 +577,7 @@ class mysql_source(object):
 		self.get_table_list()
 		self.create_destination_schemas()
 		try:
+			self.pg_engine.insert_source_timings()
 			self.pg_engine.schema_loading = self.schema_loading
 			self.create_destination_tables()
 			self.disconnect_db_buffered()
@@ -590,6 +591,7 @@ class mysql_source(object):
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
 			raise
+		
 		
 		
 

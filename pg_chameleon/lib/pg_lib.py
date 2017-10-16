@@ -247,6 +247,7 @@ class pg_engine(object):
 				
 				sql_parts = """SELECT sch_chameleon.fn_refresh_parts() ;"""
 				self.pgsql_cur.execute(sql_parts)
+				self.insert_source_timings()
 		else:
 			self.logger.warning("The source %s already exists" % self.source)
 
@@ -340,8 +341,92 @@ class pg_engine(object):
 		table_ddl["table"] = (ddl_head+def_columns+ddl_tail)
 		return table_ddl
 
-		
-		
+	
+	def get_status(self):
+		"""
+			The method gets the status for all sources configured in the target database.
+			:return: a list with the status data retrieved from the database.
+			:rtype: list
+		"""
+		self.connect_db()
+		sql_status = """
+			SELECT 
+				src.i_id_source,
+				src.t_source as source_name,
+				src.enm_status as  source_status,
+				CASE
+					WHEN rec.ts_last_received IS NULL
+					THEN
+						'N/A'::text
+					ELSE
+						(date_trunc('seconds',now())-ts_last_received)::text
+				END AS receive_lag,
+				coalesce(rec.ts_last_received::text,''),
+				
+				CASE
+					WHEN rep.ts_last_replayed IS NULL
+					THEN
+						'N/A'::text
+					ELSE
+						(rec.ts_last_received-rep.ts_last_replayed)::text
+				END AS replay_lag,
+				coalesce(rep.ts_last_replayed::text,'')
+				
+				
+			FROM 
+				sch_chameleon.t_sources src
+				LEFT JOIN sch_chameleon.t_last_received rec
+				ON	src.i_id_source = rec.i_id_source
+				LEFT JOIN sch_chameleon.t_last_replayed rep
+				ON	src.i_id_source = rep.i_id_source
+			;
+			
+		"""
+		self.pgsql_cur.execute(sql_status)
+		configuration_status = self.pgsql_cur.fetchall()
+		self.disconnect_db()
+		return configuration_status
+	
+	def insert_source_timings(self):
+		"""
+			The method inserts the source timings in the tables t_last_received and t_last_replayed.
+			On conflict sets the replay/receive timestamps to null.
+			The method assumes there is a database connection active.
+		"""
+		self.set_source_id()
+		sql_replay = """
+			INSERT INTO sch_chameleon.t_last_replayed
+				(
+					i_id_source
+				)
+			VALUES 
+				(
+					%s
+				)
+			ON CONFLICT (i_id_source)
+			DO UPDATE 
+				SET 
+					ts_last_replayed=NULL
+			;
+		"""
+		sql_receive = """
+			INSERT INTO sch_chameleon.t_last_received
+				(
+					i_id_source
+				)
+			VALUES 
+				(
+					%s
+				)
+			ON CONFLICT (i_id_source)
+			DO UPDATE 
+				SET 
+					ts_last_received=NULL
+			;
+		"""
+		self.pgsql_cur.execute(sql_replay, (self.i_id_source, ))
+		self.pgsql_cur.execute(sql_receive, (self.i_id_source, ))
+	
 	def get_data_type(self, column, schema,  table):
 		""" 
 			The method determines whether the specified type has to be overridden or not.
@@ -437,18 +522,14 @@ class pg_engine(object):
 			The method assumes there is a database connection active.
 		"""
 		sql_source = """
-			UPDATE sch_chameleon.t_sources
-			SET
-				enm_status=%s
+			SELECT i_id_source FROM 
+				sch_chameleon.t_sources
 			WHERE
 				t_source=%s
-			RETURNING i_id_source
-				;
+			;
 			"""
-		self.pgsql_cur.execute(sql_source, (source_status, self.source, ))
+		self.pgsql_cur.execute(sql_source, ( self.source, ))
 		source_data = self.pgsql_cur.fetchone()
-		
-
 		try:
 			self.i_id_source = source_data[0]
 		except:
