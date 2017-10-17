@@ -107,8 +107,8 @@ class global_config(object):
 		try:
 			self.source_name = confdic["source_name"]
 			self.dest_schema = confdic["dest_schema"]
-			self.mysql_conn = confdic["mysql_conn"]
-			self.pg_conn = confdic["pg_conn"]
+			self.mysql_conn = {key: str(confdic["mysql_conn"][key]) for key in confdic["mysql_conn"]}
+			self.pg_conn = {key: str(confdic["pg_conn"][key]) for key in confdic["pg_conn"]}
 			self.my_database = confdic["my_database"]
 			self.my_charset = confdic["my_charset"]
 			self.pg_charset = confdic["pg_charset"]
