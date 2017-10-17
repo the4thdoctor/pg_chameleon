@@ -15,7 +15,7 @@ class mysql_source(object):
 		self.schema_loading = {}
 		self.schema_list = []
 		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
-		
+		self.jobs = 1
 	
 	def __del__(self):
 		"""
@@ -113,6 +113,7 @@ class mysql_source(object):
 			The method pulls the table list from the information_schema. 
 			The list is stored in a dictionary  which key is the table's schema.
 		"""
+		
 		sql_tables="""
 			SELECT 
 				table_name
@@ -138,8 +139,20 @@ class mysql_source(object):
 					table_list = [table for table in table_list if table not in skip_tables]
 			except KeyError:
 				pass
-			
-			self.schema_tables[schema] = table_list
+				
+			if self.jobs > 1:
+				table_queue = [[] for queue in list(range(0, self.jobs))]
+				
+				queue = 0
+				for table in table_list:
+					table_queue[queue].append(table)
+					queue += 1
+					if queue >= self.jobs:
+						queue = 0
+					
+			else:
+				table_queue = [table_list]
+			self.schema_tables[schema] = table_queue
 	
 	def create_destination_schemas(self):
 		"""
@@ -219,11 +232,11 @@ class mysql_source(object):
 			The tables names are looped using the values stored in the class dictionary schema_tables.
 		"""
 		for schema in self.schema_tables:
-			table_list = self.schema_tables[schema]
-			for table in table_list:
-				table_metadata = self.get_table_metadata(table, schema)
-				self.pg_engine.create_table(table_metadata, table, schema)
-	
+			for table_list in  self.schema_tables[schema]:
+				for table in table_list:
+					table_metadata = self.get_table_metadata(table, schema)
+					self.pg_engine.create_table(table_metadata, table, schema)
+		
 	
 	def generate_select_statements(self, schema, table):
 		"""
@@ -513,24 +526,34 @@ class mysql_source(object):
 		self.disconnect_db_buffered()
 		return table_pkey
 		
+	def copy_table_list(self, schema, table_list):
+		"""
+			The method processes the queue of tables to be copied and indexed.
+			
+			:param schema: the origin's schema
+			:param queue: the list with the tables to process.
+			
+		"""
+		loading_schema = self.schema_loading[schema]["loading"]
+		destination_schema = self.schema_loading[schema]["destination"]
+		for table in table_list:
+			self.logger.info("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
+			master_status = self.copy_data(schema, table)
+			table_pkey = self.create_indices(schema, table)
+			self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
+		
 		
 	def copy_tables(self):
 		"""
-			The method copies the data between tables, from the mysql schema to the corresponding
-			postgresql loading schema. Before the copy starts the table is locked and then the lock is released.
+			The method copies the data between tables, 
+			from the mysql schema to the corresponding postgresql loading schema. 
+			If the number of jobs is more than one the method generates multiple threads to process the tables.
 		"""
 		
-		
 		for schema in self.schema_tables:
-			loading_schema = self.schema_loading[schema]["loading"]
-			destination_schema = self.schema_loading[schema]["destination"]
-			table_list = self.schema_tables[schema]
-			for table in table_list:
-				self.logger.info("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
-				master_status = self.copy_data(schema, table)
-				table_pkey = self.create_indices(schema, table)
-				self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
-				
+			queues = self.schema_tables[schema]
+			for table_list in queues:
+				self.copy_table_list(schema, table_list)
 	
 	def set_copy_max_memory(self):
 		"""
@@ -556,12 +579,16 @@ class mysql_source(object):
 		self.copy_max_memory = copy_max_memory
 		
 	
+	
+	
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given sources
 		"""
-		
-		self.logger.debug("starting init replica for source %s" % self.source)
+		if self.jobs>1:
+			self.logger.debug("Starting init replica for source %s with %s parallel jobs." % (self.source, self.jobs))
+		else:
+			self.logger.debug("Starting init replica for source %s." % (self.source, ))
 		self.source_config = self.sources[self.source]
 		self.out_dir = self.source_config["out_dir"]
 		self.copy_mode = self.source_config["copy_mode"]
