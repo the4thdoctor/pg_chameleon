@@ -3,7 +3,7 @@ import io
 import pymysql
 import codecs
 from os import remove
-
+import threading
 class mysql_source(object):
 	def __init__(self):
 		"""
@@ -552,9 +552,14 @@ class mysql_source(object):
 		
 		for schema in self.schema_tables:
 			queues = self.schema_tables[schema]
-			for table_list in queues:
-				self.copy_table_list(schema, table_list)
-	
+			if self.jobs == 1:
+				self.copy_table_list(schema, queues[0])
+			else:
+				for table_list in queues:
+					copy_table = threading.Thread(target=self.copy_table_list, args=(schema, table_list) )
+					copy_table.start()
+					#copy_table.setDaemon(True)
+		
 	def set_copy_max_memory(self):
 		"""
 			The method sets the class variable self.copy_max_memory using the value stored in the 
