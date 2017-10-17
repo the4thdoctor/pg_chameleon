@@ -3,7 +3,8 @@ import io
 import pymysql
 import codecs
 from os import remove
-import threading
+from multiprocessing import Process, Pool
+
 class mysql_source(object):
 	def __init__(self):
 		"""
@@ -467,7 +468,7 @@ class mysql_source(object):
 			sql_fallback = "SELECT %s FROM `%s`.`%s` LIMIT %s, %s;" % (select_stat, schema, table, offset, copy_limit)
 			self.cursor_unbuffered.execute(sql_fallback)
 			insert_data =  self.cursor_unbuffered.fetchall()
-			self.pg_engine.insert_data(loading_schema, table, insert_data , column_list)
+			#self.pg_engine.insert_data(loading_schema, table, insert_data , column_list)
 			self.cursor_unbuffered.close()
 			num_insert +=1
 		self.disconnect_db_unbuffered()
@@ -555,11 +556,12 @@ class mysql_source(object):
 			if self.jobs == 1:
 				self.copy_table_list(schema, queues[0])
 			else:
+				copy_pool = Pool(self.jobs)
 				for table_list in queues:
-					copy_table = threading.Thread(target=self.copy_table_list, args=(schema, table_list) )
-					copy_table.start()
-					#copy_table.setDaemon(True)
-		
+					#p.apply_async(f, args=(i,), callback=adder)
+					copy_pool.apply_async(self.copy_table_list, args=(schema, table_list))
+					copy_pool.close()
+					copy_pool.join()
 	def set_copy_max_memory(self):
 		"""
 			The method sets the class variable self.copy_max_memory using the value stored in the 

@@ -24,7 +24,7 @@ config_help = """Specifies the configuration to use without the suffix yml. If  
 schema_help = """Specifies the schema within a source. If omitted all schemas for the given source are affected by the command. Requires the argument --source to be specified"""
 source_help = """Specifies the source withing a configuration. If omitted all sources are affected by the command."""
 debug_help = """Forces the debug mode with logging on stout and log level debug."""
-jobs_help = """Specifies the number of  parallel jobs to use when running init_replica. A"""
+jobs_help = """Specifies the number of  parallel jobs to use when running init_replica. """
 parser = argparse.ArgumentParser(description='Command line for pg_chameleon.',  add_help=True)
 parser.add_argument('command', type=str, help=command_help)
 parser.add_argument('--config', type=str,  default='default',  required=False, help=config_help)
