@@ -3,7 +3,7 @@ import io
 import pymysql
 import codecs
 from os import remove
-from multiprocessing import Process, Pool
+from multiprocessing import Process
 
 class mysql_source(object):
 	def __init__(self):
@@ -554,14 +554,21 @@ class mysql_source(object):
 		for schema in self.schema_tables:
 			queues = self.schema_tables[schema]
 			if self.jobs == 1:
-				self.copy_table_list(schema, queues[0])
+				#self.copy_table_list(schema, queues[0])
+				copy_table = Process(target=self.copy_table_list, args=(schema, queues[0]))
+				copy_table .start()
+				copy_table .join()
 			else:
-				copy_pool = Pool(self.jobs)
+				copy_proc = []
 				for table_list in queues:
-					#p.apply_async(f, args=(i,), callback=adder)
-					copy_pool.apply_async(self.copy_table_list, args=(schema, table_list))
-					copy_pool.close()
-					copy_pool.join()
+					copy_table = Process(target=self.copy_table_list, args=(schema, table_list))
+					copy_proc.append(copy_table)
+					#self.copy_table_list(schema, table_list)
+				for proc  in  copy_proc:
+					proc.start()
+				for proc  in  copy_proc:
+					proc.join()
+			
 	def set_copy_max_memory(self):
 		"""
 			The method sets the class variable self.copy_max_memory using the value stored in the 
