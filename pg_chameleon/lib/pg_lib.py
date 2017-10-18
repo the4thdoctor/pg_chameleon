@@ -77,24 +77,6 @@ class pg_engine(object):
 		"""
 		self.disconnect_db()
 		
-	def get_database_connection(self):
-		"""
-			Connects to PostgreSQL using the parameters stored in self.dest_conn and returns a list with the database connection and the cursor. 
-			:return: list with the postgres connection and the postgres cursor associated
-			:rtype: list
-		"""
-		if self.dest_conn:
-			strconn = "dbname=%(database)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % self.dest_conn
-			pgsql_conn = psycopg2.connect(strconn)
-			pgsql_conn .set_client_encoding(self.dest_conn["charset"])
-			pgsql_conn.set_session(autocommit=True)
-			pgsql_cur = self.pgsql_conn .cursor()
-		else:
-			self.logger.error("There is no database connection available.")
-			sys.exit()
-		return [pgsql_conn, pgsql_cur] 
-
-		
 	def connect_db(self):
 		"""
 			Connects to PostgreSQL using the parameters stored in self.dest_conn. The dictionary is built using the parameters set via adding the key dbname to the self.pg_conn dictionary.
@@ -628,10 +610,6 @@ class pg_engine(object):
 			:param table_pkey: a list with the primary key's columns. empty if there's no pkey
 			:param master_status: the master status data .
 		"""
-		db_conn = self.get_database_connection()
-		pgsql_conn = db_conn[0]
-		pgsql_cur = db_conn[1]
-		
 		if master_status:
 			master_data = master_status[0]
 			binlog_file = master_data["File"]
@@ -669,7 +647,7 @@ class pg_engine(object):
 							i_binlog_position = EXCLUDED.i_binlog_position
 									;
 							"""
-			pgsql_cur.execute(sql_insert, (
+			self.pgsql_cur.execute(sql_insert, (
 				self.i_id_source, 
 				table, 
 				schema, 
@@ -679,7 +657,7 @@ class pg_engine(object):
 				)
 			)
 		else:
-			self.logger.warning("Missing primary key. The table %s.%s will not be replicated." % (schema, table,))
+			self.logger.warning("Missing primary key. The table %s will not be replicated." % (schema, table,))
 			sql_delete = """
 				DELETE FROM sch_chameleon.t_replica_tables
 				WHERE
@@ -688,15 +666,13 @@ class pg_engine(object):
 					AND	v_schema_name=%s
 				;
 			"""
-			pgsql_cur.execute(sql_delete, (
+			self.pgsql_cur.execute(sql_delete, (
 				self.i_id_source, 
 				table, 
 				schema)
 				)
 		
-		pgsql_cur.close()
-		pgsql_conn.close()
-		
+
 	
 	def copy_data(self, csv_file, schema, table, column_list):
 		"""
@@ -710,13 +686,8 @@ class pg_engine(object):
 			:param table: the table name used in the COPY FROM command
 			:param column_list: A string with the list of columns to use in the COPY FROM command already quoted and comma separated
 		"""
-		db_conn = self.get_database_connection()
-		pgsql_conn = db_conn[0]
-		pgsql_cur = db_conn[1]
 		sql_copy='COPY "%s"."%s" (%s) FROM STDIN WITH NULL \'NULL\' CSV QUOTE \'"\' DELIMITER \',\' ESCAPE \'"\' ; ' % (schema, table, column_list)		
-		pgsql_cur.copy_expert(sql_copy,csv_file)
-		pgsql_cur.close()
-		pgsql_conn.close()
+		self.pgsql_cur.copy_expert(sql_copy,csv_file)
 		
 	def insert_data(self, schema, table, insert_data , column_list):
 		"""
@@ -756,10 +727,6 @@ class pg_engine(object):
 			:return: a list with the eventual column(s) used as primary key
 			:rtype: list
 		"""
-		db_conn = self.get_database_connection()
-		pgsql_conn = db_conn[0]
-		pgsql_cur = db_conn[1]
-		
 		idx_ddl = {}
 		table_primary = []
 		for index in index_data:
@@ -784,11 +751,8 @@ class pg_engine(object):
 				self.idx_sequence+=1
 		for index in idx_ddl:
 			self.logger.info("Building index %s on %s.%s" % (index, schema, table))
-			pgsql_cur.execute(idx_ddl[index])	
-		
-		pgsql_cur.close()
-		pgsql_conn.close()
-		
+			self.pgsql_cur.execute(idx_ddl[index])	
+			
 		return table_primary	
 		
 	def swap_schemas(self):
@@ -797,10 +761,6 @@ class pg_engine(object):
 			swaps the loading with the destination schemas performing a double rename.
 			The method assumes there is a database connection active.
 		"""
-		db_conn = self.get_database_connection()
-		pgsql_conn = db_conn[0]
-		pgsql_cur = db_conn[1]
-		
 		for schema in self.schema_loading:
 			schema_loading = self.schema_loading[schema]["loading"]
 			schema_destination = self.schema_loading[schema]["destination"]
@@ -810,14 +770,12 @@ class pg_engine(object):
 			sql_tmp_to_load = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(schema_temporary), sql.Identifier(schema_loading))
 			self.logger.info("Swapping schema %s with %s" % (schema_destination, schema_loading))
 			self.logger.debug("Renaming schema %s in %s" % (schema_destination, schema_temporary))
-			pgsql_cur.execute(sql_dest_to_tmp)
+			self.pgsql_cur.execute(sql_dest_to_tmp)
 			self.logger.debug("Renaming schema %s in %s" % (schema_loading, schema_destination))
-			pgsql_cur.execute(sql_load_to_dest)
+			self.pgsql_cur.execute(sql_load_to_dest)
 			self.logger.debug("Renaming schema %s in %s" % (schema_temporary, schema_loading))
-			pgsql_cur.execute(sql_tmp_to_load)
-		pgsql_cur.close()
-		pgsql_conn.close()
-		
+			self.pgsql_cur.execute(sql_tmp_to_load)
+	
 	def create_database_schema(self, schema_name):
 		"""
 			The method creates a database schema.
