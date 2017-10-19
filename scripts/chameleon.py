@@ -7,6 +7,7 @@ from pg_chameleon import replica_engine
 commands = [
 	'show_config',
 	'show_sources',
+	'show_status'
 	'create_replica_schema',
 	'drop_replica_schema',
 	'upgrade_replica_schema',

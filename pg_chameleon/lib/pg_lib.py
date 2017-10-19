@@ -660,7 +660,7 @@ class pg_engine(object):
 				)
 			)
 		else:
-			self.logger.warning("Missing primary key. The table %s will not be replicated." % (schema, table,))
+			self.logger.warning("Missing primary key. The table %s.%s will not be replicated." % (schema, table,))
 			sql_disable = """
 				UPDATE sch_chameleon.t_replica_tables
 					SET b_replica_enabled = 'f'

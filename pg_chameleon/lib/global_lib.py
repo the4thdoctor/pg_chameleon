@@ -192,16 +192,19 @@ class replica_engine(object):
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
 		else:
-			if self.config["log_dest"]  == 'stdout' or self.args.debug:
-				foreground = True
+			if self.args.debug:
+				self.mysql_source.init_replica()
 			else:
-				foreground = False
-				print("Init replica process for source %s started." % (self.args.source))
-			keep_fds = [self.logger_fds]
-			init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
-			self.logger.info("Initialising the replica for source %s" % self.args.source)
-			init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
-			init_daemon.start()
+				if self.config["log_dest"]  == 'stdout':
+					foreground = True
+				else:
+					foreground = False
+					print("Init replica process for source %s started." % (self.args.source))
+				keep_fds = [self.logger_fds]
+				init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+				self.logger.info("Initialising the replica for source %s" % self.args.source)
+				init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
+				init_daemon.start()
 				
 	
 	def show_status(self):
