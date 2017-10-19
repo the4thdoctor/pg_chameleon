@@ -109,6 +109,7 @@ CREATE TABLE sch_chameleon.t_replica_tables
   v_table_pkey character varying(100)[] NOT NULL,
   t_binlog_name text,
   i_binlog_position integer,
+  b_replica_enabled boolean NOT NULL DEFAULT true,
   CONSTRAINT pk_t_replica_tables PRIMARY KEY (i_id_table)
 )
 WITH (

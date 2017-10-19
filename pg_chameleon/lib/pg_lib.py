@@ -90,9 +90,12 @@ class pg_engine(object):
 			self.pgsql_conn.set_session(autocommit=True)
 			self.pgsql_cur = self.pgsql_conn .cursor()
 			
-		else:
-			self.logger.error("There is no database connection available.")
+		elif not self.dest_conn:
+			self.logger.error("Undefined database connection string. Exiting now.")
 			sys.exit()
+		elif self.pgsql_conn:
+			self.logger.warning("There is already a database connection active.")
+			
 
 	def disconnect_db(self):
 		"""
@@ -658,18 +661,20 @@ class pg_engine(object):
 			)
 		else:
 			self.logger.warning("Missing primary key. The table %s will not be replicated." % (schema, table,))
-			sql_delete = """
-				DELETE FROM sch_chameleon.t_replica_tables
+			sql_disable = """
+				UPDATE sch_chameleon.t_replica_tables
+					SET b_replica_enabled = 'f'
 				WHERE
 						i_id_source=%s
 					AND	v_table_name=%s
 					AND	v_schema_name=%s
 				;
 			"""
-			self.pgsql_cur.execute(sql_delete, (
-				self.i_id_source, 
-				table, 
-				schema)
+			self.pgsql_cur.execute(sql_disable, (
+					self.i_id_source, 
+					table, 
+					schema
+					)
 				)
 		
 
