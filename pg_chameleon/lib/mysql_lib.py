@@ -30,6 +30,7 @@ class mysql_source(object):
 			The connection is made using the dictionary type cursor factory, which is buffered.
 		"""
 		db_conn = self.source_config["db_conn"]
+		db_conn = {key:str(value) for key, value in db_conn.items()}
 		self.conn_buffered=pymysql.connect(
 			host = db_conn["host"],
 			user = db_conn["user"],
@@ -57,6 +58,7 @@ class mysql_source(object):
 			The connection is made using the unbuffered cursor factory.
 		"""
 		db_conn = self.source_config["db_conn"]
+		db_conn = {key:str(value) for key, value in db_conn.items()}
 		self.conn_unbuffered=pymysql.connect(
 			host = db_conn["host"],
 			user = db_conn["user"],
