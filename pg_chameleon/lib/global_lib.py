@@ -63,6 +63,9 @@ class replica_engine(object):
 		self.mysql_source.sources = self.config["sources"]
 		self.mysql_source.type_override = self.config["type_override"]
 		
+		
+		
+		
 	def set_configuration_files(self):
 		""" 
 			The method loops the list self.conf_dirs creating them only if they are missing.

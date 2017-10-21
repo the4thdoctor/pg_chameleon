@@ -108,7 +108,10 @@ class mysql_source(object):
 				except KeyError:
 					list_exclude.append(table_list[1])
 				self.skip_tables[table_list[0]]  = list_exclude
-				
+	
+
+	
+
 
 	def get_table_list(self):
 		"""
