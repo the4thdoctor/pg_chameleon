@@ -500,6 +500,15 @@ class pg_engine(object):
 		self.pgsql_cur.execute(table_ddl)
 	
 	def update_schema_mappings(self):
+		"""
+			The method updates the schema mappings for the given source.
+			Before executing the updates the method checks for the need to run an update and for any
+			mapping already present in the replica catalogue. 
+			If everything is fine the database connection is set autocommit=false.
+			The method updates the schemas  in the table t_replica_tables and then updates the mappings in the 
+			table t_sources. After the final update the commit is issued to make the updates permanent.
+			
+		"""
 		self.connect_db()
 		self.set_source_id()
 		new_schema_mappings = self.sources[self.source]["schema_mappings"]
