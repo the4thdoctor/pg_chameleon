@@ -794,7 +794,7 @@ class mysql_engine(object):
 		for table_name in self.my_tables:
 			table=self.my_tables[table_name]
 			self.locked_tables.append(table["name"])
-		t_sql_lock="FLUSH TABLES "+", ".join(self.locked_tables)+" WITH READ LOCK;"
+		t_sql_lock="FLUSH TABLES `"+"`, `".join(self.locked_tables)+"` WITH READ LOCK;"
 		self.mysql_con.my_cursor.execute(t_sql_lock)
 		self.get_master_status()
 	
