@@ -76,7 +76,20 @@ class pg_engine(object):
 			Class destructor, tries to disconnect the postgresql connection.
 		"""
 		self.disconnect_db()
-		
+	
+	def set_autocommit_db(self, auto_commit):
+		"""
+			The method sets the auto_commit flag for the class connection self.pgsql_conn.
+			In general the connection is always autocommit but in some operations (e.g. update_schema_mappings) 
+			is better to run the process in a single transaction in order to avoid inconsistencies.
+			
+			:param autocommit: boolean flag which sets autocommit on or off.
+
+		"""
+		self.logger.error("Changing the autocommit flag to %s" % auto_commit)
+		self.pgsql_conn.set_session(autocommit=auto_commit)
+
+	
 	def connect_db(self):
 		"""
 			Connects to PostgreSQL using the parameters stored in self.dest_conn. The dictionary is built using the parameters set via adding the key dbname to the self.pg_conn dictionary.
@@ -87,7 +100,7 @@ class pg_engine(object):
 			strconn = "dbname=%(database)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % self.dest_conn
 			self.pgsql_conn = psycopg2.connect(strconn)
 			self.pgsql_conn .set_client_encoding(self.dest_conn["charset"])
-			self.pgsql_conn.set_session(autocommit=True)
+			self.set_autocommit_db(True)
 			self.pgsql_cur = self.pgsql_conn .cursor()
 			
 		elif not self.dest_conn:
@@ -106,6 +119,7 @@ class pg_engine(object):
 		else:
 			pass
 
+		
 	def create_replica_schema(self):
 		"""
 			The method installs the replica schema sch_chameleon if not already  present.
@@ -155,14 +169,26 @@ class pg_engine(object):
 		num_schema = self.pgsql_cur.fetchone()
 		return num_schema
 	
-	def check_schema_mappings(self):
+	def check_schema_mappings(self, exclude_current_source=False):
 		"""
+			:param exclude_current_source: If set to true the check excludes the current source name from the check.
+			The default is false. 
+		
 			The method checks if there is already a destination schema in the stored schema mappings.
 			As each schema should be managed by one mapping only, if the method returns None  then
 			the source can be store safely. Otherwise the action. The method doesn't take any decision
 			leaving this to the calling methods.
 			The method assumes there is a database connection active.
+			The method returns a list or none. 
+			If the list is returned then contains the count and the destination schema name 
+			that are already present in the replica catalogue.
+			:return: the schema already mapped in the replica catalogue. 
+			:rtype: list
 		"""
+		if exclude_current_source:
+			exclude_id = self.i_id_source
+		else:
+			exclude_id = -1
 		schema_mappings = json.dumps(self.sources[self.source]["schema_mappings"])
 		sql_check = """
 			WITH t_check  AS
@@ -171,6 +197,8 @@ class pg_engine(object):
 						(jsonb_each_text(jsb_schema_mappings)).value AS dest_schema
 					FROM 
 						sch_chameleon.t_sources
+					WHERE 
+						i_id_source <> %s
 				UNION ALL
 					SELECT 
 						value AS dest_schema 
@@ -188,7 +216,7 @@ class pg_engine(object):
 			count(dest_schema)>1
 		;
 		"""
-		self.pgsql_cur.execute(sql_check, (schema_mappings, ))
+		self.pgsql_cur.execute(sql_check, (exclude_id, schema_mappings, ))
 		check_mappings = self.pgsql_cur.fetchone()
 		return check_mappings
 		
@@ -471,12 +499,62 @@ class pg_engine(object):
 			self.pgsql_cur.execute(enum_statement)
 		self.pgsql_cur.execute(table_ddl)
 	
+	def update_schema_mappings(self):
+		self.connect_db()
+		self.set_source_id()
+		new_schema_mappings = self.sources[self.source]["schema_mappings"]
+		old_schema_mappings = self.get_schema_mappings()
+		
+		
+		if new_schema_mappings != old_schema_mappings:
+			duplicate_mappings = self.check_schema_mappings(True)
+			if not duplicate_mappings:
+				self.logger.debug("Updating schema mappings for source %s" % self.source)
+				self.set_autocommit_db(False)
+				for schema in old_schema_mappings:
+					old_mapping = old_schema_mappings[schema]
+					new_mapping = new_schema_mappings[schema]
+					if old_mapping != new_mapping:
+						self.logger.debug("Updating mapping for schema %s. Old: %s. New: %s" % (schema, old_mapping, new_mapping))
+						sql_tables = """
+							UPDATE sch_chameleon.t_replica_tables 
+								SET v_schema_name=%s
+							WHERE 	
+									i_id_source=%s
+								AND	v_schema_name=%s
+							;
+						"""
+						self.pgsql_cur.execute(sql_tables, (new_mapping, self.i_id_source,old_mapping ))
+				sql_source="""
+					UPDATE sch_chameleon.t_sources
+						SET 
+							jsb_schema_mappings=%s
+					WHERE
+						i_id_source=%s
+					;
+							
+				"""
+				self.pgsql_cur.execute(sql_source, (json.dumps(new_schema_mappings), self.i_id_source))
+				self.pgsql_conn.commit()
+					
+				self.set_autocommit_db(True)
+			else:
+				self.logger.error("Could update the schema mappings for source %s. There is a duplicate destination schema in other sources. The offending schema is %s." % (self.source, duplicate_mappings[1]))
+		else:
+			self.logger.debug("The configuration file and catalogue mappings for source %s are the same. Not updating." % self.source)
+		#print (self.i_id_source)
+		
+		self.disconnect_db()
+	
 	def get_schema_mappings(self):
 		"""
 			The method gets the schema mappings for the given source.
 			The list is the one stored in the table sch_chameleon.t_sources. 
 			Any change in the configuration file is ignored
 			The method assumes there is a database connection active.
+			:return: the schema mappings extracted from the replica catalogue
+			:rtype: dictionary
+	
 		"""
 		self.logger.debug("Collecting schema mappings for source %s" % self.source)
 		sql_get_schema = """

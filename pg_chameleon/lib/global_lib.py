@@ -190,7 +190,7 @@ class replica_engine(object):
 	def init_replica(self):
 		"""
 			The method  initialise a replica for a given source and configuration. 
-			If the source is omitted the method aborts the action
+			Is compulsory to specify a source name when running this method.
 		"""
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
@@ -209,6 +209,20 @@ class replica_engine(object):
 				init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
 				init_daemon.start()
 				
+	
+	def update_schema_mappings(self):
+		"""
+			The method updates the schema mappings for the given source. 
+			The schema mappings is a configuration parameter but is stored in the replica
+			catalogue when the source is added. If any change is made on the configuration file this method 
+			should be called to update the system catalogue as well. The pg_engine method checks for any conflict before running
+			the update on the tables t_sources and t_replica_tables.
+			Is compulsory to specify a source name when running this method.
+		"""
+		if self.args.source == "*":
+			print("You must specify a source name with the argument --source")
+		else:
+			self.pg_engine.update_schema_mappings()
 	
 	def show_status(self):
 		"""
