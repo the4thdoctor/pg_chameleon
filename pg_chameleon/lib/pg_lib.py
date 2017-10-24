@@ -508,6 +508,9 @@ class pg_engine(object):
 			The method updates the schemas  in the table t_replica_tables and then updates the mappings in the 
 			table t_sources. After the final update the commit is issued to make the updates permanent.
 			
+			:todo: The method should run only at replica stopped for the given source. The method should also
+			replay all the logged rows for the given source before updating the schema mappings to avoid 
+			to get an inconsistent replica.
 		"""
 		self.connect_db()
 		self.set_source_id()
@@ -534,6 +537,8 @@ class pg_engine(object):
 							;
 						"""
 						self.pgsql_cur.execute(sql_tables, (new_mapping, self.i_id_source,old_mapping ))
+						sql_alter_schema = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(old_mapping), sql.Identifier(new_mapping))
+						self.pgsql_cur.execute(sql_alter_schema)
 				sql_source="""
 					UPDATE sch_chameleon.t_sources
 						SET 
