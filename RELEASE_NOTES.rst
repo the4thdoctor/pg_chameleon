@@ -1,6 +1,16 @@
 RELEASE NOTES
 *************************
 
+Version 1.8
+--------------------------
+The version 1.8 fixes a wrong check when evaluating if the threads are alive.
+It also adds the support for the RENAME, in order to make simpler the usage of the percona online schema change tool.
+This should be the final release of the version 1. For this version I will focus only on bug fixes from now.
+
+The upcoming release 2's development is already started and a pre-alpha version should appear in the next month or so.
+
+
+
 Version 1.7
 --------------------------
 The version 1.7 supports the optional threaded read and replay. To enable the threaded execution just add ``--thread`` when running start_replica. 

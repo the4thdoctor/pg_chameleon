@@ -420,7 +420,7 @@ class pg_engine(object):
 				table_name, 
 				self.dest_schema)
 				)
-			
+		
 	def unregister_table(self, table_name):
 		"""
 			This method is used when a table have the primary key dropped on MySQL. 
@@ -560,11 +560,12 @@ class pg_engine(object):
 			indices=table["indices"]
 			table_idx=[]
 			for index in indices:
+				table_timestamp = str(int(time.time()))
 				indx=index["index_name"]
 				index_columns=index["index_columns"]
 				non_unique=index["non_unique"]
 				if indx=='PRIMARY':
-					pkey_name="pk_"+table_name[0:20]+"_"+str(self.idx_sequence)
+					pkey_name="pk_"+table_name[0:10]+"_"+table_timestamp+"_"+str(self.idx_sequence)
 					pkey_def='ALTER TABLE "'+table_name+'" ADD CONSTRAINT "'+pkey_name+'" PRIMARY KEY ('+index_columns+') ;'
 					table_idx.append(pkey_def)
 				else:
@@ -572,7 +573,7 @@ class pg_engine(object):
 						unique_key='UNIQUE'
 					else:
 						unique_key=''
-					index_name='"idx_'+indx[0:20]+table_name[0:20]+"_"+str(self.idx_sequence)+'"'
+					index_name='"idx_'+indx[0:10]+table_name[0:10]+"_"+table_timestamp+"_"+str(self.idx_sequence)+'"'
 					idx_def='CREATE '+unique_key+' INDEX '+ index_name+' ON "'+table_name+'" ('+index_columns+');'
 					table_idx.append(idx_def)
 				self.idx_sequence+=1
@@ -1707,6 +1708,7 @@ class pg_engine(object):
 		""" 
 			The method builds the DDL using the tokenised SQL stored in token.
 			The supported commands are 
+			RENAME TABLE
 			DROP TABLE
 			TRUNCATE
 			CREATE TABLE
@@ -1719,8 +1721,19 @@ class pg_engine(object):
 			
 		"""
 		query=""
-		
-		if token["command"] =="DROP TABLE":
+		if token["command"] =="RENAME TABLE":
+			query = """ALTER TABLE "%s" RENAME TO "%s" """ % (token["name"], token["new_name"])	
+			try:
+				self.table_metadata[token["new_name"]]
+				self.store_table(token["new_name"])
+			except KeyError:
+				try:
+					self.table_metadata[token["new_name"]] = self.table_metadata[token["name"]]
+					self.store_table(token["new_name"])
+				except KeyError:
+					query = ""
+			
+		elif token["command"] =="DROP TABLE":
 			query=" %(command)s IF EXISTS \"%(name)s\";" % token
 		elif token["command"] =="TRUNCATE":
 			query=" %(command)s TABLE \"%(name)s\" CASCADE;" % token
@@ -1786,7 +1799,6 @@ class pg_engine(object):
 			;
 		"""
 		self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
-		
 		
 		
 	def check_reindex(self):

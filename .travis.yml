@@ -1,6 +1,6 @@
 sudo: true
 dist: trusty
-group: edge 
+group: deprecated-2017Q3
 language: python
 python:
   - "2.7"

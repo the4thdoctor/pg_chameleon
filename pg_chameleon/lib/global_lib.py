@@ -428,7 +428,7 @@ class replica_engine(object):
 		replay_replica.start()
 		while True:
 			read_alive = read_replica.isAlive()
-			replay_alive = read_replica.isAlive()
+			replay_alive = replay_replica.isAlive()
 			self.logger.info("Read thread running: %s - Replay thread running: %s" %(read_alive, replay_alive))
 			if not read_alive and not replay_alive:
 				self.pg_eng.set_source_id('stopped')
