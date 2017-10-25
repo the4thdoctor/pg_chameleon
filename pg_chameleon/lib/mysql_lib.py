@@ -91,7 +91,8 @@ class mysql_source(object):
 		self.skip_tables = {}
 		limit_tables = self.source_config["limit_tables"]
 		skip_tables = self.source_config["skip_tables"]
-		if self.tables:
+		
+		if self.tables !='*':
 			tables = [table.strip() for table in self.tables.split(',')]
 			if limit_tables:
 				limit_tables = [table for table in tables if table in limit_tables]
@@ -574,7 +575,7 @@ class mysql_source(object):
 		
 	def sync_tables(self):
 		"""
-			The method performs a sync for specific tables
+			The method performs a sync for specific tables.
 		"""
 		self.logger.debug("starting sync replica for source %s" % self.source)
 		self.logger.debug("The tables affected are %s" % self.tables)
@@ -590,11 +591,17 @@ class mysql_source(object):
 		self.schema_list = [schema for schema in self.schema_mappings if schema in self.schema_only]
 		self.connect_db_buffered()
 		self.get_table_list()
+		self.create_destination_schemas()
+		self.pg_engine.schema_loading = self.schema_loading
+		self.pg_engine.schema_tables = self.schema_tables
+		self.create_destination_tables()
+		self.disconnect_db_buffered()
+		self.copy_tables()
 		
-		
-		
+		self.pg_engine.swap_tables()
+		self.drop_loading_schemas()
 		self.pg_engine.set_source_status("synced")
-		
+	
 	
 	def init_replica(self):
 		"""

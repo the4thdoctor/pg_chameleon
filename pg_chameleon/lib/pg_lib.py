@@ -873,6 +873,26 @@ class pg_engine(object):
 			self.logger.debug("Renaming schema %s in %s" % (schema_temporary, schema_loading))
 			self.pgsql_cur.execute(sql_tmp_to_load)
 	
+	def swap_tables(self):
+		"""
+			The method loops over the tables stored in the class 
+		"""
+		self.set_autocommit_db(False)
+		for schema in self.schema_tables:
+			schema_loading = self.schema_loading[schema]["loading"]
+			schema_destination = self.schema_loading[schema]["destination"]
+			for table in self.schema_tables[schema]:
+				self.logger.info("Swapping table %s.%s with %s.%s" % (schema_destination, table, schema_loading, table))
+				sql_drop_origin = sql.SQL("DROP TABLE {}.{} ;").format(sql.Identifier(schema_destination),sql.Identifier(table))
+				sql_set_schema_new = sql.SQL("ALTER TABLE {}.{} SET SCHEMA {};").format(sql.Identifier(schema_loading),sql.Identifier(table), sql.Identifier(schema_destination))
+				self.logger.debug("Dropping the original table %s.%s " % (schema_destination, table))
+				self.pgsql_cur.execute(sql_drop_origin)
+				self.logger.debug("Changing the schema for table %s.%s to %s" % (schema_loading, table, schema_destination))
+				self.pgsql_cur.execute(sql_set_schema_new)
+				self.pgsql_conn.commit()
+				
+		self.set_autocommit_db(True)
+	
 	def create_database_schema(self, schema_name):
 		"""
 			The method creates a database schema.
