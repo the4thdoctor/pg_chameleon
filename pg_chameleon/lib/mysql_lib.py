@@ -696,7 +696,7 @@ class mysql_engine(object):
 						CASE
 							WHEN avg_row_length>0
 							then
-								round(("""+copy_max_memory+"""/avg_row_length))
+								round(("""+str(copy_max_memory)+"""/avg_row_length))
 						ELSE
 							0
 						END as copy_limit
@@ -722,7 +722,7 @@ class mysql_engine(object):
 				columns_csv=self.generate_select(table_columns, mode="csv")
 				columns_ins=self.generate_select(table_columns, mode="insert")
 				csv_data=""
-				sql_out="SELECT "+columns_csv+" as data FROM "+table_name+";"
+				sql_out="SELECT "+columns_csv+" as data FROM `"+table_name+"`;"
 				self.mysql_con.connect_db_ubf()
 				try:
 					self.logger.debug("Executing query for table %s"  % (table_name, ))
