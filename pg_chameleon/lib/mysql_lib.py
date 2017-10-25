@@ -88,6 +88,8 @@ class mysql_source(object):
 		self.skip_tables = {}
 		limit_tables = self.source_config["limit_tables"]
 		skip_tables = self.source_config["skip_tables"]
+		
+		
 		if limit_tables:
 			table_limit = [table.split('.') for table in limit_tables]
 			for table_list in table_limit:
@@ -559,6 +561,25 @@ class mysql_source(object):
 				print("**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes.")
 				sys.exit(3)
 		self.copy_max_memory = copy_max_memory
+		
+	def sync_tables(self):
+		"""
+			The method performs a sync for specific tables
+		"""
+		self.logger.debug("starting sync replica for source %s" % self.source)
+		self.logger.debug("The tables affected are %s" % self.tables)
+		self.source_config = self.sources[self.source]
+		self.out_dir = self.source_config["out_dir"]
+		self.copy_mode = self.source_config["copy_mode"]
+		self.set_copy_max_memory()
+		self.hexify = [] + self.hexify_always
+		self.pg_engine.connect_db()
+		self.pg_engine.set_source_status("syncing")
+		self.schema_mappings = self.pg_engine.get_schema_mappings()
+		self.schema_list = [schema for schema in self.schema_mappings]
+		self.build_table_exceptions()
+		
+		self.pg_engine.set_source_status("synced")
 		
 	
 	def init_replica(self):

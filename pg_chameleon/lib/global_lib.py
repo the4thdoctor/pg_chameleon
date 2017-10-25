@@ -58,6 +58,7 @@ class replica_engine(object):
 		#mysql_source instance initialisation
 		self.mysql_source = mysql_source()
 		self.mysql_source.source = self.args.source
+		self.mysql_source.tables = self.args.tables
 		self.mysql_source.pg_engine = self.pg_engine
 		self.mysql_source.logger = self.logger
 		self.mysql_source.sources = self.config["sources"]
@@ -194,6 +195,8 @@ class replica_engine(object):
 		"""
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
+		elif self.args.tables != "*":
+			print("You cannot specify a table name when running init_replica.")
 		else:
 			if self.args.debug:
 				self.mysql_source.init_replica()
@@ -209,6 +212,30 @@ class replica_engine(object):
 				init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
 				init_daemon.start()
 				
+	def sync_tables(self):
+		"""
+			The method  reload the data from a source only for specified tables.
+			Is compulsory to specify a source name and at least one table name when running this method.
+			Multiple tables are allowed if comma separated.
+		"""
+		if self.args.source == "*":
+			print("You must specify a source name using the argument --source")
+		elif self.args.tables == "*":
+			print("You must specify one or more tables, in the form schema.table, separated by comma using the argument --tables")
+		else:
+			if self.args.debug:
+				self.mysql_source.sync_tables()
+			else:
+				if self.config["log_dest"]  == 'stdout':
+					foreground = True
+				else:
+					foreground = False
+					print("Sync tables process for source %s started." % (self.args.source))
+				keep_fds = [self.logger_fds]
+				init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+				self.logger.info("The tables %s within source %s will be synced." % (self.args.tables, self.args.source))
+				sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.sync_tables, foreground=foreground , keep_fds=keep_fds)
+				sync_daemon .start()
 	
 	def update_schema_mappings(self):
 		"""
