@@ -15,7 +15,7 @@ class mysql_source(object):
 		self.schema_loading = {}
 		self.schema_list = []
 		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
-		
+		self.schema_only = {}
 	
 	def __del__(self):
 		"""
@@ -83,12 +83,22 @@ class mysql_source(object):
 		"""
 			The method builds two dictionaries from the limit_tables and skip tables values set for the source.
 			The dictionaries are intended to be used in the get_table_list to cleanup the list of tables per schema.
+			The method manages the particular case of when the class variable self.tables is set.
+			In that case only the specified tables in self.tables will be synced. Should limit_tables be already 
+			set, then the resulting list is the intersection of self.tables and limit_tables.
 		"""
 		self.limit_tables = {}
 		self.skip_tables = {}
 		limit_tables = self.source_config["limit_tables"]
 		skip_tables = self.source_config["skip_tables"]
-		
+		if self.tables:
+			tables = [table.strip() for table in self.tables.split(',')]
+			if limit_tables:
+				limit_tables = [table for table in tables if table in limit_tables]
+			else:
+				limit_tables = tables
+			self.schema_only = {table.split('.')[0] for table in limit_tables}
+			
 		
 		if limit_tables:
 			table_limit = [table.split('.') for table in limit_tables]
@@ -110,7 +120,7 @@ class mysql_source(object):
 				except KeyError:
 					list_exclude.append(table_list[1])
 				self.skip_tables[table_list[0]]  = list_exclude
-	
+		
 
 	
 
@@ -576,8 +586,12 @@ class mysql_source(object):
 		self.pg_engine.connect_db()
 		self.pg_engine.set_source_status("syncing")
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
-		self.schema_list = [schema for schema in self.schema_mappings]
 		self.build_table_exceptions()
+		self.schema_list = [schema for schema in self.schema_mappings if schema in self.schema_only]
+		self.connect_db_buffered()
+		self.get_table_list()
+		
+		
 		
 		self.pg_engine.set_source_status("synced")
 		
