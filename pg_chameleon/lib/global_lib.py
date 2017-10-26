@@ -59,6 +59,7 @@ class replica_engine(object):
 		self.mysql_source = mysql_source()
 		self.mysql_source.source = self.args.source
 		self.mysql_source.tables = self.args.tables
+		self.mysql_source.schema = self.args.schema.strip()
 		self.mysql_source.pg_engine = self.pg_engine
 		self.mysql_source.logger = self.logger
 		self.mysql_source.sources = self.config["sources"]
@@ -211,6 +212,32 @@ class replica_engine(object):
 				self.logger.info("Initialising the replica for source %s" % self.args.source)
 				init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
 				init_daemon.start()
+
+	def refresh_schema(self):
+		"""
+			The method  reload the data from a source and only for a specified schema.
+			Is compulsory to specify a source name and an origin's schema name. 
+			The schema mappings are honoured by the procedure automatically.
+		"""
+		if self.args.source == "*":
+			print("You must specify a source name using the argument --source")
+		elif self.args.schema == "*":
+			print("You must specify an origin's schema name using the argument --schema")
+		else:
+			if self.args.debug:
+				self.mysql_source.refresh_schema()
+			else:
+				if self.config["log_dest"]  == 'stdout':
+					foreground = True
+				else:
+					foreground = False
+					print("Sync tables process for source %s started." % (self.args.source))
+				keep_fds = [self.logger_fds]
+				init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+				self.logger.info("The tables %s within source %s will be synced." % (self.args.tables, self.args.source))
+				sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.refresh_schema, foreground=foreground , keep_fds=keep_fds)
+				sync_daemon .start()
+
 				
 	def sync_tables(self):
 		"""

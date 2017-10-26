@@ -573,11 +573,51 @@ class mysql_source(object):
 				sys.exit(3)
 		self.copy_max_memory = copy_max_memory
 		
+	def refresh_schema(self):
+		"""
+			The method performs a sync for an entire schema within a source.
+			The method works in a similar way like init_replica.
+			The swap happens in a single transaction.
+		"""
+		self.logger.debug("starting sync schema for source %s" % self.source)
+		self.logger.debug("The schema affected is %s" % self.schema)
+		self.source_config = self.sources[self.source]
+		self.out_dir = self.source_config["out_dir"]
+		self.copy_mode = self.source_config["copy_mode"]
+		self.set_copy_max_memory()
+		self.hexify = [] + self.hexify_always
+		self.pg_engine.connect_db()
+		self.pg_engine.set_source_status("syncing")
+		self.schema_mappings = self.pg_engine.get_schema_mappings()
+		self.build_table_exceptions()
+		self.schema_list = [self.schema]
+		self.connect_db_buffered()
+		self.get_table_list()
+		self.create_destination_schemas()
+		self.pg_engine.schema_loading = self.schema_loading
+		self.pg_engine.schema_tables = self.schema_tables
+		self.create_destination_tables()
+		self.disconnect_db_buffered()
+		try:
+			self.copy_tables()
+			self.pg_engine.swap_schemas()
+			self.drop_loading_schemas()
+			self.pg_engine.set_source_status("initialised")
+		except:
+			self.drop_loading_schemas()
+			self.pg_engine.set_source_status("error")
+			raise
+		
 	def sync_tables(self):
 		"""
 			The method performs a sync for specific tables.
+			The method works in a similar way like init_replica except when swapping the relations.
+			The tables are loaded into a temporary schema and the log coordinates are stored with the table
+			in the replica catalogue. When the load is complete the method drops the existing table and changes the
+			schema for the loaded tables to the destination schema. 
+			The swap happens in a single transaction.
 		"""
-		self.logger.debug("starting sync replica for source %s" % self.source)
+		self.logger.debug("starting sync tables for source %s" % self.source)
 		self.logger.debug("The tables affected are %s" % self.tables)
 		self.source_config = self.sources[self.source]
 		self.out_dir = self.source_config["out_dir"]
@@ -597,10 +637,14 @@ class mysql_source(object):
 		self.create_destination_tables()
 		self.disconnect_db_buffered()
 		self.copy_tables()
-		
-		self.pg_engine.swap_tables()
-		self.drop_loading_schemas()
-		self.pg_engine.set_source_status("synced")
+		try:
+			self.pg_engine.swap_tables()
+			self.drop_loading_schemas()
+			self.pg_engine.set_source_status("synced")
+		except:
+			self.drop_loading_schemas()
+			self.pg_engine.set_source_status("error")
+			raise
 	
 	
 	def init_replica(self):
