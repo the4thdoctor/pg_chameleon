@@ -70,6 +70,7 @@ class pg_engine(object):
 		self.pgsql_conn = None
 		self.logger = None
 		self.idx_sequence = 0
+		self.lock_timeout = 0
 		
 	def __del__(self):
 		"""
@@ -118,8 +119,21 @@ class pg_engine(object):
 			self.pgsql_conn.close()
 		else:
 			pass
-
-		
+			
+	def set_lock_timeout(self):
+		"""
+			The method sets the lock timeout using the value stored in the class attribute lock_timeout.
+		"""
+		self.logger.debug("Changing the lock timeout for the session to %s." % self.lock_timeout)
+		self.pgsql_cur.execute("SET LOCK_TIMEOUT =%s;",  (self.lock_timeout, ))
+	
+	def unset_lock_timeout(self):
+		"""
+			The method sets the lock timeout using the value stored in the class attribute lock_timeout.
+		"""
+		self.logger.debug("Disabling the lock timeout for the session." )
+		self.pgsql_cur.execute("SET LOCK_TIMEOUT ='0';")
+	
 	def create_replica_schema(self):
 		"""
 			The method installs the replica schema sch_chameleon if not already  present.
@@ -859,6 +873,7 @@ class pg_engine(object):
 			The method assumes there is a database connection active.
 		"""
 		for schema in self.schema_loading:
+			self.set_autocommit_db(False)
 			schema_loading = self.schema_loading[schema]["loading"]
 			schema_destination = self.schema_loading[schema]["destination"]
 			schema_temporary = "_rename_%s" % self.schema_loading[schema]["destination"]
@@ -872,6 +887,9 @@ class pg_engine(object):
 			self.pgsql_cur.execute(sql_load_to_dest)
 			self.logger.debug("Renaming schema %s in %s" % (schema_temporary, schema_loading))
 			self.pgsql_cur.execute(sql_tmp_to_load)
+			self.logger.debug("Commit the swap transaction" )
+			self.pgsql_conn.commit()
+			self.set_autocommit_db(True)
 	
 	def swap_tables(self):
 		"""
@@ -919,4 +937,8 @@ class pg_engine(object):
 			cascade_clause = ""
 		sql_drop = "DROP SCHEMA IF EXISTS {} %s;" % cascade_clause
 		sql_drop = sql.SQL(sql_drop).format(sql.Identifier(schema_name))
-		self.pgsql_cur.execute(sql_drop)
+		self.set_lock_timeout()
+		try:
+			self.pgsql_cur.execute(sql_drop)
+		except:
+			self.logger.error("could not drop the schema %s. You will need to drop it manually." % schema_name)

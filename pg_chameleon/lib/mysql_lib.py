@@ -572,7 +572,22 @@ class mysql_source(object):
 				print("**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes.")
 				sys.exit(3)
 		self.copy_max_memory = copy_max_memory
-		
+	
+	def init_sync(self):
+		"""
+			The method calls the common steps required to initialise the database connections and
+			class attributes within sync_tables,refresh_schema and init_replica.
+		"""
+		self.source_config = self.sources[self.source]
+		self.out_dir = self.source_config["out_dir"]
+		self.copy_mode = self.source_config["copy_mode"]
+		self.pg_engine.lock_timeout = self.source_config["lock_timeout"]
+		self.set_copy_max_memory()
+		self.hexify = [] + self.hexify_always
+		self.connect_db_buffered()
+		self.pg_engine.connect_db()
+		self.schema_mappings = self.pg_engine.get_schema_mappings()
+	
 	def refresh_schema(self):
 		"""
 			The method performs a sync for an entire schema within a source.
@@ -581,17 +596,10 @@ class mysql_source(object):
 		"""
 		self.logger.debug("starting sync schema for source %s" % self.source)
 		self.logger.debug("The schema affected is %s" % self.schema)
-		self.source_config = self.sources[self.source]
-		self.out_dir = self.source_config["out_dir"]
-		self.copy_mode = self.source_config["copy_mode"]
-		self.set_copy_max_memory()
-		self.hexify = [] + self.hexify_always
-		self.pg_engine.connect_db()
+		self.init_sync()
 		self.pg_engine.set_source_status("syncing")
-		self.schema_mappings = self.pg_engine.get_schema_mappings()
 		self.build_table_exceptions()
 		self.schema_list = [self.schema]
-		self.connect_db_buffered()
 		self.get_table_list()
 		self.create_destination_schemas()
 		self.pg_engine.schema_loading = self.schema_loading
@@ -607,7 +615,9 @@ class mysql_source(object):
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
 			raise
-		
+	
+	
+	
 	def sync_tables(self):
 		"""
 			The method performs a sync for specific tables.
@@ -619,17 +629,10 @@ class mysql_source(object):
 		"""
 		self.logger.debug("starting sync tables for source %s" % self.source)
 		self.logger.debug("The tables affected are %s" % self.tables)
-		self.source_config = self.sources[self.source]
-		self.out_dir = self.source_config["out_dir"]
-		self.copy_mode = self.source_config["copy_mode"]
-		self.set_copy_max_memory()
-		self.hexify = [] + self.hexify_always
-		self.pg_engine.connect_db()
+		self.init_sync()
 		self.pg_engine.set_source_status("syncing")
-		self.schema_mappings = self.pg_engine.get_schema_mappings()
 		self.build_table_exceptions()
 		self.schema_list = [schema for schema in self.schema_mappings if schema in self.schema_only]
-		self.connect_db_buffered()
 		self.get_table_list()
 		self.create_destination_schemas()
 		self.pg_engine.schema_loading = self.schema_loading
@@ -646,23 +649,15 @@ class mysql_source(object):
 			self.pg_engine.set_source_status("error")
 			raise
 	
-	
+		
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given sources
 		"""
-		
 		self.logger.debug("starting init replica for source %s" % self.source)
-		self.source_config = self.sources[self.source]
-		self.out_dir = self.source_config["out_dir"]
-		self.copy_mode = self.source_config["copy_mode"]
-		self.set_copy_max_memory()
-		self.hexify = [] + self.hexify_always
-		self.connect_db_buffered()
+		self.init_sync()
 		master_batch = self.get_master_coordinates()
-		self.pg_engine.connect_db()
 		self.pg_engine.set_source_status("initialising")
-		self.schema_mappings = self.pg_engine.get_schema_mappings()
 		self.schema_list = [schema for schema in self.schema_mappings]
 		self.build_table_exceptions()
 		self.get_table_list()
