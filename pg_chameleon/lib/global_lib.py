@@ -2,6 +2,7 @@ import pprint
 import yaml
 import os
 import sys
+import time
 from shutil import copy
 from distutils.sysconfig import get_python_lib
 from tabulate import tabulate
@@ -277,6 +278,41 @@ class replica_engine(object):
 			print("You must specify a source name with the argument --source")
 		else:
 			self.pg_engine.update_schema_mappings()
+	
+	def run_replica(self):
+		"""
+			This method is the method which manages the two separate processes using the multiprocess library.
+			It can be daemonised or run in foreground according with the --debug configuration or the log 
+			destination.
+		"""
+		sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
+		self.logger.info("Running the replica process for source %s " % (self.args.source))
+		while True:
+			self.logger.info("Replica process for source %s is alive" % (self.args.source))
+			time.sleep(sleep_loop)
+		self.logger.info("Replica process for source %s ended" % (self.args.source))
+	
+	def start_replica(self):
+		"""
+			The method starts a new replica process.
+			Is compulsory to specify a source name when running this method.
+		"""
+		if self.args.source == "*":
+			print("You must specify a source name using the argument --source")
+		else:
+			if self.args.debug:
+				self.run_replica()
+			else:
+				if self.config["log_dest"]  == 'stdout':
+					foreground = True
+				else:
+					foreground = False
+					print("Replica process for source %s started." % (self.args.source))
+					keep_fds = [self.logger_fds]
+					init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+					app_name = "%s_replica" % self.args.source
+					replica_daemon = Daemonize(app=app_name, pid=init_pid, action=self.run_replica, foreground=foreground , keep_fds=keep_fds)
+					replica_daemon.start()
 	
 	def show_status(self):
 		"""

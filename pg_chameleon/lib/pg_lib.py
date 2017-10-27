@@ -476,8 +476,6 @@ class pg_engine(object):
 		""" 
 			The method determines whether the specified type has to be overridden or not.
 			
-			:todo: check the table is correctly matched against the schema.
-			
 			:param column: the column dictionary extracted from the information_schema or built in the sql_parser class
 			:param schema: the schema name 
 			:param table: the table name 

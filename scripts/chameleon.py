@@ -17,7 +17,7 @@ commands = [
 	'update_schema_mappings',
 	'refresh_schema',
 	'sync_tables',
-	
+	'start_replica'
 	]
 
 command_help = """Available commands, """ + ','.join(commands)
