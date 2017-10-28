@@ -68,7 +68,7 @@ class replica_engine(object):
 		self.mysql_source.type_override = self.config["type_override"]
 		
 		
-	def stop_replica(self, signal, frame):
+	def terminate_replica(self, signal, frame):
 		"""
 			Stops gracefully the replica.
 		"""
@@ -311,7 +311,7 @@ class replica_engine(object):
 			It can be daemonised or run in foreground according with the --debug configuration or the log 
 			destination.
 		"""
-		signal.signal(signal.SIGINT, self.stop_replica)
+		signal.signal(signal.SIGINT, self.terminate_replica)
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
 		self.logger.info("Running the replica process for source %s " % (self.args.source))
 		self.read_daemon = Process(target=self.read_replica, name='read_replica')
@@ -340,11 +340,27 @@ class replica_engine(object):
 					foreground = False
 					print("Replica process for source %s started." % (self.args.source))
 					keep_fds = [self.logger_fds]
-					init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+					replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
 					app_name = "%s_replica" % self.args.source
-					replica_daemon = Daemonize(app=app_name, pid=init_pid, action=self.run_replica, foreground=foreground , keep_fds=keep_fds)
+					replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.run_replica, foreground=foreground , keep_fds=keep_fds)
 					replica_daemon.start()
 	
+	def stop_replica(self):
+		"""
+			The method reads the pid of the replica process for the given source and sends a SIGINT which 
+			tells the replica process to manage a graceful exit.
+		"""
+		replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+		try:
+			file_pid=open(replica_pid,'r')
+			pid=file_pid.read()
+			file_pid.close()
+			os.kill(int(pid),2)
+			print("Replica process signalled to stop")
+		except:
+			print("An error occurred when trying to signal the replica process")
+			
+		
 	def show_status(self):
 		"""
 			list the replica status using the configuration files and the replica catalogue
