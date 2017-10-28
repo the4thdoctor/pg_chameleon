@@ -1,6 +1,6 @@
 import pprint 
 import yaml
-import os
+import os, os.path
 import sys
 import time
 import signal
@@ -328,6 +328,8 @@ class replica_engine(object):
 			The method starts a new replica process.
 			Is compulsory to specify a source name when running this method.
 		"""
+		replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+				
 		if self.args.source == "*":
 			print("You must specify a source name using the argument --source")
 		else:
@@ -338,12 +340,16 @@ class replica_engine(object):
 					foreground = True
 				else:
 					foreground = False
-					print("Replica process for source %s started." % (self.args.source))
+					print("Starting the replica process for source %s" % (self.args.source))
 					keep_fds = [self.logger_fds]
-					replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+					
 					app_name = "%s_replica" % self.args.source
 					replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.run_replica, foreground=foreground , keep_fds=keep_fds)
-					replica_daemon.start()
+					try:
+						replica_daemon.start()
+					except:
+						print("The replica process is already started. Aborting the command.")
+				
 	
 	def stop_replica(self):
 		"""
@@ -351,15 +357,17 @@ class replica_engine(object):
 			tells the replica process to manage a graceful exit.
 		"""
 		replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
-		try:
-			file_pid=open(replica_pid,'r')
-			pid=file_pid.read()
-			file_pid.close()
-			os.kill(int(pid),2)
-			print("Replica process signalled to stop")
-		except:
-			print("An error occurred when trying to signal the replica process")
-			
+		if os.path.isfile(replica_pid):
+			try:
+				file_pid=open(replica_pid,'r')
+				pid=file_pid.read()
+				file_pid.close()
+				os.kill(int(pid),2)
+				print("Replica process signalled to stop")
+			except:
+				print("An error occurred when trying to signal the replica process")
+		else:
+			print("Couldn't complete the command. The pid file is not present in %s." % replica_pid)
 		
 	def show_status(self):
 		"""
