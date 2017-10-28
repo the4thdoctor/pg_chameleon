@@ -3,6 +3,7 @@ import yaml
 import os
 import sys
 import time
+import signal
 from shutil import copy
 from distutils.sysconfig import get_python_lib
 from tabulate import tabulate
@@ -10,7 +11,7 @@ from pg_chameleon import pg_engine, mysql_source
 import logging
 from logging.handlers  import TimedRotatingFileHandler
 from daemonize import Daemonize
-
+from multiprocessing import Process
 
 class replica_engine(object):
 	"""
@@ -67,7 +68,14 @@ class replica_engine(object):
 		self.mysql_source.type_override = self.config["type_override"]
 		
 		
-		
+	def stop_replica(self, signal, frame):
+		"""
+			Stops gracefully the replica.
+		"""
+		self.logger.info("Caught stop replica signal terminating daemons and ending the replica process.")
+		self.read_daemon.terminate()
+		self.replay_daemon.terminate()
+		sys.exit(0)
 		
 	def set_configuration_files(self):
 		""" 
@@ -278,18 +286,41 @@ class replica_engine(object):
 			print("You must specify a source name with the argument --source")
 		else:
 			self.pg_engine.update_schema_mappings()
+			
+			
+	def read_replica(self):
+		"""
+			The method reads the replica stream for the given source and stores the row images 
+			in the target postgresql database.
+		"""
+		while True:
+			self.logger.info("Reading replica for for source %s " % (self.args.source))
+			time.sleep(self.sleep_loop)
 	
+	def replay_replica(self):
+		"""
+			The method replays the row images stored in the target postgresql database.
+		"""
+		while True:
+			self.logger.info("Replaying data changes for source %s " % (self.args.source))
+			time.sleep(self.sleep_loop)
+			
 	def run_replica(self):
 		"""
 			This method is the method which manages the two separate processes using the multiprocess library.
 			It can be daemonised or run in foreground according with the --debug configuration or the log 
 			destination.
 		"""
-		sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
+		signal.signal(signal.SIGINT, self.stop_replica)
+		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
 		self.logger.info("Running the replica process for source %s " % (self.args.source))
+		self.read_daemon = Process(target=self.read_replica, name='read_replica')
+		self.replay_daemon = Process(target=self.replay_replica, name='replay_replica')
+		self.read_daemon.start()
+		self.replay_daemon.start()
 		while True:
 			self.logger.info("Replica process for source %s is alive" % (self.args.source))
-			time.sleep(sleep_loop)
+			time.sleep(self.sleep_loop)
 		self.logger.info("Replica process for source %s ended" % (self.args.source))
 	
 	def start_replica(self):
