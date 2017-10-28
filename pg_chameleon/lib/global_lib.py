@@ -319,7 +319,20 @@ class replica_engine(object):
 		self.read_daemon.start()
 		self.replay_daemon.start()
 		while True:
-			self.logger.info("Replica process for source %s is alive" % (self.args.source))
+			read_alive = self.read_daemon.is_alive()
+			replay_alive = self.replay_daemon.is_alive()
+			if  read_alive and replay_alive:
+				self.logger.debug("Replica process for source %s is running" % (self.args.source))
+			else:
+				self.logger.error("Read process alive: %s - Replay process alive: %s" % (read_alive, replay_alive, ))
+				
+				if read_alive:
+					self.read_daemon.terminate()
+					self.logger.error("Replay daemon crashed. Terminating the read daemon.")
+				if replay_alive:
+					self.replay_daemon.terminate()
+					self.logger.error("Read daemon crashed. Terminating the replay daemon.")
+				break
 			time.sleep(self.sleep_loop)
 		self.logger.info("Replica process for source %s ended" % (self.args.source))
 	
