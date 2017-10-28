@@ -1,7 +1,14 @@
+import time
 import sys
 import io
 import pymysql
 import codecs
+import binascii
+from pymysqlreplication import BinLogStreamReader
+from pymysqlreplication.event import QueryEvent
+from pymysqlreplication.row_event import DeleteRowsEvent,UpdateRowsEvent,WriteRowsEvent
+from pymysqlreplication.event import RotateEvent
+from pg_chameleon import sql_token
 from os import remove
 
 class mysql_source(object):
@@ -30,15 +37,15 @@ class mysql_source(object):
 			The connection is made using the dictionary type cursor factory, which is buffered.
 		"""
 		db_conn = self.source_config["db_conn"]
-		db_conn = {key:str(value) for key, value in db_conn.items()}
+		self.db_conn = {key:str(value) for key, value in db_conn.items()}
 		self.conn_buffered=pymysql.connect(
-			host = db_conn["host"],
-			user = db_conn["user"],
-			password = db_conn["password"],
-			charset = db_conn["charset"],
+			host = self.db_conn["host"],
+			user = self.db_conn["user"],
+			password = self.db_conn["password"],
+			charset = self.db_conn["charset"],
 			cursorclass=pymysql.cursors.DictCursor
 		)
-		self.charset = db_conn["charset"]
+		self.charset = self.db_conn["charset"]
 		self.cursor_buffered = self.conn_buffered.cursor()
 		self.cursor_buffered_fallback = self.conn_buffered.cursor()
 	
@@ -573,6 +580,22 @@ class mysql_source(object):
 				sys.exit(3)
 		self.copy_max_memory = copy_max_memory
 	
+	def __init_read_replica(self):
+		"""
+			The method calls the pre-steps required by the read replica method.
+			
+		"""
+		self.source_config = self.sources[self.source]
+		self.my_server_id = self.source_config["my_server_id"]
+		self.limit_tables = self.source_config["limit_tables"]
+		self.skip_tables = self.source_config["skip_tables"]
+		self.hexify = [] + self.hexify_always
+		self.connect_db_buffered()
+		self.pg_engine.connect_db()
+		self.schema_mappings = self.pg_engine.get_schema_mappings()
+		self.schema_replica = [schema for schema in self.schema_mappings]
+		
+	
 	def init_sync(self):
 		"""
 			The method calls the common steps required to initialise the database connections and
@@ -587,6 +610,7 @@ class mysql_source(object):
 		self.connect_db_buffered()
 		self.pg_engine.connect_db()
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
+		
 	
 	def refresh_schema(self):
 		"""
@@ -649,6 +673,306 @@ class mysql_source(object):
 			self.pg_engine.set_source_status("error")
 			raise
 	
+	def get_table_type_map(self):
+		"""
+			The method builds a dictionary with a key per each schema replicated.
+			Each key maps a dictionary with the schema's tables stored as keys and the column/type mappings.
+			The dictionary is used in the read_replica method, to determine whether a field requires hexadecimal conversion.
+		"""
+		table_type_map = {}
+		table_map = {}
+		self.logger.debug("collecting table type map")
+		for schema in self.schema_replica:
+			sql_tables = """	
+				SELECT 
+					table_schema,
+					table_name
+				FROM 
+					information_schema.TABLES 
+				WHERE 
+						table_type='BASE TABLE' 
+					AND	table_schema=%s
+				;
+			"""
+			self.cursor_buffered.execute(sql_tables, (schema, ))
+			table_list = self.cursor_buffered.fetchall()
+			
+			for table in table_list:
+				column_type = {}
+				sql_columns = """
+					SELECT 
+						column_name,
+						data_type
+					FROM 
+						information_schema.COLUMNS 
+					WHERE 
+							table_schema=%s
+						AND table_name=%s
+					ORDER BY 
+						ordinal_position
+					;
+				"""
+				self.cursor_buffered.execute(sql_columns, (table["table_schema"], table["table_name"]))
+				column_data = self.cursor_buffered.fetchall()
+				for column in column_data:
+					column_type[column["column_name"]] = column["data_type"]
+				table_map[table["table_name"]] = column_type
+			table_type_map[schema] = table_map
+			table_map = {}
+		return table_type_map
+	
+	
+	def read_replica_stream(self, batch_data):
+		"""
+		Stream the replica using the batch data. This method evaluates the different events streamed from MySQL 
+		and manages them accordingly. The BinLogStreamReader function is called with the only_event parameter which
+		restricts the event type received by the streamer.
+		The events managed are the following.
+		RotateEvent which happens whether mysql restarts or the binary log file changes.
+		QueryEvent which happens when a new row image comes in (BEGIN statement) or a DDL is executed.
+		The BEGIN is always skipped. The DDL is parsed using the sql_token class. 
+		[Write,Update,Delete]RowEvents are the row images pulled from the mysql replica.
+		
+		The RotateEvent and the QueryEvent cause the batch to be closed.
+		
+		The for loop reads the row events, builds the dictionary carrying informations like the destination schema,
+		the 	binlog coordinates and store them into the group_insert list.
+		When the number of events exceeds the replica_batch_size the group_insert is written into PostgreSQL.
+		The batch is not closed in that case and the method exits only if there are no more rows available in the stream.
+		Therefore the replica_batch_size is just the maximum size of the single insert and the size of replayed batch on PostgreSQL.
+		The binlog switch or a captured DDL determines whether a batch is closed and processed.
+		
+		The update row event stores in a separate key event_update the row image before the update. This is required
+		to allow updates where the primary key is updated as well.
+		
+		Each row event is scanned for data types requiring conversion to hex string.
+		
+		:param batch_data: The list with the master's batch data.
+		:param pg_engine: The postgresql engine object required for writing the rows in the log tables
+		"""
+		table_type_map = self.get_table_type_map()	
+		#inc_tables = self.pg_engine.get_inconsistent_tables()
+		close_batch = False
+		master_data = {}
+		group_insert = []
+		id_batch = batch_data[0][0]
+		log_file = batch_data[0][1]
+		log_position = batch_data[0][2]
+		log_table = batch_data[0][3]
+		my_stream = BinLogStreamReader(
+			connection_settings = self.db_conn, 
+			server_id = self.my_server_id, 
+			only_events = [RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent], 
+			log_file = log_file, 
+			log_pos = log_position, 
+			resume_stream = True, 
+			only_schemas = [self.schema_replica], 
+			only_tables = self.limit_tables, 
+			#skip_tables = self.skip_tables, 
+		)
+		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
+		for binlogevent in my_stream:
+			if isinstance(binlogevent, RotateEvent):
+				
+				event_time = binlogevent.timestamp
+				binlogfile = binlogevent.next_binlog
+				position = binlogevent.position
+				self.logger.debug("ROTATE EVENT - binlogfile %s, position %s. " % (binlogfile, position))
+				if log_file != binlogfile:
+					close_batch = True
+				if close_batch:
+					if log_file!=binlogfile:
+						master_data["File"]=binlogfile
+						master_data["Position"]=position
+						master_data["Time"]=event_time
+					if len(group_insert)>0:
+						pg_engine.write_batch(group_insert)
+						group_insert=[]
+					my_stream.close()
+					return [master_data, close_batch]
+			elif isinstance(binlogevent, QueryEvent):
+				event_time = binlogevent.timestamp
+				try:
+					query_schema = binlogevent.schema.decode()
+				except:
+					query_schema = binlogevent.schema
+				if binlogevent.query.strip().upper() not in self.stat_skip and query_schema == self.my_schema: 
+					log_position = binlogevent.packet.log_pos
+					master_data["File"] = binlogfile
+					master_data["Position"] = log_position
+					master_data["Time"] = event_time
+					if len(group_insert)>0:
+						pg_engine.write_batch(group_insert)
+						group_insert=[]
+					self.logger.info("QUERY EVENT - binlogfile %s, position %s.\n--------\n%s\n-------- " % (binlogfile, log_position, binlogevent.query))
+					self.sql_token.parse_sql(binlogevent.query)
+					for token in self.sql_token.tokenised:
+						write_ddl = True
+						table_name = token["name"] 
+						if table_name in inc_tables:
+							write_ddl = False
+							log_seq = int(log_file.split('.')[1])
+							log_pos = int(log_position)
+							table_dic = inc_tables[table_name]
+							if log_seq > table_dic["log_seq"]:
+								write_ddl = True
+							elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
+								write_ddl = True
+							if write_ddl:
+								self.logger.info("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
+								pg_engine.set_consistent_table(table_name)
+								inc_tables = pg_engine.get_inconsistent_tables()
+						if write_ddl:
+							self.get_table_metadata()
+							pg_engine.table_metadata = self.my_tables
+							event_time = binlogevent.timestamp
+							self.logger.debug("TOKEN: %s" % (token))
+							if len(token)>0:
+								query_data={
+									"binlog":log_file, 
+									"logpos":log_position, 
+									"schema": schema_name, 
+									"batch_id":id_batch, 
+									"log_table":log_table
+								}
+								pg_engine.write_ddl(token, query_data)
+								close_batch=True
+							
+						
+					self.sql_token.reset_lists()
+					if close_batch:
+						my_stream.close()
+						return [master_data, close_batch]
+			else:
+				size_insert=0
+				for row in binlogevent.rows:
+					add_row = True
+					log_file=binlogfile
+					log_position=binlogevent.packet.log_pos
+					table_name=binlogevent.table
+					event_time=binlogevent.timestamp
+					if table_name in inc_tables:
+						table_consistent = False
+						log_seq = int(log_file.split('.')[1])
+						log_pos = int(log_position)
+						table_dic = inc_tables[table_name]
+						if log_seq > table_dic["log_seq"]:
+							table_consistent = True
+						elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
+							table_consistent = True
+							
+						if table_consistent:
+							add_row = True
+							self.logger.debug("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
+							pg_engine.set_consistent_table(table_name)
+							inc_tables = pg_engine.get_inconsistent_tables()
+						else:
+							add_row = False
+							
+					column_map=table_type_map[table_name]
+					global_data={
+										"binlog":log_file, 
+										"logpos":log_position, 
+										"schema": schema_name, 
+										"table": table_name, 
+										"batch_id":id_batch, 
+										"log_table":log_table, 
+										"event_time":event_time
+									}
+					event_data={}
+					event_update={}
+					if add_row:
+						event_insert = {}
+						if isinstance(binlogevent, DeleteRowsEvent):
+							global_data["action"] = "delete"
+							event_data=row["values"]
+						elif isinstance(binlogevent, UpdateRowsEvent):
+							global_data["action"] = "update"
+							event_data=row["after_values"]
+							event_update=row["before_values"]
+						elif isinstance(binlogevent, WriteRowsEvent):
+							global_data["action"] = "insert"
+							event_data=row["values"]
+						for column_name in event_data:
+							column_type=column_map[column_name]
+							if column_type in self.hexify and event_data[column_name]:
+								event_data[column_name]=binascii.hexlify(event_data[column_name]).decode()
+							elif column_type in self.hexify and isinstance(event_data[column_name], bytes):
+								event_data[column_name] = ''
+						for column_name in event_update:
+							column_type=column_map[column_name]
+							if column_type in self.hexify and event_update[column_name]:
+								event_update[column_name]=binascii.hexlify(event_update[column_name]).decode()
+							elif column_type in self.hexify and isinstance(event_update[column_name], bytes):
+								event_update[column_name] = ''
+						event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
+						size_insert += len(str(event_insert))
+						group_insert.append(event_insert)
+						
+					master_data["File"]=log_file
+					master_data["Position"]=log_position
+					master_data["Time"]=event_time
+					
+					if len(group_insert)>=self.replica_batch_size:
+						self.logger.debug("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
+						self.logger.debug("Master coordinates: %s" % (master_data, ))
+						pg_engine.write_batch(group_insert)
+						size_insert=0
+						group_insert=[]
+						close_batch=True
+						
+						
+						
+		my_stream.close()
+		if len(group_insert)>0:
+			self.logger.debug("writing the last %s events" % (len(group_insert), ))
+			pg_engine.write_batch(group_insert)
+			close_batch=True
+		
+		return [master_data, close_batch]
+	
+	
+	def read_replica(self):
+		"""
+			The method gets the batch data from PostgreSQL. 
+			If the batch data is not empty then method read_replica_stream is executed to get the rows from 
+			the mysql replica stored into the PostgreSQL database.
+			When the method exits the replica_data list is decomposed in the master_data (log name, position and last event's timestamp).
+			If the flag close_batch is set then the master status is saved in PostgreSQL the batch id  returned by the method is 
+			is saved in the class variable id_batch.
+			This variable is used to determine whether the old batch should be closed or not. 
+			If the variable is not empty then the previous batch gets closed with a simple update of the processed flag.
+		
+		"""
+		
+		
+		self.__init_read_replica()
+		self.pg_engine.set_source_status("running")
+		
+		batch_data = self.pg_engine.get_batch_data()
+		if len(batch_data)>0:
+			id_batch=batch_data[0][0]
+			replica_data=self.read_replica_stream(batch_data)
+			master_data=replica_data[0]
+			close_batch=replica_data[1]
+			if close_batch:
+				self.master_status=[]
+				self.master_status.append(master_data)
+				self.logger.debug("trying to save the master data...")
+				next_id_batch=self.pg_engine.save_master_status(self.master_status)
+				if next_id_batch:
+					self.logger.debug("new batch created, saving id_batch %s in class variable" % (id_batch))
+					self.id_batch=id_batch
+				else:
+					self.logger.debug("batch not saved. using old id_batch %s" % (self.id_batch))
+				if self.id_batch:
+					self.logger.debug("updating processed flag for id_batch %s", (id_batch))
+					self.pg_engine.set_batch_processed(id_batch)
+					self.id_batch=None
+		
+
+		self.disconnect_db_buffered()
+		
 		
 	def init_replica(self):
 		"""

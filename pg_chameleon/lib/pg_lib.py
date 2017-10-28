@@ -103,12 +103,11 @@ class pg_engine(object):
 			self.pgsql_conn .set_client_encoding(self.dest_conn["charset"])
 			self.set_autocommit_db(True)
 			self.pgsql_cur = self.pgsql_conn .cursor()
-			
 		elif not self.dest_conn:
 			self.logger.error("Undefined database connection string. Exiting now.")
 			sys.exit()
 		elif self.pgsql_conn:
-			self.logger.warning("There is already a database connection active.")
+			self.logger.debug("There is already a database connection active.")
 			
 
 	def disconnect_db(self):
@@ -150,6 +149,47 @@ class pg_engine(object):
 		
 		else:
 			self.logger.warning("The replica schema is already present.")
+	
+	def get_batch_data(self):
+		"""
+			The method updates the batch status to started for the given source_id and returns the 
+			batch informations.
+			
+			:return: psycopg2 fetchall results without any manipulation
+			:rtype: psycopg2 tuple
+			
+		"""
+		sql_batch="""
+			WITH t_created AS
+				(
+					SELECT 
+						max(ts_created) AS ts_created
+					FROM 
+						sch_chameleon.t_replica_batch  
+					WHERE 
+							NOT b_processed
+						AND	NOT b_replayed
+						AND	i_id_source=%s
+				)
+			UPDATE sch_chameleon.t_replica_batch
+			SET 
+				b_started=True
+			FROM 
+				t_created
+			WHERE
+					t_replica_batch.ts_created=t_created.ts_created
+				AND	i_id_source=%s
+			RETURNING
+				i_id_batch,
+				t_binlog_name,
+				i_binlog_position,
+				(SELECT v_log_table[1] from sch_chameleon.t_sources WHERE i_id_source=%s) as v_log_table
+				
+			;
+		"""
+		self.pgsql_cur.execute(sql_batch, (self.i_id_source, self.i_id_source, self.i_id_source, ))
+		return self.pgsql_cur.fetchall()
+	
 	
 	def drop_replica_schema(self):
 		"""

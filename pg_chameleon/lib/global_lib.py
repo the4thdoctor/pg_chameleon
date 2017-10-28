@@ -295,6 +295,7 @@ class replica_engine(object):
 		"""
 		while True:
 			self.logger.info("Reading replica for for source %s " % (self.args.source))
+			self.mysql_source.read_replica()
 			time.sleep(self.sleep_loop)
 	
 	def replay_replica(self):
