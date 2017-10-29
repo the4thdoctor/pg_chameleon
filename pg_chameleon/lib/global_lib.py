@@ -75,6 +75,8 @@ class replica_engine(object):
 		self.logger.info("Caught stop replica signal terminating daemons and ending the replica process.")
 		self.read_daemon.terminate()
 		self.replay_daemon.terminate()
+		self.pg_engine.connect_db()
+		self.pg_engine.set_source_status("stopped")
 		sys.exit(0)
 		
 	def set_configuration_files(self):
@@ -333,6 +335,8 @@ class replica_engine(object):
 				if replay_alive:
 					self.replay_daemon.terminate()
 					self.logger.error("Read daemon crashed. Terminating the replay daemon.")
+				self.pg_engine.connect_db()
+				self.pg_engine.set_source_status("error")
 				break
 			time.sleep(self.sleep_loop)
 		self.logger.info("Replica process for source %s ended" % (self.args.source))

@@ -1,3 +1,4 @@
+import io
 import psycopg2
 from psycopg2 import sql
 import sys
@@ -149,6 +150,105 @@ class pg_engine(object):
 		
 		else:
 			self.logger.warning("The replica schema is already present.")
+	
+	def get_inconsistent_tables(self):
+		"""
+			The method collects the tables in not consistent state.
+			The informations are stored in a dictionary which key is the table's name.
+			The dictionary is used in the read replica loop to determine wheter the table's modifications
+			should be ignored because in not consistent state.
+			
+			:return: a dictionary with the tables in inconsistent state and their snapshot coordinates.
+			:rtype: dictionary
+		"""
+		sql_get = """
+			SELECT
+				v_schema_name,				
+				v_table_name,
+				t_binlog_name,
+				i_binlog_position
+			FROM
+				sch_chameleon.t_replica_tables
+			WHERE
+				t_binlog_name IS NOT NULL
+				AND i_binlog_position IS NOT NULL
+				AND i_id_source = %s
+		;
+		"""
+		inc_dic = {}
+		self.pgsql_cur.execute(sql_get, (self.i_id_source, ))
+		inc_results = self.pgsql_cur.fetchall()
+		for table  in inc_results:
+			tab_dic = {}
+			tab_dic["schema"]  = table[0]
+			tab_dic["table"]  = table[1]
+			tab_dic["log_seq"]  = int(table[2].split('.')[1])
+			tab_dic["log_pos"]  = int(table[3])
+			inc_dic[table[1]] = tab_dic
+		return inc_dic
+	
+	def set_consistent_table(self, table, schema):
+		"""
+			The method set to NULL the  binlog name and position for the given table.
+			When the table is marked consistent the read replica loop reads and saves the table's row images.
+			
+			:param table: the table name
+		"""
+		sql_set = """
+			UPDATE sch_chameleon.t_replica_tables
+				SET 
+					t_binlog_name = NULL,
+					i_binlog_position = NULL
+			WHERE
+					i_id_source = %s
+				AND	v_table_name = %s
+				AND	v_schema_name = %s
+			;
+		"""
+		self.pgsql_cur.execute(sql_set, (self.i_id_source, table, schema))
+	
+	def write_ddl(self, token, query_data, table_metadata):
+		"""
+			The method writes the DDL built from the tokenised sql into PostgreSQL.
+			
+			:param token: the tokenised query
+			:param query_data: query's metadata (schema,binlog, etc.)
+		"""
+		print(table_metadata)
+		sql_path=" SET search_path="+self.dest_schema+";"
+		pg_ddl=sql_path+self.gen_query(token)
+		log_table=query_data["log_table"]
+		insert_vals=(	query_data["batch_id"], 
+								token["name"],  
+								query_data["schema"], 
+								query_data["binlog"], 
+								query_data["logpos"], 
+								pg_ddl
+							)
+		sql_insert="""
+			INSERT INTO sch_chameleon."""+log_table+"""
+				(
+					i_id_batch, 
+					v_table_name, 
+					v_schema_name, 
+					enm_binlog_event, 
+					t_binlog_name, 
+					i_binlog_position, 
+					t_query
+				)
+			VALUES
+				(
+					%s,
+					%s,
+					%s,
+					'ddl',
+					%s,
+					%s,
+					%s
+				)
+			;
+		"""
+		self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
 	
 	def get_batch_data(self):
 		"""
@@ -535,6 +635,87 @@ class pg_engine(object):
 		except KeyError:
 			column_type = self.type_dictionary[column["data_type"]]
 		return column_type
+	
+	def set_application_name(self, action=""):
+		"""
+			The method sets the application name in the replica using the variable self.pg_conn.global_conf.source_name,
+			Making simpler to find the replication processes. If the source name is not set then a generic PGCHAMELEON name is used.
+		"""
+		if self.source:
+			app_name = "[pg_chameleon] - source: %s, action: %s" % (self.source, action)
+		else:
+			app_name = "[pg_chameleon] -  action: %s" % (action) 
+		sql_app_name="""SET application_name=%s; """
+		self.pgsql_cur.execute(sql_app_name, (app_name , ))
+		
+	def write_batch(self, group_insert):
+		"""
+			Main method for adding the batch data in the log tables. 
+			The row data from group_insert are mogrified in CSV format and stored in
+			the string like object csv_file.
+			
+			psycopg2's copy expert is used to store the event data in PostgreSQL.
+			
+			Should any error occur the procedure fallsback to insert_batch.
+			
+			:param group_insert: the event data built in mysql_engine
+		"""
+		csv_file=io.StringIO()
+		self.set_application_name("writing batch")
+		insert_list=[]
+		for row_data in group_insert:
+			global_data=row_data["global_data"]
+			event_data=row_data["event_data"]
+			event_update=row_data["event_update"]
+			log_table=global_data["log_table"]
+			insert_list.append(self.pg_conn.pgsql_cur.mogrify("%s,%s,%s,%s,%s,%s,%s,%s,%s" ,  (
+						global_data["batch_id"], 
+						global_data["table"],  
+						self.dest_schema, 
+						global_data["action"], 
+						global_data["binlog"], 
+						global_data["logpos"], 
+						json.dumps(event_data, cls=pg_encoder), 
+						json.dumps(event_update, cls=pg_encoder), 
+						global_data["event_time"], 
+						
+					)
+				)
+			)
+											
+		csv_data=b"\n".join(insert_list ).decode()
+		csv_file.write(csv_data)
+		csv_file.seek(0)
+		try:
+			
+			sql_copy="""
+				COPY "sch_chameleon"."""+log_table+""" 
+					(
+						i_id_batch, 
+						v_table_name, 
+						v_schema_name, 
+						enm_binlog_event, 
+						t_binlog_name, 
+						i_binlog_position, 
+						jsb_event_data,
+						jsb_event_update,
+						i_my_event_time
+					) 
+				FROM 
+					STDIN 
+					WITH NULL 'NULL' 
+					CSV QUOTE '''' 
+					DELIMITER ',' 
+					ESCAPE '''' 
+				;
+			"""
+			self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
+		except psycopg2.Error as e:
+			self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+			self.logger.error(csv_data)
+			self.logger.error("fallback to inserts")
+			self.insert_batch(group_insert)
+		self.set_application_name("idle")
 	
 	def create_table(self,  table_metadata,table_name,  schema):
 		"""

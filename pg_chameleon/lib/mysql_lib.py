@@ -17,6 +17,7 @@ class mysql_source(object):
 			Class constructor, the method sets the class variables and configure the
 			operating parameters from the args provided t the class.
 		"""
+		self.statement_skip = ['BEGIN', 'COMMIT']
 		self.schema_tables = {}
 		self.schema_mappings = {}
 		self.schema_loading = {}
@@ -764,17 +765,21 @@ class mysql_source(object):
 		Each row event is scanned for data types requiring conversion to hex string.
 		
 		:param batch_data: The list with the master's batch data.
-		:param pg_engine: The postgresql engine object required for writing the rows in the log tables
+		:return: the batch's data composed by binlog name, binlog position and last event timestamp read from the mysql replica stream.
+		:rtype: dictionary
 		"""
+		sql_tokeniser = sql_token()
 		table_type_map = self.get_table_type_map()	
-		#inc_tables = self.pg_engine.get_inconsistent_tables()
+		inc_tables = self.pg_engine.get_inconsistent_tables()
 		close_batch = False
 		master_data = {}
 		group_insert = []
+		
 		id_batch = batch_data[0][0]
 		log_file = batch_data[0][1]
 		log_position = batch_data[0][2]
 		log_table = batch_data[0][3]
+		
 		my_stream = BinLogStreamReader(
 			connection_settings = self.replica_conn, 
 			server_id = self.my_server_id, 
@@ -782,14 +787,14 @@ class mysql_source(object):
 			log_file = log_file, 
 			log_pos = log_position, 
 			resume_stream = True, 
-			only_schemas = [self.schema_replica], 
+			only_schemas = self.schema_replica, 
 			only_tables = self.limit_tables, 
-			#skip_tables = self.skip_tables, 
+			ignored_tables = self.skip_tables, 
 		)
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
+		
 		for binlogevent in my_stream:
 			if isinstance(binlogevent, RotateEvent):
-				
 				event_time = binlogevent.timestamp
 				binlogfile = binlogevent.next_binlog
 				position = binlogevent.position
@@ -802,27 +807,28 @@ class mysql_source(object):
 						master_data["Position"]=position
 						master_data["Time"]=event_time
 					if len(group_insert)>0:
-						pg_engine.write_batch(group_insert)
+						self.pg_engine.write_batch(group_insert)
 						group_insert=[]
 					my_stream.close()
 					return [master_data, close_batch]
 			elif isinstance(binlogevent, QueryEvent):
 				event_time = binlogevent.timestamp
 				try:
-					query_schema = binlogevent.schema.decode()
+					schema_query = binlogevent.schema.decode()
 				except:
-					query_schema = binlogevent.schema
-				if binlogevent.query.strip().upper() not in self.stat_skip and query_schema == self.my_schema: 
+					schema_query = binlogevent.schema
+				destination_schema = self.schema_mappings[schema_query]
+				if binlogevent.query.strip().upper() not in self.statement_skip and schema_query in self.schema_mappings: 
 					log_position = binlogevent.packet.log_pos
 					master_data["File"] = binlogfile
 					master_data["Position"] = log_position
 					master_data["Time"] = event_time
 					if len(group_insert)>0:
-						pg_engine.write_batch(group_insert)
+						self.pg_engine.write_batch(group_insert)
 						group_insert=[]
 					self.logger.info("QUERY EVENT - binlogfile %s, position %s.\n--------\n%s\n-------- " % (binlogfile, log_position, binlogevent.query))
-					self.sql_token.parse_sql(binlogevent.query)
-					for token in self.sql_token.tokenised:
+					sql_tokeniser.parse_sql(binlogevent.query)
+					for token in sql_tokeniser.tokenised:
 						write_ddl = True
 						table_name = token["name"] 
 						if table_name in inc_tables:
@@ -836,22 +842,22 @@ class mysql_source(object):
 								write_ddl = True
 							if write_ddl:
 								self.logger.info("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
-								pg_engine.set_consistent_table(table_name)
-								inc_tables = pg_engine.get_inconsistent_tables()
+								self.pg_engine.set_consistent_table(table_name, destination_schema)
+								inc_tables = self.pg_engine.get_inconsistent_tables()
 						if write_ddl:
-							self.get_table_metadata()
-							pg_engine.table_metadata = self.my_tables
+							table_metadata = self.get_table_metadata(table_name, schema_query)
 							event_time = binlogevent.timestamp
 							self.logger.debug("TOKEN: %s" % (token))
+							
 							if len(token)>0:
 								query_data={
 									"binlog":log_file, 
 									"logpos":log_position, 
-									"schema": schema_name, 
+									"schema": destination_schema, 
 									"batch_id":id_batch, 
 									"log_table":log_table
 								}
-								pg_engine.write_ddl(token, query_data)
+								self.pg_engine.write_ddl(token, query_data, table_metadata)
 								close_batch=True
 							
 						
@@ -960,8 +966,6 @@ class mysql_source(object):
 			If the variable is not empty then the previous batch gets closed with a simple update of the processed flag.
 		
 		"""
-		
-		
 		self.__init_read_replica()
 		self.pg_engine.set_source_status("running")
 		
