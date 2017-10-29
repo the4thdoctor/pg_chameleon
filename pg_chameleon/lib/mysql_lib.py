@@ -39,12 +39,15 @@ class mysql_source(object):
 		db_conn = self.source_config["db_conn"]
 		db_conn = {key:str(value) for key, value in db_conn.items()}
 		db_conn["port"] = int(db_conn["port"])
+		db_conn["connect_timeout"] = int(db_conn["connect_timeout"])
+		
 		self.conn_buffered=pymysql.connect(
 			host = db_conn["host"],
 			user = db_conn["user"],
 			port = db_conn["port"],
 			password = db_conn["password"],
 			charset = db_conn["charset"],
+			connect_timeout = db_conn["connect_timeout"], 
 			cursorclass=pymysql.cursors.DictCursor
 		)
 		self.charset = db_conn["charset"]
@@ -69,12 +72,14 @@ class mysql_source(object):
 		db_conn = self.source_config["db_conn"]
 		db_conn = {key:str(value) for key, value in db_conn.items()}
 		db_conn["port"] = int(db_conn["port"])
+		db_conn["connect_timeout"] = int(db_conn["connect_timeout"])
 		self.conn_unbuffered=pymysql.connect(
 			host = db_conn["host"],
 			user = db_conn["user"],
 			port = db_conn["port"],
 			password = db_conn["password"],
 			charset = db_conn["charset"],
+			connect_timeout = db_conn["connect_timeout"], 
 			cursorclass=pymysql.cursors.SSCursor
 		)
 		self.charset = db_conn["charset"]

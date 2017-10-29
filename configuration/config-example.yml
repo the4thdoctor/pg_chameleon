@@ -26,6 +26,7 @@ sources:
                 password: "never_commit_passwords"
                 database:  "db_replica"
                 charset: 'utf8'
+                connect_timeout: 10
         schema_mappings:
                 my_schema: dest_schema
         limit_tables:
@@ -42,6 +43,7 @@ sources:
         copy_max_memory: 300M
         copy_mode: 'file'  
         out_dir: /tmp
+        sleep_loop: 1
 
 
 # type_override allows the user to override the default type conversion into a different one. 
