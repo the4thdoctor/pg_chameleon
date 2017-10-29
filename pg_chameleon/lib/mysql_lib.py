@@ -37,15 +37,17 @@ class mysql_source(object):
 			The connection is made using the dictionary type cursor factory, which is buffered.
 		"""
 		db_conn = self.source_config["db_conn"]
-		self.db_conn = {key:str(value) for key, value in db_conn.items()}
+		db_conn = {key:str(value) for key, value in db_conn.items()}
+		db_conn["port"] = int(db_conn["port"])
 		self.conn_buffered=pymysql.connect(
-			host = self.db_conn["host"],
-			user = self.db_conn["user"],
-			password = self.db_conn["password"],
-			charset = self.db_conn["charset"],
+			host = db_conn["host"],
+			user = db_conn["user"],
+			port = db_conn["port"],
+			password = db_conn["password"],
+			charset = db_conn["charset"],
 			cursorclass=pymysql.cursors.DictCursor
 		)
-		self.charset = self.db_conn["charset"]
+		self.charset = db_conn["charset"]
 		self.cursor_buffered = self.conn_buffered.cursor()
 		self.cursor_buffered_fallback = self.conn_buffered.cursor()
 	
@@ -66,9 +68,11 @@ class mysql_source(object):
 		"""
 		db_conn = self.source_config["db_conn"]
 		db_conn = {key:str(value) for key, value in db_conn.items()}
+		db_conn["port"] = int(db_conn["port"])
 		self.conn_unbuffered=pymysql.connect(
 			host = db_conn["host"],
 			user = db_conn["user"],
+			port = db_conn["port"],
 			password = db_conn["password"],
 			charset = db_conn["charset"],
 			cursorclass=pymysql.cursors.SSCursor
@@ -585,6 +589,7 @@ class mysql_source(object):
 			The method calls the pre-steps required by the read replica method.
 			
 		"""
+		self.replica_conn = {}
 		self.source_config = self.sources[self.source]
 		self.my_server_id = self.source_config["my_server_id"]
 		self.limit_tables = self.source_config["limit_tables"]
@@ -594,6 +599,12 @@ class mysql_source(object):
 		self.pg_engine.connect_db()
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
 		self.schema_replica = [schema for schema in self.schema_mappings]
+		db_conn = self.source_config["db_conn"]
+		self.replica_conn["host"] = str(db_conn["host"])
+		self.replica_conn["user"] = str(db_conn["user"])
+		self.replica_conn["passwd"] = str(db_conn["password"])
+		self.replica_conn["port"] = int(db_conn["port"])
+			
 		
 	
 	def init_sync(self):
@@ -760,7 +771,7 @@ class mysql_source(object):
 		log_position = batch_data[0][2]
 		log_table = batch_data[0][3]
 		my_stream = BinLogStreamReader(
-			connection_settings = self.db_conn, 
+			connection_settings = self.replica_conn, 
 			server_id = self.my_server_id, 
 			only_events = [RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent], 
 			log_file = log_file, 
