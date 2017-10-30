@@ -108,12 +108,12 @@ class sql_token(object):
 				col_dic["numeric_scale"]=numeric_scale
 			nullcons=self.m_nulls.search(col_def)
 			autoinc=self.m_autoinc.search(col_def)
-			pkey_list=self.pkey_cols.split(',')
+			pkey_list=self.pkey_cols
 			col_dic["is_nullable"]="YES"
 			if col_dic["column_name"] in pkey_list:
 				col_dic["is_nullable"]="NO"
 			elif nullcons:
-				pkey_list=[cln.strip() for cln in pkey_list]
+				#pkey_list=[cln.strip() for cln in pkey_list]
 				if nullcons.group(0)=="NOT NULL":
 					col_dic["is_nullable"]="NO"
 				
@@ -186,9 +186,10 @@ class sql_token(object):
 		idx=self.m_idx.findall(inner_stat)
 
 		if pk_match:
-			key_dic["index_name"]='PRIMARY'
-			idx_cols = (pk_match.group(1).strip().split()[0]).replace('`', '')
-			key_dic["index_columns"] = self.quote_cols(idx_cols)
+			key_dic["index_name"] = 'PRIMARY'
+			index_columns = (pk_match.group(1).strip().split(','))
+			idx_cols = [(column.strip().split()[0]).replace('`', '') for column in index_columns if column.strip() != '']
+			key_dic["index_columns"] = idx_cols
 			key_dic["non_unique"]=0
 			self.pkey_cols = idx_cols
 			idx_list.append(dict(list(key_dic.items())))

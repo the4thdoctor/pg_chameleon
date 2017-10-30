@@ -71,10 +71,11 @@ CREATE TABLE film_text (
   FULLTEXT KEY idx_title_description (title,description)
 )ENGINE=InnoDB DEFAULT CHARSET=utf8
 """
-statement="""RENAME TABLE `sakila`.`test_partition` TO `sakila`.`_test_partition_old`, `_test_partition_new` TO `test_partition`;"""
+#statement="""RENAME TABLE `sakila`.`test_partition` TO `sakila`.`_test_partition_old`, `_test_partition_new` TO `test_partition`;"""
 #statement="""RENAME TABLE test_partition TO _test_partition_old, _test_partition_new TO test_partition; """
 #statement="""RENAME TABLE sakila.test_partition TO sakila._test_partition_old, sakila._test_partition_new TO sakila.test_partition ;"""
 #statement="""RENAME TABLE `sakila`.`test_partition` TO `sakila`.`_test_partition_old`, `sakila`.`_test_partition_new` TO `sakila`.`test_partition`;"""
+#statement = """create table blah(id integer(30) not null auto_increment, datevalue datetime,primary key (id,datevalue))"""
 token_sql=sql_token()
 token_sql.parse_sql(statement)
 print (token_sql.tokenised)

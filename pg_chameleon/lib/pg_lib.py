@@ -207,7 +207,8 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_set, (self.i_id_source, table, schema))
 	
-	def gen_query(self, token,  destination_schema):
+	
+	def generate_ddl(self, token,  destination_schema):
 		""" 
 			The method builds the DDL using the tokenised SQL stored in token.
 			The supported commands are 
@@ -219,13 +220,14 @@ class pg_engine(object):
 			DROP PRIMARY KEY
 			
 			:param token: A dictionary with the tokenised sql statement
+			:param destination_schema: The ddl destination schema mapped from the mysql corresponding schema
 			:return: query the DDL query in the PostgreSQL dialect
 			:rtype: string
 			
 		"""
 		query=""
 		if token["command"] =="RENAME TABLE":
-			query = """ALTER TABLE "%s" RENAME TO "%s" """ % (token["name"], token["new_name"])	
+			query = """ALTER TABLE "%s"."%s" RENAME TO "%s" """ % (destination_schema, token["name"], token["new_name"])	
 			try:
 				self.table_metadata[token["new_name"]]
 				self.store_table(token["new_name"])
@@ -237,23 +239,22 @@ class pg_engine(object):
 					query = ""
 			
 		elif token["command"] =="DROP TABLE":
-			query=" %(command)s IF EXISTS \"%(name)s\";" % token
+			query=""" DROP TABLE IF EXISTS "%s"."%s";""" % (destination_schema, token["name"])	
 		elif token["command"] =="TRUNCATE":
-			query=" %(command)s TABLE \"%(name)s\" CASCADE;" % token
+			query=""" TRUNCATE TABLE "%s"."%s" CASCADE;""" % (destination_schema, token["name"])	
+			
 		elif token["command"] =="CREATE TABLE":
-			table_metadata={}
-			table_metadata["columns"]=token["columns"]
-			table_metadata["name"]=token["name"]
-			table_metadata["indices"]=token["indices"]
-			self.table_metadata={}
-			self.table_metadata[token["name"]]=table_metadata
-			self.build_tab_ddl()
-			self.build_idx_ddl()
-			query_type=' '.join(self.type_ddl[token["name"]])
-			query_table=self.table_ddl[token["name"]]
-			query_idx=' '.join(self.idx_ddl[token["name"]])
-			query=query_type+query_table+query_idx
-			self.store_table(token["name"])
+			table_metadata = token["columns"]
+			table_name = token["name"]
+			index_data = token["indices"]
+			table_ddl = self.build_create_table(table_metadata,  table_name,  destination_schema, temporary_schema=False)
+			index_ddl = self.build_create_index( destination_schema, table_name, index_data)
+			#store_table(self, schema, table, table_pkey, master_status)
+			#query_type=' '.join(self.type_ddl[token["name"]])
+			#query_table=self.table_ddl[token["name"]]
+			#query_idx=' '.join(self.idx_ddl[token["name"]])
+			#query=query_type+query_table+query_idx
+			#self.store_table(token["name"])
 		elif token["command"] == "ALTER TABLE":
 			query=self.build_alter_table(token)
 		elif token["command"] == "DROP PRIMARY KEY":
@@ -271,7 +272,7 @@ class pg_engine(object):
 			:param table_metadata: the table's metadata retrieved from mysql. is an empty tuple if the statement is a drop table
 			:param destination_schema: the postgresql destination schema determined using the schema mappings.
 		"""
-		pg_ddl = self.gen_query(token,  destination_schema)
+		pg_ddl = self.generate_ddl(token, destination_schema)
 		log_table = query_data["log_table"]
 		insert_vals = (	
 				query_data["batch_id"], 
@@ -281,7 +282,6 @@ class pg_engine(object):
 				query_data["logpos"], 
 				pg_ddl
 			)
-		#sql_dest_to_tmp = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(schema_destination), sql.Identifier(schema_temporary))
 		sql_insert=sql.SQL("""
 			INSERT INTO "sch_chameleon".{}
 				(
@@ -540,7 +540,7 @@ class pg_engine(object):
 		self.logger.debug("Found origin's replication schemas %s" % ', '.join(schema_list))
 		return schema_list
 	
-	def build_create_table(self, table_metadata,table_name,  schema):
+	def build_create_table(self, table_metadata,table_name,  schema, temporary_schema=True):
 		"""
 			The method builds the create table statement with any enumeration associated.
 			The returned value is a dictionary with the optional enumeration's ddl and the create table without indices or primary keys.
@@ -553,7 +553,10 @@ class pg_engine(object):
 			:return: a dictionary with the optional create statements for enumerations and the create table
 			:rtype: dictionary
 		"""
-		destination_schema = self.schema_loading[schema]["loading"]
+		if temporary_schema:
+			destination_schema = self.schema_loading[schema]["loading"]
+		else:
+			destination_schema = schema
 		ddl_head = 'CREATE TABLE "%s"."%s" (' % (destination_schema, table_name)
 		ddl_tail = ");"
 		ddl_columns = []
@@ -583,7 +586,20 @@ class pg_engine(object):
 		table_ddl["enum"] = ddl_enum
 		table_ddl["table"] = (ddl_head+def_columns+ddl_tail)
 		return table_ddl
-
+	
+	def build_create_index(self, destination_schema, table_name, index_data):
+		""" 
+			The method loops over the list index_data and builds a new list with the statements for the indices.
+			
+			:param destination_schema: the schema where the table belongs
+			:param table_name: the table name 
+			:param index_data: the index dictionary used to build the create index statements
+			
+			:return: a list with the alter and create index for the given table
+			:rtype: list
+		"""
+		for index in index_data:
+			print(index)
 	
 	def get_status(self):
 		"""
