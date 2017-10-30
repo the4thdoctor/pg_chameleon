@@ -207,26 +207,83 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_set, (self.i_id_source, table, schema))
 	
-	def write_ddl(self, token, query_data, table_metadata):
+	def gen_query(self, token,  destination_schema):
+		""" 
+			The method builds the DDL using the tokenised SQL stored in token.
+			The supported commands are 
+			RENAME TABLE
+			DROP TABLE
+			TRUNCATE
+			CREATE TABLE
+			ALTER TABLE
+			DROP PRIMARY KEY
+			
+			:param token: A dictionary with the tokenised sql statement
+			:return: query the DDL query in the PostgreSQL dialect
+			:rtype: string
+			
+		"""
+		query=""
+		if token["command"] =="RENAME TABLE":
+			query = """ALTER TABLE "%s" RENAME TO "%s" """ % (token["name"], token["new_name"])	
+			try:
+				self.table_metadata[token["new_name"]]
+				self.store_table(token["new_name"])
+			except KeyError:
+				try:
+					self.table_metadata[token["new_name"]] = self.table_metadata[token["name"]]
+					self.store_table(token["new_name"])
+				except KeyError:
+					query = ""
+			
+		elif token["command"] =="DROP TABLE":
+			query=" %(command)s IF EXISTS \"%(name)s\";" % token
+		elif token["command"] =="TRUNCATE":
+			query=" %(command)s TABLE \"%(name)s\" CASCADE;" % token
+		elif token["command"] =="CREATE TABLE":
+			table_metadata={}
+			table_metadata["columns"]=token["columns"]
+			table_metadata["name"]=token["name"]
+			table_metadata["indices"]=token["indices"]
+			self.table_metadata={}
+			self.table_metadata[token["name"]]=table_metadata
+			self.build_tab_ddl()
+			self.build_idx_ddl()
+			query_type=' '.join(self.type_ddl[token["name"]])
+			query_table=self.table_ddl[token["name"]]
+			query_idx=' '.join(self.idx_ddl[token["name"]])
+			query=query_type+query_table+query_idx
+			self.store_table(token["name"])
+		elif token["command"] == "ALTER TABLE":
+			query=self.build_alter_table(token)
+		elif token["command"] == "DROP PRIMARY KEY":
+			self.drop_primary_key(token)
+		return query 
+
+
+	
+	def write_ddl(self, token, query_data, table_metadata, destination_schema):
 		"""
 			The method writes the DDL built from the tokenised sql into PostgreSQL.
 			
 			:param token: the tokenised query
 			:param query_data: query's metadata (schema,binlog, etc.)
+			:param table_metadata: the table's metadata retrieved from mysql. is an empty tuple if the statement is a drop table
+			:param destination_schema: the postgresql destination schema determined using the schema mappings.
 		"""
-		print(table_metadata)
-		sql_path=" SET search_path="+self.dest_schema+";"
-		pg_ddl=sql_path+self.gen_query(token)
-		log_table=query_data["log_table"]
-		insert_vals=(	query_data["batch_id"], 
-								token["name"],  
-								query_data["schema"], 
-								query_data["binlog"], 
-								query_data["logpos"], 
-								pg_ddl
-							)
-		sql_insert="""
-			INSERT INTO sch_chameleon."""+log_table+"""
+		pg_ddl = self.gen_query(token,  destination_schema)
+		log_table = query_data["log_table"]
+		insert_vals = (	
+				query_data["batch_id"], 
+				token["name"],  
+				query_data["schema"], 
+				query_data["binlog"], 
+				query_data["logpos"], 
+				pg_ddl
+			)
+		#sql_dest_to_tmp = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(schema_destination), sql.Identifier(schema_temporary))
+		sql_insert=sql.SQL("""
+			INSERT INTO "sch_chameleon".{}
 				(
 					i_id_batch, 
 					v_table_name, 
@@ -247,8 +304,9 @@ class pg_engine(object):
 					%s
 				)
 			;
-		"""
-		self.pg_conn.pgsql_cur.execute(sql_insert, insert_vals)
+		""").format(sql.Identifier(log_table), )
+		
+		self.pgsql_cur.execute(sql_insert, insert_vals)
 	
 	def get_batch_data(self):
 		"""

@@ -841,7 +841,7 @@ class mysql_source(object):
 							elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
 								write_ddl = True
 							if write_ddl:
-								self.logger.info("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
+								self.logger.info("CONSISTENT POINT FOR TABLE %s.%s REACHED  - binlogfile %s, position %s" % (schema_query, table_name, binlogfile, log_position))
 								self.pg_engine.set_consistent_table(table_name, destination_schema)
 								inc_tables = self.pg_engine.get_inconsistent_tables()
 						if write_ddl:
@@ -857,7 +857,7 @@ class mysql_source(object):
 									"batch_id":id_batch, 
 									"log_table":log_table
 								}
-								self.pg_engine.write_ddl(token, query_data, table_metadata)
+								self.pg_engine.write_ddl(token, query_data, table_metadata, destination_schema)
 								close_batch=True
 							
 						
