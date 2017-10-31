@@ -88,7 +88,7 @@ class pg_engine(object):
 			:param autocommit: boolean flag which sets autocommit on or off.
 
 		"""
-		self.logger.error("Changing the autocommit flag to %s" % auto_commit)
+		self.logger.debug("Changing the autocommit flag to %s" % auto_commit)
 		self.pgsql_conn.set_session(autocommit=auto_commit)
 
 	
@@ -249,6 +249,7 @@ class pg_engine(object):
 			index_data = token["indices"]
 			table_ddl = self.build_create_table(table_metadata,  table_name,  destination_schema, temporary_schema=False)
 			index_ddl = self.build_create_index( destination_schema, table_name, index_data)
+			print(index_ddl)
 			#store_table(self, schema, table, table_pkey, master_status)
 			#query_type=' '.join(self.type_ddl[token["name"]])
 			#query_table=self.table_ddl[token["name"]]
@@ -587,7 +588,7 @@ class pg_engine(object):
 		table_ddl["table"] = (ddl_head+def_columns+ddl_tail)
 		return table_ddl
 	
-	def build_create_index(self, destination_schema, table_name, index_data):
+	def build_create_index(self, schema, table, index_data):
 		""" 
 			The method loops over the list index_data and builds a new list with the statements for the indices.
 			
@@ -598,8 +599,33 @@ class pg_engine(object):
 			:return: a list with the alter and create index for the given table
 			:rtype: list
 		"""
+		idx_ddl = {}
+		table_primary = []
+		
 		for index in index_data:
-			print(index)
+				table_timestamp = str(int(time.time()))
+				indx = index["index_name"]
+				self.logger.debug("Generating the DDL for index %s" % (indx))
+				index_columns = ['"%s"' % column for column in index["index_columns"]]
+				non_unique = index["non_unique"]
+				if indx =='PRIMARY':
+					pkey_name = "pk_%s_%s_%s " % (table[0:10],table_timestamp,  self.idx_sequence)
+					pkey_def = 'ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" PRIMARY KEY (%s) ;' % (schema, table, pkey_name, ','.join(index_columns))
+					idx_ddl[pkey_name] = pkey_def
+					table_primary = index["index_columns"]
+				else:
+					if non_unique == 0:
+						unique_key = 'UNIQUE'
+						if table_primary == []:
+							table_primary = index["index_columns"]
+							
+					else:
+						unique_key = ''
+					index_name='idx_%s_%s_%s_%s' % (indx[0:10], table[0:10], table_timestamp, self.idx_sequence)
+					idx_def='CREATE %s INDEX "%s" ON "%s"."%s" (%s);' % (unique_key, index_name, schema, table, ','.join(index_columns) )
+					idx_ddl[index_name] = idx_def
+				self.idx_sequence+=1
+		return [table_primary, idx_ddl]
 	
 	def get_status(self):
 		"""
@@ -1137,16 +1163,19 @@ class pg_engine(object):
 				table_timestamp = str(int(time.time()))
 				indx = index["index_name"]
 				self.logger.debug("Building DDL for index %s" % (indx))
-				index_columns = index["index_columns"].split(',')
+				idx_col = [column.strip() for column in index["index_columns"].split(',')]
+				index_columns = ['"%s"' % column.strip() for column in idx_col]
 				non_unique = index["non_unique"]
 				if indx =='PRIMARY':
 					pkey_name = "pk_%s_%s_%s " % (table[0:10],table_timestamp,  self.idx_sequence)
 					pkey_def = 'ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" PRIMARY KEY (%s) ;' % (schema, table, pkey_name, ','.join(index_columns))
 					idx_ddl[pkey_name] = pkey_def
-					table_primary = index_columns
+					table_primary = idx_col
 				else:
 					if non_unique == 0:
 						unique_key = 'UNIQUE'
+						if table_primary == []:
+							table_primary = idx_col
 					else:
 						unique_key = ''
 					index_name='idx_%s_%s_%s_%s' % (indx[0:10], table[0:10], table_timestamp, self.idx_sequence)
