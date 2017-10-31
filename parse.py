@@ -68,7 +68,13 @@ CREATE TABLE film_text (
   title VARCHAR(255) NOT NULL,
   description TEXT,
   PRIMARY KEY  (film_id),
-  FULLTEXT KEY idx_title_description (title,description)
+   KEY idx_title_description (title,description)
+)ENGINE=InnoDB DEFAULT CHARSET=utf8
+"""
+
+statement="""
+CREATE TABLE film_text (
+  film_id SMALLINT NOT NULL PRIMARY KEY
 )ENGINE=InnoDB DEFAULT CHARSET=utf8
 """
 #statement="""RENAME TABLE `sakila`.`test_partition` TO `sakila`.`_test_partition_old`, `_test_partition_new` TO `test_partition`;"""

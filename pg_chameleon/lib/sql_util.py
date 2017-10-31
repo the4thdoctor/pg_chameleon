@@ -34,7 +34,7 @@ class sql_token(object):
 		self.m_keys=re.compile(r',\s*(?:UNIQUE|FULLTEXT)?\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((?:.*?)\)\s*', re.IGNORECASE)
 		self.m_idx=re.compile(r',\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
 		self.m_fkeys=re.compile(r',\s*(?:CONSTRAINT)?\s*`?\w*`?\s*FOREIGN\s*KEY(?:\(?.*\(??)(?:\s*REFERENCES\s*`?\w*`)?(?:ON\s*(?:DELETE|UPDATE)\s*(?:RESTRICT|CASCADE)\s*)?', re.IGNORECASE)
-		self.m_inline_pkeys=re.compile(r'(.*?)\bPRIMARY\b\s*\bKEY\b', re.IGNORECASE)
+		self.m_inline_pkeys=re.compile(r'(.*?)\bPRIMARY\b\s*\bKEY\b,', re.IGNORECASE)
 		
 		#re for fields
 		self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
@@ -177,7 +177,8 @@ class sql_token(object):
 		key_dic={}
 		idx_list=[]
 		idx_counter=0
-		inner_stat=inner_stat.strip()
+		inner_stat= "%s," % inner_stat.strip()
+		print(inner_stat)
 
 		pk_match =  self.m_inline_pkeys.match(inner_stat)
 		pkey=self.m_pkeys.findall(inner_stat)
@@ -187,7 +188,7 @@ class sql_token(object):
 
 		if pk_match:
 			key_dic["index_name"] = 'PRIMARY'
-			index_columns = (pk_match.group(1).strip().split(','))
+			index_columns = ((pk_match.group(1).strip().split()[0]).replace('`', '')).split(',')
 			idx_cols = [(column.strip().split()[0]).replace('`', '') for column in index_columns if column.strip() != '']
 			key_dic["index_columns"] = idx_cols
 			key_dic["non_unique"]=0
@@ -196,8 +197,9 @@ class sql_token(object):
 			key_dic={}
 		elif pkey:
 			key_dic["index_name"]='PRIMARY'
-			idx_cols = pkey[0].replace('`', '')
-			key_dic["index_columns"] = self.quote_cols(idx_cols)
+			index_columns = pkey[0].strip().split(',')
+			idx_cols = [(column.strip().split()[0]).replace('`', '') for column in index_columns if column.strip() != '']
+			key_dic["index_columns"] = idx_cols
 			key_dic["non_unique"]=0
 			self.pkey_cols = idx_cols
 			idx_list.append(dict(list(key_dic.items())))
@@ -205,8 +207,10 @@ class sql_token(object):
 		if ukey:
 			for cols in ukey:
 				key_dic["index_name"] = 'ukidx_'+table_name[0:20]+'_'+str(idx_counter)
-				idx_cols = cols.replace('`', '')
-				key_dic["index_columns"] = self.quote_cols(idx_cols)
+				cols = cols.replace('`', '')
+				index_columns = cols.strip().split(',')
+				idx_cols = [(column.strip().split()[0]).replace('`', '') for column in index_columns if column.strip() != '']
+				key_dic["index_columns"] = idx_cols
 				key_dic["non_unique"]=0
 				idx_list.append(dict(list(key_dic.items())))
 				key_dic={}
@@ -214,8 +218,11 @@ class sql_token(object):
 		if idx:
 			for cols in idx:
 				key_dic["index_name"]='idx_'+table_name[0:20]+'_'+str(idx_counter)
-				idx_cols = cols.replace('`', '')
-				key_dic["index_columns"] = self.quote_cols(idx_cols)
+				cols = cols.replace('`', '')
+				index_columns = cols.strip().split(',')
+				idx_cols = [(column.strip().split()[0]).replace('`', '') for column in index_columns if column.strip() != '']
+				key_dic["index_columns"] = idx_cols
+
 				key_dic["non_unique"]=1
 				idx_list.append(dict(list(key_dic.items())))
 				key_dic={}
