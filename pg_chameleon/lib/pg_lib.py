@@ -248,9 +248,14 @@ class pg_engine(object):
 			table_name = token["name"]
 			index_data = token["indices"]
 			table_ddl = self.build_create_table(table_metadata,  table_name,  destination_schema, temporary_schema=False)
+			table_enum = ''.join(table_ddl["enum"])
+			table_statement = table_ddl["table"] 
 			index_ddl = self.build_create_index( destination_schema, table_name, index_data)
-			print(index_ddl)
-			#store_table(self, schema, table, table_pkey, master_status)
+			table_pkey = index_ddl[0]
+			table_indices = ''.join([val for key ,val in index_ddl[1].items()])
+			self.store_table(destination_schema, table_name, table_pkey, None)
+			query = "%s %s %s " % (table_enum, table_statement,  table_indices)
+			print(query)
 			#query_type=' '.join(self.type_ddl[token["name"]])
 			#query_table=self.table_ddl[token["name"]]
 			#query_idx=' '.join(self.idx_ddl[token["name"]])
@@ -1212,6 +1217,52 @@ class pg_engine(object):
 			self.logger.debug("Commit the swap transaction" )
 			self.pgsql_conn.commit()
 			self.set_autocommit_db(True)
+	
+	def set_batch_processed(self, id_batch):
+		"""
+			The method updates the flag b_processed and sets the processed timestamp for the given batch id.
+			The event ids are aggregated into the table t_batch_events used by the replay function.
+			
+			:param id_batch: the id batch to set as processed
+		"""
+		self.logger.debug("updating batch %s to processed" % (id_batch, ))
+		sql_update=""" 
+			UPDATE sch_chameleon.t_replica_batch
+				SET
+					b_processed=True,
+					ts_processed=now()
+			WHERE
+				i_id_batch=%s
+			;
+		"""
+		self.pgsql_cur.execute(sql_update, (id_batch, ))
+		self.logger.debug("collecting events id for batch %s " % (id_batch, ))
+		sql_collect_events = """
+			INSERT INTO
+				sch_chameleon.t_batch_events
+				(
+					i_id_batch,
+					i_id_event
+				)
+			SELECT
+				i_id_batch,
+				array_agg(i_id_event)
+			FROM
+			(
+				SELECT 
+					i_id_batch,
+					i_id_event,
+					ts_event_datetime
+				FROM 
+					sch_chameleon.t_log_replica 
+				WHERE i_id_batch=%s
+				ORDER BY ts_event_datetime
+			) t_event
+			GROUP BY
+					i_id_batch
+			;
+		"""
+		self.pgsql_cur.execute(sql_collect_events, (id_batch, ))
 	
 	def swap_tables(self):
 		"""

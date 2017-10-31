@@ -1,3 +1,4 @@
+import rollbar
 import pprint 
 import yaml
 import os, os.path
@@ -337,6 +338,10 @@ class replica_engine(object):
 					self.logger.error("Read daemon crashed. Terminating the replay daemon.")
 				self.pg_engine.connect_db()
 				self.pg_engine.set_source_status("error")
+				if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
+					rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
+					rollbar.report_message("The replica process crashed.\n Source: %s" %self.args.source, 'error')
+					
 				break
 			time.sleep(self.sleep_loop)
 		self.logger.info("Replica process for source %s ended" % (self.args.source))

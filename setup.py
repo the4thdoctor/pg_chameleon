@@ -94,7 +94,7 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 		'PyYAML>=3.11', 
 		'tabulate>=0.7.7', 
 		'daemonize>=2.4.7', 
-					
+		'rollbar'
 	],
 	data_files = data_files, 
 	include_package_data = True

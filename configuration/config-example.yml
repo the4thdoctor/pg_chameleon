@@ -5,7 +5,8 @@ log_dir: '~/.pg_chameleon/logs/'
 log_dest: file
 log_level: info
 log_days_keep: 10
-
+rollbar_key: ''
+rollbar_env: ''
 
 #postgres  destination connection
 pg_conn:

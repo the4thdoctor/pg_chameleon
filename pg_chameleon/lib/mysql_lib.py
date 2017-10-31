@@ -861,7 +861,7 @@ class mysql_source(object):
 								close_batch=True
 							
 						
-					self.sql_token.reset_lists()
+					sql_tokeniser.reset_lists()
 					if close_batch:
 						my_stream.close()
 						return [master_data, close_batch]
