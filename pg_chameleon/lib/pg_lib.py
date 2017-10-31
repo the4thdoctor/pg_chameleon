@@ -770,18 +770,18 @@ class pg_engine(object):
 		insert_list=[]
 		for row_data in group_insert:
 			global_data=row_data["global_data"]
-			event_data=row_data["event_data"]
-			event_update=row_data["event_update"]
+			event_after=row_data["event_after"]
+			event_before=row_data["event_before"]
 			log_table=global_data["log_table"]
-			insert_list.append(self.pg_conn.pgsql_cur.mogrify("%s,%s,%s,%s,%s,%s,%s,%s,%s" ,  (
+			insert_list.append(self.pgsql_cur.mogrify("%s,%s,%s,%s,%s,%s,%s,%s,%s" ,  (
 						global_data["batch_id"], 
 						global_data["table"],  
-						self.dest_schema, 
+						global_data["schema"], 
 						global_data["action"], 
 						global_data["binlog"], 
 						global_data["logpos"], 
-						json.dumps(event_data, cls=pg_encoder), 
-						json.dumps(event_update, cls=pg_encoder), 
+						json.dumps(event_after, cls=pg_encoder), 
+						json.dumps(event_before, cls=pg_encoder), 
 						global_data["event_time"], 
 						
 					)
@@ -792,9 +792,8 @@ class pg_engine(object):
 		csv_file.write(csv_data)
 		csv_file.seek(0)
 		try:
-			
-			sql_copy="""
-				COPY "sch_chameleon"."""+log_table+""" 
+			sql_copy=sql.SQL("""
+				COPY "sch_chameleon".{}
 					(
 						i_id_batch, 
 						v_table_name, 
@@ -802,8 +801,8 @@ class pg_engine(object):
 						enm_binlog_event, 
 						t_binlog_name, 
 						i_binlog_position, 
-						jsb_event_data,
-						jsb_event_update,
+						jsb_event_after,
+						jsb_event_before,
 						i_my_event_time
 					) 
 				FROM 
@@ -813,14 +812,105 @@ class pg_engine(object):
 					DELIMITER ',' 
 					ESCAPE '''' 
 				;
-			"""
-			self.pg_conn.pgsql_cur.copy_expert(sql_copy,csv_file)
+			""").format(sql.Identifier(log_table))
+			self.pgsql_cur.copy_expert(sql_copy,csv_file)
 		except psycopg2.Error as e:
 			self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-			self.logger.error(csv_data)
 			self.logger.error("fallback to inserts")
 			self.insert_batch(group_insert)
 		self.set_application_name("idle")
+	
+	def insert_batch(self,group_insert):
+		"""
+			Fallback method for the batch insert. Each row event is processed
+			individually and any problematic row is discarded into the table t_discarded_rows.
+			The row is encoded in base64 in order to prevent any encoding or type issue.
+			
+			:param group_insert: the event data built in mysql_engine
+		"""
+		
+		self.logger.debug("starting insert loop")
+		for row_data in group_insert:
+			global_data = row_data["global_data"]
+			event_after= row_data["event_after"]
+			event_before= row_data["event_before"]
+			log_table = global_data["log_table"]
+			event_time = global_data["event_time"]
+			sql_insert=sql.SQL("""
+				INSERT INTO sch_chameleon.{}
+					(
+						i_id_batch, 
+						v_table_name, 
+						v_schema_name, 
+						enm_binlog_event, 
+						t_binlog_name, 
+						i_binlog_position, 
+						jsb_event_after,
+						jsb_event_before,
+						i_my_event_time
+					)
+					VALUES 
+						(
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s,
+							%s
+						)
+				;						
+			""").format(sql.Identifier(log_table))
+			try:
+				self.pgsql_cur.execute(sql_insert,(
+						global_data["batch_id"], 
+						global_data["table"],  
+						global_data["schema"], 
+						global_data["action"], 
+						global_data["binlog"], 
+						global_data["logpos"], 
+						json.dumps(event_after, cls=pg_encoder), 
+						json.dumps(event_before, cls=pg_encoder), 
+						event_time
+					)
+				)
+			except:
+				self.logger.error("error when storing event data. saving the discarded row")
+				self.save_discarded_row(row_data,global_data["batch_id"])
+
+	def save_discarded_row(self,row_data,batch_id):
+		"""
+			The method saves the discarded row in the table t_discarded_row along with the id_batch.
+			The row is encoded in base64 as the t_row_data is a text field.
+			
+			:param row_data: the row data dictionary
+			:param batch_id: the id batch where the row belongs
+		"""
+		byte_data = "%b" % row_data
+		b64_row=base64.b64encode(byte_data)
+		schema = row_data["schema"]
+		table  = row_data["table"]
+		print(b64_row)
+		sql_save="""
+			INSERT INTO sch_chameleon.t_discarded_rows
+				(
+					i_id_batch, 
+					v_schema_name,
+					v_table_name,
+					t_row_data
+				)
+			VALUES 
+				(
+					%s,
+					%s,
+					%s,
+					%s
+				);
+		"""
+		self.pgsql_cur.execute(sql_save,(batch_id, schema, table,b64_row))
+	
 	
 	def create_table(self,  table_metadata,table_name,  schema):
 		"""
@@ -1016,10 +1106,45 @@ class pg_engine(object):
 			;
 		"""
 		
+		sql_log_table="""
+			UPDATE sch_chameleon.t_sources 
+			SET 
+				v_log_table=ARRAY[v_log_table[2],v_log_table[1]]
+				
+			WHERE 
+				i_id_source=%s
+			RETURNING 
+				v_log_table[1]
+			; 
+		"""
+
+		sql_last_update = """
+			UPDATE 
+				sch_chameleon.t_last_received  
+			SET 
+				ts_last_received=to_timestamp(%s)
+			WHERE 
+				i_id_source=%s
+			RETURNING ts_last_received
+		;
+		"""
+		
 		try:
 			self.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position))
 			results =self.pgsql_cur.fetchone()
 			next_batch_id=results[0]
+			self.pgsql_cur.execute(sql_log_table, (self.i_id_source, ))
+			results = self.pgsql_cur.fetchone()
+			log_table_name = results[0]
+			self.pgsql_cur.execute(sql_last_update, (event_time, self.i_id_source, ))
+			results = self.pgsql_cur.fetchone()
+			db_event_time = results[0]
+			self.logger.info("Saved master data for source: %s" %(self.source, ) )
+			self.logger.debug("Binlog file: %s" % (binlog_name, ))
+			self.logger.debug("Binlog position:%s" % (binlog_position, ))
+			self.logger.debug("Last event: %s" % (db_event_time, ))
+			self.logger.debug("Next log table name: %s" % ( log_table_name, ))
+			
 		except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(self.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position)))

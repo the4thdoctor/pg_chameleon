@@ -600,6 +600,7 @@ class mysql_source(object):
 		self.my_server_id = self.source_config["my_server_id"]
 		self.limit_tables = self.source_config["limit_tables"]
 		self.skip_tables = self.source_config["skip_tables"]
+		self.replica_batch_size = self.source_config["replica_batch_size"]
 		self.hexify = [] + self.hexify_always
 		self.connect_db_buffered()
 		self.pg_engine.connect_db()
@@ -759,7 +760,7 @@ class mysql_source(object):
 		Therefore the replica_batch_size is just the maximum size of the single insert and the size of replayed batch on PostgreSQL.
 		The binlog switch or a captured DDL determines whether a batch is closed and processed.
 		
-		The update row event stores in a separate key event_update the row image before the update. This is required
+		The update row event stores in a separate key event_before the row image before the update. This is required
 		to allow updates where the primary key is updated as well.
 		
 		Each row event is scanned for data types requiring conversion to hex string.
@@ -873,6 +874,8 @@ class mysql_source(object):
 					log_position=binlogevent.packet.log_pos
 					table_name=binlogevent.table
 					event_time=binlogevent.timestamp
+					schema_row = binlogevent.schema
+					destination_schema = self.schema_mappings[schema_row]
 					if table_name in inc_tables:
 						table_consistent = False
 						log_seq = int(log_file.split('.')[1])
@@ -886,48 +889,48 @@ class mysql_source(object):
 						if table_consistent:
 							add_row = True
 							self.logger.debug("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
-							pg_engine.set_consistent_table(table_name)
-							inc_tables = pg_engine.get_inconsistent_tables()
+							self.pg_engine.set_consistent_table(table_name, destination_schema)
+							inc_tables = self.pg_engine.get_inconsistent_tables()
 						else:
 							add_row = False
-							
-					column_map=table_type_map[table_name]
+					
+					column_map=table_type_map[schema_row][table_name]
 					global_data={
 										"binlog":log_file, 
 										"logpos":log_position, 
-										"schema": schema_name, 
+										"schema": destination_schema, 
 										"table": table_name, 
 										"batch_id":id_batch, 
 										"log_table":log_table, 
 										"event_time":event_time
 									}
-					event_data={}
-					event_update={}
+					event_after={}
+					event_before={}
 					if add_row:
 						event_insert = {}
 						if isinstance(binlogevent, DeleteRowsEvent):
 							global_data["action"] = "delete"
-							event_data=row["values"]
+							event_after=row["values"]
 						elif isinstance(binlogevent, UpdateRowsEvent):
 							global_data["action"] = "update"
-							event_data=row["after_values"]
-							event_update=row["before_values"]
+							event_after=row["after_values"]
+							event_before=row["before_values"]
 						elif isinstance(binlogevent, WriteRowsEvent):
 							global_data["action"] = "insert"
-							event_data=row["values"]
-						for column_name in event_data:
+							event_after=row["values"]
+						for column_name in event_after:
 							column_type=column_map[column_name]
-							if column_type in self.hexify and event_data[column_name]:
-								event_data[column_name]=binascii.hexlify(event_data[column_name]).decode()
-							elif column_type in self.hexify and isinstance(event_data[column_name], bytes):
-								event_data[column_name] = ''
-						for column_name in event_update:
+							if column_type in self.hexify and event_after[column_name]:
+								event_after[column_name]=binascii.hexlify(event_after[column_name]).decode()
+							elif column_type in self.hexify and isinstance(event_after[column_name], bytes):
+								event_after[column_name] = ''
+						for column_name in event_before:
 							column_type=column_map[column_name]
-							if column_type in self.hexify and event_update[column_name]:
-								event_update[column_name]=binascii.hexlify(event_update[column_name]).decode()
-							elif column_type in self.hexify and isinstance(event_update[column_name], bytes):
-								event_update[column_name] = ''
-						event_insert={"global_data":global_data,"event_data":event_data,  "event_update":event_update}
+							if column_type in self.hexify and event_before[column_name]:
+								event_before[column_name]=binascii.hexlify(event_before[column_name]).decode()
+							elif column_type in self.hexify and isinstance(event_before[column_name], bytes):
+								event_before[column_name] = ''
+						event_insert={"global_data":global_data,"event_after":event_after,  "event_before":event_before}
 						size_insert += len(str(event_insert))
 						group_insert.append(event_insert)
 						
@@ -938,7 +941,7 @@ class mysql_source(object):
 					if len(group_insert)>=self.replica_batch_size:
 						self.logger.debug("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
 						self.logger.debug("Master coordinates: %s" % (master_data, ))
-						pg_engine.write_batch(group_insert)
+						self.pg_engine.write_batch(group_insert)
 						size_insert=0
 						group_insert=[]
 						close_batch=True
@@ -948,7 +951,7 @@ class mysql_source(object):
 		my_stream.close()
 		if len(group_insert)>0:
 			self.logger.debug("writing the last %s events" % (len(group_insert), ))
-			pg_engine.write_batch(group_insert)
+			self.pg_engine.write_batch(group_insert)
 			close_batch=True
 		
 		return [master_data, close_batch]
