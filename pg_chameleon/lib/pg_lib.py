@@ -190,8 +190,11 @@ class pg_engine(object):
 	def replay_replica(self):
 		self.connect_db()
 		self.set_source_id()
-		sql_replay = """SELECT sch_chameleon.fn_replay_mysql(100,%s)""";
-		self.pgsql_cur.execute(sql_replay, (self.i_id_source, ))
+		self.source_config = self.sources[self.source]
+		self.replica_batch_size = self.source_config["replica_batch_size"]
+		
+		sql_replay = """SELECT sch_chameleon.fn_replay_mysql(%s,%s)""";
+		self.pgsql_cur.execute(sql_replay, (self.replica_batch_size, self.i_id_source, ))
 	
 	def set_consistent_table(self, table, schema):
 		"""
@@ -1208,8 +1211,9 @@ class pg_engine(object):
 						SET 
 							v_table_pkey=EXCLUDED.v_table_pkey,
 							t_binlog_name = EXCLUDED.t_binlog_name,
-							i_binlog_position = EXCLUDED.i_binlog_position
-									;
+							i_binlog_position = EXCLUDED.i_binlog_position,
+							b_replica_enabled = True
+				;
 							"""
 			self.pgsql_cur.execute(sql_insert, (
 				self.i_id_source, 

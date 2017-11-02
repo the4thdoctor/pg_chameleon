@@ -426,8 +426,8 @@ $BODY$
 				ORDER BY i_id_event			
 		LOOP
 			BEGIN
-				EXECUTE  v_r_rows.t_sql;
-				IF v_r_rows.enm_binlog_event='ddl'
+				EXECUTE v_r_statements.t_sql;
+				IF v_r_statements.enm_binlog_event='ddl'
 				THEN
 					v_i_ddl:=v_i_ddl+1;
 				ELSE
