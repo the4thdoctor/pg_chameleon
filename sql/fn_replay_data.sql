@@ -1,3 +1,5 @@
+--select * from sch_chameleon.t_replica_batch
+--delete from sch_chameleon.t_replica_batch where i_id_batch=1
 --REPLAY FUNCTION V2
 SELECT 
 	bat.i_id_batch 
@@ -97,7 +99,9 @@ SELECT
 	END AS t_sql,
 	i_id_event,
 	i_id_batch,
-	enm_binlog_event
+	enm_binlog_event,
+	v_schema_name,
+	v_table_name
 FROM
 (
 	SELECT
@@ -175,3 +179,4 @@ FROM
 		t_pk_data,
 		t_pk_update
 ) t_sql
+ORDER BY i_id_event

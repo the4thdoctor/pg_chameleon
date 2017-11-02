@@ -187,6 +187,12 @@ class pg_engine(object):
 			inc_dic[table[1]] = tab_dic
 		return inc_dic
 	
+	def replay_replica(self):
+		self.connect_db()
+		self.set_source_id()
+		sql_replay = """SELECT sch_chameleon.fn_replay_mysql(100,%s)""";
+		self.pgsql_cur.execute(sql_replay, (self.i_id_source, ))
+	
 	def set_consistent_table(self, table, schema):
 		"""
 			The method set to NULL the  binlog name and position for the given table.
