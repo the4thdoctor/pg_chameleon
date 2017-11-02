@@ -307,6 +307,7 @@ class replica_engine(object):
 		"""
 		while True:
 			self.logger.info("Replaying data changes for source %s " % (self.args.source))
+			self.pg_engine.replay_replica()
 			time.sleep(self.sleep_loop)
 			
 	def run_replica(self):
