@@ -18,7 +18,7 @@ CREATE TYPE sch_chameleon.ty_replay_status
 	AS
 	(
 		b_continue boolean,
-		v_table_error character varying(100)
+		v_table_error character varying(100)[]
 	);
 	
 --TABLES/INDICES	
@@ -224,9 +224,9 @@ $BODY$
 		v_i_evt_replay	bigint[];
 		v_i_evt_queue	bigint[];
 		v_ts_evt_source	timestamp without time zone;
+		
 	BEGIN
 		v_ty_status.b_continue:=FALSE;
-		v_ty_status.v_table_error:=NULL;
 		v_i_replayed:=0;
 		v_i_ddl:=0;
 		v_i_skipped:=0;
@@ -284,7 +284,6 @@ $BODY$
 			RETURN v_ty_status;
 		END IF;
 		RAISE DEBUG 'Found id_batch %', v_i_id_batch;
-		
 		FOR v_r_statements IN 
 
 				WITH 
@@ -433,12 +432,12 @@ $BODY$
 				ELSE
 					v_i_replayed:=v_i_replayed+1;
 				END IF;
+				
 			EXCEPTION
 				WHEN OTHERS THEN
 					RAISE NOTICE 'An error occurred when replaying data for the table %.%',v_r_statements.v_schema_name,v_r_statements.v_table_name;
 					RAISE NOTICE 'The table %.% has been removed from the replica',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					v_ty_status.b_continue:=TRUE;
-					v_ty_status.v_table_error:=format('%I.%I',v_r_statements.v_schema_name,v_r_statements.v_table_name);
+					v_ty_status.v_table_error:=array_append(v_ty_status.v_table_error, format('%I.%I',v_r_statements.v_schema_name,v_r_statements.v_table_name)::character varying) ;
 					RAISE NOTICE 'Statement %', v_r_statements.t_sql;
 					UPDATE sch_chameleon.t_replica_tables 
 						SET 
@@ -447,7 +446,14 @@ $BODY$
 							v_schema_name=v_r_statements.v_schema_name
 						AND	v_table_name=v_r_statements.v_table_name
 					;
-					RETURN v_ty_status;
+
+					RAISE NOTICE 'Deleting the log entries for the table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+					DELETE FROM sch_chameleon.t_log_replica  log
+					WHERE
+							v_table_name=v_r_statements.v_table_name
+						AND	v_schema_name=v_r_statements.v_schema_name
+						AND 	i_id_batch=v_i_id_batch
+					;
 			END;
 		END LOOP;
 		IF v_ts_evt_source IS NOT NULL

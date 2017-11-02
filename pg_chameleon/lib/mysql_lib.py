@@ -885,10 +885,9 @@ class mysql_source(object):
 							table_consistent = True
 						elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
 							table_consistent = True
-							
+							self.logger.debug("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
 						if table_consistent:
 							add_row = True
-							self.logger.debug("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
 							self.pg_engine.set_consistent_table(table_name, destination_schema)
 							inc_tables = self.pg_engine.get_inconsistent_tables()
 						else:
