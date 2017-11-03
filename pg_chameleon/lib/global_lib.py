@@ -305,11 +305,12 @@ class replica_engine(object):
 		"""
 			The method replays the row images stored in the target postgresql database.
 		"""
+		tables_error  = []
 		self.pg_engine.connect_db()
 		self.pg_engine.set_source_id()
 		while True:
 			self.logger.info("Replaying data changes for source %s " % (self.args.source))
-			tables_error = self.pg_engine.replay_replica()
+			#tables_error = self.pg_engine.replay_replica()
 			if len(tables_error) > 0:
 				table_list = [item for sublist in tables_error for item in sublist]
 				tables_removed = ''.join(table_list)

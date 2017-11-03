@@ -238,7 +238,32 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_set, (self.i_id_source, table, schema))
 	
-	
+	def get_table_pkey(self, schema, table):
+		"""
+			The method queries the table sch_chameleon.t_replica_tables and gets the primary key 
+			associated with the table, if any.
+			If there is no primary key the method returns None
+			
+			:param schema: The table schema
+			:param table: The table name
+			:return: the primary key associated with the table
+			:rtype: list
+			
+		"""
+		sql_pkey = """
+			SELECT 
+				v_table_pkey
+			FROM
+				sch_chameleon.t_replica_tables
+			WHERE
+					v_schema_name=%s
+				AND	v_table_name=%s
+			;
+		"""
+		self.pgsql_cur.execute(sql_pkey, (schema, table, ))
+		table_pkey = self.pgsql_cur.fetchone()
+		return table_pkey[0]
+		
 	def generate_ddl(self, token,  destination_schema):
 		""" 
 			The method builds the DDL using the tokenised SQL stored in token.
@@ -258,16 +283,12 @@ class pg_engine(object):
 		"""
 		query=""
 		if token["command"] =="RENAME TABLE":
-			query = """ALTER TABLE "%s"."%s" RENAME TO "%s" """ % (destination_schema, token["name"], token["new_name"])	
-			try:
-				self.table_metadata[token["new_name"]]
-				self.store_table(token["new_name"])
-			except KeyError:
-				try:
-					self.table_metadata[token["new_name"]] = self.table_metadata[token["name"]]
-					self.store_table(token["new_name"])
-				except KeyError:
-					query = ""
+			old_name = token["name"]
+			new_name = token["new_name"]
+			query = """ALTER TABLE "%s"."%s" RENAME TO "%s" """ % (destination_schema, old_name, new_name)	
+			table_pkey = self.get_table_pkey(destination_schema, old_name)
+			if table_pkey:
+				self.store_table(destination_schema, new_name, table_pkey, None)
 			
 		elif token["command"] =="DROP TABLE":
 			query=""" DROP TABLE IF EXISTS "%s"."%s";""" % (destination_schema, token["name"])	
@@ -286,19 +307,246 @@ class pg_engine(object):
 			table_indices = ''.join([val for key ,val in index_ddl[1].items()])
 			self.store_table(destination_schema, table_name, table_pkey, None)
 			query = "%s %s %s " % (table_enum, table_statement,  table_indices)
-			print(query)
-			#query_type=' '.join(self.type_ddl[token["name"]])
-			#query_table=self.table_ddl[token["name"]]
-			#query_idx=' '.join(self.idx_ddl[token["name"]])
-			#query=query_type+query_table+query_idx
-			#self.store_table(token["name"])
 		elif token["command"] == "ALTER TABLE":
-			query=self.build_alter_table(token)
+			query=self.build_alter_table(destination_schema, token)
 		elif token["command"] == "DROP PRIMARY KEY":
-			self.drop_primary_key(token)
+			self.drop_primary_key(destination_schema, token)
 		return query 
 
+	def build_enum_ddl(self, schema, enm_dic):
+		"""
+			The method builds the enum DDL using the token data. 
+			The postgresql system catalog  is queried to determine whether the enum exists and needs to be altered.
+			The alter is not written in the replica log table but executed as single statement as PostgreSQL do not allow the alter being part of a multi command
+			SQL.
+			
+			:param schema: the schema where the enumeration is present
+			:param enm_dic: a dictionary with the enumeration details
+			:return: a dictionary with the pre_alter and post_alter statements (e.g. pre alter create type , post alter drop type)
+			:rtype: dictionary
+		"""
+		enum_name="enum_%s_%s" % (enm_dic['table'], enm_dic['column'])
+		
+		sql_check_enum = """
+			SELECT 
+				typ.typcategory,
+				typ.typname,
+				sch_typ.nspname as typschema,
+				CASE 
+					WHEN typ.typcategory='E'
+					THEN
+					(
+						SELECT 
+							array_agg(enumlabel) 
+						FROM 
+							pg_enum 
+						WHERE 
+							enumtypid=typ.oid
+					)
+				END enum_list
+			FROM
+				pg_type typ
+				INNER JOIN pg_namespace sch_typ
+					ON  sch_typ.oid = typ.typnamespace
 
+			WHERE
+					sch_typ.nspname=%s
+				AND	typ.typname=%s
+			;
+		"""
+		self.pgsql_cur.execute(sql_check_enum, (schema,  enum_name))
+		type_data=self.pgsql_cur.fetchone()
+		return_dic = {}
+		pre_alter = ""
+		post_alter = ""
+		column_type = enm_dic["type"]
+		self.logger.debug(enm_dic)
+		if type_data:
+			if type_data[0] == 'E' and enm_dic["type"] == 'enum':
+				self.logger.debug('There is already the enum %s, altering the type')
+				new_enums = [val.strip() for val in enm_dic["enum_list"] if val.strip() not in type_data[3]]
+				sql_add = []
+				for enumeration in  new_enums:
+					sql_add =  """ALTER TYPE "%s"."%s" ADD VALUE '%s';""" % (type_data[2], enum_name, enumeration) 
+					self.pgsql_cur.execute(sql_add)
+				column_type = enum_name
+			elif type_data[0] != 'E' and enm_dic["type"] == 'enum':
+				self.logger.debug('The column will be altered in enum, creating the type')
+				pre_alter = "CREATE TYPE \"%s\" AS ENUM (%s);" % (enum_name, enm_dic["enum_elements"])
+				column_type = enum_name
+			elif type_data[0] == 'E' and enm_dic["type"] != 'enum':
+				self.logger.debug('The column is no longer an enum, dropping the type')
+				post_alter = "DROP TYPE \"%s\" " % (enum_name)
+		elif not type_data and enm_dic["type"] == 'enum':
+				self.logger.debug('Creating a new enumeration type %s' % (enum_name))
+				pre_alter = "CREATE TYPE \"%s\" AS ENUM (%s);" % (enum_name, enm_dic["enum_elements"])
+				column_type = enum_name
+
+		return_dic["column_type"] = column_type
+		return_dic["pre_alter"] = pre_alter
+		return_dic["post_alter"]  = post_alter
+		return return_dic
+	
+
+	def build_alter_table(self, schema, token):
+		""" 
+			The method builds the alter table statement from the token data.
+			The function currently supports the following statements.
+			DROP TABLE
+			ADD COLUMN 
+			CHANGE
+			MODIFY
+			
+			The change and modify are potential source of breakage for the replica because of 
+			the mysql implicit fallback data types. 
+			For better understanding please have a look to 
+			
+			http://www.cybertec.at/why-favor-postgresql-over-mariadb-mysql/
+			
+			:param schema: The schema where the affected table is stored on postgres.
+			:param token: A dictionary with the tokenised sql statement
+			:return: query the DDL query in the PostgreSQL dialect
+			:rtype: string
+			
+		"""
+		alter_cmd = []
+		ddl_pre_alter = []
+		ddl_post_alter = []
+		query_cmd=token["command"]
+		table_name=token["name"]
+		
+		for alter_dic in token["alter_cmd"]:
+			if alter_dic["command"] == 'DROP':
+				alter_cmd.append("%(command)s %(name)s CASCADE" % alter_dic)
+			elif alter_dic["command"] == 'ADD':
+				
+				column_type=self.get_data_type(alter_dic, schema, table_name)
+				column_name = alter_dic["name"]
+				enum_list = str(alter_dic["dimension"]).replace("'", "").split(",")
+				enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list, 'enum_elements':alter_dic["dimension"]}
+				enm_alter = self.build_enum_ddl(schema, enm_dic)
+				ddl_pre_alter.append(enm_alter["pre_alter"])
+				ddl_post_alter.append(enm_alter["post_alter"])
+				column_type= enm_alter["column_type"]
+				if 	column_type in ["character varying", "character", 'numeric', 'bit', 'float']:
+						column_type=column_type+"("+str(alter_dic["dimension"])+")"
+				if alter_dic["default"]:
+					default_value = "DEFAULT %s" % alter_dic["default"]
+				else:
+					default_value=""
+				alter_cmd.append("%s \"%s\" %s NULL %s" % (alter_dic["command"], column_name, column_type, default_value))	
+			elif alter_dic["command"] == 'CHANGE':
+				sql_rename = ""
+				sql_type = ""
+				old_column=alter_dic["old"]
+				new_column=alter_dic["new"]
+				column_name = old_column
+				enum_list = str(alter_dic["dimension"]).replace("'", "").split(",")
+				
+				column_type=self.get_data_type(alter_dic, schema, table_name)
+				default_sql = self.generate_default_statements(schema, table_name, old_column, new_column)
+				enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list, 'enum_elements':alter_dic["dimension"]}
+				enm_alter = self.build_enum_ddl(schema, enm_dic)
+
+				ddl_pre_alter.append(enm_alter["pre_alter"])
+				ddl_pre_alter.append(default_sql["drop"])
+				ddl_post_alter.append(enm_alter["post_alter"])
+				ddl_post_alter.append(default_sql["create"])
+				column_type= enm_alter["column_type"]
+				
+				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
+						column_type=column_type+"("+str(alter_dic["dimension"])+")"
+				sql_type = """ALTER TABLE "%s"."%s" ALTER COLUMN "%s" SET DATA TYPE %s  USING "%s"::%s ;;""" % (schema, table_name, old_column, column_type, old_column, column_type)
+				if old_column != new_column:
+					sql_rename="""ALTER TABLE "%s"."%s" RENAME COLUMN "%s" TO "%s" ;""" % (schema, table_name, old_column, new_column)
+					
+				query = ' '.join(ddl_pre_alter)
+				query += sql_type+sql_rename
+				query += ' '.join(ddl_post_alter)
+				return query
+
+			elif alter_dic["command"] == 'MODIFY':
+				column_type=self.get_data_type(alter_dic, schema, table_name)
+				column_name = alter_dic["name"]
+				
+				enum_list = str(alter_dic["dimension"]).replace("'", "").split(",")
+				default_sql = self.generate_default_statements(schema, table_name, column_name)
+				enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list, 'enum_elements':alter_dic["dimension"]}
+				enm_alter = self.build_enum_ddl(schema, enm_dic)
+
+				ddl_pre_alter.append(enm_alter["pre_alter"])
+				ddl_pre_alter.append(default_sql["drop"])
+				ddl_post_alter.append(enm_alter["post_alter"])
+				ddl_post_alter.append(default_sql["create"])
+				column_type= enm_alter["column_type"]
+				if column_type=="character varying" or column_type=="character" or column_type=='numeric' or column_type=='bit' or column_type=='float':
+						column_type=column_type+"("+str(alter_dic["dimension"])+")"
+				query = ' '.join(ddl_pre_alter)
+				query +=  """ALTER TABLE "%s"."%s" ALTER COLUMN "%s" SET DATA TYPE %s USING "%s"::%s ;""" % (schema, table_name, column_name, column_type, column_name, column_type)
+				query += ' '.join(ddl_post_alter)
+				return query
+		query = ' '.join(ddl_pre_alter)
+		query +=  """%s "%s"."%s" %s;""" % (query_cmd , schema,  table_name,', '.join(alter_cmd))
+		query += ' '.join(ddl_post_alter)
+		return query
+
+	
+	def drop_primary_key(self, schema, token):
+		"""
+			The method drops the primary key for the table.
+			As tables without primary key cannot be replicated the method calls unregister_table
+			to remove the table from the replica set.
+			The drop constraint statement is not built from the token but generated from the information_schema.
+			
+			:param schema: The table's schema
+			:param token: the tokenised query for drop primary key
+		"""
+		self.logger.info("dropping primary key for table %s.%s" % (schema, token["name"],))
+		sql_gen="""
+			SELECT  DISTINCT
+				format('ALTER TABLE %%I.%%I DROP CONSTRAINT %%I;',
+				table_schema,
+				table_name,
+				constraint_name
+				)
+			FROM 
+				information_schema.key_column_usage 
+			WHERE 
+					table_schema=%s 
+				AND table_name=%s
+			;
+		"""
+		self.pgsql_cur.execute(sql_gen, (schema, token["name"]))
+		value_check=self.pgsql_cur.fetchone()
+		if value_check:
+			sql_drop=value_check[0]
+			self.pgsql_cur.execute(sql_drop)
+			self.unregister_table(schema, token["name"])
+
+	def unregister_table(self, schema,  table):
+		"""
+			This method is used when a table have the primary key dropped on MySQL. 
+			The table name is removed from the replicatoin catalogue and the table is renamed.
+			This way any dependency (e.g. views, functions) to the table is preserved but the replica is stopped.
+
+			:param table_name: the table name to remove from t_replica_tables
+		"""
+		self.logger.info("unregistering table %s.%s from the replica catalog" % (schema, table,))
+		sql_delete=""" DELETE FROM sch_chameleon.t_replica_tables 
+									WHERE
+											v_table_name=%s
+										AND	v_schema_name=%s
+								RETURNING i_id_table
+								;
+						"""
+		self.pgsql_cur.execute(sql_delete, (table, schema))	
+		removed_id=self.pgsql_cur.fetchone()
+		table_id=removed_id[0]
+		self.logger.info("renaming table %s to %s_%s" % (table, table, table_id))
+		sql_rename="""ALTER TABLE IF EXISTS "%s"."%s" rename to "%s_%s"; """ % (schema, table, table, table_id)
+		self.logger.debug(sql_rename)
+		self.pgsql_cur.execute(sql_rename)	
+	
 	
 	def write_ddl(self, token, query_data, table_metadata, destination_schema):
 		"""
@@ -747,7 +995,53 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_replay, (self.i_id_source, ))
 		self.pgsql_cur.execute(sql_receive, (self.i_id_source, ))
-	
+
+	def  generate_default_statements(self, schema,  table, column, create_column=None):
+		"""
+			The method gets the default value associated with the table and column removing the cast.
+			:param schema: The schema name
+			:param table: The table name
+			:param column: The column name
+			:return: the statements for dropping and creating default value on the affected table
+			:rtype: dictionary
+		"""
+		if not create_column:
+			create_column = column
+		
+		regclass = """ "%s"."%s" """ %(schema, table)
+		sql_def_val = """
+			SELECT 
+				(
+					SELECT 
+						split_part(substring(pg_catalog.pg_get_expr(d.adbin, d.adrelid) for 128),'::',1)
+					FROM 
+						pg_catalog.pg_attrdef d
+					WHERE 
+							d.adrelid = a.attrelid 
+						AND d.adnum = a.attnum 
+						AND a.atthasdef
+				) as default_value
+				FROM 
+					pg_catalog.pg_attribute a
+				WHERE 
+						a.attrelid = %s::regclass 
+					AND a.attname=%s 
+					AND NOT a.attisdropped
+			;
+
+		"""
+		self.pgsql_cur.execute(sql_def_val, (regclass, column ))
+		default_value = self.pgsql_cur.fetchone()
+		query_drop_default = ""
+		query_add_default = ""
+
+		if default_value:
+			query_drop_default = """ ALTER TABLE  "%s"."%s" ALTER COLUMN "%s" DROP DEFAULT;""" % (schema, table, column)
+			query_add_default = """ ALTER TABLE  "%s"."%s" ALTER COLUMN "%s" SET DEFAULT %s ; """ % (schema, table, create_column, default_value[0])
+		
+		return {'drop':query_drop_default, 'create':query_add_default}
+
+
 	def get_data_type(self, column, schema,  table):
 		""" 
 			The method determines whether the specified type has to be overridden or not.
