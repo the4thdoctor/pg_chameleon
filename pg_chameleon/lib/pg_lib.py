@@ -188,6 +188,21 @@ class pg_engine(object):
 		return inc_dic
 	
 	def replay_replica(self):
+		"""
+			The method replays the row images in the target database using the function 
+			fn_replay_mysql. The function returns a composite type.
+			The first element is a boolean flag which
+			is true if the batch still require replay. it's false if it doesn't.
+			In that case the while loop ends.
+			The second element is a, optional list of table names. If any table cause error during the replay
+			the problem is captured and the table is removed from the replica. Then the name is returned by
+			the function. As the function can find multiple tables with errors during a single replay run, the 
+			table names are stored in a list (Actually is a postgres array, see the create_schema.sql file for more details).
+			 
+			 Each batch which is looped trough can also find multiple tables so we return a list of lists to the replica_engine's
+			 calling method.
+			
+		"""
 		tables_error = []
 		continue_loop = True
 		self.source_config = self.sources[self.source]

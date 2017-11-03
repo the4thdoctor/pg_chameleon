@@ -310,7 +310,15 @@ class replica_engine(object):
 		while True:
 			self.logger.info("Replaying data changes for source %s " % (self.args.source))
 			tables_error = self.pg_engine.replay_replica()
-			self.logger.error("There was an error during the replay of data on the tables %s " % (tables_error))
+			if len(tables_error) > 0:
+				table_list = [item for sublist in tables_error for item in sublist]
+				tables_removed = ''.join(table_list)
+				error_msg = "There was an error during the replay of data on the tables %s. Those tables are no longer replicated." % (tables_removed)
+				self.logger.error(error_msg)
+				if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
+					rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
+					rollbar.report_message(error_msg, 'error')
+				
 			time.sleep(self.sleep_loop)
 			
 	def run_replica(self):
