@@ -188,13 +188,20 @@ class pg_engine(object):
 		return inc_dic
 	
 	def replay_replica(self):
-		self.connect_db()
-		self.set_source_id()
+		tables_error = []
+		continue_loop = True
 		self.source_config = self.sources[self.source]
 		self.replica_batch_size = self.source_config["replica_batch_size"]
-		
-		sql_replay = """SELECT sch_chameleon.fn_replay_mysql(%s,%s)""";
-		self.pgsql_cur.execute(sql_replay, (self.replica_batch_size, self.i_id_source, ))
+		while continue_loop:
+			sql_replay = """SELECT * FROM sch_chameleon.fn_replay_mysql(%s,%s)""";
+			self.pgsql_cur.execute(sql_replay, (self.replica_batch_size, self.i_id_source, ))
+			replay_status = self.pgsql_cur.fetchone()
+			self.logger.debug("Replay status %s" % replay_status[0])
+			continue_loop = replay_status[0]
+			if replay_status[1]:
+				tables_error.append(replay_status[1])
+		return tables_error
+			
 	
 	def set_consistent_table(self, table, schema):
 		"""

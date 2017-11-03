@@ -305,9 +305,12 @@ class replica_engine(object):
 		"""
 			The method replays the row images stored in the target postgresql database.
 		"""
+		self.pg_engine.connect_db()
+		self.pg_engine.set_source_id()
 		while True:
 			self.logger.info("Replaying data changes for source %s " % (self.args.source))
-			self.pg_engine.replay_replica()
+			tables_error = self.pg_engine.replay_replica()
+			self.logger.error("There was an error during the replay of data on the tables %s " % (tables_error))
 			time.sleep(self.sleep_loop)
 			
 	def run_replica(self):
