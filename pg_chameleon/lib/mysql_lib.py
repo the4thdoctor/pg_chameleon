@@ -1004,6 +1004,7 @@ class mysql_source(object):
 		self.init_sync()
 		master_batch = self.get_master_coordinates()
 		self.pg_engine.set_source_status("initialising")
+		self.pg_engine.cleanup_source_tables()
 		self.schema_list = [schema for schema in self.schema_mappings]
 		self.build_table_exceptions()
 		self.get_table_list()

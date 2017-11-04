@@ -290,9 +290,10 @@ class pg_engine(object):
 			if table_pkey:
 				self.store_table(destination_schema, new_name, table_pkey, None)
 			
-		elif token["command"] =="DROP TABLE":
+		elif token["command"] == "DROP TABLE":
 			query=""" DROP TABLE IF EXISTS "%s"."%s";""" % (destination_schema, token["name"])	
-		elif token["command"] =="TRUNCATE":
+			self.unregister_table(destination_schema, token["name"])
+		elif token["command"] == "TRUNCATE":
 			query=""" TRUNCATE TABLE "%s"."%s" CASCADE;""" % (destination_schema, token["name"])	
 			
 		elif token["command"] =="CREATE TABLE":
@@ -369,18 +370,19 @@ class pg_engine(object):
 				for enumeration in  new_enums:
 					sql_add =  """ALTER TYPE "%s"."%s" ADD VALUE '%s';""" % (type_data[2], enum_name, enumeration) 
 					self.pgsql_cur.execute(sql_add)
-				column_type = enum_name
+				
 			elif type_data[0] != 'E' and enm_dic["type"] == 'enum':
 				self.logger.debug('The column will be altered in enum, creating the type')
-				pre_alter = "CREATE TYPE \"%s\" AS ENUM (%s);" % (enum_name, enm_dic["enum_elements"])
-				column_type = enum_name
+				pre_alter = """CREATE TYPE "%s"."%s" AS ENUM (%s);""" % (schema,enum_name, enm_dic["enum_elements"])
+				
 			elif type_data[0] == 'E' and enm_dic["type"] != 'enum':
 				self.logger.debug('The column is no longer an enum, dropping the type')
-				post_alter = "DROP TYPE \"%s\" " % (enum_name)
+				post_alter = """DROP TYPE "%s"."%s"; """ % (schema,enum_name)
+			column_type = """ "%s"."%s" """ % (schema, enum_name)
 		elif not type_data and enm_dic["type"] == 'enum':
 				self.logger.debug('Creating a new enumeration type %s' % (enum_name))
-				pre_alter = "CREATE TYPE \"%s\" AS ENUM (%s);" % (enum_name, enm_dic["enum_elements"])
-				column_type = enum_name
+				pre_alter = """CREATE TYPE "%s"."%s" AS ENUM (%s);""" % (schema,enum_name, enm_dic["enum_elements"])
+				column_type = """ "%s"."%s" """ % (schema, enum_name)
 
 		return_dic["column_type"] = column_type
 		return_dic["pre_alter"] = pre_alter
@@ -525,28 +527,33 @@ class pg_engine(object):
 
 	def unregister_table(self, schema,  table):
 		"""
-			This method is used when a table have the primary key dropped on MySQL. 
-			The table name is removed from the replicatoin catalogue and the table is renamed.
-			This way any dependency (e.g. views, functions) to the table is preserved but the replica is stopped.
-
-			:param table_name: the table name to remove from t_replica_tables
+			This method is used to remove a table from the replica catalogue.
+			The table is just deleted from the table sch_chameleon.t_replica_tables.
+			
+			:param schema: the schema name where the table is stored
+			:param table: the table name to remove from t_replica_tables
 		"""
 		self.logger.info("unregistering table %s.%s from the replica catalog" % (schema, table,))
 		sql_delete=""" DELETE FROM sch_chameleon.t_replica_tables 
-									WHERE
-											v_table_name=%s
-										AND	v_schema_name=%s
-								RETURNING i_id_table
-								;
+					WHERE
+							v_table_name=%s
+						AND	v_schema_name=%s
+					;
 						"""
 		self.pgsql_cur.execute(sql_delete, (table, schema))	
-		removed_id=self.pgsql_cur.fetchone()
-		table_id=removed_id[0]
-		self.logger.info("renaming table %s to %s_%s" % (table, table, table_id))
-		sql_rename="""ALTER TABLE IF EXISTS "%s"."%s" rename to "%s_%s"; """ % (schema, table, table, table_id)
-		self.logger.debug(sql_rename)
-		self.pgsql_cur.execute(sql_rename)	
 	
+	def cleanup_source_tables(self):
+		"""
+			The method cleans up the tables for active source in sch_chameleon.t_replica_tables.
+			
+		"""
+		self.logger.info("deleting all the table references from the replica catalog for source %s " % (self.source,))
+		sql_delete=""" DELETE FROM sch_chameleon.t_replica_tables 
+					WHERE
+						i_id_source=%s
+					;
+						"""
+		self.pgsql_cur.execute(sql_delete, (self.i_id_source, ))	
 	
 	def write_ddl(self, token, query_data, table_metadata, destination_schema):
 		"""
@@ -1542,22 +1549,7 @@ class pg_engine(object):
 			)
 		else:
 			self.logger.warning("Missing primary key. The table %s.%s will not be replicated." % (schema, table,))
-			sql_disable = """
-				UPDATE sch_chameleon.t_replica_tables
-					SET b_replica_enabled = 'f'
-				WHERE
-						i_id_source=%s
-					AND	v_table_name=%s
-					AND	v_schema_name=%s
-				;
-			"""
-			self.pgsql_cur.execute(sql_disable, (
-					self.i_id_source, 
-					table, 
-					schema
-					)
-				)
-		
+			self.unregister_table(schema,  table)
 
 	
 	def copy_data(self, csv_file, schema, table, column_list):
