@@ -1,6 +1,15 @@
 RELEASE NOTES
 *************************
 
+Version 1.8.1
+--------------------------
+The version 1.8.1 is the bugfix for the final release 1.8 of the version 1. 
+Several bugfixes come with this release involving wrong escape and not sanitised types in the MySQL connection string.
+
+The version 1 is not actively developed anymore and  will reach the end of life when the version 2 will release a stable version. 
+
+
+
 Version 1.8
 --------------------------
 The version 1.8 fixes a wrong check when evaluating if the threads are alive.
