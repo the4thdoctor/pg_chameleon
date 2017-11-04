@@ -338,8 +338,8 @@ class pg_engine(object):
 			The method drops and creates the destination schema.
 			It also set the search_path for the cursor to the destination schema.
 		"""
-		sql_drop="DROP SCHEMA IF EXISTS "+self.dest_schema+" CASCADE;"
-		sql_create=" CREATE SCHEMA IF NOT EXISTS "+self.dest_schema+";"
+		sql_drop="""DROP SCHEMA IF EXISTS "%s" CASCADE;""" % self.dest_schema
+		sql_create="""CREATE SCHEMA IF NOT EXISTS "%s";""" % self.dest_schema
 		self.pg_conn.pgsql_cur.execute(sql_drop)
 		self.pg_conn.pgsql_cur.execute(sql_create)
 		self.set_search_path()
@@ -450,7 +450,7 @@ class pg_engine(object):
 		"""
 			The method sets the search path for the connection.
 		"""
-		sql_path=" SET search_path=%s;" % (self.dest_schema, )
+		sql_path=""" SET search_path="%s";""" % (self.dest_schema, )
 		self.pg_conn.pgsql_cur.execute(sql_path)
 		
 	
@@ -1765,7 +1765,7 @@ class pg_engine(object):
 			:param token: the tokenised query
 			:param query_data: query's metadata (schema,binlog, etc.)
 		"""
-		sql_path=" SET search_path="+self.dest_schema+";"
+		sql_path=""" SET search_path="%s";""" % self.dest_schema
 		pg_ddl=sql_path+self.gen_query(token)
 		log_table=query_data["log_table"]
 		insert_vals=(	query_data["batch_id"], 

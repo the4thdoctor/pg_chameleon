@@ -1,5 +1,11 @@
 changelog 
 *************************
+1.8.1 XX Nov 2017
+.............................
+* Fix for issue 31, MySQL numeric password breaks pg_chameleon `Issue #34 <https://github.com/the4thdoctor/pg_chameleon/issues/31>`_
+* Fix for issue 32, pg Schema name upper case is dropped to lowercase in init_replica  `Issue #32 <https://github.com/the4thdoctor/pg_chameleon/issues/32>`_
+* Fix for issue 34, Missing escape for table names  `Issue #34 <https://github.com/the4thdoctor/pg_chameleon/issues/34>`_
+
 1.8 08 Oct 2017
 .............................
 * Fix wrong check in thread alive when running with --thread option
