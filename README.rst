@@ -134,24 +134,6 @@ Inside the directory there are two subdirectories.
 * logs is where the replica logs are saved if log_dest is file. It can be changed in the configuration file
 
 
-The configuration file
-********************************
-
-
-The file config-example.yaml is stored in **~/.pg_chameleon/configuration** and should be used as template for the other configuration files. 
-
-Global settings
-..............................
-
-.. literalinclude:: ../configuration/config-example.yml
-   :language: yaml
-   :lines: 1-10
-   :linenos:
-
-* pid_dir directory where the process pids are saved.
-* log_dir directory where the logs are stored.
-* log_level logging verbosity. allowed values are debug, info, warning, error.
-* log_dest log destination. stdout for debugging purposes, file for the normal activity.
 
 
 

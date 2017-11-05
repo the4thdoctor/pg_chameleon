@@ -17,21 +17,22 @@ pg_conn:
     database: "db_replica"
     charset: "utf8"
     
-
 sources:
     example:
         db_conn:
-                host: "localhost"
-                port: "3306"
-                user: "usr_replica"
-                password: "never_commit_passwords"
-                database:  "db_replica"
-                charset: 'utf8'
-                connect_timeout: 10
+            host: "localhost"
+            port: "3306"
+            user: "usr_replica"
+            password: "never_commit_passwords"
+            database:  "db_replica"
+            charset: 'utf8'
+            connect_timeout: 10
         schema_mappings:
                 my_schema: dest_schema
         limit_tables:
+                - my_schema.foo
         skip_tables:
+                - my_schema.bar
         copy_max_memory: "300M"
         grant_select_to:
             - usr_readonly
@@ -39,12 +40,13 @@ sources:
             - sch_readonly
         lock_timeout: "120s"
         my_server_id: 100
-        replica_batch_size: 1000
+        replica_batch_size: 10000
         batch_retention: '1 day'
         copy_max_memory: 300M
         copy_mode: 'file'  
         out_dir: /tmp
         sleep_loop: 1
+        type: mysql
 
 
 # type_override allows the user to override the default type conversion into a different one. 
