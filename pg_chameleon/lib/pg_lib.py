@@ -675,7 +675,7 @@ class pg_engine(object):
 	
 	def check_schema_mappings(self, exclude_current_source=False):
 		"""
-			:param exclude_current_source: If set to true the check excludes the current source name from the check.
+			
 			The default is false. 
 		
 			The method checks if there is already a destination schema in the stored schema mappings.
@@ -686,6 +686,8 @@ class pg_engine(object):
 			The method returns a list or none. 
 			If the list is returned then contains the count and the destination schema name 
 			that are already present in the replica catalogue.
+			
+			:param exclude_current_source: If set to true the check excludes the current source name from the check.
 			:return: the schema already mapped in the replica catalogue. 
 			:rtype: list
 		"""
@@ -1268,9 +1270,7 @@ class pg_engine(object):
 			The method updates the schemas  in the table t_replica_tables and then updates the mappings in the 
 			table t_sources. After the final update the commit is issued to make the updates permanent.
 			
-			:todo: The method should run only at replica stopped for the given source. The method should also
-			replay all the logged rows for the given source before updating the schema mappings to avoid 
-			to get an inconsistent replica.
+			:todo: The method should run only at replica stopped for the given source. The method should also  replay all the logged rows for the given source before updating the schema mappings to avoid  to get an inconsistent replica.
 		"""
 		self.connect_db()
 		self.set_source_id()

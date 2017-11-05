@@ -10,12 +10,16 @@
 .. image:: https://img.shields.io/badge/license-BSD-blue.svg   
         :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/master/LICENSE
 	
-.. image:: https://travis-ci.org/the4thdoctor/pg_chameleon.svg?branch=ver1.6
+.. image:: https://travis-ci.org/the4thdoctor/pg_chameleon.svg
     :target: https://travis-ci.org/the4thdoctor/pg_chameleon
     
-pg_chameleon `is available on pypi for download <https://pypi.python.org/pypi/pg_chameleon>`_ 
+pg_chameleon  v2.0alpha1 `is available on pypi test for testing  <https://pypi.python.org/pypi/pg_chameleon>`_  
 
-The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`_ 
+**This is a pre-release version and shouldn't be used in production.**
+
+Please report any issue at `https://github.com/the4thdoctor/pg_chameleon/issues <https://github.com/the4thdoctor/pg_chameleon/issues>`_  
+
+The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents_v2/index.html>`_ 
 
 Live community `available on gitter <https://gitter.im/pg_chameleon/Lobby>`_
 
@@ -28,7 +32,7 @@ Platform and versions
 The tool is developed using Linux Slackware 14.2. 
 
 
-The database server is a FreeBSD  11.0 with MySQL: 5.6 and PostgreSQL: 9.5 
+The database server is a FreeBSD  11.0 with MySQL: 5.6 and PostgreSQL: 9.5 installed.
 
 Example scenarios 
 ..............................
@@ -40,14 +44,19 @@ Example scenarios
 Features
 ..............................
 
-* Read the schema and data from MySQL and restore it into a target PostgreSQL schema
-* Setup PostgreSQL to act as a MySQL slave
-* Support for enumerated and binary data types
-* Basic DDL Support (CREATE/DROP/ALTER TABLE, DROP PRIMARY KEY/TRUNCATE)
-* Discards of rubbish data coming from the replica. The problematic rows are saved in the table sch_chameleon.t_discarded_rows
-* Replica from multiple MySQL schema or servers 
-* Basic replica monitoring 
-* Detach replica from MySQL for migration support
+* Read from multiple MySQL schemas and  restore them it into a target PostgreSQL  database. The source/targed schema names can be different.
+* Setup PostgreSQL to act as a MySQL slave.
+* Support for enumerated and binary data types.
+* Basic DDL Support (CREATE/DROP/ALTER TABLE, DROP PRIMARY KEY/TRUNCATE, RENAME).
+* Discard of rubbish data coming from the replica. 
+* Conservative approach to the replica. Tables which generate errors are automatically excluded from the replica.
+* Possibilty to refresh single tables or single schemas.
+* Basic replica monitoring.
+* Detach replica from MySQL for migration support.
+* Data type override (e.g. tinyint(1) to boolean)
+* Daemonised init_replica process.
+* Daemonised replica process with two separated subprocess, one for the read and one for the replay.
+* Rollbar integration
 
 
 
@@ -82,15 +91,6 @@ doesn't update them.
 The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
 If the copy process fails for memory error check the failing table's row length and the number of rows for each slice. 
 
-The batch is processed every time the replica stream is empty, when a DDL is captured or when the MySQL switches to another log segment (ROTATE EVENT). 
-Therefore the replica_batch_size  is the limit for when a write happens in PostgreSQL. The parameter controls also the size of the batch replayed by pg_engine.process_batch.
-
-The current implementation is sequential. 
-
-Read the replica -> Store the rows -> Replays the stored rows. 
-
-The version 2.0 will improve this aspect.
-
 Python 3 is supported but only from version 3.3 as required by mysql-replication .
 
 The lag is determined using the last received event timestamp and the postgresql timestamp. If the mysql is read only the lag will increase because
@@ -118,6 +118,7 @@ Quick Setup
 
 
 
+
 Configuration parameters
 ********************************
 The system wide install is now supported correctly. 
@@ -126,13 +127,33 @@ The first time chameleon.py is executed it creates a configuration directory in 
 Inside the directory there are two subdirectories. 
 
 
-* config is where the configuration files live. Use config-example.yaml as template for the other configuration files. Please note the logs and pid directories with relative path will no longer work. The you should either use an absolute path or provide the home alias. Again, check the config-example.yaml for an example.
+* configuration is where the configuration files live. Use config-example.yaml as template for the other configuration files. Please note the logs and pid directories with relative path will no longer work. The you should either use an absolute path or provide the home alias. Again, check the config-example.yaml for an example.
 
 * pid is where the replica pid file is created. it can be changed in the configuration file
 
 * logs is where the replica logs are saved if log_dest is file. It can be changed in the configuration file
 
-The file config-example.yaml is stored in **~/.pg_chameleon/config** and should be used as template for the other configuration files. 
+
+The configuration file
+********************************
+
+
+The file config-example.yaml is stored in **~/.pg_chameleon/configuration** and should be used as template for the other configuration files. 
+
+Global settings
+..............................
+
+.. literalinclude:: ../configuration/config-example.yml
+   :language: yaml
+   :lines: 1-10
+   :linenos:
+
+* pid_dir directory where the process pids are saved.
+* log_dir directory where the logs are stored.
+* log_level logging verbosity. allowed values are debug, info, warning, error.
+* log_dest log destination. stdout for debugging purposes, file for the normal activity.
+
+
 
 
 **do not use config-example.yaml** directly. The tool skips this filename as the file gets overwritten when pg_chameleon is upgraded.
