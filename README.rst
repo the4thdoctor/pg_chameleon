@@ -44,7 +44,7 @@ Example scenarios
 Features
 ..............................
 
-* Read from multiple MySQL schemas and  restore them it into a target PostgreSQL  database. The source/targed schema names can be different.
+* Read from multiple MySQL schemas and  restore them it into a target PostgreSQL  database. The source and target schema names can be different.
 * Setup PostgreSQL to act as a MySQL slave.
 * Support for enumerated and binary data types.
 * Basic DDL Support (CREATE/DROP/ALTER TABLE, DROP PRIMARY KEY/TRUNCATE, RENAME).
