@@ -73,7 +73,7 @@ MODULE REFERENCE
     Module sql_util <./sql_util.rst>
 
 
-The configuration file
+THE CONFIGURATION FILE
 ***********************************
 
 .. toctree::

@@ -24,16 +24,14 @@ sources:
             port: "3306"
             user: "usr_replica"
             password: "never_commit_passwords"
-            database:  "db_replica"
             charset: 'utf8'
             connect_timeout: 10
         schema_mappings:
-                my_schema: dest_schema
+                my_database: pg_database
         limit_tables:
-                - my_schema.foo
+                - my_database.foo
         skip_tables:
-                - my_schema.bar
-        copy_max_memory: "300M"
+                - my_database.bar
         grant_select_to:
             - usr_readonly
         create_views_in_schema:
@@ -42,7 +40,7 @@ sources:
         my_server_id: 100
         replica_batch_size: 10000
         batch_retention: '1 day'
-        copy_max_memory: 300M
+        copy_max_memory: "300M"
         copy_mode: 'file'  
         out_dir: /tmp
         sleep_loop: 1
