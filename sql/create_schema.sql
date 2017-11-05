@@ -438,7 +438,7 @@ $BODY$
 					RAISE NOTICE 'An error occurred when replaying data for the table %.%',v_r_statements.v_schema_name,v_r_statements.v_table_name;
 					RAISE NOTICE 'SQLSTATE: % - ERROR MESSAGE %',SQLSTATE, SQLERRM;
 					RAISE NOTICE 'The table %.% has been removed from the replica',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					v_ty_status.v_table_error:=array_append(v_ty_status.v_table_error, format('%I.%I',v_r_statements.v_schema_name,v_r_statements.v_table_name)::character varying) ;
+					v_ty_status.v_table_error:=array_append(v_ty_status.v_table_error, format('%I.%I SQLSTATE: %s - ERROR MESSAGE: %s',v_r_statements.v_schema_name,v_r_statements.v_table_name,SQLSTATE, SQLERRM)::character varying) ;
 					RAISE NOTICE 'Statement %', v_r_statements.t_sql;
 					UPDATE sch_chameleon.t_replica_tables 
 						SET 
