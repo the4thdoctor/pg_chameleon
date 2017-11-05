@@ -289,13 +289,10 @@ class pg_engine(object):
 			table_pkey = self.get_table_pkey(destination_schema, old_name)
 			if table_pkey:
 				self.store_table(destination_schema, new_name, table_pkey, None)
-			
 		elif token["command"] == "DROP TABLE":
 			query=""" DROP TABLE IF EXISTS "%s"."%s";""" % (destination_schema, token["name"])	
-			self.unregister_table(destination_schema, token["name"])
 		elif token["command"] == "TRUNCATE":
 			query=""" TRUNCATE TABLE "%s"."%s" CASCADE;""" % (destination_schema, token["name"])	
-			
 		elif token["command"] =="CREATE TABLE":
 			table_metadata = token["columns"]
 			table_name = token["name"]
@@ -1285,8 +1282,21 @@ class pg_engine(object):
 				self.set_autocommit_db(False)
 				for schema in old_schema_mappings:
 					old_mapping = old_schema_mappings[schema]
-					new_mapping = new_schema_mappings[schema]
-					if old_mapping != new_mapping:
+					try:
+						new_mapping = new_schema_mappings[schema]
+					except KeyError:
+						new_mapping = None
+					if not new_mapping:
+						self.logger.debug("The mapping for schema %s has ben removed. Deleting the reference from the replica catalogue." % (schema))
+						sql_delete = """
+							DELETE FROM sch_chameleon.t_replica_tables 
+							WHERE 	
+									i_id_source=%s
+								AND	v_schema_name=%s
+							;
+						"""
+						self.pgsql_cur.execute(sql_delete, (self.i_id_source,old_mapping ))
+					elif old_mapping != new_mapping:
 						self.logger.debug("Updating mapping for schema %s. Old: %s. New: %s" % (schema, old_mapping, new_mapping))
 						sql_tables = """
 							UPDATE sch_chameleon.t_replica_tables 

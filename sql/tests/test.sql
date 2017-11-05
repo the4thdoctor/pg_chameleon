@@ -16,8 +16,11 @@ VALUES
 ALTER TABLE test
 ADD COLUMN `count` SMALLINT(6) NULL ,
 ADD COLUMN `log` VARCHAR(12) default 'blah' NULL AFTER `count`,
-ADD COLUMN new_enum ENUM('asd','r') NULL AFTER `log`,
-ADD COLUMN status INT(10) UNSIGNED NULL AFTER `new_enum`;
+ADD COLUMN status INT(10) UNSIGNED NULL AFTER `count`;
+
+ALTER TABLE test
+ADD COLUMN new_enum ENUM('asd','r') NULL AFTER `log`;
+
 ALTER TABLE test
 DROP COLUMN `count` ,
 ADD COLUMN status_2 INT(10) UNSIGNED NULL AFTER `new_enum`;
