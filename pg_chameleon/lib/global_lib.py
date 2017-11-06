@@ -211,6 +211,7 @@ class replica_engine(object):
 		elif self.args.tables != "*":
 			print("You cannot specify a table name when running init_replica.")
 		else:
+			self.stop_replica()
 			if self.args.debug:
 				self.mysql_source.init_replica()
 			else:
@@ -236,6 +237,7 @@ class replica_engine(object):
 		elif self.args.schema == "*":
 			print("You must specify an origin's schema name using the argument --schema")
 		else:
+			self.stop_replica()
 			if self.args.debug:
 				self.mysql_source.refresh_schema()
 			else:
@@ -262,6 +264,7 @@ class replica_engine(object):
 		elif self.args.tables == "*":
 			print("You must specify one or more tables, in the form schema.table, separated by comma using the argument --tables")
 		else:
+			self.stop_replica()
 			if self.args.debug:
 				self.mysql_source.sync_tables()
 			else:
@@ -398,7 +401,13 @@ class replica_engine(object):
 				pid=file_pid.read()
 				file_pid.close()
 				os.kill(int(pid),2)
-				print("Replica process signalled to stop")
+				print("Requesting the replica to stop")
+				while True:
+					try:
+						os.kill(int(pid),0)
+					except:
+						break
+				print("The replica process is stopped")
 			except:
 				print("An error occurred when trying to signal the replica process")
 		else:
