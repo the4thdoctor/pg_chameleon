@@ -291,6 +291,7 @@ class replica_engine(object):
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
 		else:
+			self.stop_replica()
 			self.pg_engine.update_schema_mappings()
 			
 			

@@ -1271,6 +1271,7 @@ class pg_engine(object):
 		"""
 		self.connect_db()
 		self.set_source_id()
+		self.pg_engine.replay_replica()
 		new_schema_mappings = self.sources[self.source]["schema_mappings"]
 		old_schema_mappings = self.get_schema_mappings()
 		

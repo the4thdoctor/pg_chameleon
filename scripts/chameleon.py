@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from pkg_resources import get_distribution
-__version__ = get_distribution('pg_chameleon').version
+__version__ = get_distribution('pg_chameleon')
 import argparse
 from pg_chameleon import replica_engine
 
@@ -36,7 +36,7 @@ parser.add_argument('--schema', type=str,  default='*',  required=False, help=sc
 parser.add_argument('--source', type=str,  default='*',  required=False, help=source_help)
 parser.add_argument('--tables', type=str,  default='*',  required=False, help=tables_help)
 parser.add_argument('--debug', default=False, required=False, help=debug_help, action='store_true')
-parser.add_argument('--version', action='version', help=version_help,version='pg_chameleon {version}'.format(version=__version__))
+parser.add_argument('--version', action='version', help=version_help,version='{version}'.format(version=__version__))
 
 args = parser.parse_args()
 
