@@ -187,10 +187,12 @@ class pg_engine(object):
 			inc_dic[table[1]] = tab_dic
 		return inc_dic
 	
+	
 	def grant_select(self):
 		"""
-			The method grants the select permissions on all the tables on the replicated schemas to a list of users/roles.
-			If the user doesn't exist the method emits an error message.
+			The method grants the select permissions on all the tables on the replicated schemas to the database roles
+			listed in the source's variable grant_select_to.
+			In the case a role doesn't exist the method emits an error message and skips the missing user.
 		"""
 		if self.grant_select_to:
 			for schema in  self.schema_loading:

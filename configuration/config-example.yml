@@ -34,8 +34,6 @@ sources:
                 - my_database.bar
         grant_select_to:
             - usr_readonly
-        create_views_in_schema:
-            - sch_readonly
         lock_timeout: "120s"
         my_server_id: 100
         replica_batch_size: 10000

@@ -87,8 +87,8 @@ Grant select to and create views in schema
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-48
-   :emphasize-lines: 16-19
+   :lines: 20-46
+   :emphasize-lines: 16-17
    :linenos:
 
 **Not implemented yet.**
@@ -98,8 +98,8 @@ Source configuration parameters
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-48
-   :emphasize-lines: 20-28
+   :lines: 20-46
+   :emphasize-lines: 18-26
    :linenos:
    
 * lock_timeout the max time in seconds that the target postgresql connections should wait for acquiring a lock. This parameter applies  to init_replica,refresh_schema and sync_tables.
@@ -117,7 +117,7 @@ type override
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 52-58
+   :lines: 50-56
    :linenos:
 
 The type_override allows the user to override the default type conversion into a different one. 
