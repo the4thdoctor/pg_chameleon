@@ -652,6 +652,7 @@ class mysql_source(object):
 		self.disconnect_db_buffered()
 		try:
 			self.copy_tables()
+			self.pg_engine.grant_select()
 			self.pg_engine.swap_schemas()
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("initialised")
@@ -684,6 +685,7 @@ class mysql_source(object):
 		self.create_destination_tables()
 		self.disconnect_db_buffered()
 		self.copy_tables()
+		self.pg_engine.grant_select()
 		try:
 			self.pg_engine.swap_tables()
 			self.drop_loading_schemas()
