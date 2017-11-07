@@ -624,7 +624,6 @@ class mysql_source(object):
 		self.copy_mode = self.source_config["copy_mode"]
 		self.pg_engine.lock_timeout = self.source_config["lock_timeout"]
 		self.pg_engine.grant_select_to = self.source_config["grant_select_to"]
-		self.pg_engine.create_views_in_schema = self.source_config["create_views_in_schema"]
 		self.set_copy_max_memory()
 		self.hexify = [] + self.hexify_always
 		self.connect_db_buffered()
