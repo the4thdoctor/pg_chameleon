@@ -623,11 +623,14 @@ class mysql_source(object):
 		self.out_dir = self.source_config["out_dir"]
 		self.copy_mode = self.source_config["copy_mode"]
 		self.pg_engine.lock_timeout = self.source_config["lock_timeout"]
+		self.pg_engine.grant_select_to = self.source_config["grant_select_to"]
+		self.pg_engine.create_views_in_schema = self.source_config["create_views_in_schema"]
 		self.set_copy_max_memory()
 		self.hexify = [] + self.hexify_always
 		self.connect_db_buffered()
 		self.pg_engine.connect_db()
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
+		self.pg_engine.schema_tables = self.schema_tables
 		
 	
 	def refresh_schema(self):
@@ -1015,6 +1018,7 @@ class mysql_source(object):
 			self.create_destination_tables()
 			self.disconnect_db_buffered()
 			self.copy_tables()
+			self.pg_engine.grant_select()
 			self.pg_engine.swap_schemas()
 			self.pg_engine.clean_batch_data()
 			self.pg_engine.save_master_status(master_batch)

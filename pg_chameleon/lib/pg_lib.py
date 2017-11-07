@@ -187,6 +187,32 @@ class pg_engine(object):
 			inc_dic[table[1]] = tab_dic
 		return inc_dic
 	
+	def grant_select(self):
+		"""
+			The method grants the select permissions on all the tables on the replicated schemas to a list of users/roles.
+			If the user doesn't exist the method emits an error message.
+		"""
+		if self.grant_select_to:
+			for schema in  self.schema_loading:
+				schema_loading = self.schema_loading[schema]["loading"]
+				self.logger.info("Granting select on tables in schema %s to the role(s) %s." % (schema_loading,','.join(self.grant_select_to)))
+				for db_role in self.grant_select_to:
+					sql_grant_usage = sql.SQL("GRANT USAGE ON SCHEMA {} TO {};").format(sql.Identifier(schema_loading), sql.Identifier(db_role))
+					try:
+						self.pgsql_cur.execute(sql_grant_usage)
+						for table in self.schema_tables[schema]:
+							self.logger.info("Granting select on table %s.%s to the role %s." % (schema_loading, table,db_role))
+							sql_grant_select = sql.SQL("GRANT SELECT ON TABLE {}.{} TO {};").format(sql.Identifier(schema_loading), sql.Identifier(table), sql.Identifier(db_role))
+							try:
+								self.pgsql_cur.execute(sql_grant_select)
+							except psycopg2.Error as er:
+								self.logger.error("SQLCODE: %s SQLERROR: %s" % (er.pgcode, er.pgerror))
+					except psycopg2.Error as e:
+						if e.pgcode == "42704":
+							self.logger.warning("The role %s does not exist" % (db_role, ))
+						else:
+							self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+			
 	def replay_replica(self):
 		"""
 			The method replays the row images in the target database using the function 
