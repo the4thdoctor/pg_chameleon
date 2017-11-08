@@ -82,7 +82,7 @@ Limit and skip tables
 
 The table's names should be in the form SCHEMA_NAME.TABLE_NAME. 
 
-Grant select to and create views in schema
+Grant select to option
 =============================================================
 
 .. literalinclude:: ../configuration/config-example.yml
@@ -91,7 +91,12 @@ Grant select to and create views in schema
    :emphasize-lines: 16-17
    :linenos:
 
-**Not implemented yet.**
+This key allows to specify a list of database roles which will get select access on the replicate tables.
+
+
+
+
+
 
 Source configuration parameters
 ====================================
@@ -102,7 +107,7 @@ Source configuration parameters
    :emphasize-lines: 18-26
    :linenos:
    
-* lock_timeout the max time in seconds that the target postgresql connections should wait for acquiring a lock. This parameter applies  to init_replica,refresh_schema and sync_tables.
+* lock_timeout the max time in seconds that the target postgresql connections should wait for acquiring a lock. This parameter applies  to init_replica,refresh_schema and sync_tables when performing the relation's swap.
 * my_server_id the server id for the mysql replica. must be unique within the replica cluster
 * replica_batch_size the max number of rows that are pulled from the mysql replica before a write on the postgresql database is performed. See caveats in README for a complete explanation.
 * batch_retention the max retention for the replayed batches rows in t_replica_batch. The field accepts any valid interval accepted by PostgreSQL
