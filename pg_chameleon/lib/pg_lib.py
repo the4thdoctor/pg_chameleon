@@ -117,6 +117,7 @@ class pg_engine(object):
 		"""
 		if self.pgsql_conn:
 			self.pgsql_conn.close()
+			self.pgsql_conn = None
 		else:
 			pass
 			
@@ -1441,6 +1442,29 @@ class pg_engine(object):
 		"""
 		sql_cleanup = """
 			DELETE FROM sch_chameleon.t_replica_batch WHERE i_id_source=%s;
+		"""
+		self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
+	
+	def clean_not_processed_batches(self):
+		"""
+			The method cleans up the not processed batches rows from the table sch_chameleon.t_log_replica.
+			The method should be executed only before starting a replica process.
+			The method assumes there is a database connection active.
+		"""
+		self.set_source_id()
+		sql_cleanup = """
+			DELETE FROM sch_chameleon.t_log_replica 
+			WHERE 
+				i_id_batch IN (
+					SELECT 
+						i_id_batch 
+					FROM 
+						sch_chameleon.t_replica_batch 
+					WHERE 
+							i_id_source=%s 
+						and	not b_processed
+					)
+			;
 		"""
 		self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
 	

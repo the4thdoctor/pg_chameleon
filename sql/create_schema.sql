@@ -1,4 +1,4 @@
---CREATE SCHEMA
+﻿--CREATE SCHEMA
 CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 
 --VIEWS
@@ -515,7 +515,8 @@ $BODY$
 					i_id_batch=v_i_id_batch
 				AND 	i_id_event=ANY(v_i_evt_replay) 
 			;
-		RETURN v_ty_status;
+			v_ty_status.b_continue:=TRUE;
+			RETURN v_ty_status;
 		END IF;
 		
 		v_i_id_batch:= (

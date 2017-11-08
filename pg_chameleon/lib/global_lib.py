@@ -372,6 +372,10 @@ class replica_engine(object):
 		if self.args.source == "*":
 			print("You must specify a source name using the argument --source")
 		else:
+			self.pg_engine.connect_db()
+			self.logger.info("Cleaning not processed batches for source %s" % (self.args.source))
+			self.pg_engine.clean_not_processed_batches()
+			self.pg_engine.disconnect_db()
 			if self.args.debug:
 				self.run_replica()
 			else:
