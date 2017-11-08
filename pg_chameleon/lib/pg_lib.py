@@ -200,8 +200,10 @@ class pg_engine(object):
 				self.logger.info("Granting select on tables in schema %s to the role(s) %s." % (schema_loading,','.join(self.grant_select_to)))
 				for db_role in self.grant_select_to:
 					sql_grant_usage = sql.SQL("GRANT USAGE ON SCHEMA {} TO {};").format(sql.Identifier(schema_loading), sql.Identifier(db_role))
+					sql_alter_default_privs = sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA {} GRANT SELECT ON TABLES TO {};").format(sql.Identifier(schema_loading), sql.Identifier(db_role))
 					try:
 						self.pgsql_cur.execute(sql_grant_usage)
+						self.pgsql_cur.execute(sql_alter_default_privs)
 						for table in self.schema_tables[schema]:
 							self.logger.info("Granting select on table %s.%s to the role %s." % (schema_loading, table,db_role))
 							sql_grant_select = sql.SQL("GRANT SELECT ON TABLE {}.{} TO {};").format(sql.Identifier(schema_loading), sql.Identifier(table), sql.Identifier(db_role))
