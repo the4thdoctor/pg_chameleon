@@ -1,4 +1,4 @@
-﻿--CREATE SCHEMA
+--CREATE SCHEMA
 CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 
 --VIEWS
@@ -18,7 +18,7 @@ CREATE TYPE sch_chameleon.ty_replay_status
 	AS
 	(
 		b_continue boolean,
-		v_table_error character varying(100)[]
+		v_table_error character varying[]
 	);
 	
 --TABLES/INDICES	
