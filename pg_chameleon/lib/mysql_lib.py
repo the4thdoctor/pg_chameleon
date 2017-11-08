@@ -247,6 +247,42 @@ class mysql_source(object):
 		table_metadata=self.cursor_buffered.fetchall()
 		return table_metadata
 
+	def get_foreign_keys_metadata(self):
+		"""
+			The method collects the foreign key metadata for the detach replica process.
+			Currently doesn't get the ON UPDATE/ON DELETE triggers
+		"""
+		self.init_sync()
+		schema_replica = "'%s'"  % "','".join([schema.strip() for schema in self.sources[self.source]["schema_mappings"]])
+		self.logger.info("retrieving foreign keys metadata for schemas %s" % schema_replica)
+		sql_fkeys = """ 
+			SELECT
+				table_name,
+				table_schema,
+				constraint_name,
+				referenced_table_name,
+				referenced_table_schema,
+				GROUP_CONCAT(concat('"',column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as fk_cols,
+				GROUP_CONCAT(concat('"',REFERENCED_COLUMN_NAME,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as ref_columns
+			FROM
+				information_schema.key_column_usage
+			WHERE
+					table_schema in (%s)
+				AND referenced_table_name IS NOT NULL
+				AND referenced_table_schema in (%s)
+			GROUP BY
+				table_name,
+				constraint_name,
+				referenced_table_name
+			ORDER BY
+				table_name
+			;
+
+		""" % (schema_replica, schema_replica)
+		self.cursor_buffered.execute(sql_fkeys)
+		fkey_list=self.cursor_buffered.fetchall()
+		self.disconnect_db_buffered()
+		return fkey_list
 
 	def create_destination_tables(self):
 		"""

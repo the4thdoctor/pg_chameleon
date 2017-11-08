@@ -38,7 +38,7 @@ sources configuration
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-49
+   :lines: 20-46
    :linenos:
 
 The key sources allow to setup multiple replica sources writing on the same postgresql database. The key name myst be unique wihin the replica configuration.
@@ -49,7 +49,7 @@ Database connection
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-48
+   :lines: 20-46
    :emphasize-lines: 3-9
    :linenos:
 
@@ -61,7 +61,7 @@ Schema mappings
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-48
+   :lines: 20-46
    :emphasize-lines: 10-11
    :linenos:
 
@@ -73,7 +73,7 @@ Limit and skip tables
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-48
+   :lines: 20-46
    :emphasize-lines: 12-15
    :linenos:
 
@@ -122,7 +122,7 @@ type override
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 50-56
+   :lines: 52-56
    :linenos:
 
 The type_override allows the user to override the default type conversion into a different one. 

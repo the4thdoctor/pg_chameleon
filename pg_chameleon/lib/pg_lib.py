@@ -152,6 +152,15 @@ class pg_engine(object):
 		else:
 			self.logger.warning("The replica schema is already present.")
 	
+	def detach_replica(self):
+		"""
+			The method detach the replica from mysql, resets all the sequences and creates the foreign keys 
+			using the dictionary extracted from mysql. The result is a stand alone set of schemas ready to work.
+			
+			The foreign keys are first created invalid then validated in a second time.
+		"""
+	
+	
 	def get_inconsistent_tables(self):
 		"""
 			The method collects the tables in not consistent state.

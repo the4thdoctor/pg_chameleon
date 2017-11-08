@@ -415,8 +415,6 @@ class replica_engine(object):
 				print("The replica process is stopped")
 			except:
 				print("An error occurred when trying to signal the replica process")
-		else:
-			print("Couldn't complete the command. The pid file is not present in %s." % replica_pid)
 		
 	def show_status(self):
 		"""
@@ -444,8 +442,24 @@ class replica_engine(object):
 			The schema sequences in are reset to the max values in the corresponding tables, leaving 
 			the postgresql database as a standalone snapshot.
 			The method creates the foreign keys existing in MySQL as well.
+			Is compulsory to specify a source name when running this method.
 		"""
-	
+		if self.args.source == "*":
+			print("You must specify a source name with the argument --source")
+		elif self.args.tables != "*":
+			print("You cannot specify a table name when running init_replica.")
+		else:
+			drp_msg = 'Detaching the replica will remove any reference for the source %s.\n Are you sure? YES/No\n'  % self.args.source
+			
+			drop_src = input(drp_msg)
+			if drop_src == 'YES':
+				self.pg_engine.fk_metadata = self.mysql_source.get_foreign_keys_metadata()
+				self.stop_replica()
+				self.pg_engine.detach_replica()
+			elif drop_src in  self.lst_yes:
+				print('Please type YES all uppercase to confirm')
+				
+		
 			
 	def init_logger(self):
 		log_dir = self.config["log_dir"] 
