@@ -18,7 +18,8 @@ commands = [
 	'refresh_schema',
 	'sync_tables',
 	'start_replica', 
-	'stop_replica'
+	'stop_replica', 
+	'detach_replica'
 	]
 
 command_help = """Available commands, """ + ','.join(commands)

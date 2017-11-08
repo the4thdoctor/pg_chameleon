@@ -159,8 +159,42 @@ class pg_engine(object):
 			
 			The foreign keys are first created invalid then validated in a second time.
 		"""
-	
-	
+		self.set_source_id()
+		sql_gen_reset = """ 
+			SELECT 
+				format('SELECT setval(%%L::regclass,(select max(%%I) FROM %%I.%%I));',
+					replace(replace(column_default,'nextval(''',''),'''::regclass)',''),
+					column_name,
+					table_schema,
+					table_name
+				),
+				replace(replace(column_default,'nextval(''',''),'''::regclass)','') as  seq_name
+			FROM 
+					information_schema.columns
+			WHERE 
+					table_schema IN (
+						SELECT 
+							(jsonb_each_text(jsb_schema_mappings)).value 
+						FROM 
+							sch_chameleon.t_sources 
+						WHERE 
+							i_id_source=%s
+						)
+				AND	column_default like 'nextval%%'
+						
+		;"""
+		self.pgsql_cur.execute(sql_gen_reset, (self.i_id_source, ))
+		reset_statements = self.pgsql_cur.fetchall()
+		try:
+			for statement in reset_statements:
+				self.logger.info("resetting the sequence  %s" % statement[1])
+				self.pgsql_cur.execute(statement[0])
+		except psycopg2.Error as e:
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error(statement)
+		except:
+			raise
+		
 	def get_inconsistent_tables(self):
 		"""
 			The method collects the tables in not consistent state.
