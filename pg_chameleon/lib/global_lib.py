@@ -437,7 +437,15 @@ class replica_engine(object):
 			tab_row = [source_id, source_name,  source_status, read_lag, last_read,  replay_lag, last_replay]
 			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers))
-		
+	
+	def detach_replica(self):
+		"""
+			The method terminates the replica process. The source is removed from the table t_sources with all the associated data.
+			The schema sequences in are reset to the max values in the corresponding tables, leaving 
+			the postgresql database as a standalone snapshot.
+			The method creates the foreign keys existing in MySQL as well.
+		"""
+	
 			
 	def init_logger(self):
 		log_dir = self.config["log_dir"] 
@@ -451,7 +459,11 @@ class replica_engine(object):
 		logger = logging.getLogger(__name__)
 		logger.setLevel(logging.DEBUG)
 		logger.propagate = False
-		formatter = logging.Formatter("%(asctime)s: [%(levelname)s] - %(filename)s (%(lineno)s): %(message)s", "%b %e %H:%M:%S")
+		if debug_mode:
+			str_format = "[%(levelname)s] - (%(processName)s):  %(asctime)s: %(filename)s (%(lineno)s): %(message)s"
+		else:
+			str_format = "[%(levelname)s] - %(processName)s:  %(asctime)s: : %(message)s"
+		formatter = logging.Formatter(str_format, "%Y-%m-%d %H:%M:%S")
 		
 		if log_dest=='stdout' or debug_mode:
 			fh=logging.StreamHandler(sys.stdout)
