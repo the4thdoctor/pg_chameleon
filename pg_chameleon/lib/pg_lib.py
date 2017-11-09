@@ -160,6 +160,9 @@ class pg_engine(object):
 			The foreign keys are first created invalid then validated in a second time.
 		"""
 		self.set_source_id()
+		schema_mappings = self.get_schema_mappings()
+		fk_list = []
+		fk_counter = 0
 		sql_gen_reset = """ 
 			SELECT 
 				format('SELECT setval(%%L::regclass,(select max(%%I) FROM %%I.%%I));',
@@ -194,6 +197,47 @@ class pg_engine(object):
 					self.logger.error(statement)
 		except:
 			raise
+		
+		for foreign_key in self.fk_metadata:
+			table_name = foreign_key["table_name"]
+			table_schema = schema_mappings[foreign_key["table_schema"]]
+			fk_name = ("%s_%s") % (foreign_key["constraint_name"][0:20] ,  str(fk_counter))
+			fk_cols = foreign_key["fk_cols"]
+			referenced_table_name = foreign_key["referenced_table_name"]
+			referenced_table_schema = schema_mappings[foreign_key["referenced_table_schema"]]
+			ref_columns = foreign_key["ref_columns"]
+			fk_list.append({'fkey_name':fk_name, 'table_name':table_name, 'table_schema':table_schema})
+			sql_fkey = ("""ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" FOREIGN KEY (%s) REFERENCES "%s"."%s" (%s) NOT VALID;""" % 
+					(
+						table_schema, 
+						table_name, 
+						fk_name, 
+						fk_cols, 
+						referenced_table_schema, 
+						referenced_table_name, 
+						ref_columns
+					)
+				)
+			fk_counter+=1
+			self.logger.info("creating invalid foreign key %s on table %s.%s" % (fk_name, table_schema, table_name))
+			try:
+				self.pgsql_cur.execute(sql_fkey)
+			except psycopg2.Error as e:
+					self.logger.error("could not create the foreign key %s on table %s.%s" % (fk_name, table_schema, table_name))
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error("STATEMENT: %s " % (sql_fkey))
+		
+		
+		for fkey in fk_list:
+			self.logger.info("validating %s on table %s.%s"  % (fkey["fkey_name"], fkey["table_schema"], fkey["table_name"])) 
+			sql_validate = 'ALTER TABLE "%s"."%s" VALIDATE CONSTRAINT "%s";' % (fkey["table_schema"], fkey["table_name"], fkey["fkey_name"])
+			try:
+				self.pgsql_cur.execute(sql_validate)
+			except psycopg2.Error as e:
+					self.logger.error("could not validate the foreign key %s on table %s" % (fkey["table_name"], fkey["fkey_name"]))
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error("STATEMENT: %s " % (sql_validate))			
+		self.drop_source()
 		
 	def get_inconsistent_tables(self):
 		"""
