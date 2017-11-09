@@ -1739,11 +1739,11 @@ class pg_engine(object):
 			except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(self.pgsql_cur.mogrify(sql_head,data_row))
+			except ValueError:
+				self.logger.error("error when inserting the row, value not allowed")
 			except:
 				self.logger.error("unexpected error when processing the row")
 				self.logger.error(" - > Table: %s.%s" % (schema, table))
-				self.logger.error(" - > Insert list: %s" % (column_list))
-				self.logger.error(" - > Insert values: %s" % (','.join(data_row)) )
 	
 	def create_indices(self, schema, table, index_data):
 		"""

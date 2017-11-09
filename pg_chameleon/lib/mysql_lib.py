@@ -526,7 +526,6 @@ class mysql_source(object):
 			self.cursor_unbuffered.execute(sql_fallback)
 			insert_data =  self.cursor_unbuffered.fetchall()
 			self.pg_engine.insert_data(loading_schema, table, insert_data , column_list)
-			self.cursor_unbuffered.close()
 			num_insert +=1
 		self.disconnect_db_unbuffered()
 		
