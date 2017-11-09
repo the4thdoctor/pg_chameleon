@@ -1064,7 +1064,14 @@ class pg_engine(object):
 					ELSE
 						(rec.ts_last_received-rep.ts_last_replayed)::text
 				END AS replay_lag,
-				coalesce(rep.ts_last_replayed::text,'')
+				coalesce(rep.ts_last_replayed::text,''),
+				CASE
+					WHEN src.b_consistent
+					THEN
+						'Yes'
+					ELSE
+						'No'
+				END as consistent_status
 				
 				
 			FROM 

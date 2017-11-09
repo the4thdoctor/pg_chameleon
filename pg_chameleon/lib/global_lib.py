@@ -421,7 +421,7 @@ class replica_engine(object):
 			list the replica status using the configuration files and the replica catalogue
 		"""
 		configuration_status = self.pg_engine.get_status()
-		tab_headers = ['Source id',  'Source name',  'Status' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
+		tab_headers = ['Source id',  'Source name',  'Status', 'Consistent' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
 		tab_body = []
 		
 		for status in configuration_status:
@@ -432,7 +432,8 @@ class replica_engine(object):
 			last_read = status[4]
 			replay_lag = status[5]
 			last_replay = status[6]
-			tab_row = [source_id, source_name,  source_status, read_lag, last_read,  replay_lag, last_replay]
+			consistent = status[7]
+			tab_row = [source_id, source_name,  source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
 			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers))
 	
