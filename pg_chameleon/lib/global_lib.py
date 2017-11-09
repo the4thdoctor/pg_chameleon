@@ -462,6 +462,12 @@ class replica_engine(object):
 		
 			
 	def init_logger(self):
+		"""
+		The method initialise a new logger object using the configuration parameters.
+		The formatter is different if the debug option is enabler or not.
+		The method returns a new logger object and sets the logger's file descriptor in the class variable 
+		logger_fds, used when the process is demonised.
+		"""
 		log_dir = self.config["log_dir"] 
 		log_level = self.config["log_level"] 
 		log_dest = self.config["log_dest"] 
