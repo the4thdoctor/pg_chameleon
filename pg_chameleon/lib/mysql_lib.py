@@ -871,17 +871,18 @@ class mysql_source(object):
 					for token in sql_tokeniser.tokenised:
 						write_ddl = True
 						table_name = token["name"] 
-						if table_name in inc_tables:
+						table_key_dic = "%s.%s" % (destination_schema, table_name)
+						if table_key_dic in inc_tables:
 							write_ddl = False
 							log_seq = int(log_file.split('.')[1])
 							log_pos = int(log_position)
-							table_dic = inc_tables[table_name]
+							table_dic = inc_tables[table_key_dic]
 							if log_seq > table_dic["log_seq"]:
 								write_ddl = True
 							elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
 								write_ddl = True
 							if write_ddl:
-								self.logger.info("CONSISTENT POINT FOR TABLE %s.%s REACHED  - binlogfile %s, position %s" % (schema_query, table_name, binlogfile, log_position))
+								self.logger.info("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_key_dic, binlogfile, log_position))
 								self.pg_engine.set_consistent_table(table_name, destination_schema)
 								inc_tables = self.pg_engine.get_inconsistent_tables()
 						if write_ddl:
@@ -915,16 +916,17 @@ class mysql_source(object):
 					event_time=binlogevent.timestamp
 					schema_row = binlogevent.schema
 					destination_schema = self.schema_mappings[schema_row]
-					if table_name in inc_tables:
+					table_key_dic = "%s.%s" % (destination_schema, table_name)
+					if table_key_dic in inc_tables:
 						table_consistent = False
 						log_seq = int(log_file.split('.')[1])
 						log_pos = int(log_position)
-						table_dic = inc_tables[table_name]
+						table_dic = inc_tables[table_key_dic]
 						if log_seq > table_dic["log_seq"]:
 							table_consistent = True
 						elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
 							table_consistent = True
-							self.logger.debug("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_name, binlogfile, log_position))
+							self.logger.debug("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_key_dic, binlogfile, log_position))
 						if table_consistent:
 							add_row = True
 							self.pg_engine.set_consistent_table(table_name, destination_schema)
