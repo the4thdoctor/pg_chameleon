@@ -1032,7 +1032,7 @@ class mysql_source(object):
 					self.logger.debug("updating processed flag for id_batch %s", (id_batch))
 					self.pg_engine.set_batch_processed(id_batch)
 					self.id_batch=None
-		
+		self.pg_engine.check_source_consistent()
 
 		self.disconnect_db_buffered()
 		
@@ -1060,6 +1060,7 @@ class mysql_source(object):
 			self.pg_engine.swap_schemas()
 			self.pg_engine.clean_batch_data()
 			self.pg_engine.save_master_status(master_batch)
+			self.pg_engine.set_source_highwatermark(master_batch, consistent=False)
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("initialised")
 		except:

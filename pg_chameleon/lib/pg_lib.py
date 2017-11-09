@@ -1556,6 +1556,117 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
 	
+	def check_source_consistent(self):
+		"""
+			This method checks if the database is consistent using the source's high watermark and the 
+			source's flab b_consistent.
+			If the batch data is larger than the source's high watermark then the source is marked consistent and
+			all the log data stored witth the source's tables are set to null in order to ensure all the tables are replicated.
+		"""
+		
+		sql_check_consistent = """
+			WITH hwm AS
+				(
+					SELECT 
+						split_part(t_binlog_name,'.',2)::integer as i_binlog_sequence,
+						i_binlog_position 
+					FROM 
+						sch_chameleon.t_sources
+					WHERE
+							i_id_source=%s
+						AND	not b_consistent
+
+				)
+			SELECT 
+				CASE
+					WHEN	bat.binlog_data[1]>hwm.i_binlog_sequence
+					THEN 
+						True
+					WHEN		bat.binlog_data[1]=hwm.i_binlog_sequence
+						AND	bat.binlog_data[2]>=hwm.i_binlog_position
+					THEN 
+						True
+					ELSE
+						False
+				END AS b_consistent 
+			FROM
+				(
+					SELECT 
+						max(
+							array[
+								split_part(t_binlog_name,'.',2)::integer, 
+								i_binlog_position
+							]
+						) as binlog_data
+					FROM 
+						sch_chameleon.t_replica_batch
+					WHERE
+							i_id_source=%s
+						AND	b_started
+						AND	b_processed
+
+				) bat,
+				hwm
+			;
+
+		"""
+		self.pgsql_cur.execute(sql_check_consistent, (self.i_id_source, self.i_id_source, ))
+		self.logger.debug("Checking consistent status for source: %s" %(self.source, ) )
+		source_consistent = self.pgsql_cur.fetchone()
+		if source_consistent:
+			if source_consistent[0]:
+				self.logger.info("The source: %s reached the consistent status" %(self.source, ) )
+				sql_set_source_consistent = """
+					UPDATE sch_chameleon.t_sources
+						SET
+							b_consistent=True,
+							t_binlog_name=NULL,
+							i_binlog_position=NULL
+					WHERE
+						i_id_source=%s
+				;
+				"""
+				sql_set_tables_consistent = """
+					UPDATE sch_chameleon.t_replica_tables
+						SET
+							t_binlog_name=NULL,
+							i_binlog_position=NULL
+					WHERE
+						i_id_source=%s
+				;
+				"""
+				self.pgsql_cur.execute(sql_set_source_consistent, (self.i_id_source,  ))
+				self.pgsql_cur.execute(sql_set_tables_consistent, (self.i_id_source,  ))
+			else:
+				self.logger.debug("The source: %s is not consistent " %(self.source, ) )
+		else:
+			self.logger.debug("The source: %s is consistent" %(self.source, ) )
+	
+	def set_source_highwatermark(self, master_status, consistent):
+		"""
+			This method saves the master data within the source.
+			The values are used to determine whether the database has reached the consistent point.
+			
+			:param master_status: the master data with the binlogfile and the log position
+		"""
+		master_data = master_status[0]
+		binlog_name = master_data["File"]
+		binlog_position = master_data["Position"]
+		sql_set  = """
+			UPDATE sch_chameleon.t_sources
+				SET 
+					b_consistent=%s,
+					t_binlog_name=%s,
+					i_binlog_position=%s
+			WHERE
+				i_id_source=%s
+			;
+					
+		"""
+		self.pgsql_cur.execute(sql_set, (consistent, binlog_name, binlog_position, self.i_id_source, ))
+		self.logger.info("Set high watermark for source: %s" %(self.source, ) )
+		
+		
 	def save_master_status(self, master_status):
 		"""
 			This method saves the master data determining which log table should be used in the next batch.
