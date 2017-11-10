@@ -101,18 +101,18 @@ A second run tries to validate the foreign keys. If an error occurs it gets logg
 
 
 
-Quick Setup 
+Setup 
 *****************
 
 * Create a virtual environment (e.g. python3 -m venv venv)
 * Activate the virtual environment (e.g. source venv/bin/activate)
-* Install pgchameleon with **pip install pg_chameleon**. If you get an error upgrade your pip first.
+* Upgrade pip with **pip install pip --upgrade**
+* Install pg_chameleon with **pip install pg_chameleon==2.0a1**. 
 * Create a user on mysql for the replica (e.g. usr_replica)
 * Grant access to usr on the replicated database (e.g. GRANT ALL ON sakila.* TO 'usr_replica';)
 * Grant RELOAD privilege to the user (e.g. GRANT RELOAD ON \*.\* to 'usr_replica';)
 * Grant REPLICATION CLIENT privilege to the user (e.g. GRANT REPLICATION CLIENT ON \*.\* to 'usr_replica';)
 * Grant REPLICATION SLAVE privilege to the user (e.g. GRANT REPLICATION SLAVE ON \*.\* to 'usr_replica';)
-
 
 
 
@@ -124,24 +124,12 @@ The first time chameleon.py is executed it creates a configuration directory in 
 Inside the directory there are two subdirectories. 
 
 
-* configuration is where the configuration files live. Use config-example.yaml as template for the other configuration files. Please note the logs and pid directories with relative path will no longer work. The you should either use an absolute path or provide the home alias. Again, check the config-example.yaml for an example.
-
+* configuration is where the configuration files are stored. 
 * pid is where the replica pid file is created. it can be changed in the configuration file
-
 * logs is where the replica logs are saved if log_dest is file. It can be changed in the configuration file
 
-
-
-
-
-
-**do not use config-example.yaml** directly. The tool skips this filename as the file gets overwritten when pg_chameleon is upgraded.
-
+You should  use config-example.yaml as template for the other configuration files. 
 Check the `configuration file reference <http://www.pgchameleon.org/documents_v2/configuration_file.html>`_   for an overview.
-
-
-Usage
-**********************
 
 
 
