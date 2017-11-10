@@ -60,8 +60,25 @@ README
 
     <./readme.rst>
 
+The configuration file
+***********************************
 
-MODULE REFERENCE
+.. toctree::
+   :maxdepth: 2
+    
+    <./configuration_file.rst>
+	
+
+    
+Usage instructions
+***********************************
+
+.. toctree::
+   :maxdepth: 2
+    
+    <./usage.rst>
+
+Module reference
 ***********************************
 
 .. toctree::
@@ -73,12 +90,4 @@ MODULE REFERENCE
     Module sql_util <./sql_util.rst>
 
 
-THE CONFIGURATION FILE
-***********************************
-
-.. toctree::
-   :maxdepth: 2
-    
-    <./configuration_file.rst>
-	
 
