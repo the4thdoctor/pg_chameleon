@@ -131,7 +131,3 @@ Inside the directory there are two subdirectories.
 You should  use config-example.yaml as template for the other configuration files. 
 Check the `configuration file reference <http://www.pgchameleon.org/documents_v2/configuration_file.html>`_   for an overview.
 
-
-
-Example
-**********************

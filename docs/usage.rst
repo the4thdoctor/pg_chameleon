@@ -1,4 +1,4 @@
-Usage instructions
+Usage 
 **************************************************
 
 Command line reference
@@ -30,12 +30,165 @@ Command line reference
    ``create_replica_schema``, Creates a new replication schema into the config's destination database, ``--config``
     ``drop_replica_schema``, Drops an existing replication schema from the config's destination database, ``--config``
     ``upgrade_replica_schema``,**not implemented yet**
-    add_source
-    drop_source
-    init_replica
-    update_schema_mappings
-    refresh_schema
-    sync_tables
-    start_replica, 
-    stop_replica
-    detach_replica
+    ``add_source``, Adds a new source to the replica catalogue, ``--config`` ``--source``
+    ``drop_source``, Remove an existing source from the replica catalogue, ``--config`` ``--source``
+    ``init_replica``, Initialise the replica for an existing source , ``--config`` ``--source``
+    ``update_schema_mappings``,Update the schema mappings stored in the replica catalogue using the data from the configuration file. , ``--config`` ``--source``
+    ``refresh_schema``, Synchronise all the tables for a given schema within an already initialised source. , ``--config`` ``--source`` ``--schema``
+    ``sync_tables``, Synchronise one or more tables within an already initialised source. , ``--config`` ``--source`` ``--tables``
+    ``start_replica``, Starts the replica process daemon, ``--config`` ``--source`` 
+    ``stop_replica``, Stops the replica process daemon, ``--config`` ``--source`` 
+    ``detach_replica``, Detaches a replica from the mysql master configuring the postgres schemas to work as a standalone system. Useful for migrations., ``--config`` ``--source`` 
+
+    
+Example
+............................................
+
+Create a virtualenv and activate it
+
+.. code-block:: none
+    
+    python3 -m venv venv
+    source venv/bin/activate
+    
+    
+Install pg_chameleon
+
+.. code-block:: none
+    
+    pip install pip --upgrade
+    pip install pg_chameleon==2.0a1
+
+
+Run the ``set_configuration_files`` command in order to create the configuration directory.
+
+.. code-block:: none
+    
+    chameleon.py set_configuration_files
+    
+    
+cd in ``~/.pg_chameleon/configuration`` and copy the file ``configuration-example.yml` to ``default.yml``. 
+
+    
+    
+In MySQL create a user for the replica.
+
+.. code-block:: sql
+
+    CREATE USER usr_replica ;
+    SET PASSWORD FOR usr_replica=PASSWORD('replica');
+    GRANT ALL ON sakila.* TO 'usr_replica';
+    GRANT RELOAD ON *.* to 'usr_replica';
+    GRANT REPLICATION CLIENT ON *.* to 'usr_replica';
+    GRANT REPLICATION SLAVE ON *.* to 'usr_replica';
+    FLUSH PRIVILEGES;
+    
+Add the configuration for the replica to my.cnf. It requires a MySQL.
+
+.. code-block:: none
+    
+    binlog_format= ROW
+    binlog_row_image=FULL
+    log-bin = mysql-bin
+    server-id = 1
+
+
+	
+In PostgreSQL create a user for the replica and a database owned by the user
+
+.. code-block:: sql
+
+    CREATE USER usr_replica WITH PASSWORD 'replica';
+    CREATE DATABASE db_replica WITH OWNER usr_replica;
+
+Check you can connect to both databases from the machine where pg_chameleon is installed.
+
+For MySQL
+
+.. code-block:: none 
+
+    mysql -p -h derpy -u usr_replica sakila 
+    Enter password: 
+    Reading table information for completion of table and column names
+    You can turn off this feature to get a quicker startup with -A
+
+    Welcome to the MySQL monitor.  Commands end with ; or \g.
+    Your MySQL connection id is 116
+    Server version: 5.6.30-log Source distribution
+
+    Copyright (c) 2000, 2016, Oracle and/or its affiliates. All rights reserved.
+
+    Oracle is a registered trademark of Oracle Corporation and/or its
+    affiliates. Other names may be trademarks of their respective
+    owners.
+
+    Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+    mysql> 
+    
+For PostgreSQL
+
+.. code-block:: none
+
+    psql  -h derpy -U usr_replica db_replica
+    Password for user usr_replica: 
+    psql (9.5.5)
+    Type "help" for help.
+    db_replica=> 
+
+Check the configuration file reference to configure correctly the connections.
+
+Initialise the replica
+
+
+.. code-block:: none
+    
+    chameleon.py create_replica_schema 
+    chameleon.py add_source --config default
+    chameleon.py init_replica --config default
+
+
+Start the replica with
+
+
+.. code-block:: none
+    
+	chameleon.py start_replica --config default
+	chameleon.py add_source --config default --source example
+	
+Check the source is present.
+
+.. code-block:: none
+    
+ chameleon.py show_status
+
+Initialise the replica source
+
+.. code-block:: none
+    
+ chameleon.py init_replica --config default --source example
+
+
+Check the replica initalisation status with ``chameleon.py show_status`` or checking the logs in the log directory configured.
+ 
+ When The replica is in ``initialised`` status start the replica process.
+ 
+.. code-block:: none
+    
+ chameleon.py start_replica --config default --source example
+
+
+To stop the replica
+
+.. code-block:: none
+    
+ chameleon.py stop_replica --config default --source example
+
+ 
+To detach the replica
+
+.. code-block:: none
+    
+ chameleon.py detach_replica --config default --source example
+
+ 
