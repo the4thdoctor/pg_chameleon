@@ -11,9 +11,15 @@ Command line reference
 .. csv-table:: Options 
    :header: "Option", "Description", "Default","Example"
    
-   ``--config``, Specifies the configuration to use in ``~.pg_chameleon/configuration/``. The configuration name should be the file without the extension ``.yml`` , ``default``,``--config foo`` will search for ``~.pg_chameleon/configuration/foo.yml``
+   ``--config``, Specifies the configuration to use in ``~.pg_chameleon/configuration/``. The configuration name should be the file without the extension ``.yml`` , ``default``,``--config foo`` will use the file ``~.pg_chameleon/configuration/foo.yml``
+   ``--source``, Specifies the source within a configuration file., N/A, ``--source bar``
+   ``--schema``, Specifies a schema configured within a source., N/A, ``--schema schema_foo``
+   ``--tables``, Specifies one or more tables configured in a schema. Multiple tables can be specified separated by comma. The table must have the schema., N/A, ``--tables schema_foo.table_bar``
+   ``--debug``,When added to the command line the debug option disables any daemonisation and outputs all the logging to the console. The keybord interrupt signal is trapped correctly., N/A, ``--debug``
+   ``--version``,Displays the package version., N/A, ``--version``
 
-
+   
+   
 .. csv-table:: Command list reference
    :header: "Command", "Description", "Options"
       
