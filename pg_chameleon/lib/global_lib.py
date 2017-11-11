@@ -25,6 +25,7 @@ class replica_engine(object):
 		"""
 			Class constructor.
 		"""
+		self.catalog_version = '2.0.0'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
@@ -57,7 +58,7 @@ class replica_engine(object):
 		self.pg_engine.source = self.args.source
 		self.pg_engine.type_override = self.config["type_override"]
 		self.pg_engine.sources = self.config["sources"]
-		
+		catalog_version = self.pg_engine.get_catalog_version()
 		#mysql_source instance initialisation
 		self.mysql_source = mysql_source()
 		self.mysql_source.source = self.args.source
@@ -67,6 +68,12 @@ class replica_engine(object):
 		self.mysql_source.logger = self.logger
 		self.mysql_source.sources = self.config["sources"]
 		self.mysql_source.type_override = self.config["type_override"]
+		
+		if  catalog_version:
+			if self.catalog_version != catalog_version:
+				print("FATAL, replica catalogue version mismatch. Expected %s, got %s" % (self.catalog_version, catalog_version))
+				sys.exit()
+		
 		
 		
 	def terminate_replica(self, signal, frame):

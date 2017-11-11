@@ -769,6 +769,31 @@ class pg_engine(object):
 		file_schema.close()
 		self.pgsql_cur.execute(sql_schema)
 	
+	def get_catalog_version(self):
+		"""
+			The method returns if the replica schema's version
+			
+			:return: the version string selected from sch_chameleon.v_version
+			:rtype: text
+		"""
+		schema_version = None
+		sql_version = """
+			SELECT 
+				t_version
+			FROM 
+				sch_chameleon.v_version 
+			;
+		"""
+		self.connect_db()
+		try:
+			self.pgsql_cur.execute(sql_version)
+			schema_version = self.pgsql_cur.fetchone()
+			self.disconnect_db()
+			schema_version = schema_version[0]
+		except:
+			schema_version = None
+		return schema_version
+			
 	def check_replica_schema(self):
 		"""
 			The method checks if the sch_chameleon exists
