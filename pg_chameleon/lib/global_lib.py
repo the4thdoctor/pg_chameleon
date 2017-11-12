@@ -8,7 +8,7 @@ import signal
 from shutil import copy
 from distutils.sysconfig import get_python_lib
 from tabulate import tabulate
-from pg_chameleon import pg_engine, mysql_source
+from pg_chameleon import pg_engine, mysql_source, pgsql_source
 import logging
 from logging.handlers  import TimedRotatingFileHandler
 from daemonize import Daemonize
@@ -59,6 +59,7 @@ class replica_engine(object):
 		self.pg_engine.type_override = self.config["type_override"]
 		self.pg_engine.sources = self.config["sources"]
 		catalog_version = self.pg_engine.get_catalog_version()
+		
 		#mysql_source instance initialisation
 		self.mysql_source = mysql_source()
 		self.mysql_source.source = self.args.source
@@ -68,6 +69,16 @@ class replica_engine(object):
 		self.mysql_source.logger = self.logger
 		self.mysql_source.sources = self.config["sources"]
 		self.mysql_source.type_override = self.config["type_override"]
+		
+		#pgsql_source instance initialisation
+		self.pgsql_source = pgsql_source()
+		self.pgsql_source.source = self.args.source
+		self.pgsql_source.tables = self.args.tables
+		self.pgsql_source.schema = self.args.schema.strip()
+		self.pgsql_source.pg_engine = self.pg_engine
+		self.pgsql_source.logger = self.logger
+		self.pgsql_source.sources = self.config["sources"]
+		self.pgsql_source.type_override = self.config["type_override"]
 		
 		if  catalog_version:
 			if self.catalog_version != catalog_version:

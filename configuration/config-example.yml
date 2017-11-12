@@ -37,6 +37,7 @@ sources:
         lock_timeout: "120s"
         my_server_id: 100
         replica_batch_size: 10000
+        replay_max_rows: 10000
         batch_retention: '1 day'
         copy_max_memory: "300M"
         copy_mode: 'file'  

@@ -5,6 +5,8 @@ changelog
 * Fix wrong position when determining the destination schema in read_replica_stream
 * Fix wrong log position stored in the source's high watermark
 * Fix wrong table inclusion/exclusion in read_replica_steam
+* Add Source parameter ``replay_max_rows`` to set the amount of rows to replay. Previously the value was set by replica_batch_size
+
 
 2.0-alpha1 11 November 2017
 .............................

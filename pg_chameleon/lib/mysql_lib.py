@@ -597,9 +597,12 @@ class mysql_source(object):
 			table_list = self.schema_tables[schema]
 			for table in table_list:
 				self.logger.info("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
-				master_status = self.copy_data(schema, table)
-				table_pkey = self.create_indices(schema, table)
-				self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
+				try:
+					master_status = self.copy_data(schema, table)
+					table_pkey = self.create_indices(schema, table)
+					self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
+				except:
+					self.logger.info("Could not copy the table %s. Excluding it from the replica." %(table) )
 				
 	
 	def set_copy_max_memory(self):
