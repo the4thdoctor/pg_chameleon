@@ -857,8 +857,9 @@ class mysql_source(object):
 					schema_query = binlogevent.schema.decode()
 				except:
 					schema_query = binlogevent.schema
-				destination_schema = self.schema_mappings[schema_query]
+				
 				if binlogevent.query.strip().upper() not in self.statement_skip and schema_query in self.schema_mappings: 
+					destination_schema = self.schema_mappings[schema_query]
 					log_position = binlogevent.packet.log_pos
 					master_data["File"] = binlogfile
 					master_data["Position"] = log_position

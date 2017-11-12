@@ -1,5 +1,10 @@
 changelog 
 *************************
+2.0-alpha2 XX November 2017
+.............................
+* Fix wrong position when determining the destination schema in read_replica_Stream
+
+
 2.0-alpha1 11 November 2017
 .............................
 
