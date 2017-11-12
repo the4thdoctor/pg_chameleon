@@ -33,7 +33,33 @@ class pgsql_source(object):
 		self.schema_loading = {}
 		self.schema_list = []
 		self.schema_only = {}
-
+	
+	def __del__(self):
+		"""
+			Class destructor, tries to disconnect the postgresql connection.
+		"""
+		#self.disconnect_db()
+	
+	
+	def connect_db(self):
+		"""
+			Connects to PostgreSQL using the parameters stored in self.dest_conn. The dictionary is built using the parameters set via adding the key dbname to the self.pg_conn dictionary.
+			This method's connection and cursors are widely used in the procedure except for the replay process which uses a 
+			dedicated connection and cursor.
+			
+			:return: a dictionary with the objects connection and cursor 
+			:rtype: dictionary
+		"""
+		if self.source_conn:
+			strconn = "dbname=%(database)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % self.source_conn
+			pgsql_conn = psycopg2.connect(strconn)
+			pgsql_conn .set_client_encoding(self.source_conn["charset"])
+			pgsql_cur = pgsql_conn .cursor()
+		elif not self.source_conn:
+			self.logger.error("Undefined database connection string. Exiting now.")
+			sys.exit()
+		
+		return {'connection': pgsql_conn, 'cursor': pgsql_cur }
 
 
 class pg_engine(object):

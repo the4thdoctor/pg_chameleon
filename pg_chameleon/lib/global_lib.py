@@ -49,16 +49,16 @@ class replica_engine(object):
 		self.set_configuration_files()
 		self.args = args
 		self.load_config()
+		self.logger = self.__init_logger()
 		
 		#pg_engine instance initialisation
 		self.pg_engine = pg_engine()
 		self.pg_engine.dest_conn = self.config["pg_conn"]
-		self.logger = self.init_logger()
 		self.pg_engine.logger = self.logger
 		self.pg_engine.source = self.args.source
 		self.pg_engine.type_override = self.config["type_override"]
 		self.pg_engine.sources = self.config["sources"]
-		catalog_version = self.pg_engine.get_catalog_version()
+		
 		
 		#mysql_source instance initialisation
 		self.mysql_source = mysql_source()
@@ -80,6 +80,8 @@ class replica_engine(object):
 		self.pgsql_source.sources = self.config["sources"]
 		self.pgsql_source.type_override = self.config["type_override"]
 		
+		#safety checks
+		catalog_version = self.pg_engine.get_catalog_version()
 		if  catalog_version:
 			if self.catalog_version != catalog_version:
 				print("FATAL, replica catalogue version mismatch. Expected %s, got %s" % (self.catalog_version, catalog_version))
@@ -218,31 +220,43 @@ class replica_engine(object):
 				self.pg_engine.drop_source()
 			elif drop_src in  self.lst_yes:
 				print('Please type YES all uppercase to confirm')
-			
+	
 	def init_replica(self):
 		"""
 			The method  initialise a replica for a given source and configuration. 
-			Is compulsory to specify a source name when running this method.
+			It is compulsory to specify a source name when running this method.
+			The method checks the source type and calls the corresponding initialisation's method.
+			Currently only mysql is supported.
 		"""
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
 		elif self.args.tables != "*":
 			print("You cannot specify a table name when running init_replica.")
 		else:
-			self.stop_replica()
-			if self.args.debug:
-				self.mysql_source.init_replica()
+			source_type = self.config["sources"][self.args.source]["type"]
+			self.__stop_replica()
+			if source_type  == "mysql":
+				self.__init_mysql_replica()
+			
+	def __init_mysql_replica(self):
+		"""
+			The method  initialise a replica for a given mysql source and configuration. 
+			The method is called by the public method init_replica.
+		"""
+		
+		if self.args.debug:
+			self.mysql_source.init_replica()
+		else:
+			if self.config["log_dest"]  == 'stdout':
+				foreground = True
 			else:
-				if self.config["log_dest"]  == 'stdout':
-					foreground = True
-				else:
-					foreground = False
-					print("Init replica process for source %s started." % (self.args.source))
-				keep_fds = [self.logger_fds]
-				init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
-				self.logger.info("Initialising the replica for source %s" % self.args.source)
-				init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
-				init_daemon.start()
+				foreground = False
+				print("Init replica process for source %s started." % (self.args.source))
+			keep_fds = [self.logger_fds]
+			init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+			self.logger.info("Initialising the replica for source %s" % self.args.source)
+			init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
+			init_daemon.start()
 
 	def refresh_schema(self):
 		"""
@@ -255,7 +269,7 @@ class replica_engine(object):
 		elif self.args.schema == "*":
 			print("You must specify an origin's schema name using the argument --schema")
 		else:
-			self.stop_replica()
+			self.__stop_replica()
 			if self.args.debug:
 				self.mysql_source.refresh_schema()
 			else:
@@ -282,7 +296,7 @@ class replica_engine(object):
 		elif self.args.tables == "*":
 			print("You must specify one or more tables, in the form schema.table, separated by comma using the argument --tables")
 		else:
-			self.stop_replica()
+			self.__stop_replica()
 			if self.args.debug:
 				self.mysql_source.sync_tables()
 			else:
@@ -309,7 +323,7 @@ class replica_engine(object):
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
 		else:
-			self.stop_replica()
+			self.__stop_replica()
 			self.pg_engine.update_schema_mappings()
 			
 			
@@ -412,7 +426,7 @@ class replica_engine(object):
 						print("The replica process is already started. Aborting the command.")
 				
 	
-	def stop_replica(self):
+	def __stop_replica(self):
 		"""
 			The method reads the pid of the replica process for the given source and sends a SIGINT which 
 			tells the replica process to manage a graceful exit.
@@ -473,14 +487,14 @@ class replica_engine(object):
 			drop_src = input(drp_msg)
 			if drop_src == 'YES':
 				self.pg_engine.fk_metadata = self.mysql_source.get_foreign_keys_metadata()
-				self.stop_replica()
+				self.__stop_replica()
 				self.pg_engine.detach_replica()
 			elif drop_src in  self.lst_yes:
 				print('Please type YES all uppercase to confirm')
 				
 		
 			
-	def init_logger(self):
+	def __init_logger(self):
 		"""
 		The method initialise a new logger object using the configuration parameters.
 		The formatter is different if the debug option is enabler or not.
