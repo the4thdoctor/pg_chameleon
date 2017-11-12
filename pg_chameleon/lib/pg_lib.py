@@ -22,6 +22,20 @@ class pg_encoder(json.JSONEncoder):
 			return str(obj)
 		return json.JSONEncoder.default(self, obj)
 
+class pgsql_source(object):
+	def __init__(self):
+		"""
+			Class constructor, the method sets the class variables and configure the
+			operating parameters from the args provided t the class.
+		"""
+		self.schema_tables = {}
+		self.schema_mappings = {}
+		self.schema_loading = {}
+		self.schema_list = []
+		self.schema_only = {}
+
+
+
 class pg_engine(object):
 	def __init__(self):
 		python_lib=get_python_lib()
