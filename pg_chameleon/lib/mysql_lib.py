@@ -691,6 +691,11 @@ class mysql_source(object):
 			self.pg_engine.swap_schemas()
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("initialised")
+			self.connect_db_buffered()
+			master_end = self.get_master_coordinates()
+			self.disconnect_db_buffered()
+			self.pg_engine.set_source_highwatermark(master_end, consistent=False)
+			
 		except:
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
@@ -725,6 +730,11 @@ class mysql_source(object):
 			self.pg_engine.swap_tables()
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("synced")
+			self.connect_db_buffered()
+			master_end = self.get_master_coordinates()
+			self.disconnect_db_buffered()
+			self.pg_engine.set_source_highwatermark(master_end, consistent=False)
+			
 		except:
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
@@ -1068,12 +1078,13 @@ class mysql_source(object):
 			self.pg_engine.swap_schemas()
 			self.pg_engine.clean_batch_data()
 			self.pg_engine.save_master_status(master_start)
+			self.drop_loading_schemas()
+			self.pg_engine.set_source_status("initialised")
 			self.connect_db_buffered()
 			master_end = self.get_master_coordinates()
 			self.disconnect_db_buffered()
 			self.pg_engine.set_source_highwatermark(master_end, consistent=False)
-			self.drop_loading_schemas()
-			self.pg_engine.set_source_status("initialised")
+			
 		except:
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
