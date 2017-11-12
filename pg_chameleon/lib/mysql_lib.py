@@ -808,6 +808,13 @@ class mysql_source(object):
 		:return: the batch's data composed by binlog name, binlog position and last event timestamp read from the mysql replica stream.
 		:rtype: dictionary
 		"""
+		limit_tables = None
+		skip_tables = None
+		if self.limit_tables:
+			limit_tables = [table.split('.')[1] for table in self.limit_tables]
+		if self.skip_tables:
+			skip_tables = [table.split('.')[1] for table in self.skip_tables]
+		
 		sql_tokeniser = sql_token()
 		table_type_map = self.get_table_type_map()	
 		inc_tables = self.pg_engine.get_inconsistent_tables()
@@ -828,8 +835,8 @@ class mysql_source(object):
 			log_pos = log_position, 
 			resume_stream = True, 
 			only_schemas = self.schema_replica, 
-			only_tables = self.limit_tables, 
-			ignored_tables = self.skip_tables, 
+			only_tables = limit_tables, 
+			ignored_tables = skip_tables, 
 		)
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		
@@ -1044,7 +1051,7 @@ class mysql_source(object):
 		"""
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.init_sync()
-		master_batch = self.get_master_coordinates()
+		master_start = self.get_master_coordinates()
 		self.pg_engine.set_source_status("initialising")
 		self.pg_engine.cleanup_source_tables()
 		self.schema_list = [schema for schema in self.schema_mappings]
@@ -1060,8 +1067,11 @@ class mysql_source(object):
 			self.pg_engine.grant_select()
 			self.pg_engine.swap_schemas()
 			self.pg_engine.clean_batch_data()
-			self.pg_engine.save_master_status(master_batch)
-			self.pg_engine.set_source_highwatermark(master_batch, consistent=False)
+			self.pg_engine.save_master_status(master_start)
+			self.connect_db_buffered()
+			master_end = self.get_master_coordinates()
+			self.disconnect_db_buffered()
+			self.pg_engine.set_source_highwatermark(master_end, consistent=False)
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("initialised")
 		except:

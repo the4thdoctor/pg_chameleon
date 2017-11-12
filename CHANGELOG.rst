@@ -2,8 +2,9 @@ changelog
 *************************
 2.0-alpha2 XX November 2017
 .............................
-* Fix wrong position when determining the destination schema in read_replica_Stream
-
+* Fix wrong position when determining the destination schema in read_replica_stream
+* Fix wrong log position stored in the source's high watermark
+* Fix wrong table inclusion/exclusion in read_replica_steam
 
 2.0-alpha1 11 November 2017
 .............................
