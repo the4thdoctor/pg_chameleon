@@ -447,7 +447,13 @@ class replica_engine(object):
 				print("The replica process is stopped")
 			except:
 				print("An error occurred when trying to signal the replica process")
-		
+	
+	def stop_replica(self):
+		"""
+			The method calls the private method __stop_replica to stop the replica process.
+		"""
+		self.__stop_replica()
+	
 	def show_status(self):
 		"""
 			list the replica status using the configuration files and the replica catalogue
