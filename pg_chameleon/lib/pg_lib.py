@@ -1105,10 +1105,96 @@ class pg_engine(object):
 	def get_status(self):
 		"""
 			The method gets the status for all sources configured in the target database.
-			:return: a list with the status data retrieved from the database.
+			:return: a list with the status details
 			:rtype: list
 		"""
 		self.connect_db()
+		schema_mappings = None
+		table_status = None
+		if self.source == "*":
+			source_filter = ""
+			
+		else:
+			source_filter = (self.pgsql_cur.mogrify(""" WHERE  src.t_source=%s """, (self.source, ))).decode()
+			
+			sql_mappings = """
+				SELECT 
+					(mappings).key as origin_schema,
+					(mappings).value destination_schema
+				FROM
+
+				(
+					SELECT 
+						jsonb_each_text(jsb_schema_mappings) as mappings
+					FROM 
+						sch_chameleon.t_sources
+					WHERE
+						t_source=%s
+
+				) sch
+				;
+			"""
+			
+			sql_tab_status = """
+				WITH  tab_replica AS
+				(
+					SELECT 
+						b_replica_enabled,
+						v_schema_name,
+						v_table_name
+					FROM 
+						sch_chameleon.t_replica_tables tab
+						INNER JOIN sch_chameleon.t_sources src
+						ON tab.i_id_source=src.i_id_source
+						WHERE
+							src.t_source=%s
+				)
+				SELECT
+					i_order,
+					i_count,
+					t_tables
+				FROM
+				(
+					
+					SELECT
+						0 i_order,
+						count(*) i_count,
+						array_agg(format('%%I.%%I',v_schema_name,v_table_name)) t_tables
+					FROM 
+						tab_replica
+					WHERE
+						NOT b_replica_enabled
+				UNION ALL
+					SELECT
+						1 i_order,
+						count(*) i_count,
+						array_agg(format('%%I.%%I',v_schema_name,v_table_name)) t_tables
+					FROM 
+						tab_replica
+					WHERE
+						b_replica_enabled
+				UNION ALL
+					SELECT
+						2 i_order,
+						count(*) i_count,
+						array_agg(format('%%I.%%I',v_schema_name,v_table_name)) t_tables
+					FROM 
+						tab_replica
+				) tab_stat
+				ORDER BY 
+					i_order
+			;
+			"""
+			
+			
+			self.pgsql_cur.execute(sql_mappings, (self.source, ))
+			schema_mappings = self.pgsql_cur.fetchall()
+			self.pgsql_cur.execute(sql_tab_status, (self.source, ))
+			table_status = self.pgsql_cur.fetchall()
+			
+			
+			
+		
 		sql_status = """
 			SELECT 
 				src.i_id_source,
@@ -1146,13 +1232,14 @@ class pg_engine(object):
 				ON	src.i_id_source = rec.i_id_source
 				LEFT JOIN sch_chameleon.t_last_replayed rep
 				ON	src.i_id_source = rep.i_id_source
+			%s
 			;
 			
-		"""
+		""" % (source_filter, )
 		self.pgsql_cur.execute(sql_status)
 		configuration_status = self.pgsql_cur.fetchall()
 		self.disconnect_db()
-		return configuration_status
+		return [configuration_status, schema_mappings, table_status]
 	
 	def insert_source_timings(self):
 		"""

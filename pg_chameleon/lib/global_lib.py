@@ -458,10 +458,13 @@ class replica_engine(object):
 		"""
 			list the replica status using the configuration files and the replica catalogue
 		"""
-		configuration_status = self.pg_engine.get_status()
+		self.pg_engine.source = self.args.source
+		configuration_data = self.pg_engine.get_status()
+		configuration_status = configuration_data[0]
+		schema_mappings = configuration_data[1]
+		table_status = configuration_data[2]
 		tab_headers = ['Source id',  'Source name',  'Status', 'Consistent' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
 		tab_body = []
-		
 		for status in configuration_status:
 			source_id = status[0]
 			source_name = status[1]
@@ -473,7 +476,34 @@ class replica_engine(object):
 			consistent = status[7]
 			tab_row = [source_id, source_name,  source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
 			tab_body.append(tab_row)
-		print(tabulate(tab_body, headers=tab_headers))
+		print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
+		if schema_mappings:
+			print('\n== Schema mappings ==')
+			tab_headers = ['Origin schema',  'Destination schema']
+			tab_body = []
+			for mapping in schema_mappings:
+				origin_schema =  mapping[0]
+				destination_schema=  mapping[1]
+				tab_row = [origin_schema, destination_schema]
+				tab_body.append(tab_row)
+			print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
+		if table_status:
+			print('\n== Replica status ==')
+			#tab_headers = ['',  '',  '']
+			tab_body = []
+			tables_no_replica = table_status[0]
+			tab_row = ['Tables not replicated', tables_no_replica[1]]
+			tab_body.append(tab_row)
+			tables_with_replica = table_status[1]
+			tab_row = ['Tables replicated', tables_with_replica[1]]
+			tab_body.append(tab_row)
+			tables_all= table_status[2]
+			tab_row = ['All tables', tables_all[1]]
+			tab_body.append(tab_row)
+			print(tabulate(tab_body, tablefmt="simple"))
+			if tables_no_replica[2]:
+				print('\n== Tables with replica disabled ==')
+				print("\n".join(tables_no_replica[2]))
 	
 	def detach_replica(self):
 		"""
