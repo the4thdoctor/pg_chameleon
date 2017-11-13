@@ -1250,17 +1250,20 @@ class pg_engine(object):
 			:return: the postgresql converted column type
 			:rtype: string
 		"""
-		try:
-			
-			table_full = "%s.%s" % (schema, table)
-			type_override = self.type_override[column["column_type"]]
-			override_to = type_override["override_to"]
-			override_tables = type_override["override_tables"]
-			if override_tables[0] == '*' or table_full in override_tables:
-				column_type = override_to
-			else:
+		if self.type_override:
+			try:
+				
+				table_full = "%s.%s" % (schema, table)
+				type_override = self.type_override[column["column_type"]]
+				override_to = type_override["override_to"]
+				override_tables = type_override["override_tables"]
+				if override_tables[0] == '*' or table_full in override_tables:
+					column_type = override_to
+				else:
+					column_type = self.type_dictionary[column["data_type"]]
+			except KeyError:
 				column_type = self.type_dictionary[column["data_type"]]
-		except KeyError:
+		else:
 			column_type = self.type_dictionary[column["data_type"]]
 		return column_type
 	
