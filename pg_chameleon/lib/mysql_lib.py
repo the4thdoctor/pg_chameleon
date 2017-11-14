@@ -489,7 +489,7 @@ class mysql_source(object):
 			self.insert_table_data(ins_arg)
 		
 		
-		self.logger.debug("unlocking the table `%s`.`%s`" % (schema, table) )
+		self.logger.debug("unlocking the table %s.%s" % (schema, table) )
 		sql_unlock = "UNLOCK TABLES;" 
 		self.cursor_buffered.execute(sql_unlock)
 		self.disconnect_db_buffered()

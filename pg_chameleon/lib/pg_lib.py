@@ -8,6 +8,7 @@ import decimal
 import time
 import base64
 import os
+import binascii
 from distutils.sysconfig import get_python_lib
 
 class pg_encoder(json.JSONEncoder):
@@ -1433,6 +1434,7 @@ class pg_engine(object):
 			self.insert_batch(group_insert)
 		self.set_application_name("idle")
 	
+	
 	def insert_batch(self,group_insert):
 		"""
 			Fallback method for the batch insert. Each row event is processed
@@ -1489,23 +1491,49 @@ class pg_engine(object):
 						event_time
 					)
 				)
+			except psycopg2.Error as e:
+				if e.pgcode == "22P05":
+					self.logger.warning("%s - %s. Trying to cleanup the row" % (e.pgcode, e.pgerror))
+					event_after = {key: str(value).replace("\x00", "") for key, value in event_after.items()}
+					event_before = {key: str(value).replace("\x00", "") for key, value in event_before.items()}
+					try:
+						self.pgsql_cur.execute(sql_insert,(
+								global_data["batch_id"], 
+								global_data["table"],  
+								global_data["schema"], 
+								global_data["action"], 
+								global_data["binlog"], 
+								global_data["logpos"], 
+								json.dumps(event_after, cls=pg_encoder), 
+								json.dumps(event_before, cls=pg_encoder), 
+								event_time
+							)
+						)
+					except:
+						self.logger.error("Cleanup unsuccessful. Saving the discarded row")
+						self.save_discarded_row(row_data)
+				else:
+					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+					self.logger.error("Error when storing event data. Saving the discarded row")
+					self.save_discarded_row(row_data)
 			except:
-				self.logger.error("error when storing event data. saving the discarded row")
-				self.save_discarded_row(row_data,global_data["batch_id"])
+				self.logger.error("Error when storing event data. Saving the discarded row")
+				self.save_discarded_row(row_data)
 
-	def save_discarded_row(self,row_data,batch_id):
+	def save_discarded_row(self,row_data):
 		"""
 			The method saves the discarded row in the table t_discarded_row along with the id_batch.
 			The row is encoded in base64 as the t_row_data is a text field.
 			
 			:param row_data: the row data dictionary
-			:param batch_id: the id batch where the row belongs
+			
 		"""
-		byte_data = "%b" % row_data
-		b64_row=base64.b64encode(byte_data)
-		schema = row_data["schema"]
-		table  = row_data["table"]
-		print(b64_row)
+		global_data = row_data["global_data"]
+		schema = global_data["schema"]
+		table  = global_data["table"]
+		batch_id = global_data["batch_id"]
+		str_data = '%s' %(row_data, )
+		hex_row = binascii.hexlify(str_data.encode())
 		sql_save="""
 			INSERT INTO sch_chameleon.t_discarded_rows
 				(
@@ -1522,7 +1550,7 @@ class pg_engine(object):
 					%s
 				);
 		"""
-		self.pgsql_cur.execute(sql_save,(batch_id, schema, table,b64_row))
+		self.pgsql_cur.execute(sql_save,(batch_id, schema, table,hex_row))
 	
 	
 	def create_table(self,  table_metadata,table_name,  schema):
@@ -2015,7 +2043,13 @@ class pg_engine(object):
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 					self.logger.error(self.pgsql_cur.mogrify(sql_head,data_row))
 			except ValueError:
-				self.logger.error("error when inserting the row, value not allowed")
+				self.logger.warning("character mismatch when inserting the data, trying to cleanup the row data")
+				data_row = [item.replace("\x00", "") for item in data_row]
+				try:
+					self.pgsql_cur.execute(sql_head,data_row)	
+				except:
+					self.logger.error("error when inserting the row, skipping the row")
+					
 			except:
 				self.logger.error("unexpected error when processing the row")
 				self.logger.error(" - > Table: %s.%s" % (schema, table))
