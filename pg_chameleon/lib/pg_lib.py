@@ -60,7 +60,12 @@ class pgsql_source(object):
 			sys.exit()
 		
 		return {'connection': pgsql_conn, 'cursor': pgsql_cur }
-
+	
+	def init_replica(self):
+		"""
+			The method performs a full init replica for the given source
+		"""
+		self.logger.debug("starting init replica for source %s" % self.source)
 
 class pg_engine(object):
 	def __init__(self):

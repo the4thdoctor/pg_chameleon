@@ -237,6 +237,8 @@ class replica_engine(object):
 			self.__stop_replica()
 			if source_type  == "mysql":
 				self.__init_mysql_replica()
+			elif source_type  == "pgsql":
+				self.__init_pgsql_replica()
 			
 	def __init_mysql_replica(self):
 		"""
