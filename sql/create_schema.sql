@@ -14,6 +14,9 @@ CREATE TYPE sch_chameleon.en_src_status
 CREATE TYPE sch_chameleon.en_binlog_event 
 	AS ENUM ('delete', 'update', 'insert','ddl');
 
+CREATE TYPE sch_chameleon.en_src_type 
+	AS ENUM ('mysql','pgsql');
+
 CREATE TYPE sch_chameleon.ty_replay_status 
 	AS
 	(
@@ -31,6 +34,7 @@ CREATE TABLE sch_chameleon.t_sources
 	t_binlog_name text,
 	i_binlog_position integer,
 	b_consistent boolean NOT NULL DEFAULT TRUE,
+	enm_source_type sch_chameleon.en_src_type NOT NULL,
 	v_log_table character varying[] ,
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
 )

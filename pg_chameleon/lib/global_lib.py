@@ -240,7 +240,7 @@ class replica_engine(object):
 			
 	def __init_mysql_replica(self):
 		"""
-			The method  initialise a replica for a given mysql source and configuration. 
+			The method  initialise a replica for a given mysql source within the specified configuration. 
 			The method is called by the public method init_replica.
 		"""
 		
@@ -257,6 +257,27 @@ class replica_engine(object):
 			self.logger.info("Initialising the replica for source %s" % self.args.source)
 			init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
 			init_daemon.start()
+
+	def __init_pgsql_replica(self):
+		"""
+			The method  initialise a replica for a given postgresql source within the specified configuration. 
+			The method is called by the public method init_replica.
+		"""
+		
+		if self.args.debug:
+			self.pgsql_source.init_replica()
+		else:
+			if self.config["log_dest"]  == 'stdout':
+				foreground = True
+			else:
+				foreground = False
+				print("Init replica process for source %s started." % (self.args.source))
+			keep_fds = [self.logger_fds]
+			init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+			self.logger.info("Initialising the replica for source %s" % self.args.source)
+			init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.pgsql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
+			init_daemon.start()
+
 
 	def refresh_schema(self):
 		"""
@@ -462,7 +483,7 @@ class replica_engine(object):
 		configuration_status = configuration_data[0]
 		schema_mappings = configuration_data[1]
 		table_status = configuration_data[2]
-		tab_headers = ['Source id',  'Source name',  'Status', 'Consistent' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
+		tab_headers = ['Source id',  'Source name', 'Type',  'Status', 'Consistent' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
 		tab_body = []
 		for status in configuration_status:
 			source_id = status[0]
@@ -473,7 +494,8 @@ class replica_engine(object):
 			replay_lag = status[5]
 			last_replay = status[6]
 			consistent = status[7]
-			tab_row = [source_id, source_name,  source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
+			source_type = status[8]
+			tab_row = [source_id, source_name, source_type,   source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
 			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
 		if schema_mappings:

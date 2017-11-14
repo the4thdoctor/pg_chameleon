@@ -945,6 +945,7 @@ class pg_engine(object):
 			else:
 				self.logger.debug("Adding source %s " % self.source)
 				schema_mappings = json.dumps(self.sources[self.source]["schema_mappings"])
+				source_type = self.sources[self.source]["type"]
 				log_table_1 = "t_log_replica_%s_1" % self.source
 				log_table_2 = "t_log_replica_%s_2" % self.source
 				sql_add = """
@@ -952,17 +953,19 @@ class pg_engine(object):
 						( 
 							t_source,
 							jsb_schema_mappings,
-							v_log_table
+							v_log_table,
+							enm_source_type
 						) 
 					VALUES 
 						(
 							%s,
 							%s,
-							ARRAY[%s,%s]
+							ARRAY[%s,%s],
+							%s
 						)
 					; 
 				"""
-				self.pgsql_cur.execute(sql_add, (self.source, schema_mappings, log_table_1, log_table_2))
+				self.pgsql_cur.execute(sql_add, (self.source, schema_mappings, log_table_1, log_table_2, source_type))
 				
 				sql_parts = """SELECT sch_chameleon.fn_refresh_parts() ;"""
 				self.pgsql_cur.execute(sql_parts)
@@ -1223,7 +1226,8 @@ class pg_engine(object):
 						'Yes'
 					ELSE
 						'No'
-				END as consistent_status
+				END as consistent_status,
+				enm_source_type
 				
 				
 			FROM 
