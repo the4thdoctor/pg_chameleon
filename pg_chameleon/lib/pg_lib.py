@@ -372,7 +372,7 @@ class pg_engine(object):
 			self.pgsql_cur.execute(sql_replay, (replay_max_rows, self.i_id_source, ))
 			replay_status = self.pgsql_cur.fetchone()
 			if replay_status[0]:
-				self.logger.debug("Replayed %s rows for source %s" % (replay_max_rows, self.source) )
+				self.logger.info("Replayed %s rows for source %s" % (replay_max_rows, self.source) )
 			continue_loop = replay_status[0]
 			if replay_status[1]:
 				tables_error.append(replay_status[1])

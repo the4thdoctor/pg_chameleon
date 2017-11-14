@@ -333,7 +333,6 @@ class replica_engine(object):
 			in the target postgresql database.
 		"""
 		while True:
-			self.logger.info("Reading replica for for source %s " % (self.args.source))
 			self.mysql_source.read_replica()
 			time.sleep(self.sleep_loop)
 	
@@ -345,7 +344,6 @@ class replica_engine(object):
 		self.pg_engine.connect_db()
 		self.pg_engine.set_source_id()
 		while True:
-			self.logger.info("Replaying data changes for source %s " % (self.args.source))
 			tables_error = self.pg_engine.replay_replica()
 			if len(tables_error) > 0:
 				table_list = [item for sublist in tables_error for item in sublist]
@@ -365,7 +363,8 @@ class replica_engine(object):
 		"""
 		signal.signal(signal.SIGINT, self.terminate_replica)
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
-		self.logger.info("Running the replica process for source %s " % (self.args.source))
+		check_timeout = self.sleep_loop*10
+		self.logger.info("Starting the replica daemons for source %s " % (self.args.source))
 		self.read_daemon = Process(target=self.read_replica, name='read_replica')
 		self.replay_daemon = Process(target=self.replay_replica, name='replay_replica')
 		self.read_daemon.start()
@@ -391,7 +390,7 @@ class replica_engine(object):
 					rollbar.report_message("The replica process crashed.\n Source: %s" %self.args.source, 'error')
 					
 				break
-			time.sleep(self.sleep_loop)
+			time.sleep(check_timeout)
 		self.logger.info("Replica process for source %s ended" % (self.args.source))
 	
 	def start_replica(self):

@@ -1000,7 +1000,7 @@ class mysql_source(object):
 					master_data["Time"]=event_time
 					
 					if len(group_insert)>=self.replica_batch_size:
-						self.logger.debug("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
+						self.logger.info("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
 						self.logger.debug("Master coordinates: %s" % (master_data, ))
 						self.pg_engine.write_batch(group_insert)
 						size_insert=0
