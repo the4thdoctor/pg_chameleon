@@ -429,7 +429,7 @@ class pg_engine(object):
 		table_pkey = self.pgsql_cur.fetchone()
 		return table_pkey[0]
 		
-	def generate_ddl(self, token,  destination_schema):
+	def __generate_ddl(self, token,  destination_schema):
 		""" 
 			The method builds the DDL using the tokenised SQL stored in token.
 			The supported commands are 
@@ -717,50 +717,75 @@ class pg_engine(object):
 						"""
 		self.pgsql_cur.execute(sql_delete, (self.i_id_source, ))	
 	
-	def write_ddl(self, token, query_data, table_metadata, destination_schema):
+	def __count_table_schema(self, table, schema):
+		"""
+			The method checks if the table exists in the given schema.
+			
+			:param table: the table's name
+			:param schema: the postgresql schema where the table should exist
+			:return: the count from pg_tables where table name and schema name are the given parameters
+			:rtype: integer
+		"""
+		sql_check = """
+			SELECT 
+				count(*) 
+			FROM 
+				pg_tables 
+			WHERE 
+					schemaname=%s
+				AND	tablename=%s;
+		"""
+		self.pgsql_cur.execute(sql_check, (schema, table ))	
+		count_table = self.pgsql_cur.fetchone()
+		return count_table[0]
+		
+	
+	def write_ddl(self, token, query_data, destination_schema):
 		"""
 			The method writes the DDL built from the tokenised sql into PostgreSQL.
 			
 			:param token: the tokenised query
 			:param query_data: query's metadata (schema,binlog, etc.)
-			:param table_metadata: the table's metadata retrieved from mysql. is an empty tuple if the statement is a drop table
 			:param destination_schema: the postgresql destination schema determined using the schema mappings.
 		"""
-		pg_ddl = self.generate_ddl(token, destination_schema)
-		log_table = query_data["log_table"]
-		insert_vals = (	
-				query_data["batch_id"], 
-				token["name"],  
-				query_data["schema"], 
-				query_data["binlog"], 
-				query_data["logpos"], 
-				pg_ddl
-			)
-		sql_insert=sql.SQL("""
-			INSERT INTO "sch_chameleon".{}
-				(
-					i_id_batch, 
-					v_table_name, 
-					v_schema_name, 
-					enm_binlog_event, 
-					t_binlog_name, 
-					i_binlog_position, 
-					t_query
+		count_table = self.__count_table_schema(token["name"], destination_schema)
+		if count_table == 1:
+			pg_ddl = self.__generate_ddl(token, destination_schema)
+			self.logger.debug("Translated query: %s " % (pg_ddl,))
+			log_table = query_data["log_table"]
+			insert_vals = (	
+					query_data["batch_id"], 
+					token["name"],  
+					query_data["schema"], 
+					query_data["binlog"], 
+					query_data["logpos"], 
+					pg_ddl
 				)
-			VALUES
-				(
-					%s,
-					%s,
-					%s,
-					'ddl',
-					%s,
-					%s,
-					%s
-				)
-			;
-		""").format(sql.Identifier(log_table), )
-		
-		self.pgsql_cur.execute(sql_insert, insert_vals)
+			sql_insert=sql.SQL("""
+				INSERT INTO "sch_chameleon".{}
+					(
+						i_id_batch, 
+						v_table_name, 
+						v_schema_name, 
+						enm_binlog_event, 
+						t_binlog_name, 
+						i_binlog_position, 
+						t_query
+					)
+				VALUES
+					(
+						%s,
+						%s,
+						%s,
+						'ddl',
+						%s,
+						%s,
+						%s
+					)
+				;
+			""").format(sql.Identifier(log_table), )
+			
+			self.pgsql_cur.execute(sql_insert, insert_vals)
 	
 	def get_batch_data(self):
 		"""
@@ -1328,12 +1353,14 @@ class pg_engine(object):
 		default_value = self.pgsql_cur.fetchone()
 		query_drop_default = ""
 		query_add_default = ""
-
 		if default_value:
-			query_drop_default = """ ALTER TABLE  "%s"."%s" ALTER COLUMN "%s" DROP DEFAULT;""" % (schema, table, column)
-			query_add_default = """ ALTER TABLE  "%s"."%s" ALTER COLUMN "%s" SET DEFAULT %s ; """ % (schema, table, create_column, default_value[0])
+			query_drop_default = sql.SQL(" ALTER TABLE {}.{} ALTER COLUMN {} DROP DEFAULT;").format(sql.Identifier(schema), sql.Identifier(table), sql.Identifier(column))
+			query_add_default = sql.SQL(" ALTER TABLE  {}.{} ALTER COLUMN {} SET DEFAULT %s;").format(sql.Identifier(schema), sql.Identifier(table), sql.Identifier(column))
+			
+			query_drop_default = self.pgsql_cur.mogrify(query_drop_default)
+			query_add_default = self.pgsql_cur.mogrify(query_add_default, (default_value[0], ))
 		
-		return {'drop':query_drop_default, 'create':query_add_default}
+		return {'drop':query_drop_default.decode(), 'create':query_add_default.decode()}
 
 
 	def get_data_type(self, column, schema,  table):

@@ -428,9 +428,9 @@ class sql_token(object):
 			TRUNCATE TABLE
 			
 			The match which is successful determines the parsing of the rest of the statement.
-			Each parse builds a dictionary with at least two keys.
-			Name and Command. 
-			Each statement comes with specific keys.
+			Each parse builds a dictionary with at least two keys "name" and "command".
+			
+			Each statement parse comes with specific addictional keys.
 			
 			When the token dictionary is complete is added to the class list tokenised
 			
