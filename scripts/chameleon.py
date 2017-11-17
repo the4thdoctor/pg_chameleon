@@ -20,7 +20,8 @@ commands = [
 	'start_replica', 
 	'stop_replica', 
 	'detach_replica', 
-	'set_configuration_files'
+	'set_configuration_files', 
+	'show_errors'
 	]
 
 command_help = """Available commands, """ + ','.join(commands)

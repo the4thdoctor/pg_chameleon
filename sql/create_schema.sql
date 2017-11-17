@@ -25,6 +25,25 @@ CREATE TYPE sch_chameleon.ty_replay_status
 	);
 	
 --TABLES/INDICES	
+
+CREATE TABLE sch_chameleon.t_error_log
+(
+	i_id_log			bigserial,
+	i_id_batch bigint NOT NULL,
+	i_id_source bigint NOT NULL,
+	v_table_name character varying(100) NOT NULL,
+	v_schema_name character varying(100) NOT NULL,
+	t_table_pkey text NOT NULL,
+	t_binlog_name text NOT NULL,
+	i_binlog_position integer NOT NULL,
+	ts_error	timestamp without time zone,
+	t_sql text,
+	t_error_message text,
+	CONSTRAINT pk_t_error_log PRIMARY KEY (i_id_log)
+)
+;
+
+
 CREATE TABLE sch_chameleon.t_sources
 (
 	i_id_source			bigserial,
@@ -351,7 +370,8 @@ $BODY$
 					i_id_batch,
 					enm_binlog_event,
 					v_schema_name,
-					v_table_name
+					v_table_name,
+					t_pk_data
 				FROM
 				(
 					SELECT
@@ -446,6 +466,37 @@ $BODY$
 					RAISE NOTICE 'SQLSTATE: % - ERROR MESSAGE %',SQLSTATE, SQLERRM;
 					RAISE NOTICE 'The table %.% has been removed from the replica',v_r_statements.v_schema_name,v_r_statements.v_table_name;
 					v_ty_status.v_table_error:=array_append(v_ty_status.v_table_error, format('%I.%I SQLSTATE: %s - ERROR MESSAGE: %s',v_r_statements.v_schema_name,v_r_statements.v_table_name,SQLSTATE, SQLERRM)::character varying) ;
+					
+					RAISE NOTICE 'Adding error log entry for table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+					INSERT INTO sch_chameleon.t_error_log
+						(
+							i_id_batch, 
+							i_id_source,
+							v_schema_name, 
+							v_table_name, 
+							t_table_pkey, 
+							t_binlog_name, 
+							i_binlog_position, 
+							ts_error, 
+							t_sql,
+							t_error_message
+						)
+						SELECT 
+							i_id_batch, 
+							p_i_id_source,
+							v_schema_name, 
+							v_table_name, 
+							v_r_statements.t_pk_data as t_table_pkey, 
+							t_binlog_name, 
+							i_binlog_position, 
+							clock_timestamp(), 
+							quote_literal(v_r_statements.t_sql) as t_sql,
+							format('%s - %s',SQLSTATE, SQLERRM) as t_error_message
+						FROM
+							sch_chameleon.t_log_replica  log
+						WHERE 
+							log.i_id_event=v_r_statements.i_id_event
+					;
 					RAISE NOTICE 'Statement %', v_r_statements.t_sql;
 					UPDATE sch_chameleon.t_replica_tables 
 						SET 
@@ -462,6 +513,8 @@ $BODY$
 						AND	v_schema_name=v_r_statements.v_schema_name
 						AND 	i_id_batch=v_i_id_batch
 					;
+					
+
 			END;
 		END LOOP;
 		IF v_ts_evt_source IS NOT NULL

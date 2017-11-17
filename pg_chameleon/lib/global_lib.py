@@ -476,9 +476,22 @@ class replica_engine(object):
 		"""
 		self.__stop_replica()
 	
+	def show_errors(self):
+		"""
+			displays the error log entries if any.
+			If the source the error log is filtered for this source only.
+		"""
+		log_error_data = None
+		self.pg_engine.source = self.args.source
+		#log_error_data = self.pg_engine.get_log_data()
+		if log_error_data:
+			print('ok')
+		else:
+			print('There are no errors in the log')
 	def show_status(self):
 		"""
-			list the replica status using the configuration files and the replica catalogue
+			list the replica status from the replica catalog.
+			If the source is specified gives some extra details on the source status.
 		"""
 		self.pg_engine.source = self.args.source
 		configuration_data = self.pg_engine.get_status()
