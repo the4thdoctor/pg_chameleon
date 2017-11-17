@@ -19,6 +19,7 @@ changelog
 * add log error for storing the errors generated during the replay
 * add not functional class pgsql_source for source type pgsql 
 * allow ``type_override`` to be empty
+* add show_status command for displaying the log error entries
 
 
 2.0-alpha1 11 November 2017
