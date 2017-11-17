@@ -483,9 +483,21 @@ class replica_engine(object):
 		"""
 		log_error_data = None
 		self.pg_engine.source = self.args.source
-		#log_error_data = self.pg_engine.get_log_data()
+		log_error_data = self.pg_engine.get_log_data()
+		tab_headers = ['Log id',  'Source name', 'ID Batch',  'Table', 'Schema' ,  'Error timestamp']
+		tab_body = []
+		
 		if log_error_data:
-			print('ok')
+			for log_line in log_error_data:
+				log_id = log_line[0]
+				source_name = log_line[1]
+				id_batch = log_line[2]
+				table_name = log_line[3]
+				schema_name = log_line[4]
+				error_timestamp = log_line[5]
+				tab_row = [log_id, id_batch,source_name, table_name,   schema_name, error_timestamp]
+				tab_body.append(tab_row)
+			print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
 		else:
 			print('There are no errors in the log')
 	def show_status(self):

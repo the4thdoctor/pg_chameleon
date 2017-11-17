@@ -1137,6 +1137,34 @@ class pg_engine(object):
 				self.idx_sequence+=1
 		return [table_primary, idx_ddl]
 	
+	def get_log_data(self):
+		"""
+			The method gets the error log entries, if any, from the replica schema.
+			:return: a dictionary with the errors logged
+			:rtype: dictionary
+		"""
+		self.connect_db()
+		sql_log = """
+			SELECT
+				log.i_id_log,
+				src.t_source,
+				log.i_id_batch,
+				log.v_table_name,
+				log.v_schema_name,
+				log.ts_error
+			FROM 
+				sch_chameleon.t_error_log log 
+				LEFT JOIN sch_chameleon.t_sources src
+				ON src.i_id_source=log.i_id_source
+		;
+
+		"""
+		
+		self.pgsql_cur.execute(sql_log)
+		log_error = self.pgsql_cur.fetchall()
+		self.disconnect_db()
+		return log_error
+		
 	def get_status(self):
 		"""
 			The method gets the status for all sources configured in the target database.

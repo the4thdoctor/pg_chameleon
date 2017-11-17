@@ -13,6 +13,13 @@ changelog
 * Fix broken save_discarded_row
 * Add more detail to show_status when specifying the source with --source
 * Changed some methods to private 
+* ensure the match for the alter table's commands are enclosed by  word boundaries
+* add if exists when trying to drop the table in  swap tables. previously adding a new table failed because the table wasn't there
+* fix wrong drop enum type when adding a new field
+* add log error for storing the errors generated during the replay
+* add not functional class pgsql_source for source type pgsql 
+* allow ``type_override`` to be empty
+
 
 2.0-alpha1 11 November 2017
 .............................
