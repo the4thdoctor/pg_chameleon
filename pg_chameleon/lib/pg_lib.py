@@ -594,7 +594,7 @@ class pg_engine(object):
 				enm_dic = {'table':table_name, 'column':column_name, 'type':column_type, 'enum_list': enum_list, 'enum_elements':alter_dic["dimension"]}
 				enm_alter = self.build_enum_ddl(schema, enm_dic)
 				ddl_pre_alter.append(enm_alter["pre_alter"])
-				ddl_post_alter.append(enm_alter["post_alter"])
+				#ddl_post_alter.append(enm_alter["post_alter"])
 				column_type= enm_alter["column_type"]
 				if 	column_type in ["character varying", "character", 'numeric', 'bit', 'float']:
 						column_type=column_type+"("+str(alter_dic["dimension"])+")"
