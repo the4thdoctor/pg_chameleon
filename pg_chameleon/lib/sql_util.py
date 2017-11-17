@@ -178,7 +178,7 @@ class sql_token(object):
 		idx_list=[]
 		idx_counter=0
 		inner_stat= "%s," % inner_stat.strip()
-		print(inner_stat)
+		
 
 		pk_match =  self.m_inline_pkeys.match(inner_stat)
 		pkey=self.m_pkeys.findall(inner_stat)

@@ -446,19 +446,9 @@ class pg_engine(object):
 			:rtype: string
 			
 		"""
+		count_table = self.__count_table_schema(token["name"], destination_schema)
 		query=""
-		if token["command"] =="RENAME TABLE":
-			old_name = token["name"]
-			new_name = token["new_name"]
-			query = """ALTER TABLE "%s"."%s" RENAME TO "%s" """ % (destination_schema, old_name, new_name)	
-			table_pkey = self.get_table_pkey(destination_schema, old_name)
-			if table_pkey:
-				self.store_table(destination_schema, new_name, table_pkey, None)
-		elif token["command"] == "DROP TABLE":
-			query=""" DROP TABLE IF EXISTS "%s"."%s";""" % (destination_schema, token["name"])	
-		elif token["command"] == "TRUNCATE":
-			query=""" TRUNCATE TABLE "%s"."%s" CASCADE;""" % (destination_schema, token["name"])	
-		elif token["command"] =="CREATE TABLE":
+		if token["command"] =="CREATE TABLE":
 			table_metadata = token["columns"]
 			table_name = token["name"]
 			index_data = token["indices"]
@@ -470,10 +460,24 @@ class pg_engine(object):
 			table_indices = ''.join([val for key ,val in index_ddl[1].items()])
 			self.store_table(destination_schema, table_name, table_pkey, None)
 			query = "%s %s %s " % (table_enum, table_statement,  table_indices)
-		elif token["command"] == "ALTER TABLE":
-			query=self.build_alter_table(destination_schema, token)
-		elif token["command"] == "DROP PRIMARY KEY":
-			self.drop_primary_key(destination_schema, token)
+		else:
+			if count_table == 1:
+				if token["command"] =="RENAME TABLE":
+					old_name = token["name"]
+					new_name = token["new_name"]
+					query = """ALTER TABLE "%s"."%s" RENAME TO "%s" """ % (destination_schema, old_name, new_name)	
+					table_pkey = self.get_table_pkey(destination_schema, old_name)
+					if table_pkey:
+						self.store_table(destination_schema, new_name, table_pkey, None)
+				elif token["command"] == "DROP TABLE":
+					query=""" DROP TABLE IF EXISTS "%s"."%s";""" % (destination_schema, token["name"])	
+				elif token["command"] == "TRUNCATE":
+					query=""" TRUNCATE TABLE "%s"."%s" CASCADE;""" % (destination_schema, token["name"])	
+				
+				elif token["command"] == "ALTER TABLE":
+					query=self.build_alter_table(destination_schema, token)
+				elif token["command"] == "DROP PRIMARY KEY":
+					self.drop_primary_key(destination_schema, token)
 		return query 
 
 	def build_enum_ddl(self, schema, enm_dic):
@@ -748,44 +752,42 @@ class pg_engine(object):
 			:param query_data: query's metadata (schema,binlog, etc.)
 			:param destination_schema: the postgresql destination schema determined using the schema mappings.
 		"""
-		count_table = self.__count_table_schema(token["name"], destination_schema)
-		if count_table == 1:
-			pg_ddl = self.__generate_ddl(token, destination_schema)
-			self.logger.debug("Translated query: %s " % (pg_ddl,))
-			log_table = query_data["log_table"]
-			insert_vals = (	
-					query_data["batch_id"], 
-					token["name"],  
-					query_data["schema"], 
-					query_data["binlog"], 
-					query_data["logpos"], 
-					pg_ddl
+		pg_ddl = self.__generate_ddl(token, destination_schema)
+		self.logger.debug("Translated query: %s " % (pg_ddl,))
+		log_table = query_data["log_table"]
+		insert_vals = (	
+				query_data["batch_id"], 
+				token["name"],  
+				query_data["schema"], 
+				query_data["binlog"], 
+				query_data["logpos"], 
+				pg_ddl
+			)
+		sql_insert=sql.SQL("""
+			INSERT INTO "sch_chameleon".{}
+				(
+					i_id_batch, 
+					v_table_name, 
+					v_schema_name, 
+					enm_binlog_event, 
+					t_binlog_name, 
+					i_binlog_position, 
+					t_query
 				)
-			sql_insert=sql.SQL("""
-				INSERT INTO "sch_chameleon".{}
-					(
-						i_id_batch, 
-						v_table_name, 
-						v_schema_name, 
-						enm_binlog_event, 
-						t_binlog_name, 
-						i_binlog_position, 
-						t_query
-					)
-				VALUES
-					(
-						%s,
-						%s,
-						%s,
-						'ddl',
-						%s,
-						%s,
-						%s
-					)
-				;
-			""").format(sql.Identifier(log_table), )
-			
-			self.pgsql_cur.execute(sql_insert, insert_vals)
+			VALUES
+				(
+					%s,
+					%s,
+					%s,
+					'ddl',
+					%s,
+					%s,
+					%s
+				)
+			;
+		""").format(sql.Identifier(log_table), )
+		
+		self.pgsql_cur.execute(sql_insert, insert_vals)
 	
 	def get_batch_data(self):
 		"""
@@ -1351,8 +1353,8 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_def_val, (regclass, column ))
 		default_value = self.pgsql_cur.fetchone()
-		query_drop_default = ""
-		query_add_default = ""
+		query_drop_default = b""
+		query_add_default = b""
 		if default_value:
 			query_drop_default = sql.SQL(" ALTER TABLE {}.{} ALTER COLUMN {} DROP DEFAULT;").format(sql.Identifier(schema), sql.Identifier(table), sql.Identifier(column))
 			query_add_default = sql.SQL(" ALTER TABLE  {}.{} ALTER COLUMN {} SET DEFAULT %s;").format(sql.Identifier(schema), sql.Identifier(table), sql.Identifier(column))
