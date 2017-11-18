@@ -1137,13 +1137,18 @@ class pg_engine(object):
 				self.idx_sequence+=1
 		return [table_primary, idx_ddl]
 	
-	def get_log_data(self):
+	def get_log_data(self, log_id):
 		"""
 			The method gets the error log entries, if any, from the replica schema.
+			:param log_id: the log id for filtering the row by identifier 
 			:return: a dictionary with the errors logged
 			:rtype: dictionary
 		"""
 		self.connect_db()
+		if log_id != "*":
+			filter_by_logid = self.pgsql_cur.mogrify("WHERE log.i_id_log=%s",  (log_id, ))
+		else:
+			filter_by_logid = b""
 		sql_log = """
 			SELECT
 				log.i_id_log,
@@ -1151,14 +1156,17 @@ class pg_engine(object):
 				log.i_id_batch,
 				log.v_table_name,
 				log.v_schema_name,
-				log.ts_error
+				log.ts_error,
+				log.t_sql,
+				log.t_error_message
 			FROM 
 				sch_chameleon.t_error_log log 
 				LEFT JOIN sch_chameleon.t_sources src
 				ON src.i_id_source=log.i_id_source
+			%s
 		;
 
-		"""
+		""" % (filter_by_logid.decode())
 		
 		self.pgsql_cur.execute(sql_log)
 		log_error = self.pgsql_cur.fetchall()

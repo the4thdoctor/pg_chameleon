@@ -481,23 +481,35 @@ class replica_engine(object):
 			displays the error log entries if any.
 			If the source the error log is filtered for this source only.
 		"""
-		log_error_data = None
+		log_id = self.args.logid
 		self.pg_engine.source = self.args.source
-		log_error_data = self.pg_engine.get_log_data()
-		tab_headers = ['Log id',  'Source name', 'ID Batch',  'Table', 'Schema' ,  'Error timestamp']
-		tab_body = []
-		
+		log_error_data = self.pg_engine.get_log_data(log_id)
 		if log_error_data:
-			for log_line in log_error_data:
-				log_id = log_line[0]
-				source_name = log_line[1]
-				id_batch = log_line[2]
-				table_name = log_line[3]
-				schema_name = log_line[4]
-				error_timestamp = log_line[5]
-				tab_row = [log_id, id_batch,source_name, table_name,   schema_name, error_timestamp]
-				tab_body.append(tab_row)
-			print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
+			if log_id != "*":
+				tab_body = []
+				log_line = log_error_data[0]
+				tab_body.append(['Log id', log_line[0]])
+				tab_body.append(['Source name', log_line[1]])
+				tab_body.append(['ID Batch', log_line[2]])
+				tab_body.append(['Table', log_line[3]])
+				tab_body.append(['Schema', log_line[4]])
+				tab_body.append(['Error timestamp', log_line[5]])
+				tab_body.append(['SQL executed', log_line[6]])
+				tab_body.append(['Error message', log_line[7]])
+				print(tabulate(tab_body, tablefmt="simple"))
+			else:
+				tab_headers = ['Log id',  'Source name', 'ID Batch',  'Table', 'Schema' ,  'Error timestamp']
+				tab_body = []
+				for log_line in log_error_data:
+					log_id = log_line[0]
+					id_batch = log_line[1]
+					source_name = log_line[2]
+					table_name = log_line[3]
+					schema_name = log_line[4]
+					error_timestamp = log_line[5]
+					tab_row = [log_id, id_batch,source_name, table_name,   schema_name, error_timestamp]
+					tab_body.append(tab_row)
+				print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
 		else:
 			print('There are no errors in the log')
 	def show_status(self):
