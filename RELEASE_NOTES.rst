@@ -1,6 +1,6 @@
 RELEASE NOTES
 *************************
-2.0-alpha2 
+2.0.0.alpha2 
 --------------------------
 **please note this is a not production release. do not use it in production**
 
@@ -26,7 +26,7 @@ This class will add a very basic support for the postgres source type.
 More details will come in the alpha3.
 
 
-2.0-alpha1 
+2.0.0.alpha1 
 --------------------------
 **please note this is a not production release. do not use it in production**
 

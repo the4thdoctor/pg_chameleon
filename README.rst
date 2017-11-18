@@ -107,7 +107,7 @@ Setup
 * Create a virtual environment (e.g. python3 -m venv venv)
 * Activate the virtual environment (e.g. source venv/bin/activate)
 * Upgrade pip with **pip install pip --upgrade**
-* Install pg_chameleon with **pip install pg_chameleon==2.0a1.post1**. 
+* Install pg_chameleon with **pip install pg_chameleon==2.0.0a2**. 
 * Create a user on mysql for the replica (e.g. usr_replica)
 * Grant access to usr on the replicated database (e.g. GRANT ALL ON sakila.* TO 'usr_replica';)
 * Grant RELOAD privilege to the user (e.g. GRANT RELOAD ON \*.\* to 'usr_replica';)

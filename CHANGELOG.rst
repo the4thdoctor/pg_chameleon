@@ -1,6 +1,6 @@
 changelog 
 *************************
-2.0-alpha2 XX November 2017
+2.0.0.alpha2 18 November 2017
 .............................
 * Fix wrong position when determining the destination schema in read_replica_stream
 * Fix wrong log position stored in the source's high watermark
@@ -23,7 +23,7 @@ changelog
 * add separate logs for per source
 * change log line formatting inspired by the super clean look in pgbackrest (thanks you guys)
 
-2.0-alpha1 11 November 2017
+2.0.0.alpha1 11 November 2017
 .............................
 
 * Python 3 only development

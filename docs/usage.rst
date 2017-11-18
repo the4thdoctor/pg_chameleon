@@ -59,7 +59,7 @@ Install pg_chameleon
 .. code-block:: none
     
     pip install pip --upgrade
-    pip install pg_chameleon==2.0a2
+    pip install pg_chameleon==2.0.0a2
 
 
 Run the ``set_configuration_files`` command in order to create the configuration directory.
