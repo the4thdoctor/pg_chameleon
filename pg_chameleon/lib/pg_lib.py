@@ -1814,7 +1814,7 @@ class pg_engine(object):
 						sch_chameleon.t_replica_batch 
 					WHERE 
 							i_id_source=%s 
-						and	not b_processed
+						AND	NOT b_processed
 					)
 			;
 		"""

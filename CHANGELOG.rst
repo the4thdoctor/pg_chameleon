@@ -20,7 +20,8 @@ changelog
 * add not functional class pgsql_source for source type pgsql 
 * allow ``type_override`` to be empty
 * add show_status command for displaying the log error entries
-
+* add separate logs for per source
+* change log line formatting inspired by the super clean look in pgbackrest (thanks you guys)
 
 2.0-alpha1 11 November 2017
 .............................
