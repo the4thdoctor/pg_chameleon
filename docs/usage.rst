@@ -6,7 +6,7 @@ Command line reference
 
 .. code-block:: bash
     
-    chameleon.py command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [ --debug ] ] [ --version ] 
+    chameleon.py command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] ] [ --version ] 
 
 .. csv-table:: Options 
    :header: "Option", "Description", "Default","Example"
@@ -15,6 +15,7 @@ Command line reference
    ``--source``, Specifies the source within a configuration file., N/A, ``--source bar``
    ``--schema``, Specifies a schema configured within a source., N/A, ``--schema schema_foo``
    ``--tables``, Specifies one or more tables configured in a schema. Multiple tables can be specified separated by comma. The table must have the schema., N/A, ``--tables schema_foo.table_bar``
+   ``--logid``, Specifies the log id entry for displaying the error details, N/A, ``--logid 30``
    ``--debug``,When added to the command line the debug option disables any daemonisation and outputs all the logging to the console. The keybord interrupt signal is trapped correctly., N/A, ``--debug``
    ``--version``,Displays the package version., N/A, ``--version``
 
@@ -23,11 +24,12 @@ Command line reference
 .. csv-table:: Command list reference
    :header: "Command", "Description", "Options"
       
-    ``set_configuration_files``, Setup the example configuration files and directories in ``~.pg_chameleon``
+    ``set_configuration_files``, Setup the example configuration files and directories in ``~/.pg_chameleon``
     ``show_config``, Displays the configuration  for the configuration, ``--config``
     ``show_sources``, Displays the sourcches configured for the configuration, ``--config``
-   ``show_status``,Displays an overview of the status of the sources configured within the configuration , ``--config``
-   ``create_replica_schema``, Creates a new replication schema into the config's destination database, ``--config``
+    ``show_status``,Displays an overview of the status of the sources configured within the configuration. Specifying the source gives more details about that source , ``--config`` ``--source``
+    ``show_errors``,Displays  the errors logged by the replay  function. If a log id is specified then the log entry is displayed entirely, ``--config`` ``--logid``
+    ``create_replica_schema``, Creates a new replication schema into the config's destination database, ``--config``
     ``drop_replica_schema``, Drops an existing replication schema from the config's destination database, ``--config``
     ``upgrade_replica_schema``,**not implemented yet**
     ``add_source``, Adds a new source to the replica catalogue, ``--config`` ``--source``
@@ -57,7 +59,7 @@ Install pg_chameleon
 .. code-block:: none
     
     pip install pip --upgrade
-    pip install pg_chameleon==2.0a1.post1
+    pip install pg_chameleon==2.0a2
 
 
 Run the ``set_configuration_files`` command in order to create the configuration directory.
@@ -83,7 +85,7 @@ In MySQL create a user for the replica.
     GRANT REPLICATION SLAVE ON *.* to 'usr_replica';
     FLUSH PRIVILEGES;
     
-Add the configuration for the replica to my.cnf. It requires a MySQL.
+Add the configuration for the replica to my.cnf. It requires a MySQL restart.
 
 .. code-block:: none
     
@@ -136,16 +138,16 @@ For PostgreSQL
     Type "help" for help.
     db_replica=> 
 
-Check the configuration file reference to configure correctly the connections.
+Check the docs for the configuration file reference. It will help  you to configure correctly the connections.
 
 Initialise the replica
 
 
 .. code-block:: none
     
-    chameleon.py create_replica_schema 
-    chameleon.py add_source --config default
-    chameleon.py init_replica --config default
+    chameleon.py create_replica_schema --debug
+    chameleon.py add_source --config default  --debug
+    chameleon.py init_replica --config default --debug
 
 
 Start the replica with
@@ -153,42 +155,38 @@ Start the replica with
 
 .. code-block:: none
     
-	chameleon.py start_replica --config default
-	chameleon.py add_source --config default --source example
-	
-Check the source is present.
-
-.. code-block:: none
-    
- chameleon.py show_status
-
-Initialise the replica source
-
-.. code-block:: none
-    
- chameleon.py init_replica --config default --source example
-
-
-Check the replica initalisation status with ``chameleon.py show_status`` or checking the logs in the log directory configured.
+  chameleon.py start_replica --config default --source example
  
- When The replica is in ``initialised`` status start the replica process.
- 
+Check the source status
+
 .. code-block:: none
     
- chameleon.py start_replica --config default --source example
+  chameleon.py show_status --source example
+
+Check the error log
+
+.. code-block:: none
+    
+  chameleon.py show_errors
+  
+.. code-block:: none
+    
+  chameleon.py start_replica --config default --source example
 
 
 To stop the replica
 
 .. code-block:: none
     
- chameleon.py stop_replica --config default --source example
+  chameleon.py stop_replica --config default --source example
 
  
 To detach the replica
 
 .. code-block:: none
     
- chameleon.py detach_replica --config default --source example
+  chameleon.py detach_replica --config default --source example
+
+ 
 
  

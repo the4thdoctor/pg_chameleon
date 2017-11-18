@@ -1,5 +1,30 @@
 RELEASE NOTES
 *************************
+2.0-alpha2 
+--------------------------
+**please note this is a not production release. do not use it in production**
+
+The second alpha of the milestone 2.0 comes after a week of full debugging. This release is more usable and stable than the
+alpha1. As there are changes in the replica catalog if upgrading from the alpha1 there will be need to do a ``drop_replica_schema``
+followed by a ``create_replica_schema``. This **will drop any existing replica** and will require re adding the sources and 
+re initialise them with ``init_replica``.
+
+The full list of changes is in the CHANGELOG file. However there are few notable remarks. 
+
+There is a detailed display of the ``show_status`` command when a source is specified. In particular the number of replicated and
+not replicated tables is displayed. Also if any table as been pulled out from the replica it appears on the bottom.
+
+From this release there is an error log which saves the exception's data during the replay phase. 
+The error log can be queried with the new command ``show_errors``.
+
+A new source parameter ``replay_max_rows`` has been added to set the amount of rows to replay. 
+Previously the value was set by the parameter ``replica_batch_size``. If upgrading from alpha1 you may need to add 
+this parameter to your existing configuration.
+
+Finally there is a new class called ``pgsql_source``, not yet functional though.
+This class will add a very basic support for the postgres source type.
+More details will come in the alpha3.
+
 
 2.0-alpha1 
 --------------------------
