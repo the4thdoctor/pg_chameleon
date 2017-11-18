@@ -1,5 +1,11 @@
 changelog 
 *************************
+
+2.0.0.alpha3 XX December 2017
+.............................
+* Remove limit_tables from binlogreader initialisation, as we can read from multiple schemas we should only exclude the tables not limit
+
+
 2.0.0.alpha2 18 November 2017
 .............................
 * Fix wrong position when determining the destination schema in read_replica_stream
