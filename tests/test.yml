@@ -27,7 +27,7 @@ sources:
             charset: 'utf8'
             connect_timeout: 10
         schema_mappings:
-                sakila: pg_sakila
+                sakila: db_sakila
         limit_tables:
         skip_tables:
         grant_select_to:
