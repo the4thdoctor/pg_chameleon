@@ -4,7 +4,7 @@ changelog
 2.0.0.alpha3 XX December 2017
 .............................
 * Remove limit_tables from binlogreader initialisation, as we can read from multiple schemas we should only exclude the tables not limit
-
+* Fix wrong formatting for default value when altering a field
 
 2.0.0.alpha2 18 November 2017
 .............................
