@@ -1,0 +1,25 @@
+sudo: true
+dist: trusty
+group: deprecated-2017Q3
+language: python
+python:
+  - "3.6"
+# install pg_chameleon
+install: "pip install ."
+
+services:
+  - mysql
+
+env:
+   - MYVER='5.6'
+   - MYVER='5.7'
+
+addons:
+  postgresql: "9.6"
+  
+before_script:
+ - tests/setup_db.sh
+ 
+ # command to run tests
+script: tests/test.sh
+
