@@ -1393,10 +1393,10 @@ class pg_engine(object):
 		query_add_default = b""
 		if default_value:
 			query_drop_default = sql.SQL(" ALTER TABLE {}.{} ALTER COLUMN {} DROP DEFAULT;").format(sql.Identifier(schema), sql.Identifier(table), sql.Identifier(column))
-			query_add_default = sql.SQL(" ALTER TABLE  {}.{} ALTER COLUMN {} SET DEFAULT %s;").format(sql.Identifier(schema), sql.Identifier(table), sql.Identifier(column))
+			query_add_default = sql.SQL(" ALTER TABLE  {}.{} ALTER COLUMN {} SET DEFAULT %s;" % (default_value[0])).format(sql.Identifier(schema), sql.Identifier(table), sql.Identifier(column))
 			
 			query_drop_default = self.pgsql_cur.mogrify(query_drop_default)
-			query_add_default = self.pgsql_cur.mogrify(query_add_default, (default_value[0], ))
+			query_add_default = self.pgsql_cur.mogrify(query_add_default )
 		
 		return {'drop':query_drop_default.decode(), 'create':query_add_default.decode()}
 
