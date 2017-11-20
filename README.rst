@@ -13,7 +13,7 @@
 .. image:: https://api.travis-ci.org/the4thdoctor/pg_chameleon.svg?branch=ver2.0
     :target: https://travis-ci.org/the4thdoctor/pg_chameleon
     
-pg_chameleon  v2.0alpha1 `is available on pypi test for testing  <https://pypi.python.org/pypi/pg_chameleon>`_  
+pg_chameleon  v2.0alpha2 `is available on pypi test for testing  <https://pypi.python.org/pypi/pg_chameleon>`_  
 
 **This is a pre-release version and shouldn't be used in production.**
 
@@ -26,13 +26,38 @@ Live community `available on gitter <https://gitter.im/pg_chameleon/Lobby>`_
 Please submit your `bug reports on GitHub <https://github.com/the4thdoctor/pg_chameleon>`_.
 
 
-Platform and versions
-****************************
+Requirements
+******************
 
-The tool is developed using Linux Slackware 14.2. 
+Replica host
+..............................
+
+Operating system: Linux, FreeBSD, OpenBSD
+Python: CPython 3.3+ 
+
+* `PyMySQL <https://pypi.python.org/pypi/PyMySQL>`_ 
+* `argparse <https://pypi.python.org/pypi/argparse>`_
+* `mysql-replication <https://pypi.python.org/pypi/mysql-replication>`_
+* `psycopg2 <https://pypi.python.org/pypi/psycopg2>`_
+* `PyYAML <https://pypi.python.org/pypi/PyYAML>`_
+* `tabulate <https://pypi.python.org/pypi/tabulate>`_
+* `rollbar <https://pypi.python.org/pypi/rollbar>`_
+* `daemonize <https://pypi.python.org/pypi/daemonize>`_
+
+Optionals for building documentation
+
+* `sphinx <http://www.sphinx-doc.org/en/stable/>`_
+* `sphinx-autobuild <https://github.com/GaretJax/sphinx-autobuild>`_
 
 
-The database server is a FreeBSD  11.0 with MySQL: 5.6 and PostgreSQL: 9.5 installed.
+Origin database
+.................................
+MySQL: 5.5+
+
+Destination database
+..............................
+PostgreSQL: 9.5+
+
 
 Example scenarios 
 ..............................
@@ -59,27 +84,6 @@ Features
 * Rollbar integration
 
 
-
-Requirements
-******************
-
-Python: CPython 3.3+ on Linux
-
-MySQL: 5.5+
-
-PostgreSQL: 9.5+
-
-* `PyMySQL <https://pypi.python.org/pypi/PyMySQL>`_ 
-* `argparse <https://pypi.python.org/pypi/argparse>`_
-* `mysql-replication <https://pypi.python.org/pypi/mysql-replication>`_
-* `psycopg2 <https://pypi.python.org/pypi/psycopg2>`_
-* `PyYAML <https://pypi.python.org/pypi/PyYAML>`_
-* `tabulate <https://pypi.python.org/pypi/tabulate>`_
-
-Optionals for building documentation
-
-* `sphinx <http://www.sphinx-doc.org/en/stable/>`_
-* `sphinx-autobuild <https://github.com/GaretJax/sphinx-autobuild>`_
 
 
 
