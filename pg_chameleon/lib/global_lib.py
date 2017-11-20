@@ -79,13 +79,16 @@ class replica_engine(object):
 		self.pgsql_source.logger = self.logger
 		self.pgsql_source.sources = self.config["sources"]
 		self.pgsql_source.type_override = self.config["type_override"]
-		
-		#safety checks
 		catalog_version = self.pg_engine.get_catalog_version()
-		if  catalog_version:
-			if self.catalog_version != catalog_version:
-				print("FATAL, replica catalogue version mismatch. Expected %s, got %s" % (self.catalog_version, catalog_version))
-				sys.exit()
+		#safety checks
+		if not self.args.upgrade:
+			if  catalog_version:
+				if self.catalog_version != catalog_version:
+					print("FATAL, replica catalogue version mismatch. Expected %s, got %s" % (self.catalog_version, catalog_version))
+					sys.exit()
+		elif self.args.upgrade and self.catalog_version != catalog_version:
+			print("WARNING, entering upgrade mode. Disabling the catalogue version's check. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
+			
 		
 		
 		
@@ -334,6 +337,23 @@ class replica_engine(object):
 				sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.sync_tables, foreground=foreground , keep_fds=keep_fds)
 				sync_daemon .start()
 	
+	def upgrade_replica_schema(self):
+		"""
+			The method upgrades an existing replica catalogue to the newer version.
+		"""
+		catalog_version = self.pg_engine.get_catalog_version()
+		if catalog_version == self.catalog_version:
+			print("The replica catalogue is already up to date.")
+			sys.exit()
+		else:
+			if catalog_version.split('.')[0] == '1':
+				upg_msg = 'Upgrading the catalogue %s to the version %s.\n Are you sure? YES/No\n'  %  (catalog_version, self.catalog_version)
+				upg_cat = input(upg_msg)
+				if upg_cat == 'YES':
+					self.logger.info("Trying to remove the source")
+				elif upg_cat in  self.lst_yes:
+					print('Please type YES all uppercase to confirm')
+	
 	def update_schema_mappings(self):
 		"""
 			The method updates the schema mappings for the given source. 
@@ -515,7 +535,7 @@ class replica_engine(object):
 			print('There are no errors in the log')
 	def show_status(self):
 		"""
-			list the replica status from the replica catalog.
+			list the replica status from the replica catalogue.
 			If the source is specified gives some extra details on the source status.
 		"""
 		self.pg_engine.source = self.args.source
