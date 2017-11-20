@@ -26,6 +26,7 @@ class replica_engine(object):
 			Class constructor.
 		"""
 		self.catalog_version = '2.0.0'
+		self.upgradable_version = '1.6'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
@@ -340,19 +341,24 @@ class replica_engine(object):
 	def upgrade_replica_schema(self):
 		"""
 			The method upgrades an existing replica catalogue to the newer version.
+			If the catalogue is from the previous version
 		"""
 		catalog_version = self.pg_engine.get_catalog_version()
 		if catalog_version == self.catalog_version:
 			print("The replica catalogue is already up to date.")
 			sys.exit()
 		else:
-			if catalog_version.split('.')[0] == '1':
+			if catalog_version == self.upgradable_version:
 				upg_msg = 'Upgrading the catalogue %s to the version %s.\n Are you sure? YES/No\n'  %  (catalog_version, self.catalog_version)
 				upg_cat = input(upg_msg)
 				if upg_cat == 'YES':
-					self.logger.info("Trying to remove the source")
+					self.logger.info("Performing the upgrade")
+					self.pg_engine.upgrade_catalogue_v1()
 				elif upg_cat in  self.lst_yes:
 					print('Please type YES all uppercase to confirm')
+			elif catalog_version.split('.')[0] == '1':
+				print('Wrong starting version. Expected %s, got %s') % (catalog_version, self.upgradable_version)
+				sys.exit()
 	
 	def update_schema_mappings(self):
 		"""

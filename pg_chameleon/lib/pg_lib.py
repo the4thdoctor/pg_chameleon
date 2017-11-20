@@ -691,6 +691,16 @@ class pg_engine(object):
 			self.pgsql_cur.execute(sql_drop)
 			self.unregister_table(schema, token["name"])
 
+	def upgrade_catalogue_v1(self):
+		"""
+			The method upgrade a replica catalogue  from version 1 to version 2.
+			The original catalogue is not altered but just renamed.
+			All the existing data are transferred into the new catalogue loaded  using the create_schema.sql file.
+		"""
+		self.logger.info("Replaying all the data in the log tables")
+		
+		
+
 	def unregister_table(self, schema,  table):
 		"""
 			This method is used to remove a table from the replica catalogue.

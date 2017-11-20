@@ -42,7 +42,7 @@ parser.add_argument('--source', type=str,  default='*',  required=False, help=so
 parser.add_argument('--tables', type=str,  default='*',  required=False, help=tables_help)
 parser.add_argument('--logid', type=str,  default='*',  required=False, help=logid_help)
 parser.add_argument('--debug', default=False, required=False, help=debug_help, action='store_true')
-parser.add_argument('--upgrade', default=False, required=False, help=noschemacheck_help, action='store_true')
+parser.add_argument('--upgrade', default=False, required=False, help=upgrade_help, action='store_true')
 parser.add_argument('--version', action='version', help=version_help,version='{version}'.format(version=__version__))
 
 
