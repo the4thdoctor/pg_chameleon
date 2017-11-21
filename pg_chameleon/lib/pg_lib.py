@@ -735,7 +735,7 @@ class pg_engine(object):
 					continue_loop = replay_status[0]
 					if continue_loop:
 						self.logger.info("Still replaying rows for source %s" % ( source_name, ) )
-		self.logger.info("Renaming the old schema %s in %s " % (self.__old_schema, self.__new_schema))
+		self.logger.info("Renaming the old schema %s in %s " % (self.__v2_schema, self.__v1_schema))
 		sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__v2_schema), sql.Identifier(self.__v1_schema))
 		self.pgsql_cur.execute(sql_rename_old)
 		self.logger.info("Installing the new replica catalogue " )	
@@ -756,21 +756,22 @@ class pg_engine(object):
 				schema_name=%s
 		"""
 			
-		self.pgsql_cur.execute(sql_check, (self.__new_schema, ))
+		self.pgsql_cur.execute(sql_check, (self.__v1_schema, ))
 		old_schema = self.pgsql_cur.fetchone()
 		if old_schema[0] == 1:
-			self.logger.info("Th schema %s exists, rolling back the changes" % (self.__old_schema))
-			self.pgsql_cur.execute(sql_check, (self.__new_schema, ))
+			self.logger.info("The schema %s exists, rolling back the changes" % (self.__v1_schema))
+			self.pgsql_cur.execute(sql_check, (self.__v2_schema, ))
 			new_schema = self.pgsql_cur.fetchone()
 			if new_schema[0] == 1:
-				self.logger.info("Dropping the new schema %s" % (self.__new_schema))
-				sql_drop_new = sql.SQL("DROP SCHEMA {} CASCADE;").format(sql.Identifier(self.__new_schema))
+				self.logger.info("Dropping the new schema %s" % (self.__v2_schema))
+				sql_drop_new = sql.SQL("DROP SCHEMA {} CASCADE;").format(sql.Identifier(self.__v2_schema))
 				self.pgsql_cur.execute(sql_drop_new)
-			sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__new_schema), sql.Identifier(self.__old_schema))
+			sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__v1_schema), sql.Identifier(self.__v2_schema))
 			self.pgsql_cur.execute(sql_rename_old)
 		else:
-			self.logger.info("The old schema %s does not exists, aborting the rollback" % (self.__old_schema))
+			self.logger.info("The old schema %s does not exists, aborting the rollback" % (self.__v1_schema))
 			sys.exit()
+		self.logger.info("Rollback successful" )
 		
 		
 		
