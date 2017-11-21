@@ -81,14 +81,15 @@ class replica_engine(object):
 		self.pgsql_source.sources = self.config["sources"]
 		self.pgsql_source.type_override = self.config["type_override"]
 		catalog_version = self.pg_engine.get_catalog_version()
+
 		#safety checks
-		if not self.args.upgrade:
+		if self.args.command == 'upgrade_replica_schema':
+			print("WARNING, entering upgrade mode. Disabling the catalogue version's check. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
+		else:
 			if  catalog_version:
 				if self.catalog_version != catalog_version:
 					print("FATAL, replica catalogue version mismatch. Expected %s, got %s" % (self.catalog_version, catalog_version))
 					sys.exit()
-		elif self.args.upgrade and self.catalog_version != catalog_version:
-			print("WARNING, entering upgrade mode. Disabling the catalogue version's check. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
 			
 		
 		

@@ -697,8 +697,35 @@ class pg_engine(object):
 			The original catalogue is not altered but just renamed.
 			All the existing data are transferred into the new catalogue loaded  using the create_schema.sql file.
 		"""
-		self.logger.info("Replaying all the data in the log tables")
-		
+		self.connect_db()
+		self.logger.info("Checking if we need to replay data in the existing catalogue")
+		sql_check = """
+			SELECT 
+				src.i_id_source,
+				src.t_source,
+				count(log.i_id_event)
+			FROM 
+				sch_chameleon.t_log_replica log 
+				INNER JOIN sch_chameleon.t_replica_batch bat 
+					ON log.i_id_batch=bat.i_id_batch
+				INNER JOIN sch_chameleon.t_sources src
+					ON src.i_id_source=bat.i_id_source
+			GROUP BY
+				src.i_id_source,
+				src.t_source
+			;
+
+		"""
+		self.pgsql_cur.execute(sql_check)	
+		source_replay = self.pgsql_cur.fetchall()	
+		if source_replay:
+			for source in source_replay:
+				id_source = source[0]
+				source_name = source[1]
+				replay_rows = source[2]
+				self.logger.info("Replaying last %s rows for source %s " % (replay_rows, source_name))
+			
+		self.disconnect_db()
 		
 
 	def unregister_table(self, schema,  table):
