@@ -84,6 +84,7 @@ class replica_engine(object):
 
 		#safety checks
 		if self.args.command == 'upgrade_replica_schema':
+			self.pg_engine.sources = self.config["sources"]
 			print("WARNING, entering upgrade mode. Disabling the catalogue version's check. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
 		else:
 			if  catalog_version:

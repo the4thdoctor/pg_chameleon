@@ -163,8 +163,9 @@ class pg_engine(object):
 		if self.pgsql_conn:
 			self.pgsql_conn.close()
 			self.pgsql_conn = None
-		else:
-			pass
+			
+		if self.pgsql_cur:
+			self.pgsql_cur = None
 			
 	def set_lock_timeout(self):
 		"""
@@ -698,9 +699,44 @@ class pg_engine(object):
 			All the existing data are transferred into the new catalogue loaded  using the create_schema.sql file.
 		"""
 		replay_max_rows = 10000
-		self.__v2_schema = "sch_chameleon"
+		self.__v2_schema = "_sch_chameleon_version2"
+		self.__current_schema = "sch_chameleon"
 		self.__v1_schema = "_sch_chameleon_version1"
 		self.connect_db()
+		upgrade_possible = True
+		
+		self.logger.info("Checking if the schema mappings are correctly matched")
+		sql_mapping = """
+			WITH t_mapping AS
+				(
+					SELECT (json_each_text(%s::json)).value AS t_dest_schema
+				)
+
+			SELECT 
+				mapped_schema=config_schema as match_mapping,
+				mapped_list,
+				config_list
+			FROM
+			(
+				SELECT 
+					count(dst.t_dest_schema) as mapped_schema,
+					string_agg(dst.t_dest_schema,' ') as mapped_list
+				FROM
+					t_mapping dst 
+					INNER JOIN sch_chameleon.t_sources src
+					ON src.t_dest_schema=dst.t_dest_schema
+			) cnt_map,
+			(
+				SELECT 
+					count(t_dest_schema) as config_schema,
+					string_agg(t_dest_schema,' ') as config_list
+				FROM
+					t_mapping 
+
+			) cnt_cnf
+			;
+		"""
+		
 		self.logger.info("Checking if we need to replay data in the existing catalogue")
 		sql_check = """
 			SELECT 
@@ -735,12 +771,27 @@ class pg_engine(object):
 					continue_loop = replay_status[0]
 					if continue_loop:
 						self.logger.info("Still replaying rows for source %s" % ( source_name, ) )
-		self.logger.info("Renaming the old schema %s in %s " % (self.__v2_schema, self.__v1_schema))
-		sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__v2_schema), sql.Identifier(self.__v1_schema))
-		self.pgsql_cur.execute(sql_rename_old)
-		self.logger.info("Installing the new replica catalogue " )	
-		self.create_replica_schema()
-		self.rollback_upgrade_v1()
+		self.logger.info("Installing the new sources" )	
+		for source in self.sources:
+			schema_mappings = json.dumps(self.sources[source]["schema_mappings"])
+			self.pgsql_cur.execute(sql_mapping, (schema_mappings, ))
+			config_mapping = self.pgsql_cur.fetchone()
+			source_mapped = config_mapping[0]
+			list_mapped = config_mapping[1]
+			list_config = config_mapping[2]
+			if not source_mapped:
+				self.logger.error("Checks for source %s failed. Matched mappings %s, configured mappings %s" % (source, list_mapped, list_config))
+				upgrade_possible = False
+		if upgrade_possible:		
+			self.logger.info("Renaming the old schema %s in %s " % (self.__v2_schema, self.__v1_schema))
+			sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__current_schema), sql.Identifier(self.__v1_schema))
+			self.pgsql_cur.execute(sql_rename_old)
+			self.logger.info("Installing the new replica catalogue " )	
+			self.create_replica_schema()
+			
+			self.rollback_upgrade_v1()
+		else: 
+			self.logger.error("Sanity checks for the schema mappings failed. Aborting the upgrade")
 		self.disconnect_db()
 		
 	def rollback_upgrade_v1(self):
@@ -755,23 +806,22 @@ class pg_engine(object):
 			WHERE 
 				schema_name=%s
 		"""
-			
 		self.pgsql_cur.execute(sql_check, (self.__v1_schema, ))
-		old_schema = self.pgsql_cur.fetchone()
-		if old_schema[0] == 1:
+		v1_schema = self.pgsql_cur.fetchone()
+		if v1_schema[0] == 1:
 			self.logger.info("The schema %s exists, rolling back the changes" % (self.__v1_schema))
-			self.pgsql_cur.execute(sql_check, (self.__v2_schema, ))
-			new_schema = self.pgsql_cur.fetchone()
-			if new_schema[0] == 1:
-				self.logger.info("Dropping the new schema %s" % (self.__v2_schema))
-				sql_drop_new = sql.SQL("DROP SCHEMA {} CASCADE;").format(sql.Identifier(self.__v2_schema))
-				self.pgsql_cur.execute(sql_drop_new)
-			sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__v1_schema), sql.Identifier(self.__v2_schema))
+			self.pgsql_cur.execute(sql_check, (self.__current_schema, ))
+			curr_schema = self.pgsql_cur.fetchone()
+			if curr_schema[0] == 1:
+				self.logger.info("Renaming the current schema %s in %s" % (self.__current_schema, self.__v2_schema))
+				sql_rename_current = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__current_schema), sql.Identifier(self.__v2_schema))
+				self.pgsql_cur.execute(sql_rename_current)
+			sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__v1_schema), sql.Identifier(self.__current_schema))
 			self.pgsql_cur.execute(sql_rename_old)
 		else:
 			self.logger.info("The old schema %s does not exists, aborting the rollback" % (self.__v1_schema))
 			sys.exit()
-		self.logger.info("Rollback successful" )
+		self.logger.info("Rollback successful. Please note the catalogue version 2 has been renamed to %s for debugging.\nYou will need to drop it before running another upgrade" % (self.__v2_schema, ))
 		
 		
 		
