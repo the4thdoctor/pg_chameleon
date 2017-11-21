@@ -697,6 +697,9 @@ class pg_engine(object):
 			The original catalogue is not altered but just renamed.
 			All the existing data are transferred into the new catalogue loaded  using the create_schema.sql file.
 		"""
+		replay_max_rows = 10000
+		self.__v2_schema = "sch_chameleon"
+		self.__v1_schema = "_sch_chameleon_version1"
 		self.connect_db()
 		self.logger.info("Checking if we need to replay data in the existing catalogue")
 		sql_check = """
@@ -724,10 +727,53 @@ class pg_engine(object):
 				source_name = source[1]
 				replay_rows = source[2]
 				self.logger.info("Replaying last %s rows for source %s " % (replay_rows, source_name))
-			
+				continue_loop = True
+				while continue_loop:
+					sql_replay = """SELECT sch_chameleon.fn_process_batch(%s,%s);"""
+					self.pgsql_cur.execute(sql_replay, (replay_max_rows, id_source, ))
+					replay_status = self.pgsql_cur.fetchone()
+					continue_loop = replay_status[0]
+					if continue_loop:
+						self.logger.info("Still replaying rows for source %s" % ( source_name, ) )
+		self.logger.info("Renaming the old schema %s in %s " % (self.__old_schema, self.__new_schema))
+		sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__v2_schema), sql.Identifier(self.__v1_schema))
+		self.pgsql_cur.execute(sql_rename_old)
+		self.logger.info("Installing the new replica catalogue " )	
+		self.create_replica_schema()
+		self.rollback_upgrade_v1()
 		self.disconnect_db()
 		
-
+	def rollback_upgrade_v1(self):
+		"""
+			The procedure rollsback the upgrade dropping the schema sch_chameleon and renaming the version 1 to the 
+		"""
+		sql_check="""
+			SELECT 
+				count(*)
+			FROM 
+				information_schema.schemata  
+			WHERE 
+				schema_name=%s
+		"""
+			
+		self.pgsql_cur.execute(sql_check, (self.__new_schema, ))
+		old_schema = self.pgsql_cur.fetchone()
+		if old_schema[0] == 1:
+			self.logger.info("Th schema %s exists, rolling back the changes" % (self.__old_schema))
+			self.pgsql_cur.execute(sql_check, (self.__new_schema, ))
+			new_schema = self.pgsql_cur.fetchone()
+			if new_schema[0] == 1:
+				self.logger.info("Dropping the new schema %s" % (self.__new_schema))
+				sql_drop_new = sql.SQL("DROP SCHEMA {} CASCADE;").format(sql.Identifier(self.__new_schema))
+				self.pgsql_cur.execute(sql_drop_new)
+			sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__new_schema), sql.Identifier(self.__old_schema))
+			self.pgsql_cur.execute(sql_rename_old)
+		else:
+			self.logger.info("The old schema %s does not exists, aborting the rollback" % (self.__old_schema))
+			sys.exit()
+		
+		
+		
 	def unregister_table(self, schema,  table):
 		"""
 			This method is used to remove a table from the replica catalogue.
