@@ -740,14 +740,21 @@ class pg_engine(object):
 			v_table_name,
 			t_dest_schema,
 			string_to_array(replace(v_table_pkey[1],'"',''),',') as table_pkey,
-			t_binlog_name,
-			i_binlog_position,
-			't'::boolean
+			bat.t_binlog_name,
+			bat.i_binlog_position,
+			't'::boolean as b_replica_enabled
 			
 		FROM 
-			_sch_chameleon_version1.t_replica_tables tab
+			_sch_chameleon_version1.t_replica_batch bat
+			INNER JOIN _sch_chameleon_version1.t_replica_tables tab
+			ON tab.i_id_source=bat.i_id_source
+			
 			INNER JOIN t_old_new
 			ON tab.i_id_source=t_old_new.id_source_old
+		WHERE
+			NOT bat.b_processed
+	
+		;
 		"""
 		
 		sql_mapping = """
