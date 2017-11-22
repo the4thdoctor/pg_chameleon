@@ -705,7 +705,51 @@ class pg_engine(object):
 		self.connect_db()
 		upgrade_possible = True
 		
-		self.logger.info("Checking if the schema mappings are correctly matched")
+		sql_migrate_tables = """
+		WITH t_old_new AS
+			(
+			SELECT 
+				old.i_id_source as id_source_old,
+				new.i_id_source as id_source_new,
+				new.t_dest_schema
+			FROM 
+				_sch_chameleon_version1.t_sources  old
+				INNER JOIN (
+						SELECT 
+							i_id_source,
+							(jsonb_each_text(jsb_schema_mappings)).value as t_dest_schema
+						FROM 
+							sch_chameleon.t_sources
+
+					   ) new 
+				ON old.t_dest_schema=new.t_dest_schema
+			)
+		INSERT INTO sch_chameleon.t_replica_tables
+			(
+				i_id_source,
+				v_table_name,
+				v_schema_name,
+				v_table_pkey,
+				t_binlog_name,
+				i_binlog_position,
+				b_replica_enabled
+			)
+
+		SELECT 
+			id_source_new,
+			v_table_name,
+			t_dest_schema,
+			string_to_array(replace(v_table_pkey[1],'"',''),',') as table_pkey,
+			t_binlog_name,
+			i_binlog_position,
+			't'::boolean
+			
+		FROM 
+			_sch_chameleon_version1.t_replica_tables tab
+			INNER JOIN t_old_new
+			ON tab.i_id_source=t_old_new.id_source_old
+		"""
+		
 		sql_mapping = """
 			WITH t_mapping AS
 				(
@@ -771,7 +815,7 @@ class pg_engine(object):
 					continue_loop = replay_status[0]
 					if continue_loop:
 						self.logger.info("Still replaying rows for source %s" % ( source_name, ) )
-		self.logger.info("Installing the new sources" )	
+		self.logger.info("Checking if the schema mappings are correctly matched")
 		for source in self.sources:
 			schema_mappings = json.dumps(self.sources[source]["schema_mappings"])
 			self.pgsql_cur.execute(sql_mapping, (schema_mappings, ))
@@ -788,8 +832,11 @@ class pg_engine(object):
 			self.pgsql_cur.execute(sql_rename_old)
 			self.logger.info("Installing the new replica catalogue " )	
 			self.create_replica_schema()
-			
-			self.rollback_upgrade_v1()
+			for source in self.sources:
+				self.source = source
+				self.add_source()
+			self.pgsql_cur.execute(sql_migrate_tables)
+			#self.rollback_upgrade_v1()
 		else: 
 			self.logger.error("Sanity checks for the schema mappings failed. Aborting the upgrade")
 		self.disconnect_db()
