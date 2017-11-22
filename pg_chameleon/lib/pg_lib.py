@@ -705,55 +705,87 @@ class pg_engine(object):
 		self.connect_db()
 		upgrade_possible = True
 		
-		sql_migrate_tables = """
-		WITH t_old_new AS
-			(
-			SELECT 
-				old.i_id_source as id_source_old,
-				new.i_id_source as id_source_new,
-				new.t_dest_schema
-			FROM 
-				_sch_chameleon_version1.t_sources  old
-				INNER JOIN (
-						SELECT 
-							i_id_source,
-							(jsonb_each_text(jsb_schema_mappings)).value as t_dest_schema
-						FROM 
-							sch_chameleon.t_sources
-
-					   ) new 
-				ON old.t_dest_schema=new.t_dest_schema
-			)
-		INSERT INTO sch_chameleon.t_replica_tables
-			(
-				i_id_source,
-				v_table_name,
-				v_schema_name,
-				v_table_pkey,
+		sql_get_start = """
+			SELECT DISTINCT
 				t_binlog_name,
-				i_binlog_position,
-				b_replica_enabled
-			)
+				(string_to_array(t_binlog_name,'.'))[2]::bigint log_seq,
+				i_binlog_position  log_pos
+			FROM 
+				sch_chameleon.t_replica_tables 
+			WHERE i_id_source=%s
+			ORDER BY 
+				2 asc,
+				3 asc
+				
+			LIMIT 1
 
-		SELECT 
-			id_source_new,
-			v_table_name,
-			t_dest_schema,
-			string_to_array(replace(v_table_pkey[1],'"',''),',') as table_pkey,
-			bat.t_binlog_name,
-			bat.i_binlog_position,
-			't'::boolean as b_replica_enabled
-			
+		;
+		"""
+		sql_get_consistent = """
+		SELECT DISTINCT
+			t_binlog_name,
+			(string_to_array(t_binlog_name,'.'))[2]::bigint log_seq,
+			i_binlog_position  log_pos
 		FROM 
-			_sch_chameleon_version1.t_replica_batch bat
-			INNER JOIN _sch_chameleon_version1.t_replica_tables tab
-			ON tab.i_id_source=bat.i_id_source
-			
-			INNER JOIN t_old_new
-			ON tab.i_id_source=t_old_new.id_source_old
-		WHERE
-			NOT bat.b_processed
-	
+			sch_chameleon.t_replica_tables 
+		WHERE i_id_source=%s
+		ORDER BY 
+			2 desc,
+			3 desc
+		LIMIT 1
+		;
+
+		"""
+		
+		sql_migrate_tables = """
+			WITH t_old_new AS
+				(
+				SELECT 
+					old.i_id_source as id_source_old,
+					new.i_id_source as id_source_new,
+					new.t_dest_schema
+				FROM 
+					_sch_chameleon_version1.t_sources  old
+					INNER JOIN (
+							SELECT 
+								i_id_source,
+								(jsonb_each_text(jsb_schema_mappings)).value as t_dest_schema
+							FROM 
+								sch_chameleon.t_sources
+
+						   ) new 
+					ON old.t_dest_schema=new.t_dest_schema
+				)
+			INSERT INTO sch_chameleon.t_replica_tables
+				(
+					i_id_source,
+					v_table_name,
+					v_schema_name,
+					v_table_pkey,
+					t_binlog_name,
+					i_binlog_position,
+					b_replica_enabled
+				)
+
+			SELECT 
+				id_source_new,
+				v_table_name,
+				t_dest_schema,
+				string_to_array(replace(v_table_pkey[1],'"',''),',') as table_pkey,
+				bat.t_binlog_name,
+				bat.i_binlog_position,
+				't'::boolean as b_replica_enabled
+				
+			FROM 
+				_sch_chameleon_version1.t_replica_batch bat
+				INNER JOIN _sch_chameleon_version1.t_replica_tables tab
+				ON tab.i_id_source=bat.i_id_source
+				
+				INNER JOIN t_old_new
+				ON tab.i_id_source=t_old_new.id_source_old
+			WHERE
+				NOT bat.b_processed
+		
 		;
 		"""
 		
@@ -842,6 +874,14 @@ class pg_engine(object):
 			for source in self.sources:
 				self.source = source
 				self.add_source()
+				self.set_source_id()
+				self.pgsql_cur.execute(sql_get_start, (self.i_id_source, ))
+				start_coord = self.pgsql_cur.fetchone() 
+				print(start_coord)
+				#save_master_status(self, master_status)
+				self.pgsql_cur.execute(sql_get_consistent, (self.i_id_source, ))
+				consistent_coord = self.pgsql_cur.fetchone() 
+				
 			self.pgsql_cur.execute(sql_migrate_tables)
 			#self.rollback_upgrade_v1()
 		else: 
