@@ -610,3 +610,81 @@ $BODY$
 	
 $BODY$
 LANGUAGE plpgsql;
+
+--CUSTOM AGGREGATES
+CREATE OR REPLACE FUNCTION  sch_chameleon.fn_binlog_min(integer[],integer[])
+RETURNS integer[] AS
+$BODY$
+	SELECT
+		CASE
+			WHEN $1=ARRAY[-1,-1]
+			THEN $2	
+			WHEN $1[1]>$2[1]
+			THEN $2
+			WHEN $1[1]=$2[1] and $1[1]>=$2[1]
+			THEN $2
+			ELSE $1
+			
+		END
+	;
+$BODY$
+LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION  sch_chameleon.fn_binlog_max(integer[],integer[])
+RETURNS integer[] AS
+$BODY$
+	SELECT
+		CASE
+			WHEN $1=ARRAY[0,0]
+			THEN $2	
+			WHEN $2[1]>$1[1]
+			THEN $2
+			WHEN $2[1]<$1[1] 
+			THEN $1
+			WHEN $2[1]=$1[1] AND $2[2]>=$1[2]
+			THEN $2
+			ELSE $1
+		END
+	;
+$BODY$
+LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_binlog_max_final(integer[])
+RETURNS integer[] as 
+$BODY$
+	SELECT 
+		CASE 
+			WHEN ( $1[1] = 0 AND $1[2] = 0 )
+			THEN NULL
+		ELSE 
+			$1
+		END;
+$BODY$
+LANGUAGE sql;
+
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_binlog_min_final(integer[])
+RETURNS integer[] as 
+$BODY$
+	SELECT $1;
+$BODY$
+LANGUAGE sql;
+
+
+
+
+CREATE AGGREGATE sch_chameleon.binlog_max(integer[]) 
+(
+    SFUNC = sch_chameleon.fn_binlog_max,
+    STYPE = integer[],
+    FINALFUNC = sch_chameleon.fn_binlog_max_final,
+    INITCOND = '{0,0}'
+);
+
+CREATE AGGREGATE sch_chameleon.binlog_min(integer[]) 
+(
+    SFUNC = sch_chameleon.fn_binlog_min,
+    STYPE = integer[],
+    FINALFUNC = sch_chameleon.fn_binlog_min_final,
+    INITCOND = '{-1,-1}'
+);
+
