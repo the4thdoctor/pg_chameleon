@@ -612,16 +612,16 @@ $BODY$
 LANGUAGE plpgsql;
 
 --CUSTOM AGGREGATES
-CREATE OR REPLACE FUNCTION  sch_chameleon.fn_binlog_min(integer[],integer[])
-RETURNS integer[] AS
+CREATE OR REPLACE FUNCTION  sch_chameleon.fn_binlog_min(text[],text[])
+RETURNS text[] AS
 $BODY$
 	SELECT
 		CASE
-			WHEN $1=ARRAY[-1,-1]
+			WHEN $1=array[0,0]::TEXT[]
 			THEN $2	
-			WHEN $1[1]>$2[1]
+			WHEN (string_to_array($1[1],'.'))[2]::integer>(string_to_array($2[1],'.'))[2]::integer --$1[1]>$2[1]
 			THEN $2
-			WHEN $1[1]=$2[1] and $1[2]>=$2[2]
+			WHEN $1[1]=$2[1] and $1[2]::integer>=$2[2]::integer
 			THEN $2
 			ELSE $1
 			
@@ -630,18 +630,18 @@ $BODY$
 $BODY$
 LANGUAGE SQL;
 
-CREATE OR REPLACE FUNCTION  sch_chameleon.fn_binlog_max(integer[],integer[])
-RETURNS integer[] AS
+CREATE OR REPLACE FUNCTION  sch_chameleon.fn_binlog_max(text[],text[])
+RETURNS text[] AS
 $BODY$
 	SELECT
 		CASE
-			WHEN $1=ARRAY[0,0]
+			WHEN $1=array[0,0]::TEXT[]
 			THEN $2	
-			WHEN $2[1]>$1[1]
+			WHEN (string_to_array($2[1],'.'))[2]::integer>(string_to_array($1[1],'.'))[2]::integer
 			THEN $2
-			WHEN $2[1]<$1[1] 
+			WHEN (string_to_array($2[1],'.'))[2]::integer<(string_to_array($1[1] ,'.'))[2]::integer
 			THEN $1
-			WHEN $2[1]=$1[1] AND $2[2]>=$1[2]
+			WHEN (string_to_array($2[1],'.'))[2]::integer=(string_to_array($1[1],'.'))[2]::integer AND $2[2]::integer>=$1[2]::integer
 			THEN $2
 			ELSE $1
 		END
@@ -649,12 +649,12 @@ $BODY$
 $BODY$
 LANGUAGE SQL;
 
-CREATE OR REPLACE FUNCTION sch_chameleon.fn_binlog_max_final(integer[])
-RETURNS integer[] as 
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_binlog_max_final(text[])
+RETURNS text[] as 
 $BODY$
 	SELECT 
 		CASE 
-			WHEN ( $1[1] = 0 AND $1[2] = 0 )
+			WHEN $1=array['','']
 			THEN NULL
 		ELSE 
 			$1
@@ -662,8 +662,8 @@ $BODY$
 $BODY$
 LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION sch_chameleon.fn_binlog_min_final(integer[])
-RETURNS integer[] as 
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_binlog_min_final(text[])
+RETURNS text[] as 
 $BODY$
 	SELECT $1;
 $BODY$
@@ -672,19 +672,21 @@ LANGUAGE sql;
 
 
 
-CREATE AGGREGATE sch_chameleon.binlog_max(integer[]) 
+CREATE AGGREGATE sch_chameleon.binlog_max(text[]) 
 (
     SFUNC = sch_chameleon.fn_binlog_max,
-    STYPE = integer[],
+    STYPE = text[],
     FINALFUNC = sch_chameleon.fn_binlog_max_final,
     INITCOND = '{0,0}'
 );
 
-CREATE AGGREGATE sch_chameleon.binlog_min(integer[]) 
+
+CREATE AGGREGATE sch_chameleon.binlog_min(text[]) 
 (
     SFUNC = sch_chameleon.fn_binlog_min,
-    STYPE = integer[],
+    STYPE = text[],
     FINALFUNC = sch_chameleon.fn_binlog_min_final,
-    INITCOND = '{-1,-1}'
+    INITCOND = '{0,0}'
 );
+
 

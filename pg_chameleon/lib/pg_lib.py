@@ -709,14 +709,14 @@ class pg_engine(object):
 			SELECT 
 				sch_chameleon.binlog_max(
 					ARRAY[
-						(string_to_array(t_binlog_name,'.'))[2]::integer,
-						i_binlog_position
+						t_binlog_name,
+						i_binlog_position::text
 					]
 				),
 				sch_chameleon.binlog_min(
 					ARRAY[
-						(string_to_array(t_binlog_name,'.'))[2]::integer,
-						i_binlog_position
+						t_binlog_name,
+						i_binlog_position::text
 					]
 				)
 			FROM 
