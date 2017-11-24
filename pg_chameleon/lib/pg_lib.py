@@ -871,7 +871,21 @@ class pg_engine(object):
 				self.set_source_id()
 				self.pgsql_cur.execute(sql_get_min_max, (self.i_id_source, ))
 				min_max = self.pgsql_cur.fetchone() 
-				print(min_max)
+				max_position = min_max[0]
+				min_position = min_max[1]
+				
+				master_data = {}
+				master_status = []
+				master_data["File"] = min_position[0]
+				master_data["Position"] = min_position[1]
+				master_status.append(master_data)
+				self.save_master_status(master_status)
+				
+				master_status = []
+				master_data["File"] = max_position[0]
+				master_data["Position"] = max_position[1]
+				master_status.append(master_data)
+				self.set_source_highwatermark(master_status, False)
 			#self.rollback_upgrade_v1()
 		else: 
 			self.logger.error("Sanity checks for the schema mappings failed. Aborting the upgrade")

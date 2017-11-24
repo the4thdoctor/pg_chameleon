@@ -449,7 +449,7 @@ class replica_engine(object):
 			The method starts a new replica process.
 			Is compulsory to specify a source name when running this method.
 		"""
-		self.logger = self.__init_logger()
+		
 		replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
 				
 		if self.args.source == "*":
@@ -465,6 +465,7 @@ class replica_engine(object):
 				if self.config["log_dest"]  == 'stdout':
 					foreground = True
 				else:
+					self.logger = self.__init_logger()
 					foreground = False
 					print("Starting the replica process for source %s" % (self.args.source))
 					keep_fds = [self.logger_fds]
