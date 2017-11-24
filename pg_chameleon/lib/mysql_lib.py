@@ -766,7 +766,8 @@ class mysql_engine(object):
 					ins_arg.append(copy_limit)
 					self.insert_table_data(pg_engine, ins_arg)
 			except:
-				self.logger.info("the table %s does not exist" %(table_name))
+				self.logger.info("There was an error when processing the table %s" %(table_name))
+
 		if lock_tables:
 			self.unlock_tables()
 		try:

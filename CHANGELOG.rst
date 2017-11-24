@@ -1,5 +1,10 @@
 changelog 
 *************************
+1.8.2 XX Nov 2017
+.............................
+* Fix for issue 33, pg can't handle NUL characters in string `Issue #33 <https://github.com/the4thdoctor/pg_chameleon/issues/33>`_
+* Fix exception in  b64 conversion when saving a discarded row 
+
 1.8.1 04 Nov 2017
 .............................
 * Fix for issue 31, MySQL numeric password breaks pg_chameleon `Issue #31 <https://github.com/the4thdoctor/pg_chameleon/issues/31>`_
