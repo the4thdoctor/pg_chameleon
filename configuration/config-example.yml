@@ -27,7 +27,7 @@ sources:
             charset: 'utf8'
             connect_timeout: 10
         schema_mappings:
-                my_database: pg_database
+                mysql_schema: postgres_schema
         limit_tables:
                 - my_database.foo
         skip_tables:
