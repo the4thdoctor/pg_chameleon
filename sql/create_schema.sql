@@ -621,7 +621,7 @@ $BODY$
 			THEN $2	
 			WHEN $1[1]>$2[1]
 			THEN $2
-			WHEN $1[1]=$2[1] and $1[1]>=$2[1]
+			WHEN $1[1]=$2[1] and $1[2]>=$2[2]
 			THEN $2
 			ELSE $1
 			

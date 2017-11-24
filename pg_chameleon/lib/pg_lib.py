@@ -705,35 +705,25 @@ class pg_engine(object):
 		self.connect_db()
 		upgrade_possible = True
 		
-		sql_get_start = """
-			SELECT DISTINCT
-				t_binlog_name,
-				(string_to_array(t_binlog_name,'.'))[2]::bigint log_seq,
-				i_binlog_position  log_pos
+		sql_get_min_max = """
+			SELECT 
+				sch_chameleon.binlog_max(
+					ARRAY[
+						(string_to_array(t_binlog_name,'.'))[2]::integer,
+						i_binlog_position
+					]
+				),
+				sch_chameleon.binlog_min(
+					ARRAY[
+						(string_to_array(t_binlog_name,'.'))[2]::integer,
+						i_binlog_position
+					]
+				)
 			FROM 
-				sch_chameleon.t_replica_tables 
-			WHERE i_id_source=%s
-			ORDER BY 
-				2 asc,
-				3 asc
-				
-			LIMIT 1
-
-		;
-		"""
-		sql_get_consistent = """
-		SELECT DISTINCT
-			t_binlog_name,
-			(string_to_array(t_binlog_name,'.'))[2]::bigint log_seq,
-			i_binlog_position  log_pos
-		FROM 
-			sch_chameleon.t_replica_tables 
-		WHERE i_id_source=%s
-		ORDER BY 
-			2 desc,
-			3 desc
-		LIMIT 1
-		;
+				sch_chameleon.t_replica_tables
+			WHERE
+				i_id_source=%s
+			;
 
 		"""
 		
@@ -874,15 +864,14 @@ class pg_engine(object):
 			for source in self.sources:
 				self.source = source
 				self.add_source()
-				self.set_source_id()
-				self.pgsql_cur.execute(sql_get_start, (self.i_id_source, ))
-				start_coord = self.pgsql_cur.fetchone() 
-				print(start_coord)
-				#save_master_status(self, master_status)
-				self.pgsql_cur.execute(sql_get_consistent, (self.i_id_source, ))
-				consistent_coord = self.pgsql_cur.fetchone() 
 				
 			self.pgsql_cur.execute(sql_migrate_tables)
+			for source in self.sources:
+				self.source = source
+				self.set_source_id()
+				self.pgsql_cur.execute(sql_get_min_max, (self.i_id_source, ))
+				min_max = self.pgsql_cur.fetchone() 
+				print(min_max)
 			#self.rollback_upgrade_v1()
 		else: 
 			self.logger.error("Sanity checks for the schema mappings failed. Aborting the upgrade")
