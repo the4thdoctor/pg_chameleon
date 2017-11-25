@@ -4,6 +4,8 @@ changelog
 .............................
 * Fix for issue 33, pg can't handle NUL characters in string `Issue #33 <https://github.com/the4thdoctor/pg_chameleon/issues/33>`_
 * Fix exception in  b64 conversion when saving a discarded row 
+* Add t_source_schema in table t_sources, used for the upgrade to the upcoming version 2.0
+* change log line formatting inspired by the super clean look in pgbackrest (thanks you guys)
 
 1.8.1 04 Nov 2017
 .............................

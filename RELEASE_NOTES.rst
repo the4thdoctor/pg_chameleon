@@ -1,5 +1,12 @@
 RELEASE NOTES
 *************************
+Version 1.8.2
+--------------------------
+The version 1.8.2 is the bugfix for the final release 1.8 of the version 1. 
+Not many bugfixes, mostly backports from the version 2.0, currently in alpha release.
+This release upgrades the replica catalogue to the version 1.7 which adds a new field to the ``t_sources`` table.
+This field ``t_source_schema`` is used only for the migration to the version 2.0.0 and is updated every time a sourceid is requested
+from the classpg_engine.
 
 Version 1.8.1
 --------------------------
