@@ -799,7 +799,7 @@ class pg_engine(object):
 				ts_last_received,
 				ts_last_received-ts_last_replay,
 				ts_last_replay,
-				t_source_schema
+				coalesce(t_source_schema,'')
 			FROM 
 				sch_chameleon.t_sources
 			ORDER BY 
