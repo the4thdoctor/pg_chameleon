@@ -10,7 +10,7 @@
 .. image:: https://img.shields.io/badge/license-BSD-blue.svg   
         :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/master/LICENSE
 	
-.. image:: https://travis-ci.org/the4thdoctor/pg_chameleon.svg?branch=ver1.6
+.. image:: https://travis-ci.org/the4thdoctor/pg_chameleon.svg?branch=ver1.8.2
     :target: https://travis-ci.org/the4thdoctor/pg_chameleon
     
 pg_chameleon `is available on pypi for download <https://pypi.python.org/pypi/pg_chameleon>`_ 
