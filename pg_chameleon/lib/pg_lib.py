@@ -141,7 +141,7 @@ class pg_engine(object):
 		self.idx_ddl = {}
 		self.type_ddl = {}
 		self.pg_charset = self.pg_conn.pg_charset
-		self.cat_version = '1.6'
+		self.cat_version = '1.7'
 		self.cat_sql = [
 			{'version':'base','script': 'create_schema.sql'}, 
 			{'version':'0.1','script': 'upgrade/cat_0.1.sql'}, 
@@ -160,6 +160,7 @@ class pg_engine(object):
 			{'version':'1.4','script': 'upgrade/cat_1.4.sql'},
 			{'version':'1.5','script': 'upgrade/cat_1.5.sql'},
 			{'version':'1.6','script': 'upgrade/cat_1.6.sql'},
+			{'version':'1.7','script': 'upgrade/cat_1.7.sql'},
 		]
 		cat_version=self.get_schema_version()
 		num_schema=(self.check_service_schema())[0]
@@ -189,7 +190,7 @@ class pg_engine(object):
 			The method add a new source in the replica catalogue. 
 			If the source name is already present an error message is emitted without further actions.
 			:param source_name: The source name stored in the configuration parameter source_name.
-			:param dest_schema: The destination schema stored in the configuration parameter dest_schema.
+			:param source_schema: The source schema on mysql. The field is not used except when migrating the catalogue to the newer version 2.0.x.
 		"""
 		sql_source = """
 			SELECT 
@@ -208,10 +209,12 @@ class pg_engine(object):
 				INSERT INTO sch_chameleon.t_sources 
 					( 
 						t_source,
-						t_dest_schema
+						t_dest_schema,
+						t_source_schema
 					) 
 				VALUES 
 					(
+						%s,
 						%s,
 						%s
 					)
@@ -219,7 +222,7 @@ class pg_engine(object):
 					i_id_source
 				; 
 			"""
-			self.pg_conn.pgsql_cur.execute(sql_add, (source_name, dest_schema ))
+			self.pg_conn.pgsql_cur.execute(sql_add, (source_name, dest_schema, self.source_schema ))
 			source_add = self.pg_conn.pgsql_cur.fetchone()
 			sql_update = """
 				UPDATE sch_chameleon.t_sources
@@ -303,14 +306,15 @@ class pg_engine(object):
 		sql_source = """
 			UPDATE sch_chameleon.t_sources
 			SET
-				enm_status=%s
+				enm_status=%s,
+				t_source_schema=%s
 			WHERE
 				t_source=%s
 			RETURNING i_id_source,t_dest_schema
 				;
 			"""
 		source_name = self.pg_conn.global_conf.source_name
-		self.pg_conn.pgsql_cur.execute(sql_source, (source_status, source_name))
+		self.pg_conn.pgsql_cur.execute(sql_source, (source_status, self.source_schema,  source_name))
 		source_data = self.pg_conn.pgsql_cur.fetchone()
 		try:
 			self.i_id_source = source_data[0]

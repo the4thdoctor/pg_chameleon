@@ -216,6 +216,8 @@ class replica_engine(object):
 		
 		self.pid_file = self.global_config.pid_file
 		self.exit_file = self.global_config.exit_file
+		self.source_schema = self.global_config.my_database
+		self.pg_eng.source_schema = self.source_schema
 	
 	def detach_replica(self):
 		"""
@@ -533,8 +535,8 @@ class replica_engine(object):
 		"""
 			register the configuration source in the replica catalogue
 		"""
-		source_name=self.global_config.source_name
-		dest_schema=self.global_config.dest_schema
+		source_name = self.global_config.source_name
+		dest_schema = self.global_config.dest_schema
 		self.pg_eng.add_source(source_name, dest_schema)
 
 	def drop_source(self):
