@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '1.6'::TEXT t_version
+	SELECT '1.7'::TEXT t_version
 ;
 
 --TYPES
@@ -19,6 +19,7 @@ CREATE TABLE sch_chameleon.t_sources
 (
 	i_id_source	bigserial,
 	t_source		text NOT NULL,
+	t_source_schema   text ,
 	t_dest_schema   text NOT NULL,
 	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
 	ts_last_received timestamp without time zone,
