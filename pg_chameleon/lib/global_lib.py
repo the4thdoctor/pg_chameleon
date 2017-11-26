@@ -26,7 +26,7 @@ class replica_engine(object):
 			Class constructor.
 		"""
 		self.catalog_version = '2.0.0'
-		self.upgradable_version = '1.6'
+		self.upgradable_version = '1.7'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
@@ -359,7 +359,7 @@ class replica_engine(object):
 				elif upg_cat in  self.lst_yes:
 					print('Please type YES all uppercase to confirm')
 			elif catalog_version.split('.')[0] == '1':
-				print('Wrong starting version. Expected %s, got %s') % (catalog_version, self.upgradable_version)
+				print('Wrong starting version. Expected %s, got %s' % (catalog_version, self.upgradable_version))
 				sys.exit()
 	
 	def update_schema_mappings(self):

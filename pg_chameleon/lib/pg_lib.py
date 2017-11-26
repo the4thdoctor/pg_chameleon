@@ -780,9 +780,10 @@ class pg_engine(object):
 		"""
 		
 		sql_mapping = """
+		
 			WITH t_mapping AS
 				(
-					SELECT (json_each_text(%s::json)).value AS t_dest_schema
+					SELECT json_each_text(%s::json) AS t_sch_map
 				)
 
 			SELECT 
@@ -792,22 +793,25 @@ class pg_engine(object):
 			FROM
 			(
 				SELECT 
-					count(dst.t_dest_schema) as mapped_schema,
-					string_agg(dst.t_dest_schema,' ') as mapped_list
+					count(dst.t_sch_map) as mapped_schema,
+					string_agg((dst.t_sch_map).value,' ') as mapped_list
 				FROM
 					t_mapping dst 
 					INNER JOIN sch_chameleon.t_sources src
-					ON src.t_dest_schema=dst.t_dest_schema
+					ON 
+							src.t_dest_schema=(dst.t_sch_map).value
+						AND	src.t_source_schema= (dst.t_sch_map).key
 			) cnt_map,
 			(
 				SELECT 
-					count(t_dest_schema) as config_schema,
-					string_agg(t_dest_schema,' ') as config_list
+					count(t_sch_map) as config_schema,
+					string_agg((t_sch_map).value,' ') as config_list
 				FROM
 					t_mapping 
 
 			) cnt_cnf
 			;
+
 		"""
 		
 		self.logger.info("Checking if we need to replay data in the existing catalogue")
@@ -855,40 +859,44 @@ class pg_engine(object):
 			if not source_mapped:
 				self.logger.error("Checks for source %s failed. Matched mappings %s, configured mappings %s" % (source, list_mapped, list_config))
 				upgrade_possible = False
-		if upgrade_possible:		
-			self.logger.info("Renaming the old schema %s in %s " % (self.__v2_schema, self.__v1_schema))
-			sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__current_schema), sql.Identifier(self.__v1_schema))
-			self.pgsql_cur.execute(sql_rename_old)
-			self.logger.info("Installing the new replica catalogue " )	
-			self.create_replica_schema()
-			for source in self.sources:
-				self.source = source
-				self.add_source()
-				
-			self.pgsql_cur.execute(sql_migrate_tables)
-			for source in self.sources:
-				self.source = source
-				self.set_source_id()
-				self.pgsql_cur.execute(sql_get_min_max, (self.i_id_source, ))
-				min_max = self.pgsql_cur.fetchone() 
-				max_position = min_max[0]
-				min_position = min_max[1]
-				
-				master_data = {}
-				master_status = []
-				master_data["File"] = min_position[0]
-				master_data["Position"] = min_position[1]
-				master_status.append(master_data)
-				self.save_master_status(master_status)
-				
-				master_status = []
-				master_data["File"] = max_position[0]
-				master_data["Position"] = max_position[1]
-				master_status.append(master_data)
-				self.set_source_highwatermark(master_status, False)
-			#self.rollback_upgrade_v1()
+		if upgrade_possible:	
+			try:
+				self.logger.info("Renaming the old schema %s in %s " % (self.__v2_schema, self.__v1_schema))
+				sql_rename_old = sql.SQL("ALTER SCHEMA {} RENAME TO {};").format(sql.Identifier(self.__current_schema), sql.Identifier(self.__v1_schema))
+				self.pgsql_cur.execute(sql_rename_old)
+				self.logger.info("Installing the new replica catalogue " )	
+				self.create_replica_schema()
+				for source in self.sources:
+					self.source = source
+					self.add_source()
+					
+				self.pgsql_cur.execute(sql_migrate_tables)
+				for source in self.sources:
+					self.source = source
+					self.set_source_id()
+					self.pgsql_cur.execute(sql_get_min_max, (self.i_id_source, ))
+					min_max = self.pgsql_cur.fetchone() 
+					max_position = min_max[0]
+					min_position = min_max[1]
+					
+					master_data = {}
+					master_status = []
+					master_data["File"] = min_position[0]
+					master_data["Position"] = min_position[1]
+					master_status.append(master_data)
+					self.save_master_status(master_status)
+					
+					master_status = []
+					master_data["File"] = max_position[0]
+					master_data["Position"] = max_position[1]
+					master_status.append(master_data)
+					self.set_source_highwatermark(master_status, False)
+					
+			except:
+				self.rollback_upgrade_v1()
 		else: 
 			self.logger.error("Sanity checks for the schema mappings failed. Aborting the upgrade")
+			self.rollback_upgrade_v1()
 		self.disconnect_db()
 		
 	def rollback_upgrade_v1(self):
