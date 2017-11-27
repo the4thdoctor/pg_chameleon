@@ -12,13 +12,13 @@ from distutils.sysconfig import get_python_lib
 
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
-		if 		isinstance(obj, datetime.time) or \
-				isinstance(obj, datetime.datetime) or  \
-				isinstance(obj, datetime.date) or \
-				isinstance(obj, decimal.Decimal) or \
-				isinstance(obj, datetime.timedelta) or \
-				isinstance(obj, set):
-					
+		if 	isinstance(obj, datetime.time) or \
+			isinstance(obj, datetime.datetime) or  \
+			isinstance(obj, datetime.date) or \
+			isinstance(obj, decimal.Decimal) or \
+			isinstance(obj, datetime.timedelta) or \
+			isinstance(obj, set):
+				
 			return str(obj)
 		return json.JSONEncoder.default(self, obj)
 
@@ -38,8 +38,19 @@ class pgsql_source(object):
 		"""
 			Class destructor, tries to disconnect the postgresql connection.
 		"""
-		#self.disconnect_db()
+		self.disconnect_db()
 	
+	def disconnect_db(self):
+		"""
+			The method disconnects the postgres connection if there is any active. Otherwise ignore it.
+		"""
+		if self.pgsql_conn:
+			self.pgsql_conn.close()
+			self.pgsql_conn = None
+			
+		if self.pgsql_cur:
+			self.pgsql_cur = None
+
 	
 	def connect_db(self):
 		"""
