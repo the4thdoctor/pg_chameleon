@@ -822,6 +822,7 @@ class mysql_source(object):
 		:rtype: dictionary
 		"""
 		skip_tables = None
+		size_insert=0
 		if self.skip_tables:
 			skip_tables = [table.split('.')[1] for table in self.skip_tables]
 		
@@ -923,8 +924,11 @@ class mysql_source(object):
 						my_stream.close()
 						return [master_data, close_batch]
 			else:
-				size_insert=0
+				
 				for row in binlogevent.rows:
+					event_after={}
+					event_before={}
+					event_insert = {}
 					add_row = True
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
@@ -960,10 +964,7 @@ class mysql_source(object):
 										"log_table":log_table, 
 										"event_time":event_time
 									}
-					event_after={}
-					event_before={}
 					if add_row:
-						event_insert = {}
 						if isinstance(binlogevent, DeleteRowsEvent):
 							global_data["action"] = "delete"
 							event_after=row["values"]
