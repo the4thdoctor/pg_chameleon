@@ -774,7 +774,8 @@ class pg_engine(object):
 				INNER JOIN t_old_new
 				ON tab.i_id_source=t_old_new.id_source_old
 			WHERE
-				NOT bat.b_processed
+					NOT bat.b_processed
+				AND  bat.b_started
 		
 		;
 		"""
