@@ -250,8 +250,10 @@ $BODY$
 		v_i_evt_replay	bigint[];
 		v_i_evt_queue	bigint[];
 		v_ts_evt_source	timestamp without time zone;
+		v_tab_enabled	boolean;
 		
 	BEGIN
+		v_tab_enabled:=TRUE;
 		v_ty_status.b_continue:=FALSE;
 		v_i_replayed:=0;
 		v_i_ddl:=0;
@@ -462,57 +464,70 @@ $BODY$
 				
 			EXCEPTION
 				WHEN OTHERS THEN
-					RAISE NOTICE 'An error occurred when replaying data for the table %.%',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					RAISE NOTICE 'SQLSTATE: % - ERROR MESSAGE %',SQLSTATE, SQLERRM;
-					RAISE NOTICE 'The table %.% has been removed from the replica',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					v_ty_status.v_table_error:=array_append(v_ty_status.v_table_error, format('%I.%I SQLSTATE: %s - ERROR MESSAGE: %s',v_r_statements.v_schema_name,v_r_statements.v_table_name,SQLSTATE, SQLERRM)::character varying) ;
-					
-					RAISE NOTICE 'Adding error log entry for table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					INSERT INTO sch_chameleon.t_error_log
-						(
-							i_id_batch, 
-							i_id_source,
-							v_schema_name, 
-							v_table_name, 
-							t_table_pkey, 
-							t_binlog_name, 
-							i_binlog_position, 
-							ts_error, 
-							t_sql,
-							t_error_message
-						)
+					v_tab_enabled:=(
 						SELECT 
-							i_id_batch, 
-							p_i_id_source,
-							v_schema_name, 
-							v_table_name, 
-							v_r_statements.t_pk_data as t_table_pkey, 
-							t_binlog_name, 
-							i_binlog_position, 
-							clock_timestamp(), 
-							quote_literal(v_r_statements.t_sql) as t_sql,
-							format('%s - %s',SQLSTATE, SQLERRM) as t_error_message
-						FROM
-							sch_chameleon.t_log_replica  log
-						WHERE 
-							log.i_id_event=v_r_statements.i_id_event
-					;
-					RAISE NOTICE 'Statement %', v_r_statements.t_sql;
-					UPDATE sch_chameleon.t_replica_tables 
-						SET 
-							b_replica_enabled=FALSE
-					WHERE
-							v_schema_name=v_r_statements.v_schema_name
-						AND	v_table_name=v_r_statements.v_table_name
-					;
+							b_replica_enabled
+						FROM 	
+							sch_chameleon.t_replica_tables
+						WHERE
+								v_schema_name=v_r_statements.v_schema_name
+								AND	v_table_name=v_r_statements.v_table_name
+						)
+						;
+				
+					IF v_tab_enabled
+					THEN
+						RAISE NOTICE 'An error occurred when replaying data for the table %.%',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+						RAISE NOTICE 'SQLSTATE: % - ERROR MESSAGE %',SQLSTATE, SQLERRM;
+						RAISE NOTICE 'The table %.% has been removed from the replica',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+						v_ty_status.v_table_error:=array_append(v_ty_status.v_table_error, format('%I.%I SQLSTATE: %s - ERROR MESSAGE: %s',v_r_statements.v_schema_name,v_r_statements.v_table_name,SQLSTATE, SQLERRM)::character varying) ;
+						RAISE NOTICE 'Adding error log entry for table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+						INSERT INTO sch_chameleon.t_error_log
+							(
+								i_id_batch, 
+								i_id_source,
+								v_schema_name, 
+								v_table_name, 
+								t_table_pkey, 
+								t_binlog_name, 
+								i_binlog_position, 
+								ts_error, 
+								t_sql,
+								t_error_message
+							)
+							SELECT 
+								i_id_batch, 
+								p_i_id_source,
+								v_schema_name, 
+								v_table_name, 
+								v_r_statements.t_pk_data as t_table_pkey, 
+								t_binlog_name, 
+								i_binlog_position, 
+								clock_timestamp(), 
+								quote_literal(v_r_statements.t_sql) as t_sql,
+								format('%s - %s',SQLSTATE, SQLERRM) as t_error_message
+							FROM
+								sch_chameleon.t_log_replica  log
+							WHERE 
+								log.i_id_event=v_r_statements.i_id_event
+						;
+						RAISE NOTICE 'Statement %', v_r_statements.t_sql;
+						UPDATE sch_chameleon.t_replica_tables 
+							SET 
+								b_replica_enabled=FALSE
+						WHERE
+								v_schema_name=v_r_statements.v_schema_name
+							AND	v_table_name=v_r_statements.v_table_name
+						;
 
-					RAISE NOTICE 'Deleting the log entries for the table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					DELETE FROM sch_chameleon.t_log_replica  log
-					WHERE
-							v_table_name=v_r_statements.v_table_name
-						AND	v_schema_name=v_r_statements.v_schema_name
-						AND 	i_id_batch=v_i_id_batch
-					;
+						RAISE NOTICE 'Deleting the log entries for the table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+						DELETE FROM sch_chameleon.t_log_replica  log
+						WHERE
+								v_table_name=v_r_statements.v_table_name
+							AND	v_schema_name=v_r_statements.v_schema_name
+							AND 	i_id_batch=v_i_id_batch
+						;
+					END IF;
 					
 
 			END;
