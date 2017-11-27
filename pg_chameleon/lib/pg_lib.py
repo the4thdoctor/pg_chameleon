@@ -38,21 +38,52 @@ class pgsql_source(object):
 		"""
 			Class destructor, tries to disconnect the postgresql connection.
 		"""
-		self.disconnect_db()
-	
-	def disconnect_db(self):
+		pass
+
+	def __set_copy_max_memory(self):
 		"""
-			The method disconnects the postgres connection if there is any active. Otherwise ignore it.
+			The method sets the class variable self.copy_max_memory using the value stored in the 
+			source setting.
+
 		"""
-		if self.pgsql_conn:
-			self.pgsql_conn.close()
-			self.pgsql_conn = None
-			
-		if self.pgsql_cur:
-			self.pgsql_cur = None
+		copy_max_memory = str(self.source_config["copy_max_memory"])[:-1]
+		copy_scale = str(self.source_config["copy_max_memory"])[-1]
+		try:
+			int(copy_scale)
+			copy_max_memory = self.source_config["copy_max_memory"]
+		except:
+			if copy_scale =='k':
+				copy_max_memory = str(int(copy_max_memory)*1024)
+			elif copy_scale =='M':
+				copy_max_memory = str(int(copy_max_memory)*1024*1024)
+			elif copy_scale =='G':
+				copy_max_memory = str(int(copy_max_memory)*1024*1024*1024)
+			else:
+				print("**FATAL - invalid suffix in parameter copy_max_memory  (accepted values are (k)ilobytes, (M)egabytes, (G)igabytes.")
+				sys.exit(3)
+		self.copy_max_memory = copy_max_memory
+
+
+	def __init_sync(self):
+		"""
+			The method calls the common steps required to initialise the database connections and
+			class attributes within sync_tables,refresh_schema and init_replica.
+		"""
+		self.source_config = self.sources[self.source]
+		self.out_dir = self.source_config["out_dir"]
+		self.copy_mode = self.source_config["copy_mode"]
+		self.pg_engine.lock_timeout = self.source_config["lock_timeout"]
+		self.pg_engine.grant_select_to = self.source_config["grant_select_to"]
+		self.source_conn = self.source_config["db_conn"]
+		self.__set_copy_max_memory()
+		#self.hexify = [] + self.hexify_always
+		self.__connect_db()
+		self.pg_engine.connect_db()
+		self.schema_mappings = self.pg_engine.get_schema_mappings()
+		#self.pg_engine.schema_tables = self.schema_tables
 
 	
-	def connect_db(self):
+	def __connect_db(self):
 		"""
 			Connects to PostgreSQL using the parameters stored in self.dest_conn. The dictionary is built using the parameters set via adding the key dbname to the self.pg_conn dictionary.
 			This method's connection and cursors are widely used in the procedure except for the replay process which uses a 
@@ -62,7 +93,7 @@ class pgsql_source(object):
 			:rtype: dictionary
 		"""
 		if self.source_conn:
-			strconn = "dbname=%(database)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s"  % self.source_conn
+			strconn = "dbname=%(database)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s connect_timeout=%(connect_timeout)s"  % self.source_conn
 			pgsql_conn = psycopg2.connect(strconn)
 			pgsql_conn .set_client_encoding(self.source_conn["charset"])
 			pgsql_cur = pgsql_conn .cursor()
@@ -77,6 +108,8 @@ class pgsql_source(object):
 			The method performs a full init replica for the given source
 		"""
 		self.logger.debug("starting init replica for source %s" % self.source)
+		self.__init_sync()
+		
 
 class pg_engine(object):
 	def __init__(self):

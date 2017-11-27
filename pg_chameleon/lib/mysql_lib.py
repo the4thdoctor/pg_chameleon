@@ -252,7 +252,7 @@ class mysql_source(object):
 			The method collects the foreign key metadata for the detach replica process.
 			Currently doesn't get the ON UPDATE/ON DELETE triggers
 		"""
-		self.init_sync()
+		self.__init_sync()
 		schema_replica = "'%s'"  % "','".join([schema.strip() for schema in self.sources[self.source]["schema_mappings"]])
 		self.logger.info("retrieving foreign keys metadata for schemas %s" % schema_replica)
 		sql_fkeys = """ 
@@ -652,7 +652,7 @@ class mysql_source(object):
 			
 		
 	
-	def init_sync(self):
+	def __init_sync(self):
 		"""
 			The method calls the common steps required to initialise the database connections and
 			class attributes within sync_tables,refresh_schema and init_replica.
@@ -678,7 +678,7 @@ class mysql_source(object):
 		"""
 		self.logger.debug("starting sync schema for source %s" % self.source)
 		self.logger.debug("The schema affected is %s" % self.schema)
-		self.init_sync()
+		self.__init_sync()
 		self.pg_engine.set_source_status("syncing")
 		self.build_table_exceptions()
 		self.schema_list = [self.schema]
@@ -717,7 +717,7 @@ class mysql_source(object):
 		"""
 		self.logger.debug("starting sync tables for source %s" % self.source)
 		self.logger.debug("The tables affected are %s" % self.tables)
-		self.init_sync()
+		self.__init_sync()
 		self.pg_engine.set_source_status("syncing")
 		self.build_table_exceptions()
 		self.schema_list = [schema for schema in self.schema_mappings if schema in self.schema_only]
@@ -1059,7 +1059,7 @@ class mysql_source(object):
 			The method performs a full init replica for the given sources
 		"""
 		self.logger.debug("starting init replica for source %s" % self.source)
-		self.init_sync()
+		self.__init_sync()
 		master_start = self.get_master_coordinates()
 		self.pg_engine.set_source_status("initialising")
 		self.pg_engine.cleanup_source_tables()

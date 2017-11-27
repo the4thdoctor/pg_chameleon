@@ -6,6 +6,7 @@ changelog
 * Remove limit_tables from binlogreader initialisation, as we can read from multiple schemas we should only exclude the tables not limit
 * Fix wrong formatting for default value when altering a field
 * Upgrade procedure from version 1.8 to 2.0
+* Improve error logging and table exclusion in replay function
 
 
 2.0.0.alpha2 18 November 2017
