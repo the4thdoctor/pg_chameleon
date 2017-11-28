@@ -12,7 +12,8 @@ from pg_chameleon import pg_engine, mysql_source, pgsql_source
 import logging
 from logging.handlers  import TimedRotatingFileHandler
 from daemonize import Daemonize
-from multiprocessing import Process
+import multiprocessing as mp
+import traceback 
 
 class replica_engine(object):
 	"""
@@ -378,16 +379,20 @@ class replica_engine(object):
 			self.pg_engine.update_schema_mappings()
 			
 			
-	def read_replica(self):
+	def read_replica(self, queue):
 		"""
 			The method reads the replica stream for the given source and stores the row images 
 			in the target postgresql database.
 		"""
 		while True:
-			self.mysql_source.read_replica()
-			time.sleep(self.sleep_loop)
+			try:
+				self.mysql_source.read_replica()
+				time.sleep(self.sleep_loop)
+			except Exception:
+			    queue.put(traceback.format_exc())
+			    break
 	
-	def replay_replica(self):
+	def replay_replica(self, queue):
 		"""
 			The method replays the row images stored in the target postgresql database.
 		"""
@@ -395,16 +400,20 @@ class replica_engine(object):
 		self.pg_engine.connect_db()
 		self.pg_engine.set_source_id()
 		while True:
-			tables_error = self.pg_engine.replay_replica()
-			if len(tables_error) > 0:
-				table_list = [item for sublist in tables_error for item in sublist]
-				tables_removed = "\n".join(table_list)
-				error_msg = "There was an error during the replay of data. %s. The affected tables are no longer replicated." % (tables_removed)
-				self.logger.error(error_msg)
-				if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
-					rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
-					rollbar.report_message(error_msg, 'error')
-			time.sleep(self.sleep_loop)
+			try:
+				tables_error = self.pg_engine.replay_replica()
+				if len(tables_error) > 0:
+					table_list = [item for sublist in tables_error for item in sublist]
+					tables_removed = "\n".join(table_list)
+					error_msg = "There was an error during the replay of data. %s. The affected tables are no longer replicated." % (tables_removed)
+					self.logger.error(error_msg)
+					if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
+						rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
+						rollbar.report_message(error_msg, 'error')
+				time.sleep(self.sleep_loop)
+			except Exception:
+			    queue.put(traceback.format_exc())
+			    break
 			
 	def run_replica(self):
 		"""
@@ -413,11 +422,12 @@ class replica_engine(object):
 			destination.
 		"""
 		signal.signal(signal.SIGINT, self.terminate_replica)
+		queue = mp.Queue()
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
-		check_timeout = self.sleep_loop*10
+		check_timeout = self.sleep_loop#*10
 		self.logger.info("Starting the replica daemons for source %s " % (self.args.source))
-		self.read_daemon = Process(target=self.read_replica, name='read_replica')
-		self.replay_daemon = Process(target=self.replay_replica, name='replay_replica')
+		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue,))
+		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue,))
 		self.read_daemon.start()
 		self.replay_daemon.start()
 		while True:
@@ -426,19 +436,23 @@ class replica_engine(object):
 			if  read_alive and replay_alive:
 				self.logger.debug("Replica process for source %s is running" % (self.args.source))
 			else:
+				stack_trace = queue.get()
 				self.logger.error("Read process alive: %s - Replay process alive: %s" % (read_alive, replay_alive, ))
-				
+				self.logger.error("Stack trace: %s" % (stack_trace, ))
 				if read_alive:
 					self.read_daemon.terminate()
 					self.logger.error("Replay daemon crashed. Terminating the read daemon.")
 				if replay_alive:
 					self.replay_daemon.terminate()
 					self.logger.error("Read daemon crashed. Terminating the replay daemon.")
-				self.pg_engine.connect_db()
-				self.pg_engine.set_source_status("error")
+				try:
+					self.pg_engine.connect_db()
+					self.pg_engine.set_source_status("error")
+				except:
+					pass
 				if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
 					rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
-					rollbar.report_message("The replica process crashed.\n Source: %s" %self.args.source, 'error')
+					rollbar.report_message("The replica process crashed.\n Source: %s\n Stack trace: %s " %(self.args.source, stack_trace), 'error')
 					
 				break
 			time.sleep(check_timeout)
