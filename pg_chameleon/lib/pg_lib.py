@@ -9,6 +9,7 @@ import time
 import os
 import binascii
 from distutils.sysconfig import get_python_lib
+import multiprocessing as mp
 
 class pg_encoder(json.JSONEncoder):
 	def default(self, obj):
@@ -83,7 +84,7 @@ class pgsql_source(object):
 		#self.pg_engine.schema_tables = self.schema_tables
 
 	
-	def __connect_db(self):
+	def __connect_db(self, auto_commit=True):
 		"""
 			Connects to PostgreSQL using the parameters stored in self.dest_conn. The dictionary is built using the parameters set via adding the key dbname to the self.pg_conn dictionary.
 			This method's connection and cursors are widely used in the procedure except for the replay process which uses a 
@@ -97,18 +98,46 @@ class pgsql_source(object):
 			pgsql_conn = psycopg2.connect(strconn)
 			pgsql_conn .set_client_encoding(self.source_conn["charset"])
 			pgsql_cur = pgsql_conn .cursor()
+			self.logger.debug("Changing the autocommit flag to %s" % auto_commit)
+			pgsql_conn.set_session(autocommit=auto_commit)
+
 		elif not self.source_conn:
 			self.logger.error("Undefined database connection string. Exiting now.")
 			sys.exit()
 		
 		return {'connection': pgsql_conn, 'cursor': pgsql_cur }
 	
+	def __export_snapshot(self, queue):
+		self.logger.debug("exporting database snapshot for source %s" % self.source)
+		sql_snap = """
+			BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+			SELECT pg_export_snapshot();
+		"""
+		db_snap = self.__connect_db(False)
+		db_conn = db_snap["connection"]
+		db_cursor = db_snap["cursor"]
+		db_cursor.execute(sql_snap)
+		snapshot_id = db_cursor.fetchone()[0]
+		self.logger.debug("database snapshot id for %s" % snapshot_id)
+		queue.put(snapshot_id)
+		continue_loop = True
+		while continue_loop:
+			continue_loop = queue.get()
+			time.sleep(5)
+		db_conn.commit()
+		
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given source
 		"""
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.__init_sync()
+		queue = mp.Queue()
+		snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export')
+		snap_exp.start()
+		time.sleep(3)
+		queue.put(False)
+		
 		
 
 class pg_engine(object):
