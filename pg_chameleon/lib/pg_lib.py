@@ -1,6 +1,7 @@
 import io
 import psycopg2
 from psycopg2 import sql
+from psycopg2.extras import RealDictCursor
 import sys
 import json
 import datetime
@@ -78,13 +79,15 @@ class pgsql_source(object):
 		self.source_conn = self.source_config["db_conn"]
 		self.__set_copy_max_memory()
 		#self.hexify = [] + self.hexify_always
-		self.__connect_db()
+		db_object = self.__connect_db( auto_commit=True, dict_cursor=True)
+		self.pgsql_conn = db_object["connection"]
+		self.pgsql_cursor = db_object["cursor"]
 		self.pg_engine.connect_db()
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
 		#self.pg_engine.schema_tables = self.schema_tables
 
 	
-	def __connect_db(self, auto_commit=True):
+	def __connect_db(self, auto_commit=True, dict_cursor=False):
 		"""
 			Connects to PostgreSQL using the parameters stored in self.dest_conn. The dictionary is built using the parameters set via adding the key dbname to the self.pg_conn dictionary.
 			This method's connection and cursors are widely used in the procedure except for the replay process which uses a 
@@ -97,7 +100,10 @@ class pgsql_source(object):
 			strconn = "dbname=%(database)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s connect_timeout=%(connect_timeout)s"  % self.source_conn
 			pgsql_conn = psycopg2.connect(strconn)
 			pgsql_conn .set_client_encoding(self.source_conn["charset"])
-			pgsql_cur = pgsql_conn .cursor()
+			if dict_cursor:
+				pgsql_cur = pgsql_conn .cursor(cursor_factory=RealDictCursor)
+			else:
+				pgsql_cur = pgsql_conn .cursor()
 			self.logger.debug("Changing the autocommit flag to %s" % auto_commit)
 			pgsql_conn.set_session(autocommit=auto_commit)
 
@@ -126,17 +132,132 @@ class pgsql_source(object):
 			time.sleep(5)
 		db_conn.commit()
 		
+	def __build_table_exceptions(self):
+		"""
+			The method builds two dictionaries from the limit_tables and skip tables values set for the source.
+			The dictionaries are intended to be used in the get_table_list to cleanup the list of tables per schema.
+			The method manages the particular case of when the class variable self.tables is set.
+			In that case only the specified tables in self.tables will be synced. Should limit_tables be already 
+			set, then the resulting list is the intersection of self.tables and limit_tables.
+		"""
+		self.limit_tables = {}
+		self.skip_tables = {}
+		limit_tables = self.source_config["limit_tables"]
+		skip_tables = self.source_config["skip_tables"]
+		
+		if self.tables !='*':
+			tables = [table.strip() for table in self.tables.split(',')]
+			if limit_tables:
+				limit_tables = [table for table in tables if table in limit_tables]
+			else:
+				limit_tables = tables
+			self.schema_only = {table.split('.')[0] for table in limit_tables}
+			
+		
+		if limit_tables:
+			table_limit = [table.split('.') for table in limit_tables]
+			for table_list in table_limit:
+				list_exclude = []
+				try:
+					list_exclude = self.limit_tables[table_list[0]] 
+					list_exclude.append(table_list[1])
+				except KeyError:
+					list_exclude.append(table_list[1])
+				self.limit_tables[table_list[0]]  = list_exclude
+		if skip_tables:
+			table_skip = [table.split('.') for table in skip_tables]		
+			for table_list in table_skip:
+				list_exclude = []
+				try:
+					list_exclude = self.skip_tables[table_list[0]] 
+					list_exclude.append(table_list[1])
+				except KeyError:
+					list_exclude.append(table_list[1])
+				self.skip_tables[table_list[0]]  = list_exclude
+		
+
+
+	def __get_table_list(self):
+		"""
+			The method pulls the table list from the information_schema. 
+			The list is stored in a dictionary  which key is the table's schema.
+		"""
+		sql_tables="""
+			SELECT 
+				table_name
+			FROM 
+				information_schema.TABLES 
+			WHERE 
+					table_type='BASE TABLE' 
+				AND table_schema=%s
+			;
+		"""
+		for schema in self.schema_list:
+			self.pgsql_cursor.execute(sql_tables, (schema, ))
+			table_list = [table["table_name"] for table in self.pgsql_cursor.fetchall()]
+			try:
+				limit_tables = self.limit_tables[schema]
+				if len(limit_tables) > 0:
+					table_list = [table for table in table_list if table in limit_tables]
+			except KeyError:
+				pass
+			try:
+				skip_tables = self.skip_tables[schema]
+				if len(skip_tables) > 0:
+					table_list = [table for table in table_list if table not in skip_tables]
+			except KeyError:
+				pass
+			
+			self.schema_tables[schema] = table_list
+	
+	def __create_destination_schemas(self):
+		"""
+			Creates the loading schemas in the destination database and associated tables listed in the dictionary
+			self.schema_tables.
+			The method builds a dictionary which associates the destination schema to the loading schema. 
+			The loading_schema is named after the destination schema plus with the prefix _ and the _tmp suffix.
+			As postgresql allows, by default up to 64  characters for an identifier, the original schema is truncated to 59 characters,
+			in order to fit the maximum identifier's length.
+			The mappings are stored in the class dictionary schema_loading.
+		"""
+		for schema in self.schema_list:
+			destination_schema = self.schema_mappings[schema]
+			loading_schema = "_%s_tmp" % destination_schema[0:59]
+			self.schema_loading[schema] = {'destination':destination_schema, 'loading':loading_schema}
+			self.logger.debug("Creating the schema %s." % loading_schema)
+			self.pg_engine.create_database_schema(loading_schema)
+			self.logger.debug("Creating the schema %s." % destination_schema)
+			self.pg_engine.create_database_schema(destination_schema)
+
+	def __create_destination_tables(self):
+		"""
+			The method creates the destination tables in the loading schema.
+			The tables names are looped using the values stored in the class dictionary schema_tables.
+		"""
+		for schema in self.schema_tables:
+			table_list = self.schema_tables[schema]
+			for table in table_list:
+				table_metadata = self.get_table_metadata(table, schema)
+				self.pg_engine.create_table(table_metadata, table, schema)
+	
+	
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given source
 		"""
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.__init_sync()
-		queue = mp.Queue()
-		snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export')
-		snap_exp.start()
-		time.sleep(3)
-		queue.put(False)
+		self.schema_list = [schema for schema in self.schema_mappings]
+		self.__build_table_exceptions()
+		self.__get_table_list()
+		self.__create_destination_schemas()
+		self.pg_engine.schema_loading = self.schema_loading
+		#self.__create_destination_tables()
+		#queue = mp.Queue()
+		#snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export')
+		#snap_exp.start()
+		#time.sleep(3)
+		#queue.put(False)
 		
 		
 
