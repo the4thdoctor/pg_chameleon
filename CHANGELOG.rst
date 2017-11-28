@@ -7,6 +7,7 @@ changelog
 * Fix wrong formatting for default value when altering a field
 * Upgrade procedure from version 1.8 to 2.0
 * Improve error logging and table exclusion in replay function
+* Add stack trace capture to the rollbar and log message when one of the replica daemon crash
 
 
 2.0.0.alpha2 18 November 2017
