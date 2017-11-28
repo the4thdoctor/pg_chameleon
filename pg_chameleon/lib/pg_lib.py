@@ -229,6 +229,106 @@ class pgsql_source(object):
 			self.logger.debug("Creating the schema %s." % destination_schema)
 			self.pg_engine.create_database_schema(destination_schema)
 
+	def __get_table_metadata(self, table, schema):
+		"""
+			The method builds the table's metadata querying the information_schema.
+			The data is returned as a dictionary.
+			
+			:param table: The table name
+			:param schema: The table's schema
+			:return: table's metadata as a cursor dictionary
+			:rtype: dictionary
+		"""
+		sql_metadata="""
+			SELECT
+				col.attname as column_name,
+				(
+					SELECT 
+						pg_catalog.pg_get_expr(def.adbin, def.adrelid)
+					FROM 
+						pg_catalog.pg_attrdef def
+					WHERE 
+							def.adrelid = col.attrelid 
+						AND def.adnum = col.attnum 
+						AND col.atthasdef
+				) as column_default,
+				col.attnum as ordinal_position,
+				CASE 
+					WHEN typ.typcategory ='E'
+					THEN 
+						'enum'
+					WHEN typ.typcategory='C'
+					THEN
+						'composite' 
+					
+				ELSE
+					pg_catalog.format_type(col.atttypid, col.atttypmod)
+				END
+				AS type_format,
+				(
+					SELECT 
+						pg_get_serial_sequence(format('%%I.%%I',tabsch.nspname,tab.relname), col.attname) IS NOT NULL
+					FROM 
+						pg_catalog.pg_class tab
+						INNER JOIN pg_catalog.pg_namespace tabsch
+						ON	tab.relnamespace=tabsch.oid
+					WHERE
+						tab.oid=col.attrelid
+				) as col_serial,
+				typ.typcategory as type_category,
+				CASE
+					WHEN typ.typcategory='E'
+					THEN
+					(
+						SELECT 
+							string_agg(quote_literal(enumlabel),',') 
+						FROM 
+							pg_catalog.pg_enum enm 
+						WHERE enm.enumtypid=typ.oid 
+					)
+					WHEN typ.typcategory='C'
+					THEN 
+					(
+						SELECT 
+							string_agg(
+								format('%%I %%s',
+									attname,
+									pg_catalog.format_type(atttypid, atttypmod)
+								)
+							,
+							','
+							)	 
+						FROM 
+							pg_catalog.pg_attribute 
+						WHERE 
+							attrelid=format(
+								'%%I.%%I',
+								sch.nspname,
+								typ.typname)::regclass
+							)
+				END AS typ_elements,
+				col.attnotnull as not_null
+			FROM 
+				pg_catalog.pg_attribute col
+				INNER JOIN pg_catalog.pg_type typ
+					ON  col.atttypid=typ.oid
+				INNER JOIN pg_catalog.pg_namespace sch
+					ON typ.typnamespace=sch.oid
+			WHERE 
+					col.attrelid = %s::regclass 
+				AND NOT col.attisdropped
+				AND col.attnum>0
+			ORDER BY 
+				col.attnum
+			;
+			;
+		"""
+		tab_regclass = '"%s"."%s"' % (schema, table)
+		self.pgsql_cursor.execute(sql_metadata, (tab_regclass, ))
+		table_metadata=self.pgsql_cursor.fetchall()
+		return table_metadata
+
+
 	def __create_destination_tables(self):
 		"""
 			The method creates the destination tables in the loading schema.
@@ -237,8 +337,19 @@ class pgsql_source(object):
 		for schema in self.schema_tables:
 			table_list = self.schema_tables[schema]
 			for table in table_list:
-				table_metadata = self.get_table_metadata(table, schema)
-				self.pg_engine.create_table(table_metadata, table, schema)
+				table_metadata = self.__get_table_metadata(table, schema)
+				self.pg_engine.create_table(table_metadata, table, schema, 'pgsql')
+	
+	def __drop_loading_schemas(self):
+		"""
+			The method drops the loading schemas from the destination database.
+			The drop is performed on the schemas generated in create_destination_schemas. 
+			The method assumes the class dictionary schema_loading is correctly set.
+		"""
+		for schema in self.schema_loading:
+			loading_schema = self.schema_loading[schema]["loading"]
+			self.logger.debug("Dropping the schema %s." % loading_schema)
+			self.pg_engine.drop_database_schema(loading_schema, True)
 	
 	
 	def init_replica(self):
@@ -252,7 +363,9 @@ class pgsql_source(object):
 		self.__get_table_list()
 		self.__create_destination_schemas()
 		self.pg_engine.schema_loading = self.schema_loading
-		#self.__create_destination_tables()
+		self.__create_destination_tables()
+		self.pg_engine.swap_schemas()
+		self.__drop_loading_schemas()
 		#queue = mp.Queue()
 		#snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export')
 		#snap_exp.start()
@@ -1485,9 +1598,74 @@ class pg_engine(object):
 		self.logger.debug("Found origin's replication schemas %s" % ', '.join(schema_list))
 		return schema_list
 	
-	def build_create_table(self, table_metadata,table_name,  schema, temporary_schema=True):
+	def __build_create_table_pgsql(self, table_metadata,table_name,  schema, temporary_schema=True):
 		"""
-			The method builds the create table statement with any enumeration associated.
+			The method builds the create table statement with any enumeration or composite type associated to the table
+			using the postgresql's metadata.
+			The returned value is a dictionary with the optional composite type/enumeration's ddl with the create table without indices or primary keys.
+			The method assumes there is a database connection active.
+			
+			:param table_metadata: the column dictionary extracted from the source's information_schema or builty by the sql_parser class
+			:param table_name: the table name 
+			:param destination_schema: the schema where the table belongs
+			:return: a dictionary with the optional create statements for enumerations and the create table
+			:rtype: dictionary
+		"""
+		table_ddl = {}
+		ddl_columns = []
+		def_columns = ''
+		if temporary_schema:
+			destination_schema = self.schema_loading[schema]["loading"]
+		else:
+			destination_schema = schema
+		ddl_head = 'CREATE TABLE "%s"."%s" (' % (destination_schema, table_name)
+		ddl_tail = ");"
+		ddl_enum=[]
+		ddl_composite=[]
+		for column in table_metadata:
+			column_name = column["column_name"]
+			if column["column_default"]:
+				default_value = column["column_default"]
+			else:
+				default_value = ''
+			if column["not_null"]:
+				col_is_null="NOT NULL"
+			else:
+				col_is_null="NULL"
+			column_type = column["type_format"]
+			if column_type == "enum":
+				enum_type = '"%s"."enum_%s_%s"' % (destination_schema, table_name[0:20], column["column_name"][0:20])
+				sql_drop_enum = 'DROP TYPE IF EXISTS %s CASCADE;' % enum_type
+				sql_create_enum = 'CREATE TYPE %s AS ENUM (%s);' % ( enum_type,  column["typ_elements"])
+				ddl_enum.append(sql_drop_enum)
+				ddl_enum.append(sql_create_enum)
+				column_type=enum_type
+			if column_type == "composite":
+				composite_type = '"%s"."typ_%s_%s"' % (destination_schema, table_name[0:20], column["column_name"][0:20])
+				sql_drop_composite = 'DROP TYPE IF EXISTS %s CASCADE;' % composite_type
+				sql_create_composite = 'CREATE TYPE %s AS (%s);' % ( composite_type,  column["typ_elements"])
+				ddl_composite.append(sql_drop_composite)
+				ddl_composite.append(sql_create_composite)
+				column_type=composite_type
+			if column["col_serial"]:
+				default_value = ''
+				if column_type == 'bigint':
+					column_type = 'bigserial'
+				else:
+					column_type = 'serial'
+				default_value = ''
+			ddl_columns.append('"%s" %s %s %s' % (column_name, column_type, default_value, col_is_null))
+		def_columns=str(',').join(ddl_columns)
+		table_ddl["enum"] = ddl_enum
+		table_ddl["composite"] = ddl_composite
+		table_ddl["table"] = (ddl_head+def_columns+ddl_tail)
+		return table_ddl
+		
+		
+	
+	def __build_create_table_mysql(self, table_metadata,table_name,  schema, temporary_schema=True):
+		"""
+			The method builds the create table statement with any enumeration associated using the mysql's metadata.
 			The returned value is a dictionary with the optional enumeration's ddl and the create table without indices or primary keys.
 			on the destination schema specified by destination_schema.
 			The method assumes there is a database connection active.
@@ -1529,6 +1707,7 @@ class pg_engine(object):
 			ddl_columns.append(  ' "%s" %s %s   ' %  (column["column_name"], column_type, col_is_null ))
 		def_columns=str(',').join(ddl_columns)
 		table_ddl["enum"] = ddl_enum
+		table_ddl["composite"] = []
 		table_ddl["table"] = (ddl_head+def_columns+ddl_tail)
 		return table_ddl
 	
@@ -2060,19 +2239,29 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_save,(batch_id, schema, table,hex_row))
 	
 	
-	def create_table(self,  table_metadata,table_name,  schema):
+	def create_table(self,  table_metadata,table_name,  schema, metadata_type):
 		"""
 			Executes the create table returned by build_create_table on the destination_schema.
 			
 			:param table_metadata: the column dictionary extracted from the source's information_schema or builty by the sql_parser class
 			:param table_name: the table name 
 			:param destination_schema: the schema where the table belongs
+			:param metadata_type: the metadata type, currently supported mysql and pgsql
 		"""
-		table_ddl = self.build_create_table( table_metadata,table_name,  schema)
+		if metadata_type == 'mysql':
+			table_ddl = self.__build_create_table_mysql( table_metadata,table_name,  schema)
+		elif metadata_type == 'pgsql':
+			table_ddl = self.__build_create_table_pgsql( table_metadata,table_name,  schema)
 		enum_ddl = table_ddl["enum"] 
+		composite_ddl = table_ddl["composite"] 
 		table_ddl = table_ddl["table"] 
+		
 		for enum_statement in enum_ddl:
 			self.pgsql_cur.execute(enum_statement)
+		
+		for composite_statement in composite_ddl:
+			self.pgsql_cur.execute(composite_statement)
+
 		self.pgsql_cur.execute(table_ddl)
 	
 	def update_schema_mappings(self):
