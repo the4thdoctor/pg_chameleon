@@ -124,7 +124,6 @@ class pgsql_source(object):
 		db_cursor = db_snap["cursor"]
 		db_cursor.execute(sql_snap)
 		snapshot_id = db_cursor.fetchone()[0]
-		self.logger.debug("database snapshot id for %s" % snapshot_id)
 		queue.put(snapshot_id)
 		continue_loop = True
 		while continue_loop:
@@ -351,6 +350,29 @@ class pgsql_source(object):
 			self.logger.debug("Dropping the schema %s." % loading_schema)
 			self.pg_engine.drop_database_schema(loading_schema, True)
 	
+	def __copy_tables(self):
+		"""
+		"""
+		queue = mp.Queue()
+		snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export',daemon=True)
+		snap_exp.start()
+		snapshot_id = queue.get()
+		self.logger.debug("Importing snapshot %s" % snapshot_id)
+		sql_snap = """
+			BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+			SET TRANSACTION SNAPSHOT %s;
+		"""
+		db_copy = self.__connect_db(False)
+		db_conn = db_copy["connection"]
+		db_cursor = db_copy["cursor"]
+		for schema in self.schema_tables:
+			table_list = self.schema_tables[schema]
+			for table in table_list:
+				self.logger.info("copying table %s.%s" % (schema, table))
+				db_cursor.execute(sql_snap, (snapshot_id, ))
+				db_conn.commit()
+		queue.put(False)
+		
 	
 	def init_replica(self):
 		"""
@@ -364,13 +386,9 @@ class pgsql_source(object):
 		self.__create_destination_schemas()
 		self.pg_engine.schema_loading = self.schema_loading
 		self.__create_destination_tables()
+		self.__copy_tables()
 		self.pg_engine.swap_schemas()
 		self.__drop_loading_schemas()
-		#queue = mp.Queue()
-		#snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export')
-		#snap_exp.start()
-		#time.sleep(3)
-		#queue.put(False)
 		
 		
 
