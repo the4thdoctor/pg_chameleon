@@ -38,7 +38,7 @@ sources configuration
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 20-47
    :linenos:
 
 The key sources allow to setup multiple replica sources writing on the same postgresql database. The key name myst be unique wihin the replica configuration.
@@ -49,7 +49,7 @@ Database connection
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 20-47
    :emphasize-lines: 3-9
    :linenos:
 
@@ -61,7 +61,7 @@ Schema mappings
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 20-47
    :emphasize-lines: 10-11
    :linenos:
 
@@ -73,7 +73,7 @@ Limit and skip tables
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 20-47
    :emphasize-lines: 12-15
    :linenos:
 
@@ -87,7 +87,7 @@ Grant select to option
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 20-47
    :emphasize-lines: 16-17
    :linenos:
 
@@ -103,8 +103,8 @@ Source configuration parameters
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
-   :emphasize-lines: 18-26
+   :lines: 20-47
+   :emphasize-lines: 18-28
    :linenos:
    
 * lock_timeout the max time in seconds that the target postgresql connections should wait for acquiring a lock. This parameter applies  to init_replica,refresh_schema and sync_tables when performing the relation's swap.
@@ -115,6 +115,7 @@ Source configuration parameters
 * copy_mode the allowed values are ‘file’ and ‘direct’. With direct the copy happens on the fly. With file the table is first dumped in a csv file then reloaded in PostgreSQL.
 * out_dir the directory where the csv files are dumped during the init_replica process if the copy mode is file.
 * sleep_loop seconds between a two replica batches.
+* on_error_replay specifies whether the replay process should ``exit`` or ``continue``  if any error during the replay happens. If ``continue`` is specified the offending tables are removed from the replica.
 * type specifies the source database type. Currently only mysql is accepted. 
    
 type override
@@ -122,7 +123,7 @@ type override
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 52-56
+   :lines: 53-57
    :linenos:
 
 The type_override allows the user to override the default type conversion into a different one. 

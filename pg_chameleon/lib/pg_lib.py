@@ -697,15 +697,19 @@ class pg_engine(object):
 		continue_loop = True
 		self.source_config = self.sources[self.source]
 		replay_max_rows = self.source_config["replay_max_rows"]
+		exit_on_error = True if self.source_config["on_error_replay"]=='exit' else False
 		while continue_loop:
-			sql_replay = """SELECT * FROM sch_chameleon.fn_replay_mysql(%s,%s)""";
-			self.pgsql_cur.execute(sql_replay, (replay_max_rows, self.i_id_source, ))
+			sql_replay = """SELECT * FROM sch_chameleon.fn_replay_mysql(%s,%s,%s)""";
+			self.pgsql_cur.execute(sql_replay, (replay_max_rows, self.i_id_source, exit_on_error))
 			replay_status = self.pgsql_cur.fetchone()
 			if replay_status[0]:
 				self.logger.info("Replayed %s rows for source %s" % (replay_max_rows, self.source) )
 			continue_loop = replay_status[0]
-			if replay_status[1]:
-				tables_error.append(replay_status[1])
+			function_error = replay_status[1]
+			if function_error:
+				raise Exception('The replay process crashed')
+			if replay_status[2]:
+				tables_error.append(replay_status[2])
 		return tables_error
 			
 	

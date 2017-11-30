@@ -43,6 +43,7 @@ sources:
         copy_mode: 'file'  
         out_dir: /tmp
         sleep_loop: 1
+        on_error_replay: continue
         type: mysql
 
 
