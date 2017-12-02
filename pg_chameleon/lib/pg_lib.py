@@ -383,7 +383,81 @@ class pgsql_source(object):
 		self.pg_engine.pgsql_cur.copy_from(copy_file, to_table)
 		copy_file.close()
 		db_conn.commit()
+		try:
+			remove(out_file)
+		except:
+			pass
+		
 	
+	
+	def __create_indices(self):
+		"""
+			The method loops over the tables, queries the origin's database and creates the same indices
+			on the loading schema.
+		"""
+		db_copy = self.__connect_db(False)
+		db_conn = db_copy["connection"]
+		db_cursor = db_copy["cursor"]
+		sql_get_idx = """
+			SELECT 
+				CASE
+					WHEN con.conname IS NOT NULL
+					THEN
+						format('ALTER TABLE %%I ADD CONSTRAINT %%I %%s ;',tab.relname,con.conname,pg_get_constraintdef(con.oid))
+					ELSE
+						format('%%s ;',regexp_replace(pg_get_indexdef(idx.oid), '("?\w+"?\.)', ''))
+				END AS ddl_text,
+				CASE
+					WHEN con.conname IS NOT NULL
+					THEN
+						format('Adding primary key to table %%I',tab.relname)
+					ELSE
+						format('Adding index %%I to table %%I',idx.relname,tab.relname)
+				END AS ddl_msg
+			FROM
+
+				pg_class tab 
+				INNER JOIN pg_namespace sch
+				ON	
+					sch.oid=tab.relnamespace
+				INNER JOIN pg_index ind
+				ON
+					ind.indrelid=tab.oid
+				INNER JOIN pg_class idx
+				ON
+					ind.indexrelid=idx.oid
+				LEFT OUTER JOIN pg_constraint con
+				ON
+						con.conrelid=tab.oid
+					AND	idx.oid=con.conindid
+				
+			WHERE
+				(		
+						contype='p' 
+					OR 	contype IS NULL
+				)
+				AND	tab.relname=%s
+				AND	sch.nspname=%s
+			;
+		"""
+		
+		for schema in self.schema_tables:
+			table_list = self.schema_tables[schema]
+			for table in table_list:
+				loading_schema = self.schema_loading[schema]["loading"]
+				self.pg_engine.pgsql_cur.execute('SET search_path=%s;', (loading_schema, ))
+				db_cursor.execute(sql_get_idx, (table, schema))
+				idx_tab = db_cursor.fetchall()
+				for idx in idx_tab:
+					self.logger.info(idx[1])
+					try:
+						self.pg_engine.pgsql_cur.execute(idx[0])
+					except:
+						self.logger.error("an error occcurred when executing %s" %(idx[0]))
+					
+		
+		db_conn.close()
+		
 	def __copy_tables(self):
 		"""
 			The method copies the data between tables, from the postgres source and the corresponding
@@ -415,10 +489,18 @@ class pgsql_source(object):
 		self.__get_table_list()
 		self.__create_destination_schemas()
 		self.pg_engine.schema_loading = self.schema_loading
-		self.__create_destination_tables()
-		self.__copy_tables()
-		self.pg_engine.swap_schemas()
-		self.__drop_loading_schemas()
+		self.pg_engine.set_source_status("initialising")
+		try:
+			self.__create_destination_tables()
+			self.__copy_tables()
+			self.__create_indices()
+			self.pg_engine.swap_schemas()
+			self.__drop_loading_schemas()
+			self.pg_engine.set_source_status("initialised")
+		except:
+			self.__drop_loading_schemas()
+			self.pg_engine.set_source_status("error")
+			raise
 		
 		
 
