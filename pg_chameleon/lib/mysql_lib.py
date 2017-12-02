@@ -431,14 +431,14 @@ class mysql_source(object):
 		total_rows = count_rows["table_rows"]
 		copy_limit = int(count_rows["copy_limit"])
 		if copy_limit == 0:
-			copy_limit=1000000
-		num_slices=int(total_rows//copy_limit)
-		range_slices=list(range(num_slices+1))
-		total_slices=len(range_slices)
-		slice=range_slices[0]
+			copy_limit = 1000000
+		num_slices = int(total_rows//copy_limit)
+		range_slices = list(range(num_slices+1))
+		total_slices = len(range_slices)
+		slice = range_slices[0]
 		self.logger.debug("The table %s.%s will be copied in %s  estimated slice(s) of %s rows"  % (schema, table, total_slices, copy_limit))
 
-		out_file='%s/%s_%s.csv' % (self.out_dir, schema, table )
+		out_file = '%s/%s_%s.csv' % (self.out_dir, schema, table )
 		self.lock_table(schema, table)
 		master_status = self.get_master_coordinates()
 		select_columns = self.generate_select_statements(schema, table)

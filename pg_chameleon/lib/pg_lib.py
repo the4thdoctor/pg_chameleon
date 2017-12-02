@@ -114,6 +114,13 @@ class pgsql_source(object):
 		return {'connection': pgsql_conn, 'cursor': pgsql_cur }
 	
 	def __export_snapshot(self, queue):
+		"""
+			The method exports a database snapshot and stays idle in transaction until a message from the parent
+			process tell it to exit.
+			The method stores the snapshot id in the queue for the parent's usage.
+			
+			:param queue: the queue object used to exchange messages between the parent and the child
+		"""
 		self.logger.debug("exporting database snapshot for source %s" % self.source)
 		sql_snap = """
 			BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
@@ -350,29 +357,52 @@ class pgsql_source(object):
 			self.logger.debug("Dropping the schema %s." % loading_schema)
 			self.pg_engine.drop_database_schema(loading_schema, True)
 	
-	def __copy_tables(self):
-		"""
-		"""
-		queue = mp.Queue()
-		snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export',daemon=True)
-		snap_exp.start()
-		snapshot_id = queue.get()
-		self.logger.debug("Importing snapshot %s" % snapshot_id)
+	def __copy_data(self, schema, table, db_copy):
+		
 		sql_snap = """
 			BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 			SET TRANSACTION SNAPSHOT %s;
 		"""
-		db_copy = self.__connect_db(False)
+		out_file = '%s/%s_%s.csv' % (self.out_dir, schema, table )
+		loading_schema = self.schema_loading[schema]["loading"]
+		from_table = '"%s"."%s"' % (schema, table)
+		to_table = '"%s"."%s"' % (loading_schema, table)
+		
 		db_conn = db_copy["connection"]
 		db_cursor = db_copy["cursor"]
+		
+		db_cursor.execute(sql_snap, (self.snapshot_id, ))
+		self.logger.debug("exporting table %s.%s in %s" % (schema , table,  out_file))
+		copy_file = open(out_file, 'wb')
+		db_cursor.copy_to(copy_file, from_table)
+		
+		copy_file.close()
+		self.logger.debug("loading the file %s in table %s.%s " % (out_file,  loading_schema , table,  ))
+		
+		copy_file = open(out_file, 'rb')
+		self.pg_engine.pgsql_cur.copy_from(copy_file, to_table)
+		copy_file.close()
+		db_conn.commit()
+	
+	def __copy_tables(self):
+		"""
+			The method copies the data between tables, from the postgres source and the corresponding
+			postgresql loading schema. Before the process starts a snapshot is exported in order to get
+			a consistent database copy at the time of the snapshot.
+		"""
+		
+		queue = mp.Queue()
+		snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export',daemon=True)
+		snap_exp.start()
+		self.snapshot_id = queue.get()
+		db_copy = self.__connect_db(False)
+		
 		for schema in self.schema_tables:
 			table_list = self.schema_tables[schema]
 			for table in table_list:
-				self.logger.info("copying table %s.%s" % (schema, table))
-				db_cursor.execute(sql_snap, (snapshot_id, ))
-				db_conn.commit()
+				self.__copy_data(schema, table, db_copy)
 		queue.put(False)
-		
+		db_copy["connection"].close()
 	
 	def init_replica(self):
 		"""
