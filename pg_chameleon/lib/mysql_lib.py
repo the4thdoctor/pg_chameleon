@@ -140,8 +140,6 @@ class mysql_source(object):
 				self.skip_tables[table_list[0]]  = list_exclude
 		
 
-	
-
 
 	def get_table_list(self):
 		"""
@@ -252,7 +250,7 @@ class mysql_source(object):
 			The method collects the foreign key metadata for the detach replica process.
 			Currently doesn't get the ON UPDATE/ON DELETE triggers
 		"""
-		self.init_sync()
+		self.__init_sync()
 		schema_replica = "'%s'"  % "','".join([schema.strip() for schema in self.sources[self.source]["schema_mappings"]])
 		self.logger.info("retrieving foreign keys metadata for schemas %s" % schema_replica)
 		sql_fkeys = """ 
@@ -293,7 +291,7 @@ class mysql_source(object):
 			table_list = self.schema_tables[schema]
 			for table in table_list:
 				table_metadata = self.get_table_metadata(table, schema)
-				self.pg_engine.create_table(table_metadata, table, schema)
+				self.pg_engine.create_table(table_metadata, table, schema, 'mysql')
 	
 	
 	def generate_select_statements(self, schema, table):
@@ -433,14 +431,14 @@ class mysql_source(object):
 		total_rows = count_rows["table_rows"]
 		copy_limit = int(count_rows["copy_limit"])
 		if copy_limit == 0:
-			copy_limit=1000000
-		num_slices=int(total_rows//copy_limit)
-		range_slices=list(range(num_slices+1))
-		total_slices=len(range_slices)
-		slice=range_slices[0]
+			copy_limit = 1000000
+		num_slices = int(total_rows//copy_limit)
+		range_slices = list(range(num_slices+1))
+		total_slices = len(range_slices)
+		slice = range_slices[0]
 		self.logger.debug("The table %s.%s will be copied in %s  estimated slice(s) of %s rows"  % (schema, table, total_slices, copy_limit))
 
-		out_file='%s/%s_%s.csv' % (self.out_dir, schema, table )
+		out_file = '%s/%s_%s.csv' % (self.out_dir, schema, table )
 		self.lock_table(schema, table)
 		master_status = self.get_master_coordinates()
 		select_columns = self.generate_select_statements(schema, table)
@@ -652,7 +650,7 @@ class mysql_source(object):
 			
 		
 	
-	def init_sync(self):
+	def __init_sync(self):
 		"""
 			The method calls the common steps required to initialise the database connections and
 			class attributes within sync_tables,refresh_schema and init_replica.
@@ -678,7 +676,7 @@ class mysql_source(object):
 		"""
 		self.logger.debug("starting sync schema for source %s" % self.source)
 		self.logger.debug("The schema affected is %s" % self.schema)
-		self.init_sync()
+		self.__init_sync()
 		self.pg_engine.set_source_status("syncing")
 		self.build_table_exceptions()
 		self.schema_list = [self.schema]
@@ -717,7 +715,7 @@ class mysql_source(object):
 		"""
 		self.logger.debug("starting sync tables for source %s" % self.source)
 		self.logger.debug("The tables affected are %s" % self.tables)
-		self.init_sync()
+		self.__init_sync()
 		self.pg_engine.set_source_status("syncing")
 		self.build_table_exceptions()
 		self.schema_list = [schema for schema in self.schema_mappings if schema in self.schema_only]
@@ -822,6 +820,7 @@ class mysql_source(object):
 		:rtype: dictionary
 		"""
 		skip_tables = None
+		size_insert=0
 		if self.skip_tables:
 			skip_tables = [table.split('.')[1] for table in self.skip_tables]
 		
@@ -923,8 +922,11 @@ class mysql_source(object):
 						my_stream.close()
 						return [master_data, close_batch]
 			else:
-				size_insert=0
+				
 				for row in binlogevent.rows:
+					event_after={}
+					event_before={}
+					event_insert = {}
 					add_row = True
 					log_file=binlogfile
 					log_position=binlogevent.packet.log_pos
@@ -960,10 +962,7 @@ class mysql_source(object):
 										"log_table":log_table, 
 										"event_time":event_time
 									}
-					event_after={}
-					event_before={}
 					if add_row:
-						event_insert = {}
 						if isinstance(binlogevent, DeleteRowsEvent):
 							global_data["action"] = "delete"
 							event_after=row["values"]
@@ -1058,7 +1057,7 @@ class mysql_source(object):
 			The method performs a full init replica for the given sources
 		"""
 		self.logger.debug("starting init replica for source %s" % self.source)
-		self.init_sync()
+		self.__init_sync()
 		master_start = self.get_master_coordinates()
 		self.pg_engine.set_source_status("initialising")
 		self.pg_engine.cleanup_source_tables()

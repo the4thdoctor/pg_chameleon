@@ -1,5 +1,36 @@
 RELEASE NOTES
 *************************
+
+2.0.0.alpha3
+--------------------------
+**please note this is a not production release. do not use it in production**
+
+The third and final alpha3 for the milestone 2.0 fixes some issues and add more features to the system. 
+
+As there are changes in the replica catalog if upgrading from the alpha1 there will be need to do a ``drop_replica_schema``
+followed by a ``create_replica_schema``. This **will drop any existing replica** and will require re adding the sources and 
+re initialise them with ``init_replica``.
+
+The system now supports a source type ``pgsql`` with the following limitations.
+
+* There is no support for real time replica
+* The data copy happens always with file method
+* The copy_max_memory doesn't apply
+* The type override doesn't apply
+* Only ``init_replica`` is currently supported
+* The source connection string requires a database name
+* In the ``show_status`` detailed command the replicated tables counters are always zero
+
+A stack trace capture is now added on the log and the rollbar message for better debugging.
+A new parameter ``on_error_replay`` is available for the sources to set whether the replay process should skip the tables or exit on error.
+
+This release adds the command ``upgrade_replica_schema`` for upgrading the replica schema from the version 1.8 to the 2.0. 
+
+The upgrade procedure is described in the documentation. 
+
+**Please read it carefully before any upgrade and backup the schema sch_chameleon before attempting any upgrade.**
+
+
 2.0.0.alpha2 
 --------------------------
 **please note this is a not production release. do not use it in production**

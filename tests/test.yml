@@ -27,7 +27,7 @@ sources:
             charset: 'utf8'
             connect_timeout: 10
         schema_mappings:
-                sakila: db_sakila
+                sakila: my_sakila
         limit_tables:
         skip_tables:
         grant_select_to:
@@ -41,6 +41,31 @@ sources:
         out_dir: /tmp
         sleep_loop: 1
         type: mysql
+
+    pgsql:
+        db_conn:
+                host: "localhost"
+                port: "5432"
+                user: "usr_test"
+                password: "test"
+                database:  "db_test"
+                charset: 'utf8'
+                connect_timeout: 10
+        schema_mappings:
+                my_sakila: pgsql_sakila
+        limit_tables:
+        skip_tables:
+        copy_max_memory: "300M"
+        grant_select_to:
+        lock_timeout: "10s"
+        my_server_id: 100
+        replica_batch_size: 3000
+        replay_max_rows : 10000
+        sleep_loop: 5
+        batch_retention: '1 day'
+        copy_mode: 'file'  
+        out_dir: /tmp
+        type: pgsql
 
 
 # type_override allows the user to override the default type conversion into a different one. 

@@ -21,6 +21,7 @@ CREATE TYPE sch_chameleon.ty_replay_status
 	AS
 	(
 		b_continue boolean,
+		b_error  boolean,
 		v_table_error character varying[]
 	);
 	
@@ -234,13 +235,14 @@ $BODY$
 LANGUAGE plpgsql 
 ;
 
-CREATE OR REPLACE FUNCTION sch_chameleon.fn_replay_mysql(integer,integer)
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_replay_mysql(integer,integer,boolean)
 RETURNS sch_chameleon.ty_replay_status AS
 $BODY$
 	DECLARE
 		p_i_max_events	ALIAS FOR $1;
-		p_i_id_source	ALIAS FOR $2;
-		v_ty_status	sch_chameleon.ty_replay_status;
+		p_i_id_source		ALIAS FOR $2;
+		p_b_exit_on_error	ALIAS FOR $3;
+		v_ty_status		sch_chameleon.ty_replay_status;
 		v_r_statements	record;
 		v_i_id_batch	bigint;
 		v_t_ddl		text;
@@ -250,9 +252,12 @@ $BODY$
 		v_i_evt_replay	bigint[];
 		v_i_evt_queue	bigint[];
 		v_ts_evt_source	timestamp without time zone;
+		v_tab_enabled	boolean;
 		
 	BEGIN
+		v_tab_enabled:=TRUE;
 		v_ty_status.b_continue:=FALSE;
+		v_ty_status.b_error:=FALSE;
 		v_i_replayed:=0;
 		v_i_ddl:=0;
 		v_i_skipped:=0;
@@ -462,57 +467,78 @@ $BODY$
 				
 			EXCEPTION
 				WHEN OTHERS THEN
-					RAISE NOTICE 'An error occurred when replaying data for the table %.%',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					RAISE NOTICE 'SQLSTATE: % - ERROR MESSAGE %',SQLSTATE, SQLERRM;
-					RAISE NOTICE 'The table %.% has been removed from the replica',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					v_ty_status.v_table_error:=array_append(v_ty_status.v_table_error, format('%I.%I SQLSTATE: %s - ERROR MESSAGE: %s',v_r_statements.v_schema_name,v_r_statements.v_table_name,SQLSTATE, SQLERRM)::character varying) ;
-					
-					RAISE NOTICE 'Adding error log entry for table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					INSERT INTO sch_chameleon.t_error_log
-						(
-							i_id_batch, 
-							i_id_source,
-							v_schema_name, 
-							v_table_name, 
-							t_table_pkey, 
-							t_binlog_name, 
-							i_binlog_position, 
-							ts_error, 
-							t_sql,
-							t_error_message
-						)
+					v_tab_enabled:=(
 						SELECT 
-							i_id_batch, 
-							p_i_id_source,
-							v_schema_name, 
-							v_table_name, 
-							v_r_statements.t_pk_data as t_table_pkey, 
-							t_binlog_name, 
-							i_binlog_position, 
-							clock_timestamp(), 
-							quote_literal(v_r_statements.t_sql) as t_sql,
-							format('%s - %s',SQLSTATE, SQLERRM) as t_error_message
-						FROM
-							sch_chameleon.t_log_replica  log
-						WHERE 
-							log.i_id_event=v_r_statements.i_id_event
-					;
-					RAISE NOTICE 'Statement %', v_r_statements.t_sql;
-					UPDATE sch_chameleon.t_replica_tables 
-						SET 
-							b_replica_enabled=FALSE
-					WHERE
-							v_schema_name=v_r_statements.v_schema_name
-						AND	v_table_name=v_r_statements.v_table_name
-					;
+							b_replica_enabled
+						FROM 	
+							sch_chameleon.t_replica_tables
+						WHERE
+								v_schema_name=v_r_statements.v_schema_name
+								AND	v_table_name=v_r_statements.v_table_name
+						)
+						;
+				
+					IF v_tab_enabled
+					THEN
+						RAISE NOTICE 'An error occurred when replaying data for the table %.%',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+						RAISE NOTICE 'SQLSTATE: % - ERROR MESSAGE %',SQLSTATE, SQLERRM;
+						RAISE NOTICE 'The table %.% has been removed from the replica',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+						v_ty_status.v_table_error:=array_append(v_ty_status.v_table_error, format('%I.%I SQLSTATE: %s - ERROR MESSAGE: %s',v_r_statements.v_schema_name,v_r_statements.v_table_name,SQLSTATE, SQLERRM)::character varying) ;
+						RAISE NOTICE 'Adding error log entry for table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+						INSERT INTO sch_chameleon.t_error_log
+							(
+								i_id_batch, 
+								i_id_source,
+								v_schema_name, 
+								v_table_name, 
+								t_table_pkey, 
+								t_binlog_name, 
+								i_binlog_position, 
+								ts_error, 
+								t_sql,
+								t_error_message
+							)
+							SELECT 
+								i_id_batch, 
+								p_i_id_source,
+								v_schema_name, 
+								v_table_name, 
+								v_r_statements.t_pk_data as t_table_pkey, 
+								t_binlog_name, 
+								i_binlog_position, 
+								clock_timestamp(), 
+								quote_literal(v_r_statements.t_sql) as t_sql,
+								format('%s - %s',SQLSTATE, SQLERRM) as t_error_message
+							FROM
+								sch_chameleon.t_log_replica  log
+							WHERE 
+								log.i_id_event=v_r_statements.i_id_event
+						;
+						IF p_b_exit_on_error
+						THEN
+							v_ty_status.b_continue:=FALSE;
+							v_ty_status.b_error:=TRUE;
+							RETURN v_ty_status;
+						ELSE
+						
+							RAISE NOTICE 'Statement %', v_r_statements.t_sql;
+							UPDATE sch_chameleon.t_replica_tables 
+								SET 
+									b_replica_enabled=FALSE
+							WHERE
+									v_schema_name=v_r_statements.v_schema_name
+								AND	v_table_name=v_r_statements.v_table_name
+							;
 
-					RAISE NOTICE 'Deleting the log entries for the table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-					DELETE FROM sch_chameleon.t_log_replica  log
-					WHERE
-							v_table_name=v_r_statements.v_table_name
-						AND	v_schema_name=v_r_statements.v_schema_name
-						AND 	i_id_batch=v_i_id_batch
-					;
+							RAISE NOTICE 'Deleting the log entries for the table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
+							DELETE FROM sch_chameleon.t_log_replica  log
+							WHERE
+									v_table_name=v_r_statements.v_table_name
+								AND	v_schema_name=v_r_statements.v_schema_name
+								AND 	i_id_batch=v_i_id_batch
+							;
+						END IF;
+					END IF;
 					
 
 			END;
@@ -610,3 +636,83 @@ $BODY$
 	
 $BODY$
 LANGUAGE plpgsql;
+
+--CUSTOM AGGREGATES
+CREATE OR REPLACE FUNCTION  sch_chameleon.fn_binlog_min(text[],text[])
+RETURNS text[] AS
+$BODY$
+	SELECT
+		CASE
+			WHEN $1=array[0,0]::TEXT[]
+			THEN $2	
+			WHEN (string_to_array($1[1],'.'))[2]::integer>(string_to_array($2[1],'.'))[2]::integer --$1[1]>$2[1]
+			THEN $2
+			WHEN $1[1]=$2[1] and $1[2]::integer>=$2[2]::integer
+			THEN $2
+			ELSE $1
+			
+		END
+	;
+$BODY$
+LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION  sch_chameleon.fn_binlog_max(text[],text[])
+RETURNS text[] AS
+$BODY$
+	SELECT
+		CASE
+			WHEN $1=array[0,0]::TEXT[]
+			THEN $2	
+			WHEN (string_to_array($2[1],'.'))[2]::integer>(string_to_array($1[1],'.'))[2]::integer
+			THEN $2
+			WHEN (string_to_array($2[1],'.'))[2]::integer<(string_to_array($1[1] ,'.'))[2]::integer
+			THEN $1
+			WHEN (string_to_array($2[1],'.'))[2]::integer=(string_to_array($1[1],'.'))[2]::integer AND $2[2]::integer>=$1[2]::integer
+			THEN $2
+			ELSE $1
+		END
+	;
+$BODY$
+LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_binlog_max_final(text[])
+RETURNS text[] as 
+$BODY$
+	SELECT 
+		CASE 
+			WHEN $1=array['','']
+			THEN NULL
+		ELSE 
+			$1
+		END;
+$BODY$
+LANGUAGE sql;
+
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_binlog_min_final(text[])
+RETURNS text[] as 
+$BODY$
+	SELECT $1;
+$BODY$
+LANGUAGE sql;
+
+
+
+
+CREATE AGGREGATE sch_chameleon.binlog_max(text[]) 
+(
+    SFUNC = sch_chameleon.fn_binlog_max,
+    STYPE = text[],
+    FINALFUNC = sch_chameleon.fn_binlog_max_final,
+    INITCOND = '{0,0}'
+);
+
+
+CREATE AGGREGATE sch_chameleon.binlog_min(text[]) 
+(
+    SFUNC = sch_chameleon.fn_binlog_min,
+    STYPE = text[],
+    FINALFUNC = sch_chameleon.fn_binlog_min_final,
+    INITCOND = '{0,0}'
+);
+
+

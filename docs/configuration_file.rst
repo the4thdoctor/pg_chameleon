@@ -9,7 +9,7 @@ Global settings
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 1-10
+   :lines: 2-9
    :linenos:
 
 * pid_dir directory where the process pids are saved.
@@ -22,12 +22,31 @@ Global settings
 
 If both rollbar_key and rollbar_env are configured some messages are sent to the rollbar conf
 
+type override
+...............................................
+
+.. literalinclude:: ../configuration/config-example.yml
+   :language: yaml
+   :lines: 11-16
+   :linenos:
+
+The type_override allows the user to override the default type conversion into a different one. 
+Each type key should be named exactly  like the mysql type to override including the dimensions.
+Each type key needs two subkeys.
+
+* override_to specifies the destination type which must be a postgresql type and the type cast should be possible
+* override_tables is a yaml list which specifies to which tables the override applies. If the first list item is set to "*" then the override is applied to all tables in the replicated schemas.
+
+The override is applied when running the init_replica,refresh_schema andsync_tables process.
+The override is also applied for each matching DDL (create table/alter table) if the table name matches the override_tables values.
+
+
 PostgreSQL target connection
 ...............................................
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 11-18
+   :lines: 19-23
    :linenos:
 
 The pg_conn key maps the target database connection string.  
@@ -38,10 +57,16 @@ sources configuration
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 28-83
    :linenos:
 
-The key sources allow to setup multiple replica sources writing on the same postgresql database. The key name myst be unique wihin the replica configuration.
+The key sources allow to setup multiple replica sources writing on the same postgresql database. 
+The key name myst be unique within the replica configuration.
+
+
+The following remarks apply only to the mysql source type.
+
+For the postgresql source type. See the last section for the description and the limitations.
 
 Database connection
 =============================
@@ -49,7 +74,7 @@ Database connection
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 28-55
    :emphasize-lines: 3-9
    :linenos:
 
@@ -61,19 +86,19 @@ Schema mappings
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 28-55
    :emphasize-lines: 10-11
    :linenos:
 
 The key schema mappings is a dictionary. Each key is a MySQL database that needs to be replicated in PostgreSQL. Each value is the destination schema in the PostgreSQL database.
-In the example provided the MySQL database my_database is replicated into the schema pg_database stored in the database specified in the pg_conn key (db_replica). 
+In the example provided the MySQL database ``delphis_mediterranea`` is replicated into the schema ``loxodonta_africana`` stored in the database specified in the pg_conn key (db_replica). 
 
 Limit and skip tables
 =============================
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 28-55
    :emphasize-lines: 12-15
    :linenos:
 
@@ -87,7 +112,7 @@ Grant select to option
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
+   :lines: 28-55
    :emphasize-lines: 16-17
    :linenos:
 
@@ -103,8 +128,8 @@ Source configuration parameters
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 20-46
-   :emphasize-lines: 18-26
+   :lines: 28-55
+   :emphasize-lines: 18-28
    :linenos:
    
 * lock_timeout the max time in seconds that the target postgresql connections should wait for acquiring a lock. This parameter applies  to init_replica,refresh_schema and sync_tables when performing the relation's swap.
@@ -115,22 +140,27 @@ Source configuration parameters
 * copy_mode the allowed values are ‘file’ and ‘direct’. With direct the copy happens on the fly. With file the table is first dumped in a csv file then reloaded in PostgreSQL.
 * out_dir the directory where the csv files are dumped during the init_replica process if the copy mode is file.
 * sleep_loop seconds between a two replica batches.
-* type specifies the source database type. Currently only mysql is accepted. 
+* on_error_replay specifies whether the replay process should ``exit`` or ``continue``  if any error during the replay happens. If ``continue`` is specified the offending tables are removed from the replica.
+* type specifies the source database type. The system supports ``mysql`` or  ``pgsql``. See below for the pgsql limitations.
    
-type override
-...............................................
+PostgreSQL source type (EXPERIMENTAL)
+================================================================
+
+pg_chameleon 2.0 have an experimental support for the postgresql source type. 
+When set to ``pgsql`` the system expects a postgresql source database rather a mysql. 
+The following limitations apply.
+
+* There is no support for real time replica
+* The data copy happens always with file method
+* The copy_max_memory doesn't apply
+* The type override doesn't apply
+* Only ``init_replica`` is currently supported
+* The source connection string requires a database name
+* In the ``show_status`` detailed command the replicated tables counters are always zero
+
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 52-56
+   :lines: 57-85
+   :emphasize-lines: 7,16,25,27
    :linenos:
-
-The type_override allows the user to override the default type conversion into a different one. 
-Each type key should be named exactly  like the mysql type to override including the dimensions.
-Each type key needs two subkeys.
-
-* override_to specifies the destination type which must be a postgresql type and the type cast should be possible
-* override_tables is a yaml list which specifies to which tables the override applies. If the first list item is set to "*" then the override is applied to all tables in the replicated schemas.
-
-The override is applied when running the init_replica,refresh_schema andsync_tables process.
-The override is also applied for each matching DDL (create table/alter table) if the table name matches the override_tables values.

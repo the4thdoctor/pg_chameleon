@@ -8,6 +8,14 @@ log_days_keep: 10
 rollbar_key: ''
 rollbar_env: ''
 
+# type_override allows the user to override the default type conversion into a different one. 
+type_override:
+    "tinyint(1)":
+        override_to: boolean
+        override_tables:
+            - "*"
+
+
 #postgres  destination connection
 pg_conn:
     host: "localhost"
@@ -18,7 +26,7 @@ pg_conn:
     charset: "utf8"
     
 sources:
-    example:
+    mysql:
         db_conn:
             host: "localhost"
             port: "3306"
@@ -27,11 +35,11 @@ sources:
             charset: 'utf8'
             connect_timeout: 10
         schema_mappings:
-                my_database: pg_database
+                delphis_mediterranea: loxodonta_africana
         limit_tables:
-                - my_database.foo
+                - delphis_mediterranea.foo
         skip_tables:
-                - my_database.bar
+                - delphis_mediterranea.bar
         grant_select_to:
             - usr_readonly
         lock_timeout: "120s"
@@ -43,15 +51,36 @@ sources:
         copy_mode: 'file'  
         out_dir: /tmp
         sleep_loop: 1
+        on_error_replay: continue
         type: mysql
 
+    pgsql:
+        db_conn:
+                host: "localhost"
+                port: "5432"
+                user: "usr_replica"
+                password: "never_commit_passwords"
+                database:  "db_replica"
+                charset: 'utf8'
+                connect_timeout: 10
+        schema_mappings:
+                loxodonta_africana: elephas_maximus
+        limit_tables:
+                - loxodonta_africana.foo
+        skip_tables:
+                - loxodonta_africana.bar
+        copy_max_memory: "300M"
+        grant_select_to:
+            - usr_readonly
+        lock_timeout: "10s"
+        my_server_id: 100
+        replica_batch_size: 3000
+        replay_max_rows : 10000
+        sleep_loop: 5
+        batch_retention: '1 day'
+        copy_mode: 'file'  
+        out_dir: /tmp
+        type: pgsql
 
-# type_override allows the user to override the default type conversion into a different one. 
-# override_to specifies the destination type which must be a postgresql type and the type cast should be possible
-# override_tables specifies which tables the override apply. If set to "*" then applies to all tables in the replicated schema
-# the override applies during the init_replica,sync_tables process and for each matching DDL (create table/alter table)
-type_override:
-    "tinyint(1)":
-        override_to: boolean
-        override_tables:
-            - "*"
+
+

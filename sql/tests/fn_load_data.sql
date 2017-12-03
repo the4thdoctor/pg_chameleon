@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS test_partition;
 CREATE TABLE test_partition (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  id_partition int(10) NOT NULL,
+  id_partition int(10) NULL,
   PRIMARY KEY  (id)
 )ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

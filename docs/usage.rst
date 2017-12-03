@@ -31,7 +31,7 @@ Command line reference
     ``show_errors``,Displays  the errors logged by the replay  function. If a log id is specified then the log entry is displayed entirely, ``--config`` ``--logid``
     ``create_replica_schema``, Creates a new replication schema into the config's destination database, ``--config``
     ``drop_replica_schema``, Drops an existing replication schema from the config's destination database, ``--config``
-    ``upgrade_replica_schema``,**not implemented yet**
+    ``upgrade_replica_schema``,Upgrades the replica schema from a an older version,``--config``
     ``add_source``, Adds a new source to the replica catalogue, ``--config`` ``--source``
     ``drop_source``, Remove an existing source from the replica catalogue, ``--config`` ``--source``
     ``init_replica``, Initialise the replica for an existing source , ``--config`` ``--source``
@@ -59,7 +59,7 @@ Install pg_chameleon
 .. code-block:: none
     
     pip install pip --upgrade
-    pip install pg_chameleon==2.0.0a2
+    pip install pg_chameleon==2.0.0a3
 
 
 Run the ``set_configuration_files`` command in order to create the configuration directory.

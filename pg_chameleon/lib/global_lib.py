@@ -12,7 +12,8 @@ from pg_chameleon import pg_engine, mysql_source, pgsql_source
 import logging
 from logging.handlers  import TimedRotatingFileHandler
 from daemonize import Daemonize
-from multiprocessing import Process
+import multiprocessing as mp
+import traceback 
 
 class replica_engine(object):
 	"""
@@ -26,7 +27,7 @@ class replica_engine(object):
 			Class constructor.
 		"""
 		self.catalog_version = '2.0.0'
-		self.upgradable_version = '1.6'
+		self.upgradable_version = '1.7'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
@@ -47,8 +48,10 @@ class replica_engine(object):
 			
 		]
 		self.args = args
-		self.set_configuration_files()
-		self.args = args
+		if self.args.command == 'set_configuration_files':
+			self.set_configuration_files()
+			sys.exit()
+		
 		self.load_config()
 		self.logger = self.__init_logger()
 		
@@ -81,14 +84,16 @@ class replica_engine(object):
 		self.pgsql_source.sources = self.config["sources"]
 		self.pgsql_source.type_override = self.config["type_override"]
 		catalog_version = self.pg_engine.get_catalog_version()
+
 		#safety checks
-		if not self.args.upgrade:
+		if self.args.command == 'upgrade_replica_schema':
+			self.pg_engine.sources = self.config["sources"]
+			print("WARNING, entering upgrade mode. Disabling the catalogue version's check. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
+		else:
 			if  catalog_version:
 				if self.catalog_version != catalog_version:
 					print("FATAL, replica catalogue version mismatch. Expected %s, got %s" % (self.catalog_version, catalog_version))
 					sys.exit()
-		elif self.args.upgrade and self.catalog_version != catalog_version:
-			print("WARNING, entering upgrade mode. Disabling the catalogue version's check. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
 			
 		
 		
@@ -357,7 +362,7 @@ class replica_engine(object):
 				elif upg_cat in  self.lst_yes:
 					print('Please type YES all uppercase to confirm')
 			elif catalog_version.split('.')[0] == '1':
-				print('Wrong starting version. Expected %s, got %s') % (catalog_version, self.upgradable_version)
+				print('Wrong starting version. Expected %s, got %s' % (catalog_version, self.upgradable_version))
 				sys.exit()
 	
 	def update_schema_mappings(self):
@@ -376,16 +381,20 @@ class replica_engine(object):
 			self.pg_engine.update_schema_mappings()
 			
 			
-	def read_replica(self):
+	def read_replica(self, queue):
 		"""
 			The method reads the replica stream for the given source and stores the row images 
 			in the target postgresql database.
 		"""
 		while True:
-			self.mysql_source.read_replica()
-			time.sleep(self.sleep_loop)
+			try:
+				self.mysql_source.read_replica()
+				time.sleep(self.sleep_loop)
+			except Exception:
+			    queue.put(traceback.format_exc())
+			    break
 	
-	def replay_replica(self):
+	def replay_replica(self, queue):
 		"""
 			The method replays the row images stored in the target postgresql database.
 		"""
@@ -393,16 +402,20 @@ class replica_engine(object):
 		self.pg_engine.connect_db()
 		self.pg_engine.set_source_id()
 		while True:
-			tables_error = self.pg_engine.replay_replica()
-			if len(tables_error) > 0:
-				table_list = [item for sublist in tables_error for item in sublist]
-				tables_removed = "\n".join(table_list)
-				error_msg = "There was an error during the replay of data. %s. The affected tables are no longer replicated." % (tables_removed)
-				self.logger.error(error_msg)
-				if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
-					rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
-					rollbar.report_message(error_msg, 'error')
-			time.sleep(self.sleep_loop)
+			try:
+				tables_error = self.pg_engine.replay_replica()
+				if len(tables_error) > 0:
+					table_list = [item for sublist in tables_error for item in sublist]
+					tables_removed = "\n".join(table_list)
+					error_msg = "There was an error during the replay of data. %s. The affected tables are no longer replicated." % (tables_removed)
+					self.logger.error(error_msg)
+					if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
+						rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
+						rollbar.report_message(error_msg, 'error')
+				time.sleep(self.sleep_loop)
+			except Exception:
+			    queue.put(traceback.format_exc())
+			    break
 			
 	def run_replica(self):
 		"""
@@ -411,11 +424,12 @@ class replica_engine(object):
 			destination.
 		"""
 		signal.signal(signal.SIGINT, self.terminate_replica)
+		queue = mp.Queue()
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
-		check_timeout = self.sleep_loop*10
+		check_timeout = self.sleep_loop#*10
 		self.logger.info("Starting the replica daemons for source %s " % (self.args.source))
-		self.read_daemon = Process(target=self.read_replica, name='read_replica')
-		self.replay_daemon = Process(target=self.replay_replica, name='replay_replica')
+		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue,))
+		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue,))
 		self.read_daemon.start()
 		self.replay_daemon.start()
 		while True:
@@ -424,19 +438,23 @@ class replica_engine(object):
 			if  read_alive and replay_alive:
 				self.logger.debug("Replica process for source %s is running" % (self.args.source))
 			else:
+				stack_trace = queue.get()
 				self.logger.error("Read process alive: %s - Replay process alive: %s" % (read_alive, replay_alive, ))
-				
+				self.logger.error("Stack trace: %s" % (stack_trace, ))
 				if read_alive:
 					self.read_daemon.terminate()
 					self.logger.error("Replay daemon crashed. Terminating the read daemon.")
 				if replay_alive:
 					self.replay_daemon.terminate()
 					self.logger.error("Read daemon crashed. Terminating the replay daemon.")
-				self.pg_engine.connect_db()
-				self.pg_engine.set_source_status("error")
+				try:
+					self.pg_engine.connect_db()
+					self.pg_engine.set_source_status("error")
+				except:
+					pass
 				if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
 					rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
-					rollbar.report_message("The replica process crashed.\n Source: %s" %self.args.source, 'error')
+					rollbar.report_message("The replica process crashed.\n Source: %s\n Stack trace: %s " %(self.args.source, stack_trace), 'error')
 					
 				break
 			time.sleep(check_timeout)
@@ -447,7 +465,7 @@ class replica_engine(object):
 			The method starts a new replica process.
 			Is compulsory to specify a source name when running this method.
 		"""
-		self.logger = self.__init_logger()
+		
 		replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
 				
 		if self.args.source == "*":
@@ -463,6 +481,7 @@ class replica_engine(object):
 				if self.config["log_dest"]  == 'stdout':
 					foreground = True
 				else:
+					self.logger = self.__init_logger()
 					foreground = False
 					print("Starting the replica process for source %s" % (self.args.source))
 					keep_fds = [self.logger_fds]

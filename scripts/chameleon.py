@@ -32,7 +32,6 @@ tables_help = """Specifies the tables within a source . If omitted all tables ar
 logid_help = """Specifies the log id entry for displaying the error details"""
 debug_help = """Forces the debug mode with logging on stdout and log level debug."""
 version_help = """Displays pg_chameleon's installed  version."""
-upgrade_help = """Disables the schema version's check when upgrading the replica schema"""
 
 parser = argparse.ArgumentParser(description='Command line for pg_chameleon.',  add_help=True)
 parser.add_argument('command', type=str, help=command_help)
@@ -42,7 +41,6 @@ parser.add_argument('--source', type=str,  default='*',  required=False, help=so
 parser.add_argument('--tables', type=str,  default='*',  required=False, help=tables_help)
 parser.add_argument('--logid', type=str,  default='*',  required=False, help=logid_help)
 parser.add_argument('--debug', default=False, required=False, help=debug_help, action='store_true')
-parser.add_argument('--upgrade', default=False, required=False, help=upgrade_help, action='store_true')
 parser.add_argument('--version', action='version', help=version_help,version='{version}'.format(version=__version__))
 
 
