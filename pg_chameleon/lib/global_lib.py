@@ -48,8 +48,10 @@ class replica_engine(object):
 			
 		]
 		self.args = args
-		self.set_configuration_files()
-		self.args = args
+		if self.args.command == 'set_configuration_files':
+			self.set_configuration_files()
+			sys.exit()
+		
 		self.load_config()
 		self.logger = self.__init_logger()
 		

@@ -1,14 +1,14 @@
 changelog 
 *************************
 
-2.0.0.alpha3 XX December 2017
+2.0.0.alpha3 03 December 2017
 .............................
 * Remove limit_tables from binlogreader initialisation, as we can read from multiple schemas we should only exclude the tables not limit
 * Fix wrong formatting for default value when altering a field
-* Upgrade procedure from version 1.8 to 2.0
+* Add upgrade procedure from version 1.8.2 to 2.0
 * Improve error logging and table exclusion in replay function
 * Add stack trace capture to the rollbar and log message when one of the replica daemon crash
-* Add on_error_replay to set whether the replay process should skip the tables or exit on error
+* Add ``on_error_replay`` to set whether the replay process should skip the tables or exit on error
 * Add init_replica support for source type pgsql (EXPERIMENTAL)
  
 
