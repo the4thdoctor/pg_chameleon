@@ -9,6 +9,8 @@ changelog
 * Improve error logging and table exclusion in replay function
 * Add stack trace capture to the rollbar and log message when one of the replica daemon crash
 * Add on_error_replay to set whether the replay process should skip the tables or exit on error
+* Add init_replica support for source type pgsql (EXPERIMENTAL)
+ 
 
 2.0.0.alpha2 18 November 2017
 .............................

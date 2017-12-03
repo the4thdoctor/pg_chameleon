@@ -78,13 +78,12 @@ class pgsql_source(object):
 		self.pg_engine.grant_select_to = self.source_config["grant_select_to"]
 		self.source_conn = self.source_config["db_conn"]
 		self.__set_copy_max_memory()
-		#self.hexify = [] + self.hexify_always
 		db_object = self.__connect_db( auto_commit=True, dict_cursor=True)
 		self.pgsql_conn = db_object["connection"]
 		self.pgsql_cursor = db_object["cursor"]
 		self.pg_engine.connect_db()
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
-		#self.pg_engine.schema_tables = self.schema_tables
+		self.pg_engine.schema_tables = self.schema_tables
 
 	
 	def __connect_db(self, auto_commit=True, dict_cursor=False):
@@ -494,6 +493,7 @@ class pgsql_source(object):
 			self.__create_destination_tables()
 			self.__copy_tables()
 			self.__create_indices()
+			self.pg_engine.grant_select()
 			self.pg_engine.swap_schemas()
 			self.__drop_loading_schemas()
 			self.pg_engine.set_source_status("initialised")
