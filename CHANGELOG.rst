@@ -1,6 +1,11 @@
 changelog 
 *************************
 
+2.0.0.beta1 XX December 2017
+............................................
+* fix a race condition where an unrelated DDL can cause the collected binlog rows to be added several times to the log_table
+
+
 2.0.0.alpha3 03 December 2017
 .............................
 * Remove limit_tables from binlogreader initialisation, as we can read from multiple schemas we should only exclude the tables not limit
