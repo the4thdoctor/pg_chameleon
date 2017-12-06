@@ -874,6 +874,7 @@ class mysql_source(object):
 					schema_query = binlogevent.schema
 				
 				if binlogevent.query.strip().upper() not in self.statement_skip and schema_query in self.schema_mappings: 
+					close_batch=True
 					destination_schema = self.schema_mappings[schema_query]
 					log_position = binlogevent.packet.log_pos
 					master_data["File"] = binlogfile
@@ -914,13 +915,13 @@ class mysql_source(object):
 									"log_table":log_table
 								}
 								self.pg_engine.write_ddl(token, query_data, destination_schema)
-								close_batch=True
+								
 							
 						
 					sql_tokeniser.reset_lists()
-					if close_batch:
-						my_stream.close()
-						return [master_data, close_batch]
+				if close_batch:
+					my_stream.close()
+					return [master_data, close_batch]
 			else:
 				
 				for row in binlogevent.rows:
