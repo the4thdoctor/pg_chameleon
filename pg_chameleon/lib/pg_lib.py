@@ -410,10 +410,17 @@ class pgsql_source(object):
 				CASE
 					WHEN con.conname IS NOT NULL
 					THEN
-						format('Adding primary key to table %%I',tab.relname)
+						format('primary key on %%I',tab.relname)
 					ELSE
-						format('Adding index %%I to table %%I',idx.relname,tab.relname)
-				END AS ddl_msg
+						format('index %%I on %%I',idx.relname,tab.relname)
+				END AS ddl_msg,
+				CASE
+					WHEN con.conname IS NOT NULL
+					THEN
+						True
+					ELSE
+						False
+				END AS table_pk
 			FROM
 
 				pg_class tab 
@@ -445,15 +452,18 @@ class pgsql_source(object):
 			table_list = self.schema_tables[schema]
 			for table in table_list:
 				loading_schema = self.schema_loading[schema]["loading"]
+				destination_schema = self.schema_loading[schema]["destination"]
 				self.pg_engine.pgsql_cur.execute('SET search_path=%s;', (loading_schema, ))
 				db_cursor.execute(sql_get_idx, (table, schema))
 				idx_tab = db_cursor.fetchall()
 				for idx in idx_tab:
-					self.logger.info(idx[1])
+					self.logger.info('Adding %s', (idx[1]))
 					try:
 						self.pg_engine.pgsql_cur.execute(idx[0])
 					except:
 						self.logger.error("an error occcurred when executing %s" %(idx[0]))
+					if idx[2]:
+						self.pg_engine.store_table(destination_schema, table, ['foo'], None)
 					
 		
 		db_conn.close()
@@ -467,18 +477,22 @@ class pgsql_source(object):
 		
 		db_copy = self.__connect_db(False)
 		check_cursor = db_copy["cursor"]
+		db_conn = db_copy["connection"]
 		sql_recovery = """
 			SELECT pg_is_in_recovery();
 		"""
 		check_cursor.execute(sql_recovery)
 		db_in_recovery = check_cursor.fetchone()
+		db_conn.commit()
 		if not db_in_recovery[0]:
 			queue = mp.Queue()
 			snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export',daemon=True)
 			snap_exp.start()
 			self.snapshot_id = queue.get()
+			self.consistent = False
 		else:
 			self.snapshot_id = None
+			self.consistent = False
 		
 		for schema in self.schema_tables:
 			table_list = self.schema_tables[schema]
@@ -486,7 +500,7 @@ class pgsql_source(object):
 				self.__copy_data(schema, table, db_copy)
 		if not db_in_recovery[0]:
 			queue.put(False)
-		db_copy["connection"].close()
+		db_conn.close()
 	
 	def init_replica(self):
 		"""
@@ -508,6 +522,8 @@ class pgsql_source(object):
 			self.pg_engine.swap_schemas()
 			self.__drop_loading_schemas()
 			self.pg_engine.set_source_status("initialised")
+			fake_master = [{'File': None, 'Position': None }]
+			self.pg_engine.set_source_highwatermark(fake_master, consistent=self.consistent)
 		except:
 			self.__drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
