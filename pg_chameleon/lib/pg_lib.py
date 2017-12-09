@@ -370,7 +370,8 @@ class pgsql_source(object):
 		db_conn = db_copy["connection"]
 		db_cursor = db_copy["cursor"]
 		
-		db_cursor.execute(sql_snap, (self.snapshot_id, ))
+		if self.snapshot_id:
+			db_cursor.execute(sql_snap, (self.snapshot_id, ))
 		self.logger.debug("exporting table %s.%s in %s" % (schema , table,  out_file))
 		copy_file = open(out_file, 'wb')
 		db_cursor.copy_to(copy_file, from_table)
@@ -383,7 +384,7 @@ class pgsql_source(object):
 		copy_file.close()
 		db_conn.commit()
 		try:
-			remove(out_file)
+			os.remove(out_file)
 		except:
 			pass
 		
@@ -464,17 +465,27 @@ class pgsql_source(object):
 			a consistent database copy at the time of the snapshot.
 		"""
 		
-		queue = mp.Queue()
-		snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export',daemon=True)
-		snap_exp.start()
-		self.snapshot_id = queue.get()
 		db_copy = self.__connect_db(False)
+		check_cursor = db_copy["cursor"]
+		sql_recovery = """
+			SELECT pg_is_in_recovery();
+		"""
+		check_cursor.execute(sql_recovery)
+		db_in_recovery = check_cursor.fetchone()
+		if not db_in_recovery[0]:
+			queue = mp.Queue()
+			snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export',daemon=True)
+			snap_exp.start()
+			self.snapshot_id = queue.get()
+		else:
+			self.snapshot_id = None
 		
 		for schema in self.schema_tables:
 			table_list = self.schema_tables[schema]
 			for table in table_list:
 				self.__copy_data(schema, table, db_copy)
-		queue.put(False)
+		if not db_in_recovery[0]:
+			queue.put(False)
 		db_copy["connection"].close()
 	
 	def init_replica(self):
