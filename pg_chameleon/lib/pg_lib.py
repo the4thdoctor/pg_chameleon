@@ -1930,12 +1930,29 @@ class pg_engine(object):
 		self.connect_db()
 		schema_mappings = None
 		table_status = None
+		replica_counters = None
 		if self.source == "*":
 			source_filter = ""
 			
 		else:
 			source_filter = (self.pgsql_cur.mogrify(""" WHERE  src.t_source=%s """, (self.source, ))).decode()
 			self.set_source_id()
+			
+			sql_counters = """
+				SELECT 
+					sum(i_replayed) as total_replayed, 
+					sum(i_skipped) as total_skipped, 
+					sum(i_ddl) as total_ddl 
+				FROM 
+					sch_chameleon.t_replica_batch 
+				WHERE 
+					i_id_source=%s;
+
+			"""
+			self.pgsql_cur.execute(sql_counters, (self.i_id_source, ))
+			replica_counters = self.pgsql_cur.fetchone()
+			
+			
 			sql_mappings = """
 				SELECT 
 					(mappings).key as origin_schema,
@@ -2059,19 +2076,6 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_status)
 		configuration_status = self.pgsql_cur.fetchall()
 		
-		sql_counters = """
-			SELECT 
-				sum(i_replayed) as total_replayed, 
-				sum(i_skipped) as total_skipped, 
-				sum(i_ddl) as total_ddl 
-			FROM 
-				sch_chameleon.t_replica_batch 
-			WHERE 
-				i_id_source=%s;
-
-		"""
-		self.pgsql_cur.execute(sql_counters, (self.i_id_source, ))
-		replica_counters = self.pgsql_cur.fetchone()
 		
 		
 		self.disconnect_db()
