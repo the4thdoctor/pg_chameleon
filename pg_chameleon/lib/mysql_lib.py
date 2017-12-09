@@ -96,7 +96,7 @@ class mysql_source(object):
 		except:
 			pass
 
-	def build_table_exceptions(self):
+	def __build_table_exceptions(self):
 		"""
 			The method builds two dictionaries from the limit_tables and skip tables values set for the source.
 			The dictionaries are intended to be used in the get_table_list to cleanup the list of tables per schema.
@@ -126,7 +126,11 @@ class mysql_source(object):
 					list_exclude = self.limit_tables[table_list[0]] 
 					list_exclude.append(table_list[1])
 				except KeyError:
-					list_exclude.append(table_list[1])
+					try:
+						list_exclude.append(table_list[1])
+					except IndexError:
+						self.logger.warning("Cannot determine the schema name for the table %s. The table won't be synced " % (table_list[0]))
+				
 				self.limit_tables[table_list[0]]  = list_exclude
 		if skip_tables:
 			table_skip = [table.split('.') for table in skip_tables]		
@@ -136,7 +140,10 @@ class mysql_source(object):
 					list_exclude = self.skip_tables[table_list[0]] 
 					list_exclude.append(table_list[1])
 				except KeyError:
-					list_exclude.append(table_list[1])
+					try:
+						list_exclude.append(table_list[1])
+					except:
+						pass
 				self.skip_tables[table_list[0]]  = list_exclude
 		
 
@@ -655,7 +662,11 @@ class mysql_source(object):
 			The method calls the common steps required to initialise the database connections and
 			class attributes within sync_tables,refresh_schema and init_replica.
 		"""
-		self.source_config = self.sources[self.source]
+		try:
+			self.source_config = self.sources[self.source]
+		except KeyError:
+			self.logger.error("The source %s doesn't exists " % (self.source))
+			sys.exit()
 		self.out_dir = self.source_config["out_dir"]
 		self.copy_mode = self.source_config["copy_mode"]
 		self.pg_engine.lock_timeout = self.source_config["lock_timeout"]
@@ -678,7 +689,7 @@ class mysql_source(object):
 		self.logger.debug("The schema affected is %s" % self.schema)
 		self.__init_sync()
 		self.pg_engine.set_source_status("syncing")
-		self.build_table_exceptions()
+		self.__build_table_exceptions()
 		self.schema_list = [self.schema]
 		self.get_table_list()
 		self.create_destination_schemas()
@@ -713,11 +724,11 @@ class mysql_source(object):
 			schema for the loaded tables to the destination schema. 
 			The swap happens in a single transaction.
 		"""
-		self.logger.debug("starting sync tables for source %s" % self.source)
+		self.logger.info("Starting sync tables for source %s" % self.source)
 		self.logger.debug("The tables affected are %s" % self.tables)
 		self.__init_sync()
 		self.pg_engine.set_source_status("syncing")
-		self.build_table_exceptions()
+		self.__build_table_exceptions()
 		self.schema_list = [schema for schema in self.schema_mappings if schema in self.schema_only]
 		self.get_table_list()
 		self.create_destination_schemas()
@@ -874,6 +885,7 @@ class mysql_source(object):
 					schema_query = binlogevent.schema
 				
 				if binlogevent.query.strip().upper() not in self.statement_skip and schema_query in self.schema_mappings: 
+					close_batch=True
 					destination_schema = self.schema_mappings[schema_query]
 					log_position = binlogevent.packet.log_pos
 					master_data["File"] = binlogfile
@@ -914,13 +926,13 @@ class mysql_source(object):
 									"log_table":log_table
 								}
 								self.pg_engine.write_ddl(token, query_data, destination_schema)
-								close_batch=True
+								
 							
 						
 					sql_tokeniser.reset_lists()
-					if close_batch:
-						my_stream.close()
-						return [master_data, close_batch]
+				if close_batch:
+					my_stream.close()
+					return [master_data, close_batch]
 			else:
 				
 				for row in binlogevent.rows:
@@ -1062,7 +1074,7 @@ class mysql_source(object):
 		self.pg_engine.set_source_status("initialising")
 		self.pg_engine.cleanup_source_tables()
 		self.schema_list = [schema for schema in self.schema_mappings]
-		self.build_table_exceptions()
+		self.__build_table_exceptions()
 		self.get_table_list()
 		self.create_destination_schemas()
 		try:

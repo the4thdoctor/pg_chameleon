@@ -370,7 +370,8 @@ class pgsql_source(object):
 		db_conn = db_copy["connection"]
 		db_cursor = db_copy["cursor"]
 		
-		db_cursor.execute(sql_snap, (self.snapshot_id, ))
+		if self.snapshot_id:
+			db_cursor.execute(sql_snap, (self.snapshot_id, ))
 		self.logger.debug("exporting table %s.%s in %s" % (schema , table,  out_file))
 		copy_file = open(out_file, 'wb')
 		db_cursor.copy_to(copy_file, from_table)
@@ -383,7 +384,7 @@ class pgsql_source(object):
 		copy_file.close()
 		db_conn.commit()
 		try:
-			remove(out_file)
+			os.remove(out_file)
 		except:
 			pass
 		
@@ -409,10 +410,17 @@ class pgsql_source(object):
 				CASE
 					WHEN con.conname IS NOT NULL
 					THEN
-						format('Adding primary key to table %%I',tab.relname)
+						format('primary key on %%I',tab.relname)
 					ELSE
-						format('Adding index %%I to table %%I',idx.relname,tab.relname)
-				END AS ddl_msg
+						format('index %%I on %%I',idx.relname,tab.relname)
+				END AS ddl_msg,
+				CASE
+					WHEN con.conname IS NOT NULL
+					THEN
+						True
+					ELSE
+						False
+				END AS table_pk
 			FROM
 
 				pg_class tab 
@@ -444,15 +452,18 @@ class pgsql_source(object):
 			table_list = self.schema_tables[schema]
 			for table in table_list:
 				loading_schema = self.schema_loading[schema]["loading"]
+				destination_schema = self.schema_loading[schema]["destination"]
 				self.pg_engine.pgsql_cur.execute('SET search_path=%s;', (loading_schema, ))
 				db_cursor.execute(sql_get_idx, (table, schema))
 				idx_tab = db_cursor.fetchall()
 				for idx in idx_tab:
-					self.logger.info(idx[1])
+					self.logger.info('Adding %s', (idx[1]))
 					try:
 						self.pg_engine.pgsql_cur.execute(idx[0])
 					except:
 						self.logger.error("an error occcurred when executing %s" %(idx[0]))
+					if idx[2]:
+						self.pg_engine.store_table(destination_schema, table, ['foo'], None)
 					
 		
 		db_conn.close()
@@ -464,18 +475,32 @@ class pgsql_source(object):
 			a consistent database copy at the time of the snapshot.
 		"""
 		
-		queue = mp.Queue()
-		snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export',daemon=True)
-		snap_exp.start()
-		self.snapshot_id = queue.get()
 		db_copy = self.__connect_db(False)
+		check_cursor = db_copy["cursor"]
+		db_conn = db_copy["connection"]
+		sql_recovery = """
+			SELECT pg_is_in_recovery();
+		"""
+		check_cursor.execute(sql_recovery)
+		db_in_recovery = check_cursor.fetchone()
+		db_conn.commit()
+		if not db_in_recovery[0]:
+			queue = mp.Queue()
+			snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export',daemon=True)
+			snap_exp.start()
+			self.snapshot_id = queue.get()
+			self.consistent = False
+		else:
+			self.snapshot_id = None
+			self.consistent = False
 		
 		for schema in self.schema_tables:
 			table_list = self.schema_tables[schema]
 			for table in table_list:
 				self.__copy_data(schema, table, db_copy)
-		queue.put(False)
-		db_copy["connection"].close()
+		if not db_in_recovery[0]:
+			queue.put(False)
+		db_conn.close()
 	
 	def init_replica(self):
 		"""
@@ -497,6 +522,8 @@ class pgsql_source(object):
 			self.pg_engine.swap_schemas()
 			self.__drop_loading_schemas()
 			self.pg_engine.set_source_status("initialised")
+			fake_master = [{'File': None, 'Position': None }]
+			self.pg_engine.set_source_highwatermark(fake_master, consistent=self.consistent)
 		except:
 			self.__drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
@@ -893,8 +920,8 @@ class pg_engine(object):
 		if token["command"] =="CREATE TABLE":
 			table_metadata = token["columns"]
 			table_name = token["name"]
-			index_data = token["indices"]
-			table_ddl = self.build_create_table(table_metadata,  table_name,  destination_schema, temporary_schema=False)
+			index_data = token["indices"]	
+			table_ddl = self.__build_create_table_mysql(table_metadata,  table_name,  destination_schema, temporary_schema=False)
 			table_enum = ''.join(table_ddl["enum"])
 			table_statement = table_ddl["table"] 
 			index_ddl = self.build_create_index( destination_schema, table_name, index_data)
@@ -919,7 +946,7 @@ class pg_engine(object):
 				elif token["command"] == "ALTER TABLE":
 					query=self.build_alter_table(destination_schema, token)
 				elif token["command"] == "DROP PRIMARY KEY":
-					self.drop_primary_key(destination_schema, token)
+					self.__drop_primary_key(destination_schema, token)
 		return query 
 
 	def build_enum_ddl(self, schema, enm_dic):
@@ -1101,7 +1128,7 @@ class pg_engine(object):
 		return query
 
 	
-	def drop_primary_key(self, schema, token):
+	def __drop_primary_key(self, schema, token):
 		"""
 			The method drops the primary key for the table.
 			As tables without primary key cannot be replicated the method calls unregister_table
@@ -1883,6 +1910,7 @@ class pg_engine(object):
 					idx_ddl[index_name] = idx_def
 				self.idx_sequence+=1
 		return [table_primary, idx_ddl]
+		
 	
 	def get_log_data(self, log_id):
 		"""
@@ -1929,11 +1957,28 @@ class pg_engine(object):
 		self.connect_db()
 		schema_mappings = None
 		table_status = None
+		replica_counters = None
 		if self.source == "*":
 			source_filter = ""
 			
 		else:
 			source_filter = (self.pgsql_cur.mogrify(""" WHERE  src.t_source=%s """, (self.source, ))).decode()
+			self.set_source_id()
+			
+			sql_counters = """
+				SELECT 
+					sum(i_replayed) as total_replayed, 
+					sum(i_skipped) as total_skipped, 
+					sum(i_ddl) as total_ddl 
+				FROM 
+					sch_chameleon.t_replica_batch 
+				WHERE 
+					i_id_source=%s;
+
+			"""
+			self.pgsql_cur.execute(sql_counters, (self.i_id_source, ))
+			replica_counters = self.pgsql_cur.fetchone()
+			
 			
 			sql_mappings = """
 				SELECT 
@@ -2057,8 +2102,11 @@ class pg_engine(object):
 		""" % (source_filter, )
 		self.pgsql_cur.execute(sql_status)
 		configuration_status = self.pgsql_cur.fetchall()
+		
+		
+		
 		self.disconnect_db()
-		return [configuration_status, schema_mappings, table_status]
+		return [configuration_status, schema_mappings, table_status, replica_counters]
 	
 	def insert_source_timings(self):
 		"""
@@ -2375,7 +2423,7 @@ class pg_engine(object):
 	
 	def create_table(self,  table_metadata,table_name,  schema, metadata_type):
 		"""
-			Executes the create table returned by build_create_table on the destination_schema.
+			Executes the create table returned by __build_create_table (mysql or pgsql) on the destination_schema.
 			
 			:param table_metadata: the column dictionary extracted from the source's information_schema or builty by the sql_parser class
 			:param table_name: the table name 

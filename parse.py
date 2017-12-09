@@ -82,6 +82,7 @@ CREATE TABLE film_text (
 #statement="""RENAME TABLE sakila.test_partition TO sakila._test_partition_old, sakila._test_partition_new TO sakila.test_partition ;"""
 #statement="""RENAME TABLE `sakila`.`test_partition` TO `sakila`.`_test_partition_old`, `sakila`.`_test_partition_new` TO `sakila`.`test_partition`;"""
 #statement = """create table blah(id integer(30) not null auto_increment, datevalue datetime,primary key (id,datevalue))"""
+statement = """alter table dd add column(foo varchar(30)); alter table dd add column foo varchar(30);"""
 token_sql=sql_token()
 token_sql.parse_sql(statement)
 print (token_sql.tokenised)

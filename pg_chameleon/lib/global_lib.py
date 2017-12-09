@@ -242,7 +242,11 @@ class replica_engine(object):
 		elif self.args.tables != "*":
 			print("You cannot specify a table name when running init_replica.")
 		else:
-			source_type = self.config["sources"][self.args.source]["type"]
+			try:
+				source_type = self.config["sources"][self.args.source]["type"]
+			except KeyError: 
+				print("The source %s doesn't exists." % (self.args.source))
+				sys.exit()
 			self.__stop_replica()
 			if source_type  == "mysql":
 				self.__init_mysql_replica()
@@ -568,6 +572,7 @@ class replica_engine(object):
 		configuration_status = configuration_data[0]
 		schema_mappings = configuration_data[1]
 		table_status = configuration_data[2]
+		replica_counters = configuration_data[3]
 		tab_headers = ['Source id',  'Source name', 'Type',  'Status', 'Consistent' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
 		tab_body = []
 		for status in configuration_status:
@@ -606,6 +611,13 @@ class replica_engine(object):
 			tables_all= table_status[2]
 			tab_row = ['All tables', tables_all[1]]
 			tab_body.append(tab_row)
+			if replica_counters:
+				tab_row = ['Replayed rows', replica_counters[0]]
+				tab_body.append(tab_row)
+				tab_row = ['Replayed DDL', replica_counters[2]]
+				tab_body.append(tab_row)
+				tab_row = ['Skipped rows', replica_counters[1]]
+				tab_body.append(tab_row)
 			print(tabulate(tab_body, tablefmt="simple"))
 			if tables_no_replica[2]:
 				print('\n== Tables with replica disabled ==')

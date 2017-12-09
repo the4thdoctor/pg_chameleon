@@ -48,4 +48,11 @@ args = parser.parse_args()
 
 
 replica = replica_engine(args)
-getattr(replica, args.command)()
+if args.debug:
+	getattr(replica, args.command)()
+else:
+	try:
+		getattr(replica, args.command)()
+	except AttributeError:
+		print("ERROR - Invalid command" )
+		print(command_help)
