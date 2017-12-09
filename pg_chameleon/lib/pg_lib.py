@@ -919,7 +919,7 @@ class pg_engine(object):
 				elif token["command"] == "ALTER TABLE":
 					query=self.build_alter_table(destination_schema, token)
 				elif token["command"] == "DROP PRIMARY KEY":
-					self.drop_primary_key(destination_schema, token)
+					self.__drop_primary_key(destination_schema, token)
 		return query 
 
 	def build_enum_ddl(self, schema, enm_dic):
@@ -1101,7 +1101,7 @@ class pg_engine(object):
 		return query
 
 	
-	def drop_primary_key(self, schema, token):
+	def __drop_primary_key(self, schema, token):
 		"""
 			The method drops the primary key for the table.
 			As tables without primary key cannot be replicated the method calls unregister_table
@@ -1883,6 +1883,7 @@ class pg_engine(object):
 					idx_ddl[index_name] = idx_def
 				self.idx_sequence+=1
 		return [table_primary, idx_ddl]
+		
 	
 	def get_log_data(self, log_id):
 		"""
