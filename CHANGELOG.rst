@@ -4,6 +4,9 @@ changelog
 2.0.0.beta1 XX December 2017
 ............................................
 * fix a race condition where an unrelated DDL can cause the collected binlog rows to be added several times to the log_table
+* fix regression in write ddl caused by the change of private method 
+* fix wrong ddl parsing when a column definition is surrounded by parenthesis e.g. ``ALTER TABLE foo ADD COLUMN(bar varchar(30));``
+* error handling for wrong table names, wrong schema names, wrong source name and wrong commands
 
 
 2.0.0.alpha3 03 December 2017

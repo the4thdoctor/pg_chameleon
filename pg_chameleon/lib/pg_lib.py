@@ -893,8 +893,8 @@ class pg_engine(object):
 		if token["command"] =="CREATE TABLE":
 			table_metadata = token["columns"]
 			table_name = token["name"]
-			index_data = token["indices"]
-			table_ddl = self.build_create_table(table_metadata,  table_name,  destination_schema, temporary_schema=False)
+			index_data = token["indices"]	
+			table_ddl = self.__build_create_table_mysql(table_metadata,  table_name,  destination_schema, temporary_schema=False)
 			table_enum = ''.join(table_ddl["enum"])
 			table_statement = table_ddl["table"] 
 			index_ddl = self.build_create_index( destination_schema, table_name, index_data)
@@ -1934,7 +1934,7 @@ class pg_engine(object):
 			
 		else:
 			source_filter = (self.pgsql_cur.mogrify(""" WHERE  src.t_source=%s """, (self.source, ))).decode()
-			
+			self.set_source_id()
 			sql_mappings = """
 				SELECT 
 					(mappings).key as origin_schema,
@@ -2057,8 +2057,24 @@ class pg_engine(object):
 		""" % (source_filter, )
 		self.pgsql_cur.execute(sql_status)
 		configuration_status = self.pgsql_cur.fetchall()
+		
+		sql_counters = """
+			SELECT 
+				sum(i_replayed) as total_replayed, 
+				sum(i_skipped) as total_skipped, 
+				sum(i_ddl) as total_ddl 
+			FROM 
+				sch_chameleon.t_replica_batch 
+			WHERE 
+				i_id_source=%s;
+
+		"""
+		self.pgsql_cur.execute(sql_counters, (self.i_id_source, ))
+		replica_counters = self.pgsql_cur.fetchone()
+		
+		
 		self.disconnect_db()
-		return [configuration_status, schema_mappings, table_status]
+		return [configuration_status, schema_mappings, table_status, replica_counters]
 	
 	def insert_source_timings(self):
 		"""
@@ -2375,7 +2391,7 @@ class pg_engine(object):
 	
 	def create_table(self,  table_metadata,table_name,  schema, metadata_type):
 		"""
-			Executes the create table returned by build_create_table on the destination_schema.
+			Executes the create table returned by __build_create_table (mysql or pgsql) on the destination_schema.
 			
 			:param table_metadata: the column dictionary extracted from the source's information_schema or builty by the sql_parser class
 			:param table_name: the table name 
