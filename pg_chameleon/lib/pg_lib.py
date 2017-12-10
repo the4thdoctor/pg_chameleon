@@ -833,12 +833,13 @@ class pg_engine(object):
 			
 		"""
 		tables_error = []
+		#return tables_error
 		continue_loop = True
 		self.source_config = self.sources[self.source]
 		replay_max_rows = self.source_config["replay_max_rows"]
 		exit_on_error = True if self.source_config["on_error_replay"]=='exit' else False
 		while continue_loop:
-			sql_replay = """SELECT * FROM sch_chameleon.fn_replay_mysql(%s,%s,%s)""";
+			sql_replay = """SELECT * FROM sch_chameleon.fn_replay_mysql(%s,%s,%s);""";
 			self.pgsql_cur.execute(sql_replay, (replay_max_rows, self.i_id_source, exit_on_error))
 			replay_status = self.pgsql_cur.fetchone()
 			if replay_status[0]:
@@ -2932,7 +2933,7 @@ class pg_engine(object):
 				self.logger.error("unexpected error when processing the row")
 				self.logger.error(" - > Table: %s.%s" % (schema, table))
 	
-	def create_indices(self, schema, table, index_data):
+	def __create_indices(self, schema, table, index_data):
 		"""
 			The method loops odver the list index_data and creates the indices on the table 
 			specified with schema and table parameters.
