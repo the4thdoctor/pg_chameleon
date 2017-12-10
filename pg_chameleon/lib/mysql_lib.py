@@ -552,7 +552,7 @@ class mysql_source(object):
 		else:
 			self.logger.debug("Table %s.%s copied %s slice of %s" % (schema, table, iteration, total))
 			
-	def create_indices(self, schema, table):
+	def __create_indices(self, schema, table):
 		"""
 			The method copy the data between the origin and destination table.
 			The method locks the table read only mode and  gets the log coordinates which are returned to the calling method.
@@ -589,7 +589,7 @@ class mysql_source(object):
 		return table_pkey
 		
 		
-	def copy_tables(self):
+	def __copy_tables(self):
 		"""
 			The method copies the data between tables, from the mysql schema to the corresponding
 			postgresql loading schema. Before the copy starts the table is locked and then the lock is released.
@@ -604,11 +604,11 @@ class mysql_source(object):
 				self.logger.info("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
 				try:
 					master_status = self.copy_data(schema, table)
-					table_pkey = self.create_indices(schema, table)
+					table_pkey = self.__create_indices(schema, table)
 					self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
 				except:
 					self.logger.info("Could not copy the table %s. Excluding it from the replica." %(table) )
-				
+					raise
 	
 	def set_copy_max_memory(self):
 		"""
@@ -698,7 +698,7 @@ class mysql_source(object):
 		self.create_destination_tables()
 		self.disconnect_db_buffered()
 		try:
-			self.copy_tables()
+			self.__copy_tables()
 			self.pg_engine.grant_select()
 			self.pg_engine.swap_schemas()
 			self.drop_loading_schemas()
@@ -736,7 +736,7 @@ class mysql_source(object):
 		self.pg_engine.schema_tables = self.schema_tables
 		self.create_destination_tables()
 		self.disconnect_db_buffered()
-		self.copy_tables()
+		self.__copy_tables()
 		self.pg_engine.grant_select()
 		try:
 			self.pg_engine.swap_tables()
@@ -1082,7 +1082,7 @@ class mysql_source(object):
 			self.pg_engine.schema_loading = self.schema_loading
 			self.create_destination_tables()
 			self.disconnect_db_buffered()
-			self.copy_tables()
+			self.__copy_tables()
 			self.pg_engine.grant_select()
 			self.pg_engine.swap_schemas()
 			self.pg_engine.clean_batch_data()
