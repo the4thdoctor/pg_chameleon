@@ -2933,7 +2933,7 @@ class pg_engine(object):
 				self.logger.error("unexpected error when processing the row")
 				self.logger.error(" - > Table: %s.%s" % (schema, table))
 	
-	def __create_indices(self, schema, table, index_data):
+	def create_indices(self, schema, table, index_data):
 		"""
 			The method loops odver the list index_data and creates the indices on the table 
 			specified with schema and table parameters.

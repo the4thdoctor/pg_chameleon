@@ -584,7 +584,7 @@ class mysql_source(object):
 		"""
 		self.cursor_buffered.execute(sql_index, (schema, table))
 		index_data = self.cursor_buffered.fetchall()
-		table_pkey = self.pg_engine.__create_indices(loading_schema, table, index_data)
+		table_pkey = self.pg_engine.create_indices(loading_schema, table, index_data)
 		self.disconnect_db_buffered()
 		return table_pkey
 		
@@ -608,7 +608,7 @@ class mysql_source(object):
 					self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
 				except:
 					self.logger.info("Could not copy the table %s. Excluding it from the replica." %(table) )
-				
+					raise
 	
 	def set_copy_max_memory(self):
 		"""
