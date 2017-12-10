@@ -11,7 +11,7 @@ Preparation
    This step is required in order to have the destination and target schema's updated from the configuration files.
 * Check the replica catalogue version is 1.7 with ``SELECT * FROM sch_chameleon.v_version;``.
 * Check the  field t_source_schema  have values per each source ``SELECT t_source_schema  FROM sch_chameleon.t_sources;``
-* Take a backup of the existing schema sch_chameleon
+* Take a backup of the existing schema sch_chameleon with ``pg_dump``
 * Install pg_chameleon version 2 and create the configuration files executing ``chameleon.py set_configuration_files``. 
 * cd in ``~/.pg_chameleon/configuration/`` and copy the file ``config-example.yml`` in a different file ``e.g. cp config-example.yml upgraded.yml``
 * Edit  the file and set the target and source's database connections. You may want to change the source name as well 
@@ -22,7 +22,7 @@ For each configuration file in the old setup ``~/.pg_chameleon/config/`` using t
 
 For example, if there are two sources ``source_01.yaml`` and ``source_02.yaml`` with the following configuration:
 
-Both sources point the same database
+Both sources are pointing the same MySQL database
 
 .. code-block:: yaml
 
@@ -89,7 +89,8 @@ If the migration is successful, before starting the replica process is better to
 Rollback
 ..............................
 
-If something goes wrong the  changes are rolled back. The schema ``sch_chameleon`` is renamed to  ``_sch_chameleon_version2`` and ``_sch_chameleon_version1`` renamed to ``sch_chameleon``.
-In this case the procedure 1.8.2 will continue to work as usual. The schema ``_sch_chameleon_version2`` can be used to check what went wrong.
+If something goes wrong during the  upgrade procedure, then the changes are rolled back. 
+The schema ``sch_chameleon`` is renamed to  ``_sch_chameleon_version2`` and the previous version's schema ``_sch_chameleon_version1`` is put batck to ``sch_chameleon``.
+If this happens  the procedure 1.8.2 will continue to work as usual. The schema ``_sch_chameleon_version2`` can be used to check what went wrong.
 
-Before attempting a new upgrade this schema should be dropped or renamed in order to avoid conflict in case of another failure.
+Before attempting a new upgrade schema  ``_sch_chameleon_version2`` should be dropped or renamed in order to avoid a schema conflict in the case of another failure.

@@ -1,15 +1,15 @@
 changelog 
 *************************
 
-2.0.0.beta1 XX December 2017
+2.0.0.beta1 10 December 2017
 ............................................
 * fix a race condition where an unrelated DDL can cause the collected binlog rows to be added several times to the log_table
 * fix regression in write ddl caused by the change of private method 
-* fix wrong ddl parsing when a column definition is surrounded by parenthesis e.g. ``ALTER TABLE foo ADD COLUMN(bar varchar(30));``
+* fix wrong ddl parsing when a column definition is surrounded by parentheses e.g. ``ALTER TABLE foo ADD COLUMN(bar varchar(30));``
 * error handling for wrong table names, wrong schema names, wrong source name and wrong commands
 * init_replica for source pgsql now can read from an hot standby but the copy is not consistent
 * init_replica for source pgsql adds "replicated tables" for better  show_status display
-
+* check if the source is registered when running commands that require a source name
 
 2.0.0.alpha3 03 December 2017
 .............................
