@@ -1,6 +1,35 @@
 RELEASE NOTES
 *************************
 
+2.0.0.beta1
+--------------------------
+The first beta for the milestone 2.0 adds fixes a long standing bug to the replica process and adds more features to the postgresql support. 
+
+The race condition fixed was caused by a not tokenised DDL preceeded by row images, causing the collected binlog rows to be added several times to the log_table.
+It was quite hard to debug as the only visible effect was a primary key violation on random tables.
+
+The issue is caused if a set of rows lesser than the ``replica_batch_size`` are followed by a DDL that is not tokenised (e.g. ``CREATE TEMPORARY TABLE `foo`;`` ) 
+which coincides with the end of read from the binary log.
+In that case the batch is not closed and the next read replica attempt will restart from the previous position reading and storing again the same set of rows.
+When the batch is closed the replay function will eventually fail because of a primary/unique key violation.
+
+The tokeniser now works properly when an ``ALTER TABLE ADD COLUMN``'s definition is surrounded by parentheses e.g. ``ALTER TABLE foo ADD COLUMN(bar varchar(30));``
+There are now error handlers when wrong table names, wrong schema names, wrong source name and wrong commands are specified to ``chameleon.py``
+When running commands that require a source name tye system checks if the source is registered.
+
+The ``init_replica`` for source pgsql now can read from an hot standby but the copy is not consistent as it's not possible to export a snapshot from the hot standbys.
+Also the ``* init_replica`` for source pgsql adds the copied tables as fake "replicated tables" for better  show_status display.
+
+For the source type ``pgsql`` the following restrictions apply.
+
+* There is no support for real time replica
+* The data copy happens always with file method
+* The copy_max_memory doesn't apply
+* The type override doesn't apply
+* Only ``init_replica`` is currently supported
+* The source connection string requires a database name
+
+
 2.0.0.alpha3
 --------------------------
 **please note this is a not production release. do not use it in production**

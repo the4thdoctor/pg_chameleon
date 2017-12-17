@@ -94,7 +94,14 @@ class replica_engine(object):
 				if self.catalog_version != catalog_version:
 					print("FATAL, replica catalogue version mismatch. Expected %s, got %s" % (self.catalog_version, catalog_version))
 					sys.exit()
-			
+		
+		if self.args.source != '*' and self.args.command != 'add_source':
+			self.pg_engine.connect_db()
+			source_count = self.pg_engine.check_source()
+			self.pg_engine.disconnect_db()
+			if source_count == 0:
+				print("FATAL, The source %s is not registered. Please add it add_source" % (self.args.source))
+				sys.exit()
 		
 		
 		
