@@ -15,6 +15,30 @@ from daemonize import Daemonize
 import multiprocessing as mp
 import traceback 
 
+class rollbar_notifier(object):
+	"""
+		This class is used to send messages to rollbar whether the key and environment variables are set
+	"""
+	def __init__(self, rollbar_key, rollbar_env, logger):
+		"""
+			Class constructor.
+		"""
+		self.logger = logger
+		self.notifier = rollbar
+		if rollbar_key !='' and rollbar_env != '':
+			self.notifier.init(rollbar_key, rollbar_env)  
+		else:
+			self.notifier = None
+		
+	def send_message(self, message, level):
+		"""
+			The class 
+		"""
+		try:
+			self.notifier.report_message(message, level)
+		except:
+			self.logger.error("Could not send the message to rollbar.")
+
 class replica_engine(object):
 	"""
 		This class is wraps the the mysql and postgresql engines in order to perform the various activities required for the replica. 
@@ -54,6 +78,8 @@ class replica_engine(object):
 		
 		self.load_config()
 		self.logger = self.__init_logger()
+		#notifier configuration
+		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.logger )
 		
 		#pg_engine instance initialisation
 		self.pg_engine = pg_engine()
@@ -73,6 +99,7 @@ class replica_engine(object):
 		self.mysql_source.logger = self.logger
 		self.mysql_source.sources = self.config["sources"]
 		self.mysql_source.type_override = self.config["type_override"]
+		self.mysql_source.notifier = self.notifier
 		
 		#pgsql_source instance initialisation
 		self.pgsql_source = pgsql_source()
@@ -102,6 +129,7 @@ class replica_engine(object):
 			if source_count == 0:
 				print("FATAL, The source %s is not registered. Please add it add_source" % (self.args.source))
 				sys.exit()
+		
 		
 		
 		
@@ -265,7 +293,6 @@ class replica_engine(object):
 			The method  initialise a replica for a given mysql source within the specified configuration. 
 			The method is called by the public method init_replica.
 		"""
-		
 		if self.args.debug:
 			self.mysql_source.init_replica()
 		else:
@@ -418,11 +445,9 @@ class replica_engine(object):
 				if len(tables_error) > 0:
 					table_list = [item for sublist in tables_error for item in sublist]
 					tables_removed = "\n".join(table_list)
-					error_msg = "There was an error during the replay of data. %s. The affected tables are no longer replicated." % (tables_removed)
-					self.logger.error(error_msg)
-					if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
-						rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
-						rollbar.report_message(error_msg, 'error')
+					notifier_message = "There was an error during the replay of data. %s. The affected tables are no longer replicated." % (tables_removed)
+					self.logger.error(notifier_message)
+					self.notifier.send_message(notifier_message, 'error')
 				time.sleep(self.sleep_loop)
 			except Exception:
 			    queue.put(traceback.format_exc())
@@ -437,7 +462,7 @@ class replica_engine(object):
 		signal.signal(signal.SIGINT, self.terminate_replica)
 		queue = mp.Queue()
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
-		check_timeout = self.sleep_loop#*10
+		check_timeout = self.sleep_loop*10
 		self.logger.info("Starting the replica daemons for source %s " % (self.args.source))
 		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue,))
 		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue,))
@@ -463,9 +488,8 @@ class replica_engine(object):
 					self.pg_engine.set_source_status("error")
 				except:
 					pass
-				if self.config["rollbar_key"] !='' and self.config["rollbar_env"] != '':
-					rollbar.init(self.config["rollbar_key"], self.config["rollbar_env"])  
-					rollbar.report_message("The replica process crashed.\n Source: %s\n Stack trace: %s " %(self.args.source, stack_trace), 'error')
+				notifier_message = "The replica process crashed.\n Source: %s\n Stack trace: %s " %(self.args.source, stack_trace)
+				self.notifier.send_message(notifier_message, 'critical')
 					
 				break
 			time.sleep(check_timeout)

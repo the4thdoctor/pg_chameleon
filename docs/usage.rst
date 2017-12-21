@@ -69,7 +69,7 @@ Run the ``set_configuration_files`` command in order to create the configuration
     chameleon.py set_configuration_files
     
     
-cd in ``~/.pg_chameleon/configuration`` and copy the file ``configuration-example.yml` to ``default.yml``. 
+cd in ``~/.pg_chameleon/configuration`` and copy the file ``config-example.yml` to ``default.yml``. 
 
     
     

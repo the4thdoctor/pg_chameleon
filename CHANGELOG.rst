@@ -1,5 +1,12 @@
 changelog 
 *************************
+2.0.0.RC1 XX December 2017
+............................................
+* Fix  for issue #52, When adding a unique key the table's creation fails because of the NULLable field
+* Add check for the MySQL configuration when initialising or refreshing replicated entities
+* Add class rollbar_notifier for simpler message management
+* Add end of replica notification to rollbar
+
 
 2.0.0.beta1 10 December 2017
 ............................................
