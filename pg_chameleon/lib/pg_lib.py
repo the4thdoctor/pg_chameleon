@@ -1498,6 +1498,41 @@ class pg_engine(object):
 		
 		self.pgsql_cur.execute(sql_insert, insert_vals)
 	
+	
+	def get_tables_disabled(self):
+		"""
+			The method returns a CSV list of tables excluded from the replica.
+			The origin's schema is determined from the source's schema mappings jsonb.
+			
+			:return: CSV list of tables excluded from the replica
+			:rtype: text
+			
+		"""
+		sql_get = """
+			SELECT 
+				string_agg(format('%s.%s',(t_mappings).key,v_table_name),',') 
+			FROM 
+				sch_chameleon.t_replica_tables tab
+				INNER JOIN 
+				(
+					SELECT 
+						i_id_source,
+						jsonb_each_text(jsb_schema_mappings) as t_mappings
+					FROM 	
+					sch_chameleon.t_sources
+
+				) src
+				ON 
+						tab.i_id_source=src.i_id_source
+					AND	tab.v_schema_name=(t_mappings).value
+			WHERE 	
+				NOT tab.b_replica_enabled
+			;
+		"""
+		self.pgsql_cur.execute(sql_get)
+		tables_disabled = self.pgsql_cur.fetchone()
+		return tables_disabled[0]
+	
 	def get_batch_data(self):
 		"""
 			The method updates the batch status to started for the given source_id and returns the 

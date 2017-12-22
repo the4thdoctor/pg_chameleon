@@ -183,7 +183,6 @@ class mysql_source(object):
 				self.skip_tables[table_list[0]]  = list_exclude
 		
 
-
 	def get_table_list(self):
 		"""
 			The method pulls the table list from the information_schema. 
@@ -767,10 +766,15 @@ class mysql_source(object):
 			The swap happens in a single transaction.
 		"""
 		self.logger.info("Starting sync tables for source %s" % self.source)
-		self.logger.debug("The tables affected are %s" % self.tables)
 		self.__init_sync()
 		self.__check_mysql_config()
 		self.pg_engine.set_source_status("syncing")
+		if self.tables == 'disabled':
+			self.tables = self.pg_engine.get_tables_disabled ()
+			if not self.tables:
+				self.logger.info("There are no disabled tables to sync")
+				return
+		self.logger.debug("The tables affected are %s" % self.tables)
 		self.__build_table_exceptions()
 		self.schema_list = [schema for schema in self.schema_mappings if schema in self.schema_only]
 		self.get_table_list()

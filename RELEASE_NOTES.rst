@@ -1,6 +1,10 @@
 RELEASE NOTES
 *************************
 
+2.0.0.rc1
+--------------------------
+
+
 2.0.0.beta1
 --------------------------
 The first beta for the milestone 2.0 adds fixes a long standing bug to the replica process and adds more features to the postgresql support. 

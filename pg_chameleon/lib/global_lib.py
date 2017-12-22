@@ -32,7 +32,8 @@ class rollbar_notifier(object):
 		
 	def send_message(self, message, level):
 		"""
-			The class 
+			The method sends a message to rollbar. If it fails it just logs an error 
+			without causing the process to crash.
 		"""
 		try:
 			self.notifier.report_message(message, level)
