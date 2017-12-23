@@ -111,6 +111,8 @@ class replica_engine(object):
 		self.pgsql_source.logger = self.logger
 		self.pgsql_source.sources = self.config["sources"]
 		self.pgsql_source.type_override = self.config["type_override"]
+		self.pgsql_source.notifier = self.notifier
+		
 		catalog_version = self.pg_engine.get_catalog_version()
 
 		#safety checks
@@ -508,26 +510,31 @@ class replica_engine(object):
 			print("You must specify a source name using the argument --source")
 		else:
 			self.pg_engine.connect_db()
-			self.logger.info("Cleaning not processed batches for source %s" % (self.args.source))
-			self.pg_engine.clean_not_processed_batches()
-			self.pg_engine.disconnect_db()
-			if self.args.debug:
-				self.run_replica()
+			self.logger.info("Checking if the replica for source %s is stopped " % (self.args.source))
+			replica_status = self.pg_engine.get_replica_status()
+			if replica_status in ['syncing', 'running', 'initialising']:
+				print("The replica process is already started or is syncing. Aborting the command.")
 			else:
-				if self.config["log_dest"]  == 'stdout':
-					foreground = True
+				self.logger.info("Cleaning not processed batches for source %s" % (self.args.source))
+				self.pg_engine.clean_not_processed_batches()
+				self.pg_engine.disconnect_db()
+				if self.args.debug:
+					self.run_replica()
 				else:
-					self.logger = self.__init_logger()
-					foreground = False
-					print("Starting the replica process for source %s" % (self.args.source))
-					keep_fds = [self.logger_fds]
-					
-					app_name = "%s_replica" % self.args.source
-					replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.run_replica, foreground=foreground , keep_fds=keep_fds)
-					try:
-						replica_daemon.start()
-					except:
-						print("The replica process is already started. Aborting the command.")
+					if self.config["log_dest"]  == 'stdout':
+						foreground = True
+					else:
+						self.logger = self.__init_logger()
+						foreground = False
+						print("Starting the replica process for source %s" % (self.args.source))
+						keep_fds = [self.logger_fds]
+						
+						app_name = "%s_replica" % self.args.source
+						replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.run_replica, foreground=foreground , keep_fds=keep_fds)
+						try:
+							replica_daemon.start()
+						except:
+							print("The replica process is already started. Aborting the command.")
 				
 	
 	def __stop_replica(self):

@@ -524,9 +524,17 @@ class pgsql_source(object):
 			self.pg_engine.set_source_status("initialised")
 			fake_master = [{'File': None, 'Position': None }]
 			self.pg_engine.set_source_highwatermark(fake_master, consistent=self.consistent)
+			notifier_message = "init replica for source %s is complete" % self.source
+			self.notifier.send_message(notifier_message, 'info')
+			self.logger.info(notifier_message)
 		except:
 			self.__drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
+			notifier_message = "init replica for source %s failed" % self.source
+			self.notifier.send_message(notifier_message, 'critical')
+			self.logger.critical(notifier_message)
+			
+			
 			raise
 		
 		
@@ -2638,6 +2646,26 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
 	
+	
+	def get_replica_status(self):
+		"""
+			The method gets the replica status for the given source. 
+			The method assumes there is a database connection active.
+		"""
+		self.set_source_id()
+		sql_status = """
+			SELECT 
+				enm_status
+			FROM
+				sch_chameleon.t_sources
+			WHERE
+				i_id_source=%s
+			;
+		"""
+		self.pgsql_cur.execute(sql_status, (self.i_id_source, ))
+		replica_status = self.pgsql_cur.fetchone()
+		return replica_status[0]
+		
 	def clean_not_processed_batches(self):
 		"""
 			The method cleans up the not processed batches rows from the table sch_chameleon.t_log_replica.
