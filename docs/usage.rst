@@ -37,7 +37,7 @@ Command line reference
     ``init_replica``, Initialise the replica for an existing source , ``--config`` ``--source``
     ``update_schema_mappings``,Update the schema mappings stored in the replica catalogue using the data from the configuration file. , ``--config`` ``--source``
     ``refresh_schema``, Synchronise all the tables for a given schema within an already initialised source. , ``--config`` ``--source`` ``--schema``
-    ``sync_tables``, Synchronise one or more tables within an already initialised source. , ``--config`` ``--source`` ``--tables``
+    ``sync_tables``, Synchronise one or more tables within an already initialised source.  The switch ``--tables`` accepts the special name ``disabled`` to resync all the tables with replica disabled., ``--config`` ``--source`` ``--tables``
     ``start_replica``, Starts the replica process daemon, ``--config`` ``--source`` 
     ``stop_replica``, Stops the replica process daemon, ``--config`` ``--source`` 
     ``detach_replica``, Detaches a replica from the mysql master configuring the postgres schemas to work as a standalone system. Useful for migrations., ``--config`` ``--source`` 
@@ -59,7 +59,7 @@ Install pg_chameleon
 .. code-block:: none
     
     pip install pip --upgrade
-    pip install pg_chameleon==2.0.0b1
+    pip install pg_chameleon==2.0.0rc1
 
 
 Run the ``set_configuration_files`` command in order to create the configuration directory.
@@ -69,7 +69,7 @@ Run the ``set_configuration_files`` command in order to create the configuration
     chameleon.py set_configuration_files
     
     
-cd in ``~/.pg_chameleon/configuration`` and copy the file ``configuration-example.yml` to ``default.yml``. 
+cd in ``~/.pg_chameleon/configuration`` and copy the file ``config-example.yml` to ``default.yml``. 
 
     
     

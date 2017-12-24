@@ -524,9 +524,17 @@ class pgsql_source(object):
 			self.pg_engine.set_source_status("initialised")
 			fake_master = [{'File': None, 'Position': None }]
 			self.pg_engine.set_source_highwatermark(fake_master, consistent=self.consistent)
+			notifier_message = "init replica for source %s is complete" % self.source
+			self.notifier.send_message(notifier_message, 'info')
+			self.logger.info(notifier_message)
 		except:
 			self.__drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
+			notifier_message = "init replica for source %s failed" % self.source
+			self.notifier.send_message(notifier_message, 'critical')
+			self.logger.critical(notifier_message)
+			
+			
 			raise
 		
 		
@@ -1497,6 +1505,41 @@ class pg_engine(object):
 		""").format(sql.Identifier(log_table), )
 		
 		self.pgsql_cur.execute(sql_insert, insert_vals)
+	
+	
+	def get_tables_disabled(self):
+		"""
+			The method returns a CSV list of tables excluded from the replica.
+			The origin's schema is determined from the source's schema mappings jsonb.
+			
+			:return: CSV list of tables excluded from the replica
+			:rtype: text
+			
+		"""
+		sql_get = """
+			SELECT 
+				string_agg(format('%s.%s',(t_mappings).key,v_table_name),',') 
+			FROM 
+				sch_chameleon.t_replica_tables tab
+				INNER JOIN 
+				(
+					SELECT 
+						i_id_source,
+						jsonb_each_text(jsb_schema_mappings) as t_mappings
+					FROM 	
+					sch_chameleon.t_sources
+
+				) src
+				ON 
+						tab.i_id_source=src.i_id_source
+					AND	tab.v_schema_name=(t_mappings).value
+			WHERE 	
+				NOT tab.b_replica_enabled
+			;
+		"""
+		self.pgsql_cur.execute(sql_get)
+		tables_disabled = self.pgsql_cur.fetchone()
+		return tables_disabled[0]
 	
 	def get_batch_data(self):
 		"""
@@ -2603,6 +2646,26 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
 	
+	
+	def get_replica_status(self):
+		"""
+			The method gets the replica status for the given source. 
+			The method assumes there is a database connection active.
+		"""
+		self.set_source_id()
+		sql_status = """
+			SELECT 
+				enm_status
+			FROM
+				sch_chameleon.t_sources
+			WHERE
+				i_id_source=%s
+			;
+		"""
+		self.pgsql_cur.execute(sql_status, (self.i_id_source, ))
+		replica_status = self.pgsql_cur.fetchone()
+		return replica_status[0]
+		
 	def clean_not_processed_batches(self):
 		"""
 			The method cleans up the not processed batches rows from the table sch_chameleon.t_log_replica.

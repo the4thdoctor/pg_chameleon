@@ -31,6 +31,42 @@ class mysql_source(object):
 		"""
 		self.disconnect_db_unbuffered()
 		self.disconnect_db_buffered()
+		
+	def __check_mysql_config(self):
+		"""
+			The method check if the mysql configuration is compatible with the replica requirements.
+			If all the configuration requirements are met then the return value is True.
+			Otherwise is false.
+			The parameters checked are
+			log_bin - ON if the binary log is enabled
+			binlog_format - must be ROW , otherwise the replica won't get the data
+			binlog_row_image - must be FULL, otherwise the row image will be incomplete
+			
+		"""
+		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'log_bin';"""
+		self.cursor_buffered.execute(sql_log_bin)
+		variable_check = self.cursor_buffered.fetchone()
+		log_bin = variable_check["Value"]
+		
+		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'binlog_format';"""
+		self.cursor_buffered.execute(sql_log_bin)
+		variable_check = self.cursor_buffered.fetchone()
+		binlog_format = variable_check["Value"]
+		
+		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'binlog_row_image';"""
+		self.cursor_buffered.execute(sql_log_bin)
+		variable_check = self.cursor_buffered.fetchone()
+		binlog_row_image = variable_check["Value"]
+		if log_bin.upper() == 'ON' and binlog_format.upper() == 'ROW' and binlog_row_image.upper() == 'FULL':
+			self.replica_possible = True
+		else:
+			self.replica_possible = False
+			self.pg_engine.set_source_status("error")
+			self.logger.error("The MySQL configuration does not allow the replica. Exiting now")
+			self.logger.error("Source settings - log_bin %s, binlog_format %s, binlog_row_image %s" % (log_bin.upper(),  binlog_format.upper(), binlog_row_image.upper() ))
+			self.logger.error("Mandatory settings - log_bin ON, binlog_format ROW, binlog_row_image FULL")
+			sys.exit()
+		
 	
 	def connect_db_buffered(self):
 		"""
@@ -146,7 +182,6 @@ class mysql_source(object):
 						pass
 				self.skip_tables[table_list[0]]  = list_exclude
 		
-
 
 	def get_table_list(self):
 		"""
@@ -688,6 +723,7 @@ class mysql_source(object):
 		self.logger.debug("starting sync schema for source %s" % self.source)
 		self.logger.debug("The schema affected is %s" % self.schema)
 		self.__init_sync()
+		self.__check_mysql_config()
 		self.pg_engine.set_source_status("syncing")
 		self.__build_table_exceptions()
 		self.schema_list = [self.schema]
@@ -707,10 +743,15 @@ class mysql_source(object):
 			master_end = self.get_master_coordinates()
 			self.disconnect_db_buffered()
 			self.pg_engine.set_source_highwatermark(master_end, consistent=False)
-			
+			notifier_message = "refresh schema %s for source %s is complete" % (self.schema, self.source)
+			self.notifier.send_message(notifier_message, 'info')
+			self.logger.info(notifier_message)
 		except:
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
+			notifier_message = "refresh schema %s for source %s failed" % (self.schema, self.source)
+			self.notifier.send_message(notifier_message, 'critical')
+			self.logger.critical(notifier_message)
 			raise
 	
 	
@@ -725,9 +766,15 @@ class mysql_source(object):
 			The swap happens in a single transaction.
 		"""
 		self.logger.info("Starting sync tables for source %s" % self.source)
-		self.logger.debug("The tables affected are %s" % self.tables)
 		self.__init_sync()
+		self.__check_mysql_config()
 		self.pg_engine.set_source_status("syncing")
+		if self.tables == 'disabled':
+			self.tables = self.pg_engine.get_tables_disabled ()
+			if not self.tables:
+				self.logger.info("There are no disabled tables to sync")
+				return
+		self.logger.debug("The tables affected are %s" % self.tables)
 		self.__build_table_exceptions()
 		self.schema_list = [schema for schema in self.schema_mappings if schema in self.schema_only]
 		self.get_table_list()
@@ -746,10 +793,15 @@ class mysql_source(object):
 			master_end = self.get_master_coordinates()
 			self.disconnect_db_buffered()
 			self.pg_engine.set_source_highwatermark(master_end, consistent=False)
-			
+			notifier_message = "the sync for tables %s in source %s is complete" % (self.tables, self.source)
+			self.notifier.send_message(notifier_message, 'info')
+			self.logger.info(notifier_message)
 		except:
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
+			notifier_message = "the sync for tables %s in source %s failed" % (self.tables, self.source)
+			self.notifier.send_message(notifier_message, 'critical')
+			self.logger.critical(notifier_message)
 			raise
 	
 	def get_table_type_map(self):
@@ -1070,6 +1122,7 @@ class mysql_source(object):
 		"""
 		self.logger.debug("starting init replica for source %s" % self.source)
 		self.__init_sync()
+		self.__check_mysql_config()
 		master_start = self.get_master_coordinates()
 		self.pg_engine.set_source_status("initialising")
 		self.pg_engine.cleanup_source_tables()
@@ -1093,10 +1146,16 @@ class mysql_source(object):
 			master_end = self.get_master_coordinates()
 			self.disconnect_db_buffered()
 			self.pg_engine.set_source_highwatermark(master_end, consistent=False)
+			notifier_message = "init replica for source %s is complete" % self.source
+			self.notifier.send_message(notifier_message, 'info')
+			self.logger.info(notifier_message)
 			
 		except:
 			self.drop_loading_schemas()
 			self.pg_engine.set_source_status("error")
+			notifier_message = "init replica for source %s failed" % self.source
+			self.logger.critical(notifier_message)
+			self.notifier.send_message(notifier_message, 'critical')
 			raise
 		
 		
