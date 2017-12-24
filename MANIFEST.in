@@ -2,4 +2,4 @@ include configuration/config-example.yml
 include sql/create_schema.sql
 include sql/drop_schema.sql
 include sql/upgrade/*.sql
-include LICENSE
+include LICENSE.txt
