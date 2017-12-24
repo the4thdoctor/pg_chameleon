@@ -1,6 +1,6 @@
 changelog 
 *************************
-2.0.0.rc1 XX December 2017
+2.0.0.rc1 24 December 2017
 ............................................
 * Fix  for issue #52, When adding a unique key the table's creation fails because of the NULLable field
 * Add check for the MySQL configuration when initialising or refreshing replicated entities

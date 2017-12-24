@@ -3,6 +3,15 @@ RELEASE NOTES
 
 2.0.0.rc1
 --------------------------
+This release candidate comes with few bug fixes and few usability improvements.
+
+Previously when adding a table with a replicated DDL having an unique key, the table's creation failed because of the fields were 
+set as NULLable . Now the command works properly. 
+The system now checks if the MySQL configuration allows the replica when initialising or refreshing replicated entities.
+A new class ``rollbar_notifier`` was added in order to simplyfi the message management within the source and engine classes.
+Now the commands ``init_replica,refresh_schema,sync_tables`` send an info notification to rollbar when they complete successfully or
+an error if they don't.
+* Allow ``--tables disabled`` when syncing the tables to re synchronise all the tables excluded from the replica
 
 
 2.0.0.beta1
