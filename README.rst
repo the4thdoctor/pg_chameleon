@@ -13,7 +13,7 @@
 .. image:: https://api.travis-ci.org/the4thdoctor/pg_chameleon.svg?branch=ver2.0
     :target: https://travis-ci.org/the4thdoctor/pg_chameleon
     
-pg_chameleon  v2.0.rc1 `is available on pypi test for testing  <https://pypi.python.org/pypi/pg_chameleon>`_  
+pg_chameleon  v2.0.0 `is available on pypi <https://pypi.python.org/pypi/pg_chameleon>`_  
 
 Please report any issue at `https://github.com/the4thdoctor/pg_chameleon/issues <https://github.com/the4thdoctor/pg_chameleon/issues>`_  
 

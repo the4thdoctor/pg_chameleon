@@ -1,5 +1,8 @@
 changelog 
 *************************
+2.0.0 XX January 2018
+............................................
+
 2.0.0.rc1 24 December 2017
 ............................................
 * Fix  for issue #52, When adding a unique key the table's creation fails because of the NULLable field
