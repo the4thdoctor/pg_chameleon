@@ -6,7 +6,7 @@ Command line reference
 
 .. code-block:: bash
     
-    chameleon.py command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] ] [ --version ] 
+    chameleon.py command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] [ --rollbar-level ] ] [ --version ] 
 
 .. csv-table:: Options 
    :header: "Option", "Description", "Default","Example"
@@ -18,6 +18,7 @@ Command line reference
    ``--logid``, Specifies the log id entry for displaying the error details, N/A, ``--logid 30``
    ``--debug``,When added to the command line the debug option disables any daemonisation and outputs all the logging to the console. The keybord interrupt signal is trapped correctly., N/A, ``--debug``
    ``--version``,Displays the package version., N/A, ``--version``
+   ``--rollbar-level``, Sets the maximum level for the messages to be sent  to rolllbar. Accepted values: "critical", "error", "warning", "info", ``info`` ,``--rollbar-level error``
 
    
    

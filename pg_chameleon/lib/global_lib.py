@@ -19,10 +19,17 @@ class rollbar_notifier(object):
 	"""
 		This class is used to send messages to rollbar whether the key and environment variables are set
 	"""
-	def __init__(self, rollbar_key, rollbar_env, logger):
+	def __init__(self, rollbar_key, rollbar_env, rollbar_level, logger):
 		"""
 			Class constructor.
 		"""
+		self.levels = {
+				"critical": 1, 
+				"error": 2, 
+				"warning": 3, 
+				"info": 5
+			}
+		self.rollbar_level = self.levels[rollbar_level]
 		self.logger = logger
 		self.notifier = rollbar
 		if rollbar_key !='' and rollbar_env != '':
@@ -30,16 +37,22 @@ class rollbar_notifier(object):
 		else:
 			self.notifier = None
 		
+		
 	def send_message(self, message, level):
 		"""
 			The method sends a message to rollbar. If it fails it just logs an error 
 			without causing the process to crash.
 		"""
 		try:
-			self.notifier.report_message(message, level)
+			notification_level = self.levels[level]
+			if notification_level <= self.rollbar_level:
+				try:
+					self.notifier.report_message(message, level)
+				except:
+					self.logger.error("Could not send the message to rollbar.")
 		except:
-			self.logger.error("Could not send the message to rollbar.")
-
+			self.logger.error("Wrong rollbar level specified.")
+		
 class replica_engine(object):
 	"""
 		This class is wraps the the mysql and postgresql engines in order to perform the various activities required for the replica. 
@@ -80,7 +93,7 @@ class replica_engine(object):
 		self.load_config()
 		self.logger = self.__init_logger()
 		#notifier configuration
-		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.logger )
+		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.args.rollbar_level ,  self.logger )
 		
 		#pg_engine instance initialisation
 		self.pg_engine = pg_engine()

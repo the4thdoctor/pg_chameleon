@@ -2,6 +2,7 @@ changelog
 *************************
 2.0.0 XX January 2018
 ............................................
+* Add option ``--rollbar-level`` to override the level for messages to be sent to rollbar. Accepted values: "critical", "error", "warning", "info". The Default is "info".
 
 2.0.0.rc1 24 December 2017
 ............................................
