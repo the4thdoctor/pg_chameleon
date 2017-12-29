@@ -14,6 +14,7 @@ commands = [
 	'add_source',
 	'drop_source',
 	'init_replica',
+	'enable_replica',
 	'update_schema_mappings',
 	'refresh_schema',
 	'sync_tables',

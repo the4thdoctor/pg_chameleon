@@ -43,11 +43,14 @@ class rollbar_notifier(object):
 			The method sends a message to rollbar. If it fails it just logs an error 
 			without causing the process to crash.
 		"""
+		exc_info = sys.exc_info()
 		try:
 			notification_level = self.levels[level]
 			if notification_level <= self.rollbar_level:
 				try:
 					self.notifier.report_message(message, level)
+					if exc_info[0]:
+						self.notifier.report_exc_info(exc_info)
 				except:
 					self.logger.error("Could not send the message to rollbar.")
 		except:
@@ -281,12 +284,21 @@ class replica_engine(object):
 			elif drop_src in  self.lst_yes:
 				print('Please type YES all uppercase to confirm')
 	
+	
+	def enable_replica(self):
+		"""
+			The method  resets the source status to stopped
+		"""
+		self.pg_engine.connect_db()
+		self.pg_engine.set_source_status("stopped")
+		
+		
 	def init_replica(self):
 		"""
 			The method  initialise a replica for a given source and configuration. 
 			It is compulsory to specify a source name when running this method.
 			The method checks the source type and calls the corresponding initialisation's method.
-			Currently only mysql is supported.
+			
 		"""
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
@@ -527,6 +539,11 @@ class replica_engine(object):
 			replica_status = self.pg_engine.get_replica_status()
 			if replica_status in ['syncing', 'running', 'initialising']:
 				print("The replica process is already started or is syncing. Aborting the command.")
+			elif replica_status == 'error':
+				print("The replica process is in error state.")
+				print("You may need to check the replica status first. To enable it run the following command.")
+				print("chameleon.py enable_replica --config %s --source %s " % (self.args.config, self.args.source))
+				
 			else:
 				self.logger.info("Cleaning not processed batches for source %s" % (self.args.source))
 				self.pg_engine.clean_not_processed_batches()
