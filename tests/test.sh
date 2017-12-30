@@ -14,3 +14,14 @@ chameleon.py stop_replica --config test --source mysql
 chameleon.py drop_replica_schema --config test
 
 
+chameleon create_replica_schema --config test
+chameleon add_source --config test --source mysql
+chameleon add_source --config test --source pgsql
+chameleon init_replica --config test --source mysql --debug
+chameleon init_replica --config test --source pgsql --debug
+chameleon start_replica --config test --source mysql
+chameleon show_status --config test --source mysql
+chameleon stop_replica --config test --source mysql
+chameleon drop_replica_schema --config test
+
+

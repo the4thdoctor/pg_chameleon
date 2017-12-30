@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+import sys
+from os import path 
+__file__ = __file__ = '%s/chameleon.py' % (path.abspath(path.dirname(sys.argv[0])))
+exec(compile(open(__file__).read(), __file__, 'exec'))

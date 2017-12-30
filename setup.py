@@ -37,7 +37,7 @@ data_files.append(sql_files)
 
 setup(
 	name="pg_chameleon",
-	version="2.0.0.rc1",
+	version="2.0.0",
 	description="MySQL to PostgreSQL replica and migration",
 	long_description=""" pg_chameleon is a tool for replicating from MySQL to PostgreSQL compatible with Python 2.7 and Python 3.3+.
 The system use the library mysql-replication to pull the row images from MySQL which are transformed into a jsonb object. 
@@ -82,7 +82,8 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 		"pg_chameleon.lib.sql_util"
 	],
 	scripts=[
-		"scripts/chameleon.py"
+		"scripts/chameleon.py", 
+		"scripts/chameleon"
 	],
 	install_requires=[
 		'PyMySQL>=0.7.11', 
