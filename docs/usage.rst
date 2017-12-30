@@ -6,7 +6,7 @@ Command line reference
 
 .. code-block:: bash
     
-    chameleon.py command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] [ --rollbar-level ] ] [ --version ] 
+    chameleon command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] [ --rollbar-level ] ] [ --version ] 
 
 .. csv-table:: Options 
    :header: "Option", "Description", "Default","Example"
@@ -68,7 +68,7 @@ Run the ``set_configuration_files`` command in order to create the configuration
 
 .. code-block:: none
     
-    chameleon.py set_configuration_files
+    chameleon set_configuration_files
     
     
 cd in ``~/.pg_chameleon/configuration`` and copy the file ``config-example.yml` to ``default.yml``. 
@@ -147,9 +147,9 @@ Initialise the replica
 
 .. code-block:: none
     
-    chameleon.py create_replica_schema --debug
-    chameleon.py add_source --config default  --debug
-    chameleon.py init_replica --config default --debug
+    chameleon create_replica_schema --debug
+    chameleon add_source --config default  --debug
+    chameleon init_replica --config default --debug
 
 
 Start the replica with
@@ -157,37 +157,37 @@ Start the replica with
 
 .. code-block:: none
     
-  chameleon.py start_replica --config default --source example
+  chameleon start_replica --config default --source example
  
 Check the source status
 
 .. code-block:: none
     
-  chameleon.py show_status --source example
+  chameleon show_status --source example
 
 Check the error log
 
 .. code-block:: none
     
-  chameleon.py show_errors
+  chameleon show_errors
   
 .. code-block:: none
     
-  chameleon.py start_replica --config default --source example
+  chameleon start_replica --config default --source example
 
 
 To stop the replica
 
 .. code-block:: none
     
-  chameleon.py stop_replica --config default --source example
+  chameleon stop_replica --config default --source example
 
  
 To detach the replica
 
 .. code-block:: none
     
-  chameleon.py detach_replica --config default --source example
+  chameleon detach_replica --config default --source example
 
  
 

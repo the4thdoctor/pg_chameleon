@@ -4,6 +4,7 @@ changelog
 ............................................
 * Add option ``--rollbar-level`` to set the maximum level for the messages to be sent to rollbar. Accepted values: "critical", "error", "warning", "info". The Default is "info".
 * Add command ``enable_replica`` used to reset the replica status in case of error or  unespected crash
+* Add script alias ``chameleon`` along with ``chameleon.py``
 
 2.0.0.rc1 24 December 2017
 ............................................

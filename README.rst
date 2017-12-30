@@ -122,7 +122,7 @@ Configuration directory
 ********************************
 The system wide install is now supported correctly. 
 
-The first time chameleon.py is executed it creates a configuration directory in $HOME/.pg_chameleon.
+The first time ``chameleon`` is executed it creates a configuration directory in $HOME/.pg_chameleon.
 Inside the directory there are two subdirectories. 
 
 
