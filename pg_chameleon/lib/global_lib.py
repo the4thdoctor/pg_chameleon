@@ -19,10 +19,17 @@ class rollbar_notifier(object):
 	"""
 		This class is used to send messages to rollbar whether the key and environment variables are set
 	"""
-	def __init__(self, rollbar_key, rollbar_env, logger):
+	def __init__(self, rollbar_key, rollbar_env, rollbar_level, logger):
 		"""
 			Class constructor.
 		"""
+		self.levels = {
+				"critical": 1, 
+				"error": 2, 
+				"warning": 3, 
+				"info": 5
+			}
+		self.rollbar_level = self.levels[rollbar_level]
 		self.logger = logger
 		self.notifier = rollbar
 		if rollbar_key !='' and rollbar_env != '':
@@ -30,16 +37,25 @@ class rollbar_notifier(object):
 		else:
 			self.notifier = None
 		
+		
 	def send_message(self, message, level):
 		"""
 			The method sends a message to rollbar. If it fails it just logs an error 
 			without causing the process to crash.
 		"""
+		exc_info = sys.exc_info()
 		try:
-			self.notifier.report_message(message, level)
+			notification_level = self.levels[level]
+			if notification_level <= self.rollbar_level:
+				try:
+					self.notifier.report_message(message, level)
+					if exc_info[0]:
+						self.notifier.report_exc_info(exc_info)
+				except:
+					self.logger.error("Could not send the message to rollbar.")
 		except:
-			self.logger.error("Could not send the message to rollbar.")
-
+			self.logger.error("Wrong rollbar level specified.")
+		
 class replica_engine(object):
 	"""
 		This class is wraps the the mysql and postgresql engines in order to perform the various activities required for the replica. 
@@ -80,7 +96,7 @@ class replica_engine(object):
 		self.load_config()
 		self.logger = self.__init_logger()
 		#notifier configuration
-		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.logger )
+		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.args.rollbar_level ,  self.logger )
 		
 		#pg_engine instance initialisation
 		self.pg_engine = pg_engine()
@@ -268,12 +284,21 @@ class replica_engine(object):
 			elif drop_src in  self.lst_yes:
 				print('Please type YES all uppercase to confirm')
 	
+	
+	def enable_replica(self):
+		"""
+			The method  resets the source status to stopped
+		"""
+		self.pg_engine.connect_db()
+		self.pg_engine.set_source_status("stopped")
+		
+		
 	def init_replica(self):
 		"""
 			The method  initialise a replica for a given source and configuration. 
 			It is compulsory to specify a source name when running this method.
 			The method checks the source type and calls the corresponding initialisation's method.
-			Currently only mysql is supported.
+			
 		"""
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
@@ -514,6 +539,11 @@ class replica_engine(object):
 			replica_status = self.pg_engine.get_replica_status()
 			if replica_status in ['syncing', 'running', 'initialising']:
 				print("The replica process is already started or is syncing. Aborting the command.")
+			elif replica_status == 'error':
+				print("The replica process is in error state.")
+				print("You may need to check the replica status first. To enable it run the following command.")
+				print("chameleon.py enable_replica --config %s --source %s " % (self.args.config, self.args.source))
+				
 			else:
 				self.logger.info("Cleaning not processed batches for source %s" % (self.args.source))
 				self.pg_engine.clean_not_processed_batches()

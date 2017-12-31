@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from os import listdir
-from os.path import  isfile, join
 from setuptools import setup
 from distutils.sysconfig import get_python_lib
 
 python_lib=get_python_lib()
 
-package_data = ('%s/pg_chameleon' % python_lib, ['LICENSE'])
+package_data = ('%s/pg_chameleon' % python_lib, ['LICENSE.txt'])
 
 	
 
@@ -23,21 +21,18 @@ conf_files = (conf_dir, ['configuration/config-example.yml'])
 
 sql_src = ['sql/create_schema.sql', 'sql/drop_schema.sql']
 
-#sql_upgrade = ["%s/%s" % (sql_up_path, file) for file in listdir(sql_up_path) if isfile(join(sql_up_path, file))]
 
 sql_files = (sql_dir,sql_src)
-#sql_up_files = (sql_up_dir,sql_upgrade)
 
 
 data_files.append(conf_files)
 data_files.append(sql_files)
-#data_files.append(sql_up_files)
 
 
 
 setup(
 	name="pg_chameleon",
-	version="2.0.0.rc1",
+	version="2.0.0",
 	description="MySQL to PostgreSQL replica and migration",
 	long_description=""" pg_chameleon is a tool for replicating from MySQL to PostgreSQL compatible with Python 2.7 and Python 3.3+.
 The system use the library mysql-replication to pull the row images from MySQL which are transformed into a jsonb object. 
@@ -49,8 +44,10 @@ This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 """,
-	author="Federico Campoli",
-	author_email="the4thdoctor.gallifrey@gmail.com",
+	author = "Federico Campoli",
+	author_email = "the4thdoctor.gallifrey@gmail.com",
+	maintainer = "Federico Campoli", 
+	maintainer_email = "the4thdoctor.gallifrey@gmail.com",
 	url="https://github.com/the4thdoctor/pg_chameleon/",
 	license="BSD License",
 	platforms=[
@@ -82,7 +79,8 @@ pg_chameleon can pull the data from a cascading replica when the MySQL slave is 
 		"pg_chameleon.lib.sql_util"
 	],
 	scripts=[
-		"scripts/chameleon.py"
+		"scripts/chameleon.py", 
+		"scripts/chameleon"
 	],
 	install_requires=[
 		'PyMySQL>=0.7.11', 

@@ -7,12 +7,12 @@ Any discrepancy will abort the upgrade procedure.
 
 Preparation
 ..............................
-* Check the pg_chameleon version you are upgrading is 1.8.2. If not upgrade it and start the replica  per each source present in the old catalogue.
+* Check the pg_chameleon version you are upgrading is 1.8.2. If not upgrade it and **start the replica  for each source present in the old catalogue**.
    This step is required in order to have the destination and target schema's updated from the configuration files.
 * Check the replica catalogue version is 1.7 with ``SELECT * FROM sch_chameleon.v_version;``.
-* Check the  field t_source_schema  have values per each source ``SELECT t_source_schema  FROM sch_chameleon.t_sources;``
+* Check the  field t_source_schema have a schema name set ``SELECT t_source_schema  FROM sch_chameleon.t_sources;``
 * Take a backup of the existing schema sch_chameleon with ``pg_dump``
-* Install pg_chameleon version 2 and create the configuration files executing ``chameleon.py set_configuration_files``. 
+* Install pg_chameleon version 2 and create the configuration files executing ``chameleon set_configuration_files``. 
 * cd in ``~/.pg_chameleon/configuration/`` and copy the file ``config-example.yml`` in a different file ``e.g. cp config-example.yml upgraded.yml``
 * Edit  the file and set the target and source's database connections. You may want to change the source name as well 
 
@@ -68,12 +68,12 @@ Upgrade
 ..............................
 
 Execute the following command 
-``chameleon.py upgrade_replica_schema --config upgraded``
+``chameleon upgrade_replica_schema --config upgraded``
 
 The procedure checks if the start catalogue version is 1.7 and fails if the value is different.
 After answering YES the procedure executes the following steps.
 
-* Replays any exising batch left in the previous replica catalogue
+* Replays any exising batches present in the catalogue 1.7
 * Checks if the schema_mappings are compatible with the values stored in the schema ``sch_chameleon``
 * Renames the schema ``sch_chameleon`` to ``_sch_chameleon_version1``
 * Installs a new 2.0 schema in ``sch_chameleon``
@@ -83,7 +83,7 @@ After answering YES the procedure executes the following steps.
 
 If the migration is successful, before starting the replica process is better to check that all tables are correctly mapped with 
 
-``chameleon.py show_status --source upgraded``
+``chameleon show_status --source upgraded``
 
 
 Rollback

@@ -6,7 +6,7 @@ Command line reference
 
 .. code-block:: bash
     
-    chameleon.py command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] ] [ --version ] 
+    chameleon command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] [ --rollbar-level ] ] [ --version ] 
 
 .. csv-table:: Options 
    :header: "Option", "Description", "Default","Example"
@@ -18,6 +18,7 @@ Command line reference
    ``--logid``, Specifies the log id entry for displaying the error details, N/A, ``--logid 30``
    ``--debug``,When added to the command line the debug option disables any daemonisation and outputs all the logging to the console. The keybord interrupt signal is trapped correctly., N/A, ``--debug``
    ``--version``,Displays the package version., N/A, ``--version``
+   ``--rollbar-level``, Sets the maximum level for the messages to be sent  to rolllbar. Accepted values: "critical", "error", "warning", "info", ``info`` ,``--rollbar-level error``
 
    
    
@@ -41,6 +42,7 @@ Command line reference
     ``start_replica``, Starts the replica process daemon, ``--config`` ``--source`` 
     ``stop_replica``, Stops the replica process daemon, ``--config`` ``--source`` 
     ``detach_replica``, Detaches a replica from the mysql master configuring the postgres schemas to work as a standalone system. Useful for migrations., ``--config`` ``--source`` 
+    ``enable_replica``, Enables the replica for the given source changing the source status to stopped. It's useful if the replica crashes., ``--config`` ``--source`` 
 
     
 Example
@@ -59,14 +61,13 @@ Install pg_chameleon
 .. code-block:: none
     
     pip install pip --upgrade
-    pip install pg_chameleon==2.0.0rc1
-
+    pip install pg_chameleon
 
 Run the ``set_configuration_files`` command in order to create the configuration directory.
 
 .. code-block:: none
     
-    chameleon.py set_configuration_files
+    chameleon set_configuration_files
     
     
 cd in ``~/.pg_chameleon/configuration`` and copy the file ``config-example.yml` to ``default.yml``. 
@@ -145,9 +146,9 @@ Initialise the replica
 
 .. code-block:: none
     
-    chameleon.py create_replica_schema --debug
-    chameleon.py add_source --config default  --debug
-    chameleon.py init_replica --config default --debug
+    chameleon create_replica_schema --debug
+    chameleon add_source --config default  --debug
+    chameleon init_replica --config default --debug
 
 
 Start the replica with
@@ -155,37 +156,37 @@ Start the replica with
 
 .. code-block:: none
     
-  chameleon.py start_replica --config default --source example
+  chameleon start_replica --config default --source example
  
 Check the source status
 
 .. code-block:: none
     
-  chameleon.py show_status --source example
+  chameleon show_status --source example
 
 Check the error log
 
 .. code-block:: none
     
-  chameleon.py show_errors
+  chameleon show_errors
   
 .. code-block:: none
     
-  chameleon.py start_replica --config default --source example
+  chameleon start_replica --config default --source example
 
 
 To stop the replica
 
 .. code-block:: none
     
-  chameleon.py stop_replica --config default --source example
+  chameleon stop_replica --config default --source example
 
  
 To detach the replica
 
 .. code-block:: none
     
-  chameleon.py detach_replica --config default --source example
+  chameleon detach_replica --config default --source example
 
  
 

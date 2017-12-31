@@ -1,5 +1,11 @@
 changelog 
 *************************
+2.0.0 01 January 2018
+............................................
+* Add option ``--rollbar-level`` to set the maximum level for the messages to be sent to rollbar. Accepted values: "critical", "error", "warning", "info". The Default is "info".
+* Add command ``enable_replica`` used to reset the replica status in case of error or  unespected crash
+* Add script alias ``chameleon`` along with ``chameleon.py``
+
 2.0.0.rc1 24 December 2017
 ............................................
 * Fix  for issue #52, When adding a unique key the table's creation fails because of the NULLable field
