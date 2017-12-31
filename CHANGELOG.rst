@@ -1,6 +1,6 @@
 changelog 
 *************************
-2.0.0 XX January 2018
+2.0.0 01 January 2018
 ............................................
 * Add option ``--rollbar-level`` to set the maximum level for the messages to be sent to rollbar. Accepted values: "critical", "error", "warning", "info". The Default is "info".
 * Add command ``enable_replica`` used to reset the replica status in case of error or  unespected crash
