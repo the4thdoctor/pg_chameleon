@@ -1,55 +1,31 @@
-### pg_chameleon a lightweigth MySQL to PostgreSQL replica
+### pg_chameleon MySQL to PostgreSQL replica system
 
 ![Alt text](images/pgchameleon.png "Igor the chameleon")
 
 The chameleon logo was made by [Elena Toma](http://tonkipappero.deviantart.com/ "Tonkipappero's Art")
 
-Pg_chameleon is a replication tool from MySQL to PostgreSQL developed in Python 2.7 and 3.6. The system uses on
-the [mysql-replication](https://github.com/noplay/python-mysql-replication "mysql-replication") library to pull the changes from MySQL and covert them into a jsonb object.
-A plpgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
 
-The tool can initialise the replica pulling out the data from MySQL but this requires the FLUSH TABLE WITH READ LOCK; to work properly.
+pg_chameleon is a replication system for replicating MySQL schemas into a target PostgreSQL database.
 
-The tool can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
+The latest release is the 2.0.0
 
+pg_chameleon is Python 3.3+ compatible. 
 
-The latest release is the v1.2
+The system  can read from multiple MySQL schemas  and replicate them it into a target PostgreSQL database.
 
-This release is [available on pypi](https://pypi.python.org/pypi/pg_chameleon)
+A conservative approach to the replica is implemented.  The tables which generate errors during the replay are automatically excluded from the replica.
 
-The documentation is [available on here](http://pythonhosted.org/pg_chameleon/)
+The init_replica, sync_tables and refresh_schema processes are started in background.
 
-Please ensure you are running the latest pip version before installing pg_chameleon. 
+The replica process is fully daemonised with two child subprocesses, one for the read and one for the replay. 
 
-The full changelog is [available here](https://github.com/the4thdoctor/pg_chameleon/blob/master/CHANGELOG.rst) 
+pg_chameleon uses a soft approach when initialising the replica .
+The tables are locked only during the copy. Their log coordinates are used  by the replica daemon to put the database in a consistent status gradually.
 
+The system supports the rollbar integration for a better error detection and event monitoring (e.g. when the init_replica ends a message is sent to rollbar).
 
-#### Branches and testing
+Package page [https://pypi.python.org/pypi/pg_chameleon](https://pypi.python.org/pypi/pg_chameleon)
 
-The branch currently developed is the pgchameleon_v1. 
+The documentation [http://www.pgchameleon.org/documents/](http://www.pgchameleon.org/documents/)
 
-The branch pgchameleon_v2 is currently under development and it works python3 only.
-
-#### Caveats 
-##### Installation in virtualenv
-
-For working properly you should use virtualenv and install it using *pip install pg_chameleon*.
-
-
-##### No daemon
-The replica process should be executed in a cron job in order to keep it running. As the replica detects if there's already another
-running process, the cron job can be executed frequently (e.g. every 30 minutes) without issues.
-
-There's no respawning of the process or failure detection.
-
-##### DDL replica limitations
-
-DDL and DML mixed in the same transaction are not decoded in the right order. 
-This can affect the replica because of a wrong jsonb descriptor. 
-
-### pg_chameleon a lightweight replication system!
-A recording of a presentation  bout pg_chameleon is available on the Brighton PostgreSQL meetup page.
-
-Unfortunately the audio is suboptimal.
-
-[![IMAGE ALT TEXT](http://img.youtube.com/vi/ZZeBGDpUhec/0.jpg)](http://www.youtube.com/watch?v=ZZeBGDpUhec "pg_chameleon a lightweight replication system")
+Changelog available [http://www.pgchameleon.org/documents/changelog.html](http://www.pgchameleon.org/documents/changelog.html)
