@@ -73,7 +73,7 @@ Execute the following command
 The procedure checks if the start catalogue version is 1.7 and fails if the value is different.
 After answering YES the procedure executes the following steps.
 
-* Replays any exising batch left in the previous replica catalogue
+* Replays any exising batches present in the catalogue 1.7
 * Checks if the schema_mappings are compatible with the values stored in the schema ``sch_chameleon``
 * Renames the schema ``sch_chameleon`` to ``_sch_chameleon_version1``
 * Installs a new 2.0 schema in ``sch_chameleon``

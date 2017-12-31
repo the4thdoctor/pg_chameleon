@@ -2,10 +2,10 @@ RELEASE NOTES
 *************************
 2.0.0
 --------------------------
-This stable release is basically the RC1 with few usability improvements.
+This stable release consists of the same code of the RC1 with few usability improvements.
 
 A new option is now available to set to set the maximum level for the messages to be sent to rollbar. 
-This is quite useful for periodical init_replica (e.g. pgsql source type refreshed every hour) and there's no need for noise on rollbar.
+This is quite useful if we configure a periodical init_replica (e.g. pgsql source type refreshed every hour) and we don't want to fill rollbar with noise.
 For example ``chameleon init_replica --source pgsql --rollbar-level critical``  will send to rollbar only messages marked as critical.
 
 There is now a command line alias ``chameleon`` which is a wrapper for ``chameleon.py``.

@@ -87,8 +87,7 @@ Features
 
 Caveats
 ..............................
-The replica requires the tables to have a primary key. Tables without primary key are initialised during the init_replica process but the replica
-doesn't update them.
+The replica requires the tables to have a primary or unique key. Tables without primary/unique key are initialised during the init_replica process but not replicated.
 
 The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
 If the copy process fails for memory error check the failing table's row length and the number of rows for each slice. 
@@ -109,7 +108,7 @@ Setup
 * Create a virtual environment (e.g. python3 -m venv venv)
 * Activate the virtual environment (e.g. source venv/bin/activate)
 * Upgrade pip with **pip install pip --upgrade**
-* Install pg_chameleon with **pip install pg_chameleon==2.0.0a2**. 
+* Install pg_chameleon with **pip install pg_chameleon**. 
 * Create a user on mysql for the replica (e.g. usr_replica)
 * Grant access to usr on the replicated database (e.g. GRANT ALL ON sakila.* TO 'usr_replica';)
 * Grant RELOAD privilege to the user (e.g. GRANT RELOAD ON \*.\* to 'usr_replica';)

@@ -18,17 +18,24 @@ The system use the library mysql-replication to pull the row images from MySQL w
 A pl/pgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
 
 The tool requires an  initial replica setup which pulls the data from MySQL in read only mode. 
-This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
 
 pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
 
 
 
-`Documentation available at pgchameleon.org <http://www.pgchameleon.org/documents_v2/index.html>`_
+`Documentation available at pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`_
 
 `Release available via pypi <https://pypi.python.org/pypi/pg_chameleon/>`_
 
 
+FEATURES
+*************************
+* Replicates multiple MySQL schemas within the same MySQL cluster into a target PostgreSQL database. The source and target schema names can be different.
+* Conservative approach to the replica. Tables which generate errors are automatically excluded from the replica.
+* Daemonised init_replica,refresh_schema,sync_tables processes.
+* Daemonised replica process with two separated subprocess, one for the read and one for the replay.
+* Soft replica initialisation. The tables are locked when needed and stored with their log coordinates. The replica damon will put the database in a consistent status gradually.
+* Rollbar integration for a simpler error detection and alerting.
 
 
 CHANGELOG
