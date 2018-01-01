@@ -25,7 +25,7 @@ commands = [
 	'show_errors'
 	]
 
-command_help = """Available commands, """ + ','.join(commands)
+command_help = ','.join(commands)
 config_help = """Specifies the configuration to use without the suffix yml. If  the parameter is omitted then ~/.pg_chameleon/configuration/default.yml is used"""
 schema_help = """Specifies the schema within a source. If omitted all schemas for the given source are affected by the command. Requires the argument --source to be specified"""
 source_help = """Specifies the source within a configuration. If omitted all sources are affected by the command."""
