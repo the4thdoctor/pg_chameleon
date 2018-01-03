@@ -1049,7 +1049,7 @@ class mysql_source(object):
 								event_before[column_name]=binascii.hexlify(event_before[column_name]).decode()
 							elif column_type in self.hexify and isinstance(event_before[column_name], bytes):
 								event_before[column_name] = ''
-						event_insert={"global_data":global_data,"event_after":event_after,  "event_before":event_before}
+						event_insert = {"global_data":global_data,"event_after":event_after,  "event_before":event_before}
 						size_insert += len(str(event_insert))
 						group_insert.append(event_insert)
 						
