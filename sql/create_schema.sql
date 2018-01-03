@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '2.0.0'::TEXT t_version
+	SELECT '2.1.0'::TEXT t_version
 ;
 
 --TYPES
@@ -53,6 +53,7 @@ CREATE TABLE sch_chameleon.t_sources
 	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
 	t_binlog_name text,
 	i_binlog_position integer,
+	lsn_write_position pg_lsn,
 	b_consistent boolean NOT NULL DEFAULT TRUE,
 	enm_source_type sch_chameleon.en_src_type NOT NULL,
 	v_log_table character varying[] ,

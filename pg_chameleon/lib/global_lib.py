@@ -67,8 +67,8 @@ class replica_engine(object):
 		"""
 			Class constructor.
 		"""
-		self.catalog_version = '2.0.0'
-		self.upgradable_version = '1.7'
+		self.catalog_version = '2.1.0'
+		self.upgradable_version = '2.0.0'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
@@ -424,7 +424,7 @@ class replica_engine(object):
 				upg_cat = input(upg_msg)
 				if upg_cat == 'YES':
 					self.logger.info("Performing the upgrade")
-					self.pg_engine.upgrade_catalogue_v1()
+					self.pg_engine.upgrade_catalogue_v2()
 				elif upg_cat in  self.lst_yes:
 					print('Please type YES all uppercase to confirm')
 			elif catalog_version.split('.')[0] == '1':
