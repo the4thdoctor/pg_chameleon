@@ -214,12 +214,7 @@ pg_decode_begin_txn(LogicalDecodingContext *ctx, ReorderBufferTXN *txn)
 static void
 pg_output_begin(LogicalDecodingContext *ctx, chameleonData *data, ReorderBufferTXN *txn, bool last_write)
 {
-	OutputPluginPrepareWrite(ctx, last_write);
-	if (data->include_xids)
-		appendStringInfo(ctx->out, "BEGIN %u", txn->xid);
-	else
-		appendStringInfoString(ctx->out, "BEGIN");
-	OutputPluginWrite(ctx, last_write);
+	
 }
 
 /* COMMIT callback */
