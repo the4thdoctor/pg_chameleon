@@ -5,7 +5,7 @@
  *		postgresql's test_decoding.c  
  *
  * Copyright (c) 2012-2018, PostgreSQL Global Development Group
- * Copyright (c) 2018, Federico Campoli
+ * Copyright (c) 2018 Federico Campoli
  * IDENTIFICATION
  *		  src/chameleon.c
  *
@@ -256,7 +256,7 @@ pg_decode_filter(LogicalDecodingContext *ctx,
  * into stringbuf `s'.
  *
  * Some builtin types aren't quoted, the rest is quoted. Escaping is done as
- * if standard_conforming_strings were enabled.
+ * if standard_conforming_strings were disabled.
  */
 static void
 print_literal(StringInfo s, Oid typid, char *outputstr)
@@ -293,9 +293,9 @@ print_literal(StringInfo s, Oid typid, char *outputstr)
 			for (valptr = outputstr; *valptr; valptr++)
 			{
 				char		ch = *valptr;
-
+				/*escape for single quotes  '  */
 				if (SQL_STR_DOUBLE(ch, false))
-					appendStringInfoChar(s, ch);
+					appendStringInfoChar(s, '\\');
 				appendStringInfoChar(s, ch);
 			}
 			appendStringInfoChar(s, '\'');
