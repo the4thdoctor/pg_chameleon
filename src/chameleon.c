@@ -105,7 +105,7 @@ pg_decode_startup(LogicalDecodingContext *ctx, OutputPluginOptions *opt,
 										  "text conversion context",
 										  ALLOCSET_DEFAULT_SIZES);
 	data->include_xids = true;
-	data->include_timestamp = false;
+	data->include_timestamp = true;
 	data->skip_empty_xacts = false;
 	data->only_local = false;
 
@@ -255,14 +255,15 @@ pg_decode_filter(LogicalDecodingContext *ctx,
  * Print literal `outputstr' already represented as string of type `typid'
  * into stringbuf `s'.
  *
- * Some builtin types aren't quoted, the rest is quoted. Escaping is done as
- * if standard_conforming_strings were enabled.
+ * All types aren quoted for conversion in python dictionary. 
+*  Escaping is done as * if standard_conforming_strings were disabled as the python dictionary
+*  works with \' instead of '' .
  */
 static void
 print_literal(StringInfo s, Oid typid, char *outputstr)
 {
 	const char *valptr;
-
+	appendStringInfoChar(s, '\'');
 	switch (typid)
 	{
 		case INT2OID:
@@ -289,7 +290,7 @@ print_literal(StringInfo s, Oid typid, char *outputstr)
 			break;
 
 		default:
-			appendStringInfoChar(s, '\'');
+			
 			for (valptr = outputstr; *valptr; valptr++)
 			{
 				char		ch = *valptr;
@@ -298,9 +299,10 @@ print_literal(StringInfo s, Oid typid, char *outputstr)
 					appendStringInfoChar(s, ch);
 				appendStringInfoChar(s, ch);
 			}
-			appendStringInfoChar(s, '\'');
+			
 			break;
 	}
+	appendStringInfoChar(s, '\'');
 }
 
 
@@ -352,14 +354,11 @@ tuple_to_stringinfo(StringInfo s, TupleDesc tupdesc, HeapTuple tuple, bool skip_
 			continue;
 
 		/* print attribute name */
-		appendStringInfoChar(s, ' ');
+		appendStringInfoChar(s, '\'');
 		appendStringInfoString(s, quote_identifier(NameStr(attr->attname)));
-
-		/* print attribute type */
-		appendStringInfoChar(s, '[');
-		appendStringInfoString(s, format_type_be(typid));
-		appendStringInfoChar(s, ']');
-
+		appendStringInfoChar(s, '\'');
+		
+		
 		/* query output function */
 		getTypeOutputInfo(typid,
 						  &typoutput, &typisvarlena);
@@ -369,7 +368,7 @@ tuple_to_stringinfo(StringInfo s, TupleDesc tupdesc, HeapTuple tuple, bool skip_
 
 		/* print data */
 		if (isnull)
-			appendStringInfoString(s, "null");
+			appendStringInfoString(s, "'null'");
 		else if (typisvarlena && VARATT_IS_EXTERNAL_ONDISK(origval))
 			appendStringInfoString(s, "unchanged-toast-datum");
 		else if (!typisvarlena)
@@ -413,19 +412,26 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	old = MemoryContextSwitchTo(data->context);
 
 	OutputPluginPrepareWrite(ctx, true);
+	appendStringInfo(ctx->out, "{");
+	if (data->include_xids)
+		appendStringInfo(ctx->out, "'txid':'%u',", txn->xid);
+	if (data->include_timestamp)
+		appendStringInfo(ctx->out, "'timestamp':'%s')",
+						 timestamptz_to_str(txn->commit_time));
 
-	appendStringInfoString(ctx->out, "table ");
+	appendStringInfoString(ctx->out, "'table':");
+	appendStringInfoString(ctx->out, "'");
 	appendStringInfoString(ctx->out,
 						   quote_qualified_identifier(
 													  get_namespace_name(
 																		 get_rel_namespace(RelationGetRelid(relation))),
 													  NameStr(class_form->relname)));
-	appendStringInfoChar(ctx->out, ':');
+	appendStringInfoString(ctx->out, "',");
 
 	switch (change->action)
 	{
 		case REORDER_BUFFER_CHANGE_INSERT:
-			appendStringInfoString(ctx->out, " INSERT:");
+			appendStringInfoString(ctx->out, " 'action':'insert', ");
 			if (change->data.tp.newtuple == NULL)
 				appendStringInfoString(ctx->out, " (no-tuple-data)");
 			else
@@ -434,25 +440,25 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 									false);
 			break;
 		case REORDER_BUFFER_CHANGE_UPDATE:
-			appendStringInfoString(ctx->out, " UPDATE:");
+			appendStringInfoString(ctx->out, " 'action':'update', ");
 			if (change->data.tp.oldtuple != NULL)
 			{
-				appendStringInfoString(ctx->out, " old-key:");
+				appendStringInfoString(ctx->out, " 'before_values':");
 				tuple_to_stringinfo(ctx->out, tupdesc,
 									&change->data.tp.oldtuple->tuple,
 									true);
-				appendStringInfoString(ctx->out, " new-tuple:");
+				appendStringInfoString(ctx->out, " 'after_values':");
 			}
 
 			if (change->data.tp.newtuple == NULL)
-				appendStringInfoString(ctx->out, " (no-tuple-data)");
+				appendStringInfoString(ctx->out, " after_values:'null'");
 			else
 				tuple_to_stringinfo(ctx->out, tupdesc,
 									&change->data.tp.newtuple->tuple,
 									false);
 			break;
 		case REORDER_BUFFER_CHANGE_DELETE:
-			appendStringInfoString(ctx->out, " DELETE:");
+			appendStringInfoString(ctx->out, " 'action':'delete',");
 
 			/* if there was no PK, we only know that a delete happened */
 			if (change->data.tp.oldtuple == NULL)
@@ -466,7 +472,7 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 		default:
 			Assert(false);
 	}
-
+	appendStringInfo(ctx->out, "}");
 	MemoryContextSwitchTo(old);
 	MemoryContextReset(data->context);
 
