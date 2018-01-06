@@ -2,6 +2,7 @@
 import time
 import psycopg2
 import json
+import ast
 from psycopg2.extras import LogicalReplicationConnection
 from psycopg2.extras import  REPLICATION_LOGICAL
 strconn = "dbname=postgres user=usr_replica host=localhost password=bar port=5432 "  
@@ -20,7 +21,10 @@ while True:
 	while msg:
 		msg = log_cur.read_message()
 		if msg:
-			print(msg.data_start, msg.payload)
+			try:
+				print(ast.literal_eval(msg.payload))
+			except:
+				print(msg.data_start, msg.payload)
 			flush_lsn=msg.data_start
 	if flush_lsn:
 		log_cur.send_feedback(flush_lsn=flush_lsn)
