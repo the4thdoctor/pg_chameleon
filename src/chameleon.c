@@ -214,6 +214,10 @@ pg_decode_begin_txn(LogicalDecodingContext *ctx, ReorderBufferTXN *txn)
 static void
 pg_output_begin(LogicalDecodingContext *ctx, chameleonData *data, ReorderBufferTXN *txn, bool last_write)
 {
+	OutputPluginPrepareWrite(ctx, last_write);
+	appendStringInfo(ctx->out, "{'action':'BEGIN', 'xid': '%u', 'timestamp':'%s' }", txn->xid,timestamptz_to_str(txn->commit_time));
+	OutputPluginWrite(ctx, last_write);
+
 	
 }
 
@@ -228,14 +232,7 @@ pg_decode_commit_txn(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 		return;
 
 	OutputPluginPrepareWrite(ctx, true);
-	if (data->include_xids)
-		appendStringInfo(ctx->out, "COMMIT %u", txn->xid);
-	else
-		appendStringInfoString(ctx->out, "COMMIT");
-
-	if (data->include_timestamp)
-		appendStringInfo(ctx->out, " (at %s)",
-						 timestamptz_to_str(txn->commit_time));
+	appendStringInfo(ctx->out, "{'action':'COMMIT', 'xid': '%u', 'timestamp':'%s' }", txn->xid,timestamptz_to_str(txn->commit_time));
 
 	OutputPluginWrite(ctx, true);
 }
@@ -311,14 +308,8 @@ static void
 tuple_to_stringinfo(StringInfo s, TupleDesc tupdesc, HeapTuple tuple, bool skip_nulls)
 {
 	int			natt;
-	Oid			oid;
 
-	/* print oid of tuple, it's not included in the TupleDesc */
-	if ((oid = HeapTupleHeaderGetOid(tuple->t_data)) != InvalidOid)
-	{
-		appendStringInfo(s, " oid[oid]:%u", oid);
-	}
-
+	
 	/* print all columns individually */
 	for (natt = 0; natt < tupdesc->natts; natt++)
 	{
