@@ -105,7 +105,7 @@ pg_decode_startup(LogicalDecodingContext *ctx, OutputPluginOptions *opt,
 										  "text conversion context",
 										  ALLOCSET_DEFAULT_SIZES);
 	data->include_xids = true;
-	data->include_timestamp = true;
+	data->include_timestamp = false;
 	data->skip_empty_xacts = false;
 	data->only_local = false;
 
