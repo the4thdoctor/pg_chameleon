@@ -5,7 +5,7 @@
  *		postgresql's test_decoding.c  
  *
  * Copyright (c) 2012-2018, PostgreSQL Global Development Group
- * Copyright (c) 2018, Federico Campoli
+ * Copyright (c) 2018 Federico Campoli
  * IDENTIFICATION
  *		  src/chameleon.c
  *
@@ -254,10 +254,10 @@ pg_decode_filter(LogicalDecodingContext *ctx,
 /*
  * Print literal `outputstr' already represented as string of type `typid'
  * into stringbuf `s'.
- *
  * All types aren quoted for conversion in python dictionary. 
-*  Escaping is done as * if standard_conforming_strings were disabled as the python dictionary
-*  works with \' instead of '' .
+ *  Escaping is done as 
+ * if standard_conforming_strings were disabled as the python dictionary
+ *  works with \' instead of '' .
  */
 static void
 print_literal(StringInfo s, Oid typid, char *outputstr)
@@ -294,9 +294,9 @@ print_literal(StringInfo s, Oid typid, char *outputstr)
 			for (valptr = outputstr; *valptr; valptr++)
 			{
 				char		ch = *valptr;
-
+				/*escape for single quotes  '  */
 				if (SQL_STR_DOUBLE(ch, false))
-					appendStringInfoChar(s, ch);
+					appendStringInfoChar(s, '\\');
 				appendStringInfoChar(s, ch);
 			}
 			
