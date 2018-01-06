@@ -252,15 +252,17 @@ pg_decode_filter(LogicalDecodingContext *ctx,
  * Print literal `outputstr' already represented as string of type `typid'
  * into stringbuf `s'.
  * All types aren quoted for conversion in python dictionary. 
- *  Escaping is done as 
- * if standard_conforming_strings were disabled as the python dictionary
- *  works with \' instead of '' .
+ *  Escaping is done as if standard_conforming_strings were disabled 
+ *  as the python dictionary works with \'  .
  */
 static void
 print_literal(StringInfo s, Oid typid, char *outputstr)
 {
 	const char *valptr;
-	appendStringInfoChar(s, '\'');
+	
+	if (typid == BYTEAOID)
+		appendStringInfoChar(s, 'r');
+	appendStringInfoChar(s, '\'');	
 	switch (typid)
 	{
 		case INT2OID:
@@ -279,6 +281,9 @@ print_literal(StringInfo s, Oid typid, char *outputstr)
 			appendStringInfo(s, "B'%s'", outputstr);
 			break;
 
+		case BYTEAOID:
+			appendStringInfo(s, "%s", outputstr);
+			break;
 		case BOOLOID:
 			if (strcmp(outputstr, "t") == 0)
 				appendStringInfoString(s, "true");
@@ -303,13 +308,88 @@ print_literal(StringInfo s, Oid typid, char *outputstr)
 }
 
 
+/* print the tuple 'tuple' into the string s */
+static void
+tuple_to_dictionary(StringInfo s, TupleDesc tupdesc, HeapTuple tuple, bool skip_nulls)
+{
+	int			natt;
+	/* print all columns individually */
+	for (natt = 0; natt < tupdesc->natts; natt++)
+	{
+				Form_pg_attribute attr; /* the attribute itself */
+		Oid			typid;		/* type of current attribute */
+		Oid			typoutput;	/* output function */
+		bool		typisvarlena;
+		Datum		origval;	/* possibly toasted Datum */
+		bool		isnull;		/* column is null? */
+
+		attr = TupleDescAttr(tupdesc, natt);
+
+		/*
+		 * don't print dropped columns, we can't be sure everything is
+		 * available for them
+		 */
+		if (attr->attisdropped)
+			continue;
+
+		/*
+		 * Don't print system columns, oid will already have been printed if
+		 * present.
+		 */
+		if (attr->attnum < 0)
+			continue;
+
+		typid = attr->atttypid;
+
+		/* get Datum from tuple */
+		origval = heap_getattr(tuple, natt + 1, tupdesc, &isnull);
+
+		if (isnull && skip_nulls)
+			continue;
+
+		/* query output function */
+		getTypeOutputInfo(typid,
+						  &typoutput, &typisvarlena);
+
+		
+		/* print attribute name */
+		appendStringInfo(s, "'%s':",NameStr(attr->attname));
+		
+		/* print data */
+		if (isnull)
+			appendStringInfoString(s, "'null'");
+		else if (!typisvarlena)
+			print_literal(s, typid,
+						  OidOutputFunctionCall(typoutput, origval));
+		else
+		{
+			Datum		val;	/* we detoast the Datum always*/
+
+			val = PointerGetDatum(PG_DETOAST_DATUM(origval));
+			print_literal(s, typid, OidOutputFunctionCall(typoutput, val));
+		}
+		
+		/* add comma */
+		
+		appendStringInfoChar(s, ',');
+		
+	}
+
+}
+
 /* print the tuple 'tuple' into the StringInfo s */
 static void
 tuple_to_stringinfo(StringInfo s, TupleDesc tupdesc, HeapTuple tuple, bool skip_nulls)
 {
 	int			natt;
+	Oid			oid;
 
-	
+	/* print oid of tuple, it's not included in the TupleDesc */
+	if ((oid = HeapTupleHeaderGetOid(tuple->t_data)) != InvalidOid)
+	{
+		appendStringInfo(s, " oid[oid]:%u", oid);
+	}
+
 	/* print all columns individually */
 	for (natt = 0; natt < tupdesc->natts; natt++)
 	{
@@ -345,11 +425,14 @@ tuple_to_stringinfo(StringInfo s, TupleDesc tupdesc, HeapTuple tuple, bool skip_
 			continue;
 
 		/* print attribute name */
-		appendStringInfoChar(s, '\'');
+		appendStringInfoChar(s, ' ');
 		appendStringInfoString(s, quote_identifier(NameStr(attr->attname)));
-		appendStringInfoChar(s, '\'');
-		
-		
+
+		/* print attribute type */
+		appendStringInfoChar(s, '[');
+		appendStringInfoString(s, format_type_be(typid));
+		appendStringInfoChar(s, ']');
+
 		/* query output function */
 		getTypeOutputInfo(typid,
 						  &typoutput, &typisvarlena);
@@ -359,7 +442,7 @@ tuple_to_stringinfo(StringInfo s, TupleDesc tupdesc, HeapTuple tuple, bool skip_
 
 		/* print data */
 		if (isnull)
-			appendStringInfoString(s, "'null'");
+			appendStringInfoString(s, "null");
 		else if (typisvarlena && VARATT_IS_EXTERNAL_ONDISK(origval))
 			appendStringInfoString(s, "unchanged-toast-datum");
 		else if (!typisvarlena)
@@ -407,7 +490,7 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	if (data->include_xids)
 		appendStringInfo(ctx->out, "'txid':'%u',", txn->xid);
 	if (data->include_timestamp)
-		appendStringInfo(ctx->out, "'timestamp':'%s')",
+		appendStringInfo(ctx->out, "'timestamp':'%s',",
 						 timestamptz_to_str(txn->commit_time));
 
 	appendStringInfoString(ctx->out, "'table':");
@@ -422,20 +505,21 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	switch (change->action)
 	{
 		case REORDER_BUFFER_CHANGE_INSERT:
-			appendStringInfoString(ctx->out, " 'action':'insert', ");
+			appendStringInfoString(ctx->out, " 'action':'insert', 'values':{");
 			if (change->data.tp.newtuple == NULL)
 				appendStringInfoString(ctx->out, " (no-tuple-data)");
 			else
-				tuple_to_stringinfo(ctx->out, tupdesc,
+				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.newtuple->tuple,
 									false);
+			appendStringInfoString(ctx->out, " }");
 			break;
 		case REORDER_BUFFER_CHANGE_UPDATE:
 			appendStringInfoString(ctx->out, " 'action':'update', ");
 			if (change->data.tp.oldtuple != NULL)
 			{
 				appendStringInfoString(ctx->out, " 'before_values':");
-				tuple_to_stringinfo(ctx->out, tupdesc,
+				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.oldtuple->tuple,
 									true);
 				appendStringInfoString(ctx->out, " 'after_values':");
@@ -444,7 +528,7 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 			if (change->data.tp.newtuple == NULL)
 				appendStringInfoString(ctx->out, " after_values:'null'");
 			else
-				tuple_to_stringinfo(ctx->out, tupdesc,
+				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.newtuple->tuple,
 									false);
 			break;

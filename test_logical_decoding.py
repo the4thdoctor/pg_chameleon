@@ -22,9 +22,11 @@ while True:
 		msg = log_cur.read_message()
 		if msg:
 			try:
-				print(ast.literal_eval(msg.payload))
+				row = ast.literal_eval(msg.payload)
+				print(json.dumps(row))
 			except:
 				print(msg.data_start, msg.payload)
+				
 			flush_lsn=msg.data_start
 	if flush_lsn:
 		log_cur.send_feedback(flush_lsn=flush_lsn)
