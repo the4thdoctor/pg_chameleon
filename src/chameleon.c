@@ -416,9 +416,9 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	appendStringInfoString(ctx->out, "'");
 	appendStringInfoString(ctx->out,
 						   quote_qualified_identifier(
-													  get_namespace_name(
-																		 get_rel_namespace(RelationGetRelid(relation))),
-													  NameStr(class_form->relname)));
+											  get_namespace_name(
+												get_rel_namespace(RelationGetRelid(relation))),
+											  NameStr(class_form->relname)));
 	appendStringInfoString(ctx->out, "',");
 
 	switch (change->action)
@@ -431,36 +431,50 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.newtuple->tuple,
 									false);
-			appendStringInfoString(ctx->out, " }");
+			appendStringInfoString(ctx->out, " },");
 			break;
 		case REORDER_BUFFER_CHANGE_UPDATE:
 			appendStringInfoString(ctx->out, " 'action':'update', ");
-			if (change->data.tp.oldtuple != NULL)
+			if (change->data.tp.oldtuple == NULL )
+			{
+				appendStringInfoString(ctx->out, " 'before_values':{");
+				if(change->data.tp.newtuple != NULL)
+				{
+					
+					tuple_to_dictionary(ctx->out, tupdesc,
+										&change->data.tp.newtuple->tuple,
+										false);
+					
+				}
+				appendStringInfoString(ctx->out, " },");
+			}
+			else
 			{
 				appendStringInfoString(ctx->out, " 'before_values': {");
 				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.oldtuple->tuple,
-									false);
-				appendStringInfoString(ctx->out, " }");
+									true);
+				appendStringInfoString(ctx->out, " },");
 			}
 
 			if (change->data.tp.newtuple == NULL)
-				appendStringInfoString(ctx->out, " after_values: {}");
+				appendStringInfoString(ctx->out, " 'after_values': {},");
 			else
-				appendStringInfoString(ctx->out, " after_values:{");
+				appendStringInfoString(ctx->out, " 'after_values':{");
 				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.newtuple->tuple,
 									false);
-				appendStringInfoString(ctx->out, " }");
+				appendStringInfoString(ctx->out, " },");
 			break;
+			
 		case REORDER_BUFFER_CHANGE_DELETE:
 			/* if there was  PK, we emit the change */
 			if (change->data.tp.oldtuple != NULL)
 				appendStringInfoString(ctx->out, " 'action':'delete', 'values': {");
 				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.oldtuple->tuple,
-									false);
-				appendStringInfoString(ctx->out, " }");
+									true);
+				appendStringInfoString(ctx->out, " },");
 			break;
 		default:
 			Assert(false);
