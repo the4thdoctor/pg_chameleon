@@ -260,8 +260,7 @@ print_literal(StringInfo s, Oid typid, char *outputstr)
 {
 	const char *valptr;
 	
-	if (typid == BYTEAOID)
-		appendStringInfoChar(s, 'r');
+	appendStringInfoChar(s, 'r');
 	appendStringInfoChar(s, '\'');	
 	switch (typid)
 	{
