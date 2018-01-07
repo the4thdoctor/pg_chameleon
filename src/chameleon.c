@@ -376,86 +376,6 @@ tuple_to_dictionary(StringInfo s, TupleDesc tupdesc, HeapTuple tuple, bool skip_
 
 }
 
-/* print the tuple 'tuple' into the StringInfo s */
-static void
-tuple_to_stringinfo(StringInfo s, TupleDesc tupdesc, HeapTuple tuple, bool skip_nulls)
-{
-	int			natt;
-	Oid			oid;
-
-	/* print oid of tuple, it's not included in the TupleDesc */
-	if ((oid = HeapTupleHeaderGetOid(tuple->t_data)) != InvalidOid)
-	{
-		appendStringInfo(s, " oid[oid]:%u", oid);
-	}
-
-	/* print all columns individually */
-	for (natt = 0; natt < tupdesc->natts; natt++)
-	{
-		Form_pg_attribute attr; /* the attribute itself */
-		Oid			typid;		/* type of current attribute */
-		Oid			typoutput;	/* output function */
-		bool		typisvarlena;
-		Datum		origval;	/* possibly toasted Datum */
-		bool		isnull;		/* column is null? */
-
-		attr = TupleDescAttr(tupdesc, natt);
-
-		/*
-		 * don't print dropped columns, we can't be sure everything is
-		 * available for them
-		 */
-		if (attr->attisdropped)
-			continue;
-
-		/*
-		 * Don't print system columns, oid will already have been printed if
-		 * present.
-		 */
-		if (attr->attnum < 0)
-			continue;
-
-		typid = attr->atttypid;
-
-		/* get Datum from tuple */
-		origval = heap_getattr(tuple, natt + 1, tupdesc, &isnull);
-
-		if (isnull && skip_nulls)
-			continue;
-
-		/* print attribute name */
-		appendStringInfoChar(s, ' ');
-		appendStringInfoString(s, quote_identifier(NameStr(attr->attname)));
-
-		/* print attribute type */
-		appendStringInfoChar(s, '[');
-		appendStringInfoString(s, format_type_be(typid));
-		appendStringInfoChar(s, ']');
-
-		/* query output function */
-		getTypeOutputInfo(typid,
-						  &typoutput, &typisvarlena);
-
-		/* print separator */
-		appendStringInfoChar(s, ':');
-
-		/* print data */
-		if (isnull)
-			appendStringInfoString(s, "null");
-		else if (typisvarlena && VARATT_IS_EXTERNAL_ONDISK(origval))
-			appendStringInfoString(s, "unchanged-toast-datum");
-		else if (!typisvarlena)
-			print_literal(s, typid,
-						  OidOutputFunctionCall(typoutput, origval));
-		else
-		{
-			Datum		val;	/* definitely detoasted Datum */
-
-			val = PointerGetDatum(PG_DETOAST_DATUM(origval));
-			print_literal(s, typid, OidOutputFunctionCall(typoutput, val));
-		}
-	}
-}
 
 /*
  * callback for individual changed tuples
@@ -517,31 +437,30 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 			appendStringInfoString(ctx->out, " 'action':'update', ");
 			if (change->data.tp.oldtuple != NULL)
 			{
-				appendStringInfoString(ctx->out, " 'before_values':");
+				appendStringInfoString(ctx->out, " 'before_values': {");
 				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.oldtuple->tuple,
-									true);
-				appendStringInfoString(ctx->out, " 'after_values':");
+									false);
+				appendStringInfoString(ctx->out, " }");
 			}
 
 			if (change->data.tp.newtuple == NULL)
-				appendStringInfoString(ctx->out, " after_values:'null'");
+				appendStringInfoString(ctx->out, " after_values: {}");
 			else
+				appendStringInfoString(ctx->out, " after_values:{");
 				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.newtuple->tuple,
 									false);
+				appendStringInfoString(ctx->out, " }");
 			break;
 		case REORDER_BUFFER_CHANGE_DELETE:
-			appendStringInfoString(ctx->out, " 'action':'delete',");
-
-			/* if there was no PK, we only know that a delete happened */
-			if (change->data.tp.oldtuple == NULL)
-				appendStringInfoString(ctx->out, " (no-tuple-data)");
-			/* In DELETE, only the replica identity is present; display that */
-			else
-				tuple_to_stringinfo(ctx->out, tupdesc,
+			/* if there was  PK, we emit the change */
+			if (change->data.tp.oldtuple != NULL)
+				appendStringInfoString(ctx->out, " 'action':'delete', 'values': {");
+				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.oldtuple->tuple,
-									true);
+									false);
+				appendStringInfoString(ctx->out, " }");
 			break;
 		default:
 			Assert(false);
