@@ -13,7 +13,7 @@ rep_options = {'include-timestamp': 1,'skip-empty-xacts': 1}
 #rep_options = None
 #log_cur.create_replication_slot("logical1", slot_type=REPLICATION_LOGICAL, output_plugin="test_decoding")
 log_cur.start_replication(slot_name="test2", slot_type=REPLICATION_LOGICAL, start_lsn=0, timeline=0, options=rep_options, decode=True)
-
+counter=0
 
 while True:
 	msg = True
@@ -23,7 +23,11 @@ while True:
 		if msg:
 			try:
 				row = ast.literal_eval(msg.payload)
-				print(json.dumps(row))
+				jsondata= json.dumps(row)
+				counter+=1
+				if counter>10000:
+					print("10000 rows decoded")
+					counter=0
 			except:
 				print(msg.data_start, msg.payload)
 				#raise

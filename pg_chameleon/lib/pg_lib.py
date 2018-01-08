@@ -2,6 +2,8 @@ import io
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
+from psycopg2.extras import LogicalReplicationConnection
+from psycopg2.extras import  REPLICATION_LOGICAL
 import sys
 import json
 import datetime
@@ -106,6 +108,26 @@ class pgsql_source(object):
 			self.logger.debug("Changing the autocommit flag to %s" % auto_commit)
 			pgsql_conn.set_session(autocommit=auto_commit)
 
+		elif not self.source_conn:
+			self.logger.error("Undefined database connection string. Exiting now.")
+			sys.exit()
+		
+		return {'connection': pgsql_conn, 'cursor': pgsql_cur }
+	
+	def __connect_logical_replica(self):
+		"""
+			Connects to PostgreSQL using the parameters stored in self.dest_conn. 
+			This specific method connects using the logical replication protocol.
+			
+			:return: a dictionary with the objects connection and cursor 
+			:rtype: dictionary
+		"""
+		if self.source_conn:
+			strconn = "dbname=%(database)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s connect_timeout=%(connect_timeout)s"  % self.source_conn
+			pgsql_conn = psycopg2.connect(strconn, connection_factory=LogicalReplicationConnection)
+			pgsql_conn .set_client_encoding(self.source_conn["charset"])
+			pgsql_cur = pgsql_conn .cursor()
+			
 		elif not self.source_conn:
 			self.logger.error("Undefined database connection string. Exiting now.")
 			sys.exit()
@@ -502,6 +524,18 @@ class pgsql_source(object):
 			queue.put(False)
 		db_conn.close()
 	
+	def __create_replication_slot(self):
+		"""
+			The method creates a logical replication slot with the decoding plugin chameleon.
+		"""
+		 
+		db_replica = self.__connect_logical_replica(False)
+		repl_cursor = db_replica["cursor"]
+		db_conn = db_replica["connection"]
+		repl_cursor.create_replication_slot(self.source, slot_type=REPLICATION_LOGICAL, output_plugin="chameleon")
+		
+		
+	
 	def init_replica(self):
 		"""
 			The method performs a full init replica for the given source
@@ -513,6 +547,7 @@ class pgsql_source(object):
 		self.__get_table_list()
 		self.__create_destination_schemas()
 		self.pg_engine.schema_loading = self.schema_loading
+		self.__create_replication_slot()
 		self.pg_engine.set_source_status("initialising")
 		try:
 			self.__create_destination_tables()

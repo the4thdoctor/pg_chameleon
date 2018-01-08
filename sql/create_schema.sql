@@ -93,6 +93,7 @@ CREATE TABLE sch_chameleon.t_replica_batch
   i_id_source bigint NOT NULL,
   t_binlog_name text,
   i_binlog_position integer,
+  i_lsn_position bigint,
   b_started boolean NOT NULL DEFAULT False,
   b_processed boolean NOT NULL DEFAULT False,
   b_replayed boolean NOT NULL DEFAULT False,
@@ -129,6 +130,7 @@ CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
   jsb_event_before jsonb,
   t_query text,
   i_my_event_time bigint,
+  ts_pg_event_time timestamp with time zone,
   CONSTRAINT pk_log_replica PRIMARY KEY (i_id_event),
   CONSTRAINT fk_replica_batch FOREIGN KEY (i_id_batch) 
 	REFERENCES  sch_chameleon.t_replica_batch (i_id_batch)
