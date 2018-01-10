@@ -24,6 +24,8 @@ class mysql_source(object):
 		self.schema_list = []
 		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
 		self.schema_only = {}
+		self.schema_skip = set()
+		self.schema_limit = set()
 	
 	def __del__(self):
 		"""
@@ -156,6 +158,7 @@ class mysql_source(object):
 		
 		if limit_tables:
 			table_limit = [table.split('.') for table in limit_tables]
+			self.schema_limit=set([table[0] for table in table_limit])
 			for table_list in table_limit:
 				list_exclude = []
 				try:
@@ -170,6 +173,7 @@ class mysql_source(object):
 				self.limit_tables[table_list[0]]  = list_exclude
 		if skip_tables:
 			table_skip = [table.split('.') for table in skip_tables]		
+			self.schema_skip = set([table[0] for table in table_skip])
 			for table_list in table_skip:
 				list_exclude = []
 				try:
@@ -689,7 +693,7 @@ class mysql_source(object):
 		self.replica_conn["user"] = str(db_conn["user"])
 		self.replica_conn["passwd"] = str(db_conn["password"])
 		self.replica_conn["port"] = int(db_conn["port"])
-			
+		self.__build_table_exceptions()
 		
 	
 	def __init_sync(self):
@@ -853,7 +857,31 @@ class mysql_source(object):
 		return table_type_map
 	
 	
-	def read_replica_stream(self, batch_data):
+	def __store_binlog_event(self, table, schema):
+		"""
+		The private method returns whether the table event should be stored or not in the postgresql log replica.
+			
+		:param table: The table's name to check
+		:param table: The table's schema name
+		:return: true if the table should be replicated, false if shouldn't
+		:rtype: boolean
+		"""
+		if schema in self.schema_skip:
+			if table in self.skip_tables[schema]:
+				return False
+				
+		if schema in self.limit_tables:
+			if table in self.limit_tables[schema]:
+				return True
+			else:
+				return False
+
+		return True
+		
+		
+		
+	
+	def __read_replica_stream(self, batch_data):
 		"""
 		Stream the replica using the batch data. This method evaluates the different events streamed from MySQL 
 		and manages them accordingly. The BinLogStreamReader function is called with the only_event parameter which
@@ -882,11 +910,7 @@ class mysql_source(object):
 		:return: the batch's data composed by binlog name, binlog position and last event timestamp read from the mysql replica stream.
 		:rtype: dictionary
 		"""
-		skip_tables = None
 		size_insert=0
-		if self.skip_tables:
-			skip_tables = [table.split('.')[1] for table in self.skip_tables]
-		
 		sql_tokeniser = sql_token()
 		table_type_map = self.get_table_type_map()	
 		inc_tables = self.pg_engine.get_inconsistent_tables()
@@ -907,7 +931,7 @@ class mysql_source(object):
 			log_pos = log_position, 
 			resume_stream = True, 
 			only_schemas = self.schema_replica, 
-			ignored_tables = skip_tables, 
+			
 		)
 		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		
@@ -951,33 +975,35 @@ class mysql_source(object):
 					for token in sql_tokeniser.tokenised:
 						write_ddl = True
 						table_name = token["name"] 
-						table_key_dic = "%s.%s" % (destination_schema, table_name)
-						if table_key_dic in inc_tables:
-							write_ddl = False
-							log_seq = int(log_file.split('.')[1])
-							log_pos = int(log_position)
-							table_dic = inc_tables[table_key_dic]
-							if log_seq > table_dic["log_seq"]:
-								write_ddl = True
-							elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
-								write_ddl = True
+						store_query = self.__store_binlog_event(table_name, schema_query)
+						if store_query:
+							table_key_dic = "%s.%s" % (destination_schema, table_name)
+							if table_key_dic in inc_tables:
+								write_ddl = False
+								log_seq = int(log_file.split('.')[1])
+								log_pos = int(log_position)
+								table_dic = inc_tables[table_key_dic]
+								if log_seq > table_dic["log_seq"]:
+									write_ddl = True
+								elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
+									write_ddl = True
+								if write_ddl:
+									self.logger.info("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_key_dic, binlogfile, log_position))
+									self.pg_engine.set_consistent_table(table_name, destination_schema)
+									inc_tables = self.pg_engine.get_inconsistent_tables()
 							if write_ddl:
-								self.logger.info("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_key_dic, binlogfile, log_position))
-								self.pg_engine.set_consistent_table(table_name, destination_schema)
-								inc_tables = self.pg_engine.get_inconsistent_tables()
-						if write_ddl:
-							event_time = binlogevent.timestamp
-							self.logger.debug("TOKEN: %s" % (token))
-							
-							if len(token)>0:
-								query_data={
-									"binlog":log_file, 
-									"logpos":log_position, 
-									"schema": destination_schema, 
-									"batch_id":id_batch, 
-									"log_table":log_table
-								}
-								self.pg_engine.write_ddl(token, query_data, destination_schema)
+								event_time = binlogevent.timestamp
+								self.logger.debug("TOKEN: %s" % (token))
+								
+								if len(token)>0:
+									query_data={
+										"binlog":log_file, 
+										"logpos":log_position, 
+										"schema": destination_schema, 
+										"batch_id":id_batch, 
+										"log_table":log_table
+									}
+									self.pg_engine.write_ddl(token, query_data, destination_schema)
 								
 							
 						
@@ -999,71 +1025,73 @@ class mysql_source(object):
 					schema_row = binlogevent.schema
 					destination_schema = self.schema_mappings[schema_row]
 					table_key_dic = "%s.%s" % (destination_schema, table_name)
-					if table_key_dic in inc_tables:
-						table_consistent = False
-						log_seq = int(log_file.split('.')[1])
-						log_pos = int(log_position)
-						table_dic = inc_tables[table_key_dic]
-						if log_seq > table_dic["log_seq"]:
-							table_consistent = True
-						elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
-							table_consistent = True
-							self.logger.info("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_key_dic, binlogfile, log_position))
-						if table_consistent:
-							add_row = True
-							self.pg_engine.set_consistent_table(table_name, destination_schema)
-							inc_tables = self.pg_engine.get_inconsistent_tables()
-						else:
-							add_row = False
-					
-					column_map=table_type_map[schema_row][table_name]
-					global_data={
-										"binlog":log_file, 
-										"logpos":log_position, 
-										"schema": destination_schema, 
-										"table": table_name, 
-										"batch_id":id_batch, 
-										"log_table":log_table, 
-										"event_time":event_time
-									}
-					if add_row:
-						if isinstance(binlogevent, DeleteRowsEvent):
-							global_data["action"] = "delete"
-							event_after=row["values"]
-						elif isinstance(binlogevent, UpdateRowsEvent):
-							global_data["action"] = "update"
-							event_after=row["after_values"]
-							event_before=row["before_values"]
-						elif isinstance(binlogevent, WriteRowsEvent):
-							global_data["action"] = "insert"
-							event_after=row["values"]
-						for column_name in event_after:
-							column_type=column_map[column_name]
-							if column_type in self.hexify and event_after[column_name]:
-								event_after[column_name]=binascii.hexlify(event_after[column_name]).decode()
-							elif column_type in self.hexify and isinstance(event_after[column_name], bytes):
-								event_after[column_name] = ''
-						for column_name in event_before:
-							column_type=column_map[column_name]
-							if column_type in self.hexify and event_before[column_name]:
-								event_before[column_name]=binascii.hexlify(event_before[column_name]).decode()
-							elif column_type in self.hexify and isinstance(event_before[column_name], bytes):
-								event_before[column_name] = ''
-						event_insert={"global_data":global_data,"event_after":event_after,  "event_before":event_before}
-						size_insert += len(str(event_insert))
-						group_insert.append(event_insert)
+					store_row = self.__store_binlog_event(table_name, schema_row)
+					if store_row:
+						if table_key_dic in inc_tables:
+							table_consistent = False
+							log_seq = int(log_file.split('.')[1])
+							log_pos = int(log_position)
+							table_dic = inc_tables[table_key_dic]
+							if log_seq > table_dic["log_seq"]:
+								table_consistent = True
+							elif log_seq == table_dic["log_seq"] and log_pos >= table_dic["log_pos"]:
+								table_consistent = True
+								self.logger.info("CONSISTENT POINT FOR TABLE %s REACHED  - binlogfile %s, position %s" % (table_key_dic, binlogfile, log_position))
+							if table_consistent:
+								add_row = True
+								self.pg_engine.set_consistent_table(table_name, destination_schema)
+								inc_tables = self.pg_engine.get_inconsistent_tables()
+							else:
+								add_row = False
 						
-					master_data["File"]=log_file
-					master_data["Position"]=log_position
-					master_data["Time"]=event_time
-					
-					if len(group_insert)>=self.replica_batch_size:
-						self.logger.info("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
-						self.logger.debug("Master coordinates: %s" % (master_data, ))
-						self.pg_engine.write_batch(group_insert)
-						size_insert=0
-						group_insert=[]
-						close_batch=True
+						column_map=table_type_map[schema_row][table_name]
+						global_data={
+											"binlog":log_file, 
+											"logpos":log_position, 
+											"schema": destination_schema, 
+											"table": table_name, 
+											"batch_id":id_batch, 
+											"log_table":log_table, 
+											"event_time":event_time
+										}
+						if add_row:
+							if isinstance(binlogevent, DeleteRowsEvent):
+								global_data["action"] = "delete"
+								event_after=row["values"]
+							elif isinstance(binlogevent, UpdateRowsEvent):
+								global_data["action"] = "update"
+								event_after=row["after_values"]
+								event_before=row["before_values"]
+							elif isinstance(binlogevent, WriteRowsEvent):
+								global_data["action"] = "insert"
+								event_after=row["values"]
+							for column_name in event_after:
+								column_type=column_map[column_name]
+								if column_type in self.hexify and event_after[column_name]:
+									event_after[column_name]=binascii.hexlify(event_after[column_name]).decode()
+								elif column_type in self.hexify and isinstance(event_after[column_name], bytes):
+									event_after[column_name] = ''
+							for column_name in event_before:
+								column_type=column_map[column_name]
+								if column_type in self.hexify and event_before[column_name]:
+									event_before[column_name]=binascii.hexlify(event_before[column_name]).decode()
+								elif column_type in self.hexify and isinstance(event_before[column_name], bytes):
+									event_before[column_name] = ''
+							event_insert={"global_data":global_data,"event_after":event_after,  "event_before":event_before}
+							size_insert += len(str(event_insert))
+							group_insert.append(event_insert)
+							
+						master_data["File"]=log_file
+						master_data["Position"]=log_position
+						master_data["Time"]=event_time
+						
+						if len(group_insert)>=self.replica_batch_size:
+							self.logger.info("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
+							self.logger.debug("Master coordinates: %s" % (master_data, ))
+							self.pg_engine.write_batch(group_insert)
+							size_insert=0
+							group_insert=[]
+							close_batch=True
 						
 						
 						
@@ -1094,7 +1122,7 @@ class mysql_source(object):
 		batch_data = self.pg_engine.get_batch_data()
 		if len(batch_data)>0:
 			id_batch=batch_data[0][0]
-			replica_data=self.read_replica_stream(batch_data)
+			replica_data=self.__read_replica_stream(batch_data)
 			master_data=replica_data[0]
 			close_batch=replica_data[1]
 			if close_batch:
