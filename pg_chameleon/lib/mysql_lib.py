@@ -24,8 +24,6 @@ class mysql_source(object):
 		self.schema_list = []
 		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
 		self.schema_only = {}
-		self.schema_skip = set()
-		self.schema_limit = set()
 	
 	def __del__(self):
 		"""
@@ -158,7 +156,6 @@ class mysql_source(object):
 		
 		if limit_tables:
 			table_limit = [table.split('.') for table in limit_tables]
-			self.schema_limit=set([table[0] for table in table_limit])
 			for table_list in table_limit:
 				list_exclude = []
 				try:
@@ -168,12 +165,11 @@ class mysql_source(object):
 					try:
 						list_exclude.append(table_list[1])
 					except IndexError:
-						self.logger.warning("Cannot determine the schema name for the table %s. The table won't be synced " % (table_list[0]))
+						pass
 				
 				self.limit_tables[table_list[0]]  = list_exclude
 		if skip_tables:
 			table_skip = [table.split('.') for table in skip_tables]		
-			self.schema_skip = set([table[0] for table in table_skip])
 			for table_list in table_skip:
 				list_exclude = []
 				try:
@@ -866,7 +862,7 @@ class mysql_source(object):
 		:return: true if the table should be replicated, false if shouldn't
 		:rtype: boolean
 		"""
-		if schema in self.schema_skip:
+		if schema in self.skip_tables:
 			if table in self.skip_tables[schema]:
 				return False
 				
