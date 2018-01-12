@@ -490,7 +490,7 @@ class replica_engine(object):
 		signal.signal(signal.SIGINT, self.terminate_replica)
 		queue = mp.Queue()
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
-		check_timeout = self.sleep_loop*10
+		check_timeout = self.sleep_loop#*10
 		self.logger.info("Starting the replica daemons for source %s " % (self.args.source))
 		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue,))
 		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue,))
