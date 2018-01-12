@@ -1,5 +1,8 @@
 RELEASE NOTES
 *************************
+2.0.1
+--------------------------
+
 2.0.0
 --------------------------
 This stable release consists of the same code of the RC1 with few usability improvements.
