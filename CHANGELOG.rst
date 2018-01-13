@@ -4,7 +4,7 @@ changelog
 ............................................
 * Fix for issue #58. Improve the read replica performance by filtering the row images when ``limit_tables/skip_tables`` are set.
 * Make the ``read_replica_stream`` method private.
-
+* Fix read replica crash if in alter table a column was defined as ``character varying``
 
 2.0.0 01 January 2018
 ............................................
