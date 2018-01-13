@@ -1,27 +1,28 @@
 changelog 
 *************************
-2.0.1 XX January 2018
-............................................
+
+2.0.1 - 14 January 2018
+..........................................................
 * Fix for issue #58. Improve the read replica performance by filtering the row images when ``limit_tables/skip_tables`` are set.
 * Make the ``read_replica_stream`` method private.
 * Fix read replica crash if in alter table a column was defined as ``character varying``
 
-2.0.0 01 January 2018
-............................................
+2.0.0 - 01 January 2018
+..........................................................
 * Add option ``--rollbar-level`` to set the maximum level for the messages to be sent to rollbar. Accepted values: "critical", "error", "warning", "info". The Default is "info".
 * Add command ``enable_replica`` used to reset the replica status in case of error or  unespected crash
 * Add script alias ``chameleon`` along with ``chameleon.py``
 
-2.0.0.rc1 24 December 2017
-............................................
+2.0.0.rc1 - 24 December 2017
+..........................................................
 * Fix  for issue #52, When adding a unique key the table's creation fails because of the NULLable field
 * Add check for the MySQL configuration when initialising or refreshing replicated entities
 * Add class rollbar_notifier for simpler message management
 * Add end of init_replica,refresh_schema,sync_tables notification to rollbar
 * Allow ``--tables disabled`` when syncing the tables to re synchronise all the tables excluded from the replica
 
-2.0.0.beta1 10 December 2017
-............................................
+2.0.0.beta1 - 10 December 2017
+..........................................................
 * fix a race condition where an unrelated DDL can cause the collected binlog rows to be added several times to the log_table
 * fix regression in write ddl caused by the change of private method 
 * fix wrong ddl parsing when a column definition is surrounded by parentheses e.g. ``ALTER TABLE foo ADD COLUMN(bar varchar(30));``
@@ -30,8 +31,8 @@ changelog
 * init_replica for source pgsql adds "replicated tables" for better  show_status display
 * check if the source is registered when running commands that require a source name
 
-2.0.0.alpha3 03 December 2017
-.............................
+2.0.0.alpha3 - 03 December 2017
+..........................................................
 * Remove limit_tables from binlogreader initialisation, as we can read from multiple schemas we should only exclude the tables not limit
 * Fix wrong formatting for default value when altering a field
 * Add upgrade procedure from version 1.8.2 to 2.0
@@ -41,8 +42,8 @@ changelog
 * Add init_replica support for source type pgsql (EXPERIMENTAL)
  
 
-2.0.0.alpha2 18 November 2017
-.............................
+2.0.0.alpha2 - 18 November 2017
+..........................................................
 * Fix wrong position when determining the destination schema in read_replica_stream
 * Fix wrong log position stored in the source's high watermark
 * Fix wrong table inclusion/exclusion in read_replica_steam
@@ -64,8 +65,8 @@ changelog
 * add separate logs for per source
 * change log line formatting inspired by the super clean look in pgbackrest (thanks you guys)
 
-2.0.0.alpha1 11 November 2017
-.............................
+2.0.0.alpha1 - 11 November 2017
+..........................................................
 
 * Python 3 only development
 * Add support for reading from multiple MySQL schemas and restore them it into a target PostgreSQL database. The source and target schema names can be different.
