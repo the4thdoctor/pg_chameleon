@@ -3,6 +3,10 @@
 from setuptools import setup
 from distutils.sysconfig import get_python_lib
 
+def readme():
+    with open('README.rst') as f:
+        return f.read()
+
 python_lib=get_python_lib()
 
 package_data = ('%s/pg_chameleon' % python_lib, ['LICENSE.txt'])
@@ -34,16 +38,7 @@ setup(
 	name="pg_chameleon",
 	version="2.1.0.dev0",
 	description="MySQL to PostgreSQL replica and migration",
-	long_description=""" pg_chameleon is a tool for replicating from MySQL to PostgreSQL compatible with Python 3.3+.
-The system use the library mysql-replication to pull the row images from MySQL which are transformed into a jsonb object. 
-A pl/pgsql function decodes the jsonb and replays the changes into the PostgreSQL database.
-
-The tool requires an  initial replica setup which pulls the data from MySQL in read only mode. 
-This is done by the tool running FLUSH TABLE WITH READ LOCK;  .
-
-pg_chameleon can pull the data from a cascading replica when the MySQL slave is configured with log-slave-updates.
-
-""",
+	long_description=readme(),
 	author = "Federico Campoli",
 	author_email = "the4thdoctor.gallifrey@gmail.com",
 	maintainer = "Federico Campoli", 

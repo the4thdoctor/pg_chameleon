@@ -1,5 +1,18 @@
 RELEASE NOTES
 *************************
+2.0.1
+--------------------------
+The first maintenance release of pg_chameleon v2 adds a performance improvement in the read replica process when 
+the variables limit_tables or skip_tables are set.
+
+Previously all the rows were read from the replica stream as the ``BinLogStreamReader`` do not allow the usage of  the tables in the form of
+``schema_name.table_name``. This caused a large amount of useless data hitting the replica log tables as reported in the issue #58.
+
+The private method ``__store_binlog_event`` now evaluates the row schema and table and returns a boolean value on whether the row or query
+should be stored or not into the log table. 
+
+The release fixes also a crash in read replica if an alter table added a column was of type ``character varying``.
+
 2.0.0
 --------------------------
 This stable release consists of the same code of the RC1 with few usability improvements.
