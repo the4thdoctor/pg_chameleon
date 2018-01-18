@@ -886,13 +886,14 @@ class pg_engine(object):
 			self.pgsql_cur.execute(sql_replay, (replay_max_rows, self.i_id_source, exit_on_error))
 			replay_status = self.pgsql_cur.fetchone()
 			if replay_status[0]:
-				self.logger.info("Replayed %s rows for source %s" % (replay_max_rows, self.source) )
+				self.logger.info("Replayed at most %s rows for source %s" % (replay_max_rows, self.source) )
 			continue_loop = replay_status[0]
 			function_error = replay_status[1]
 			if function_error:
 				raise Exception('The replay process crashed')
 			if replay_status[2]:
 				tables_error.append(replay_status[2])
+		self. __cleanup_replayed_batches()
 		return tables_error
 			
 	
@@ -941,7 +942,27 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_pkey, (schema, table, ))
 		table_pkey = self.pgsql_cur.fetchone()
 		return table_pkey[0]
-		
+	
+	
+	def __cleanup_replayed_batches(self):
+		"""
+			The method cleanup the replayed batches for the given source accordingly with the source's parameter  batch_retention
+		"""
+		batch_retention = self.source_config["batch_retention"]
+		self.logger.info("Cleaning replayed batches for source %s older than %s" % (self.source,batch_retention) )
+		sql_cleanup = """
+			DELETE FROM 
+				sch_chameleon.t_replica_batch
+			WHERE
+					b_started
+				AND b_processed
+				AND b_replayed
+				AND now()-ts_replayed>%s::interval
+				AND i_id_source=%s
+			;
+		"""
+		self.pgsql_cur.execute(sql_cleanup, (batch_retention, self.i_id_source ))
+	
 	def __generate_ddl(self, token,  destination_schema):
 		""" 
 			The method builds the DDL using the tokenised SQL stored in token.
@@ -959,6 +980,7 @@ class pg_engine(object):
 			:rtype: string
 			
 		"""
+		
 		count_table = self.__count_table_schema(token["name"], destination_schema)
 		query=""
 		if token["command"] =="CREATE TABLE":
