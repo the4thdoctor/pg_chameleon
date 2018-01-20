@@ -1,5 +1,19 @@
 RELEASE NOTES
 *************************
+2.0.2
+--------------------------
+This bugfix relase adds a missing functionality which wasn't added during the application rewrite. The  parameter ``batch_retention`` was left unused
+having the replayed batches accumulating in the replica catalogue with conseguent performance degradation over time.
+This release now cleans up the table according with the retention set per source. 
+After the upgrade you may notice an initial lag building during the replay phase as the procedure will cleanup the expired batches.
+This is normal and after the replay resumes the speed should become better over time.
+
+This release adds a private method ``_swap_enums`` to the class ``pg_engine``.
+The method moves the enumerated types from the loading schema to the destination schema. 
+Previously any table synced individually would lose any enum field because the associated data type was dropped within the loading schema.
+Now the procedure works correctly moving the enumerated types into destination schema before dropping the loading schema.
+
+
 2.0.1
 --------------------------
 The first maintenance release of pg_chameleon v2 adds a performance improvement in the read replica process when 
