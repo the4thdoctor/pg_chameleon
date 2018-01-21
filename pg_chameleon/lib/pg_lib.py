@@ -851,13 +851,14 @@ class pg_engine(object):
 			self.pgsql_cur.execute(sql_replay, (replay_max_rows, self.i_id_source, exit_on_error))
 			replay_status = self.pgsql_cur.fetchone()
 			if replay_status[0]:
-				self.logger.info("Replayed %s rows for source %s" % (replay_max_rows, self.source) )
+				self.logger.info("Replayed at most %s rows for source %s" % (replay_max_rows, self.source) )
 			continue_loop = replay_status[0]
 			function_error = replay_status[1]
 			if function_error:
 				raise Exception('The replay process crashed')
 			if replay_status[2]:
 				tables_error.append(replay_status[2])
+		self. __cleanup_replayed_batches()
 		return tables_error
 			
 	
@@ -906,7 +907,27 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_pkey, (schema, table, ))
 		table_pkey = self.pgsql_cur.fetchone()
 		return table_pkey[0]
-		
+	
+	
+	def __cleanup_replayed_batches(self):
+		"""
+			The method cleanup the replayed batches for the given source accordingly with the source's parameter  batch_retention
+		"""
+		batch_retention = self.source_config["batch_retention"]
+		self.logger.info("Cleaning replayed batches for source %s older than %s" % (self.source,batch_retention) )
+		sql_cleanup = """
+			DELETE FROM 
+				sch_chameleon.t_replica_batch
+			WHERE
+					b_started
+				AND b_processed
+				AND b_replayed
+				AND now()-ts_replayed>%s::interval
+				AND i_id_source=%s
+			;
+		"""
+		self.pgsql_cur.execute(sql_cleanup, (batch_retention, self.i_id_source ))
+	
 	def __generate_ddl(self, token,  destination_schema):
 		""" 
 			The method builds the DDL using the tokenised SQL stored in token.
@@ -924,6 +945,7 @@ class pg_engine(object):
 			:rtype: string
 			
 		"""
+		
 		count_table = self.__count_table_schema(token["name"], destination_schema)
 		query=""
 		if token["command"] =="CREATE TABLE":
@@ -3110,6 +3132,41 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_collect_events, (id_batch, ))
 	
+	
+	def __swap_enums(self):
+		"""
+			The method searches for enumerations in the loading schemas and swaps them with the types eventually
+			present in the destination schemas
+		"""
+		sql_get_enum = """
+			SELECT 
+				typname 
+			FROM 
+				pg_type typ 
+				INNER JOIN pg_namespace sch 
+				ON 
+					typ.typnamespace=sch.oid 
+			WHERE
+					sch.nspname=%s
+				and	typcategory='E'
+			;
+		"""
+		
+		for schema in self.schema_tables:
+			schema_loading = self.schema_loading[schema]["loading"]
+			schema_destination = self.schema_loading[schema]["destination"]
+			self.pgsql_cur.execute(sql_get_enum, (schema_loading,))
+			enum_list = self.pgsql_cur.fetchall()
+			for enumeration in enum_list:
+				type_name = enumeration[0]
+				sql_drop_origin = sql.SQL("DROP TYPE IF EXISTS {}.{} CASCADE;").format(sql.Identifier(schema_destination),sql.Identifier(type_name))
+				sql_set_schema_new = sql.SQL("ALTER TYPE {}.{} SET SCHEMA {};").format(sql.Identifier(schema_loading),sql.Identifier(type_name), sql.Identifier(schema_destination))
+				self.logger.debug("Dropping the original tpye %s.%s " % (schema_destination, type_name))
+				self.pgsql_cur.execute(sql_drop_origin)
+				self.logger.debug("Changing the schema for type %s.%s to %s" % (schema_loading, type_name, schema_destination))
+				self.pgsql_cur.execute(sql_set_schema_new)
+
+	
 	def swap_tables(self):
 		"""
 			The method loops over the tables stored in the class 
@@ -3129,7 +3186,7 @@ class pg_engine(object):
 				self.pgsql_conn.commit()
 				
 		self.set_autocommit_db(True)
-	
+		self.__swap_enums()
 	def create_database_schema(self, schema_name):
 		"""
 			The method creates a database schema.
