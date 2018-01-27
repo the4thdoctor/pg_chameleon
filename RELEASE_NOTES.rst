@@ -1,5 +1,25 @@
 RELEASE NOTES
 *************************
+2.0.2
+--------------------------
+This bugfix relase adds a missing functionality which wasn't added during the application development and fixes a bug in the ``sync_tables`` command. 
+
+Previously the  parameter ``batch_retention`` was ignored making the replayed batches to accumulate in the table ``sch_chameleon.t_replica_batch`` 
+with the conseguent performance degradation over time.
+
+This release solves the issue re enabling the batch_retention. 
+Please note that after upgrading there will be an initial replay lag building.
+This is normal as the first cleanup will have to remove a lot of rows. 
+After the cleanup is complete the replay will resume as usual.
+
+The new private method ``_swap_enums`` added to the class ``pg_engine`` moves the enumerated types from the loading schema to the destination schema
+when the method ``swap_tables`` is executed by the command ``sync_tables``. 
+
+Previously when running ``sync_tables`` tables with enum fields were created on PostgreSQL without the corresponding enumerated types.
+This happened because the custom enumerated type were not moved into the destination schema and therefore dropped along with the loading schema when the
+procedure performed the final cleanup.
+
+
 2.0.1
 --------------------------
 The first maintenance release of pg_chameleon v2 adds a performance improvement in the read replica process when 

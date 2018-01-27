@@ -1,6 +1,6 @@
 changelog 
 *************************
-2.0.2 - xx January 2018
+2.0.2 - 21 January 2018
 ..........................................................
 * Fix for issue #61, missing post replay cleanup for processed batches.
 * add private method ``_swap_enums`` to the class ``pg_engine`` which moves the enumerated types from the loading to the destination schema.

@@ -17,7 +17,7 @@ pg_chameleon is a MySQL to PostgreSQL replica system written in Python 3.
 The system use the library mysql-replication to pull the row images from MySQL which are stored into PostgreSQL as JSONB. 
 A pl/pgsql function decodes the jsonb values and replays the changes against the PostgreSQL database.
     
-pg_chameleon  v2.0.1 `is available on pypi <https://pypi.python.org/pypi/pg_chameleon>`_  
+pg_chameleon  2.0 `is available on pypi <https://pypi.python.org/pypi/pg_chameleon>`_  
 
 The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents_v2/index.html>`_ 
 
