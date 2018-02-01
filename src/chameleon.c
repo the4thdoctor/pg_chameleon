@@ -469,11 +469,14 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 			
 		case REORDER_BUFFER_CHANGE_DELETE:
 			/* if there was  PK, we emit the change */
-			if (change->data.tp.oldtuple != NULL)
+			if (change->data.tp.oldtuple == NULL)
+				appendStringInfoString(ctx->out, " (no-tuple-data)");
+			else
+				Assert(change->data.tp.oldtuple != NULL);
 				appendStringInfoString(ctx->out, " 'action':'delete', 'values': {");
-				tuple_to_dictionary(ctx->out, tupdesc,
-									&change->data.tp.oldtuple->tuple,
-									true);
+				//tuple_to_dictionary(ctx->out, tupdesc,
+				//					&change->data.tp.oldtuple->tuple,
+				//					true);
 				appendStringInfoString(ctx->out, " },");
 			break;
 		default:
