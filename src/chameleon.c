@@ -426,11 +426,15 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 		case REORDER_BUFFER_CHANGE_INSERT:
 			appendStringInfoString(ctx->out, " 'action':'insert', 'values':{");
 			if (change->data.tp.newtuple == NULL)
+			{
 				appendStringInfoString(ctx->out, " (no-tuple-data)");
+			}
 			else
+			{
 				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.newtuple->tuple,
 									false);
+			}
 			appendStringInfoString(ctx->out, " },");
 			break;
 		case REORDER_BUFFER_CHANGE_UPDATE:
@@ -458,26 +462,33 @@ pg_decode_change(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 			}
 
 			if (change->data.tp.newtuple == NULL)
+			{
 				appendStringInfoString(ctx->out, " 'after_values': {},");
+			}
 			else
+			{
 				appendStringInfoString(ctx->out, " 'after_values':{");
 				tuple_to_dictionary(ctx->out, tupdesc,
 									&change->data.tp.newtuple->tuple,
 									false);
 				appendStringInfoString(ctx->out, " },");
+			}
 			break;
 			
 		case REORDER_BUFFER_CHANGE_DELETE:
 			/* if there was  PK, we emit the change */
 			if (change->data.tp.oldtuple == NULL)
-				appendStringInfoString(ctx->out, " (no-tuple-data)");
+			{
+				appendStringInfoString(ctx->out, " 'action':'empty'");
+			}
 			else
-				Assert(change->data.tp.oldtuple != NULL);
+			{
 				appendStringInfoString(ctx->out, " 'action':'delete', 'values': {");
-				//tuple_to_dictionary(ctx->out, tupdesc,
-				//					&change->data.tp.oldtuple->tuple,
-				//					true);
+				tuple_to_dictionary(ctx->out, tupdesc,
+									&change->data.tp.oldtuple->tuple,
+									true);
 				appendStringInfoString(ctx->out, " },");
+			}
 			break;
 		default:
 			Assert(false);

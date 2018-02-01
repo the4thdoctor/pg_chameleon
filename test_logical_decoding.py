@@ -28,6 +28,7 @@ while True:
 				if counter>10000:
 					print("10000 rows decoded")
 					counter=0
+				print(row)
 			except:
 				print(msg.data_start, msg.payload)
 				#raise
