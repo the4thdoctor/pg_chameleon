@@ -2723,8 +2723,9 @@ class pg_engine(object):
 						)
 				;
 			""").format(sql.Identifier(log_table[0]))
+			self.logger.debug("Cleaning table %s" % log_table[0])
 			self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
-			self.logger.debug("Cleaning table %s" % self.source)
+			
 	
 	def check_source_consistent(self):
 		"""
