@@ -1,5 +1,9 @@
 RELEASE NOTES
 *************************
+2.0.3
+--------------------------
+
+
 2.0.2
 --------------------------
 This bugfix relase adds a missing functionality which wasn't added during the application development and fixes a bug in the ``sync_tables`` command. 

@@ -1,5 +1,12 @@
 changelog 
 *************************
+
+2.0.3 - XX February 2018
+..........................................................
+
+*  fix crash introduced in commit 8c09ccb. when ALTER TABLE ADD COLUMN is in the form datatype DEFAULT (NOT) NULL the parser captures two words instead of one
+*  Improve the speed of the cleanup on startup deleting only for the source's log tables  instead of the parent table
+
 2.0.2 - 21 January 2018
 ..........................................................
 * Fix for issue #61, missing post replay cleanup for processed batches.

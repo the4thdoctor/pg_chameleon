@@ -2695,21 +2695,36 @@ class pg_engine(object):
 			The method assumes there is a database connection active.
 		"""
 		self.set_source_id()
-		sql_cleanup = """
-			DELETE FROM sch_chameleon.t_log_replica 
+		
+		sql_log_tables = """
+			SELECT 
+				unnest(v_log_table)
+			FROM 
+				sch_chameleon.t_sources  
 			WHERE 
-				i_id_batch IN (
-					SELECT 
-						i_id_batch 
-					FROM 
-						sch_chameleon.t_replica_batch 
-					WHERE 
-							i_id_source=%s 
-						AND	NOT b_processed
-					)
+				i_id_source=%s
 			;
 		"""
-		self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
+		self.pgsql_cur.execute(sql_log_tables, (self.i_id_source, ))
+		log_tables = self.pgsql_cur.fetchall()
+		for log_table in log_tables:
+
+			sql_cleanup = sql.SQL("""
+				DELETE FROM sch_chameleon.{}
+				WHERE 
+					i_id_batch IN (
+						SELECT 
+							i_id_batch 
+						FROM 
+							sch_chameleon.t_replica_batch 
+						WHERE 
+								i_id_source=%s 
+							AND	NOT b_processed
+						)
+				;
+			""").format(sql.Identifier(log_table[0]))
+			self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
+			self.logger.debug("Cleaning table %s" % self.source)
 	
 	def check_source_consistent(self):
 		"""
