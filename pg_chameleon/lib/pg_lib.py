@@ -543,6 +543,7 @@ class pg_engine(object):
 	def __init__(self):
 		python_lib=get_python_lib()
 		self.sql_dir = "%s/pg_chameleon/sql/" % python_lib
+		self.sql_upgrade_dir = "%s/upgrade/" % self.sql_dir
 		self.table_ddl={}
 		self.idx_ddl={}
 		self.type_ddl={}
@@ -1219,20 +1220,33 @@ class pg_engine(object):
 			The method applies the migration scripts to the replica catalogue version 2.0.
 			The method checks that all sources are in stopped or ready state.
 		"""
+		sql_view = """
+			CREATE OR REPLACE VIEW sch_chameleon.v_version 
+				AS
+					SELECT %s::TEXT t_version
+		;"""
+		
 		self.connect_db()
 		sources_active = self.__count_active_sources()
 		if sources_active[0] == 0:
 			catalog_version = self.get_catalog_version()
 			catalog_number = int(''.join([value  for value in catalog_version.split('.')]))
+			self.connect_db()
 			for migration in self.migrations:
 				migration_version = migration["version"]
 				migration_number = int(''.join([value  for value in migration_version.split('.')]))
 				if migration_number>=catalog_number:
+					migration_file_name = '%s/%s' % (self.sql_upgrade_dir, migration["script"])
 					print("Migrating the catalogue from version %s to version %s" % (catalog_version,  migration_version))
-				
+					migration_data = open(migration_file_name, 'rb')
+					migration_sql = migration_data.read()
+					migration_data.close()
+					self.pgsql_cur.execute(migration_sql)
+					self.pgsql_cur.execute(sql_view, (migration_version, ))
 		else:
 			print('There are sources in running or syncing state. You shall stop all the replica processes before upgrading the catalogue.')
 			sys.exit()
+		
 
 
 	def upgrade_catalogue_v1(self):

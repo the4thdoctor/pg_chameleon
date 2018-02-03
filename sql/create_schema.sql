@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '2.0.0'::TEXT t_version
+	SELECT '2.0.1'::TEXT t_version
 ;
 
 --TYPES
