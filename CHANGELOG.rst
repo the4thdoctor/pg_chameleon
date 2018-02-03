@@ -6,6 +6,7 @@ changelog
 
 *  fix crash introduced in commit 8c09ccb. when ALTER TABLE ADD COLUMN is in the form datatype DEFAULT (NOT) NULL the parser captures two words instead of one
 *  Improve the speed of the cleanup on startup deleting only for the source's log tables  instead of the parent table
+*  fix for issue #63. convert all i_binlog_position to bigint in order to avoid integer overflow when the binlog is largher than 2 GB.
 
 2.0.2 - 21 January 2018
 ..........................................................
