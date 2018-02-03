@@ -590,6 +590,10 @@ class pg_engine(object):
 		self.idx_sequence = 0
 		self.lock_timeout = 0
 		
+		self.migrations = [
+			{'version': '2.0.1',  'script': '200_to_201.sql'}, 
+		]
+		
 	def __del__(self):
 		"""
 			Class destructor, tries to disconnect the postgresql connection.
@@ -1190,6 +1194,46 @@ class pg_engine(object):
 			sql_drop=value_check[0]
 			self.pgsql_cur.execute(sql_drop)
 			self.unregister_table(schema, token["name"])
+
+	def __count_active_sources(self):
+		"""
+			The method counts all the sources with state not in 'ready' or 'stopped'.
+			The method assumes there is a database connection active.
+		"""
+		sql_count = """
+			SELECT 
+				count(*)
+			FROM
+				sch_chameleon.t_sources
+			WHERE
+				enm_status NOT IN ('ready','stopped')
+			;
+		"""
+		self.pgsql_cur.execute(sql_count)
+		source_count = self.pgsql_cur.fetchone()
+		return source_count
+	
+
+	def upgrade_catalogue_v20(self):
+		"""
+			The method applies the migration scripts to the replica catalogue version 2.0.
+			The method checks that all sources are in stopped or ready state.
+		"""
+		self.connect_db()
+		sources_active = self.__count_active_sources()
+		if sources_active[0] == 0:
+			catalog_version = self.get_catalog_version()
+			catalog_number = int(''.join([value  for value in catalog_version.split('.')]))
+			for migration in self.migrations:
+				migration_version = migration["version"]
+				migration_number = int(''.join([value  for value in migration_version.split('.')]))
+				if migration_number>=catalog_number:
+					print("Migrating the catalogue from version %s to version %s" % (catalog_version,  migration_version))
+				
+		else:
+			print('There are sources in running or syncing state. You shall stop all the replica processes before upgrading the catalogue.')
+			sys.exit()
+
 
 	def upgrade_catalogue_v1(self):
 		"""

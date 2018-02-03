@@ -67,7 +67,7 @@ class replica_engine(object):
 		"""
 			Class constructor.
 		"""
-		self.catalog_version = '2.0.0'
+		self.catalog_version = '2.0.1'
 		self.upgradable_version = '1.7'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
@@ -427,9 +427,13 @@ class replica_engine(object):
 					self.pg_engine.upgrade_catalogue_v1()
 				elif upg_cat in  self.lst_yes:
 					print('Please type YES all uppercase to confirm')
-			elif catalog_version.split('.')[0] == '1':
+			elif catalog_version.split('.')[0] == '2' and catalog_version.split('.')[1] == '0':
+				print('Upgrading the replica catalogue. ')
+				self.pg_engine.upgrade_catalogue_v20()
+			else:
 				print('Wrong starting version. Expected %s, got %s' % (catalog_version, self.upgradable_version))
 				sys.exit()
+
 	
 	def update_schema_mappings(self):
 		"""
