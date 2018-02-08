@@ -81,7 +81,7 @@ setup(
 		'PyMySQL>=0.7.11', 
 		'argparse>=1.2.1', 
 		'mysql-replication>=0.15', 
-		'psycopg2>=2.7.3', 
+		'psycopg2-binary>=2.7.3', 
 		'PyYAML>=3.12', 
 		'tabulate>=0.8.1', 
 		'daemonize>=2.4.7', 
