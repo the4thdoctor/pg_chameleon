@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup
 from distutils.sysconfig import get_python_lib
+from os import listdir
+from os.path import isfile, join
 
 def readme():
     with open('README.rst') as f:
@@ -24,13 +26,14 @@ data_files = []
 conf_files = (conf_dir, ['configuration/config-example.yml'])
 
 sql_src = ['sql/create_schema.sql', 'sql/drop_schema.sql']
-
+sql_upgrade = ["%s/%s" % (sql_up_path, file) for file in listdir(sql_up_path) if isfile(join(sql_up_path, file))]
 
 sql_files = (sql_dir,sql_src)
-
+sql_up_files = (sql_up_dir,sql_upgrade)
 
 data_files.append(conf_files)
 data_files.append(sql_files)
+data_files.append(sql_up_files)
 
 
 
