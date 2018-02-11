@@ -409,6 +409,12 @@ class replica_engine(object):
 				sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.sync_tables, foreground=foreground , keep_fds=keep_fds)
 				sync_daemon .start()
 	
+	def __stop_all_active_sources(self):
+		active_source = self.pg_engine.get_active_sources()
+		for source in active_source:
+			self.source = source[0]
+			self.__stop_replica()
+	
 	def upgrade_replica_schema(self):
 		"""
 			The method upgrades an existing replica catalogue to the newer version.
@@ -428,6 +434,8 @@ class replica_engine(object):
 				elif upg_cat in  self.lst_yes:
 					print('Please type YES all uppercase to confirm')
 			elif catalog_version.split('.')[0] == '2' and catalog_version.split('.')[1] == '0':
+				print('Stopping all the active sources.')
+				self.__stop_all_active_sources()
 				print('Upgrading the replica catalogue. ')
 				self.pg_engine.upgrade_catalogue_v20()
 			else:
@@ -538,6 +546,7 @@ class replica_engine(object):
 		if self.args.source == "*":
 			print("You must specify a source name using the argument --source")
 		else:
+			self.source = self.args.source
 			self.pg_engine.connect_db()
 			self.logger.info("Checking if the replica for source %s is stopped " % (self.args.source))
 			replica_status = self.pg_engine.get_replica_status()
@@ -573,17 +582,17 @@ class replica_engine(object):
 	
 	def __stop_replica(self):
 		"""
-			The method reads the pid of the replica process for the given source and sends a SIGINT which 
+			The method reads the pid of the replica process for the given self.source and sends a SIGINT which 
 			tells the replica process to manage a graceful exit.
 		"""
-		replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+		replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.source))
 		if os.path.isfile(replica_pid):
 			try:
 				file_pid=open(replica_pid,'r')
 				pid=file_pid.read()
 				file_pid.close()
 				os.kill(int(pid),2)
-				print("Requesting the replica to stop")
+				print("Requesting the replica for source %s to stop" % (self.source))
 				while True:
 					try:
 						os.kill(int(pid),0)

@@ -1214,7 +1214,26 @@ class pg_engine(object):
 		source_count = self.pgsql_cur.fetchone()
 		return source_count
 	
-
+	def get_active_sources(self):
+		"""
+			The method counts all the sources with state not in 'ready' or 'stopped'.
+			The method assumes there is a database connection active.
+		"""
+		self.connect_db()
+		sql_get = """
+			SELECT 
+				t_source
+			FROM
+				sch_chameleon.t_sources
+			WHERE
+				enm_status NOT IN ('ready','stopped')
+			;
+		"""
+		self.pgsql_cur.execute(sql_get)
+		source_get = self.pgsql_cur.fetchall()
+		self.disconnect_db()
+		return source_get
+	
 	def upgrade_catalogue_v20(self):
 		"""
 			The method applies the migration scripts to the replica catalogue version 2.0.
