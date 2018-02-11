@@ -89,6 +89,7 @@ class replica_engine(object):
 			
 		]
 		self.args = args
+		self.source = self.args.source
 		if self.args.command == 'set_configuration_files':
 			self.set_configuration_files()
 			sys.exit()
@@ -546,7 +547,6 @@ class replica_engine(object):
 		if self.args.source == "*":
 			print("You must specify a source name using the argument --source")
 		else:
-			self.source = self.args.source
 			self.pg_engine.connect_db()
 			self.logger.info("Checking if the replica for source %s is stopped " % (self.args.source))
 			replica_status = self.pg_engine.get_replica_status()
