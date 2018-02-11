@@ -1,7 +1,7 @@
 changelog 
 *************************
 
-2.0.3 - XX February 2018
+2.0.3 - 11 February 2018
 ..........................................................
 
 *  fix regression added by commit 8c09ccb. when ALTER TABLE ADD COLUMN is in the form datatype DEFAULT (NOT) NULL the parser captures two words instead of one
