@@ -145,13 +145,13 @@ class pgsql_source(object):
 		self.logger.debug("exporting database snapshot for source %s" % self.source)
 		sql_snap = """
 			BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
-			SELECT pg_export_snapshot();
+			SELECT pg_export_snapshot(),txid_current();
 		"""
 		db_snap = self.__connect_db(False)
 		db_conn = db_snap["connection"]
 		db_cursor = db_snap["cursor"]
 		db_cursor.execute(sql_snap)
-		snapshot_id = db_cursor.fetchone()[0]
+		snapshot_id = db_cursor.fetchone()
 		queue.put(snapshot_id)
 		continue_loop = True
 		while continue_loop:
@@ -485,7 +485,8 @@ class pgsql_source(object):
 					except:
 						self.logger.error("an error occcurred when executing %s" %(idx[0]))
 					if idx[2]:
-						self.pg_engine.store_table(destination_schema, table, ['foo'], None)
+						
+						self.pg_engine.store_table(destination_schema, table, ['foo'],None, self.snapshot_txid)
 					
 		
 		db_conn.close()
@@ -510,7 +511,9 @@ class pgsql_source(object):
 			queue = mp.Queue()
 			snap_exp = mp.Process(target=self.__export_snapshot, args=(queue,), name='snap_export',daemon=True)
 			snap_exp.start()
-			self.snapshot_id = queue.get()
+			snap_id = queue.get()
+			self.snapshot_id = snap_id[0]
+			self.snapshot_txid = snap_id[1]
 			self.consistent = False
 		else:
 			self.snapshot_id = None
@@ -547,7 +550,7 @@ class pgsql_source(object):
 		self.__get_table_list()
 		self.__create_destination_schemas()
 		self.pg_engine.schema_loading = self.schema_loading
-		self.__create_replication_slot()
+		#self.__create_replication_slot()
 		self.pg_engine.set_source_status("initialising")
 		try:
 			self.__create_destination_tables()
@@ -2715,7 +2718,7 @@ class pg_engine(object):
 		return next_batch_id
 
 	
-	def store_table(self, schema, table, table_pkey, master_status):
+	def store_table(self, schema, table, table_pkey, master_status, snapshot_txid=None):
 		"""
 			The method saves the table name along with the primary key definition in the table t_replica_tables.
 			This is required in order to let the replay procedure which primary key to use replaying the update and delete.
@@ -2729,7 +2732,8 @@ class pg_engine(object):
 			:param schema: the schema name to store in the table  t_replica_tables
 			:param table: the table name to store in the table  t_replica_tables
 			:param table_pkey: a list with the primary key's columns. empty if there's no pkey
-			:param master_status: the master status data .
+			:param master_status: the mysql's master status data .
+			: param snapshot_txid: the postgresql's' transaction id fo the exported snapshot
 		"""
 		if master_status:
 			master_data = master_status[0]
@@ -2749,7 +2753,8 @@ class pg_engine(object):
 						v_schema_name,
 						v_table_pkey,
 						t_binlog_name,
-						i_binlog_position
+						i_binlog_position,
+						i_xid
 					)
 				VALUES 
 					(
@@ -2758,7 +2763,8 @@ class pg_engine(object):
 						%s,
 						%s,
 						%s,
-						%s
+						%s,
+						%s::bigint
 					)
 				ON CONFLICT (i_id_source,v_table_name,v_schema_name)
 					DO UPDATE 
@@ -2766,6 +2772,7 @@ class pg_engine(object):
 							v_table_pkey=EXCLUDED.v_table_pkey,
 							t_binlog_name = EXCLUDED.t_binlog_name,
 							i_binlog_position = EXCLUDED.i_binlog_position,
+							i_xid = EXCLUDED.i_xid,
 							b_replica_enabled = True
 				;
 							"""
@@ -2775,7 +2782,8 @@ class pg_engine(object):
 				schema, 
 				table_pkey, 
 				binlog_file, 
-				binlog_pos
+				binlog_pos, 
+				snapshot_txid
 				)
 			)
 		else:

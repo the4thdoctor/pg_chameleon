@@ -36,7 +36,7 @@ CREATE TABLE sch_chameleon.t_error_log
 	v_schema_name character varying(100) NOT NULL,
 	t_table_pkey text NOT NULL,
 	t_binlog_name text NOT NULL,
-	i_binlog_position integer NOT NULL,
+	i_binlog_position bigint NOT NULL,
 	i_xid bigint,
 	ts_error	timestamp without time zone,
 	t_sql text,
@@ -53,7 +53,7 @@ CREATE TABLE sch_chameleon.t_sources
 	jsb_schema_mappings	jsonb NOT NULL,
 	enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
 	t_binlog_name text,
-	i_binlog_position integer,
+	i_binlog_position bigint,
 	i_xid bigint,
 	b_consistent boolean NOT NULL DEFAULT TRUE,
 	enm_source_type sch_chameleon.en_src_type NOT NULL,
@@ -92,7 +92,7 @@ CREATE TABLE sch_chameleon.t_replica_batch
   i_id_batch bigserial NOT NULL,
   i_id_source bigint NOT NULL,
   t_binlog_name text,
-  i_binlog_position integer,
+  i_binlog_position bigint,
   i_lsn_position bigint,
   b_started boolean NOT NULL DEFAULT False,
   b_processed boolean NOT NULL DEFAULT False,
@@ -121,9 +121,9 @@ CREATE TABLE IF NOT EXISTS sch_chameleon.t_log_replica
   i_id_batch bigserial NOT NULL,
   v_table_name character varying(100) NOT NULL,
   v_schema_name character varying(100) NOT NULL,
-  enm_binlog_event sch_chameleon.en_binlog_event NOT NULL,
+  enm_event sch_chameleon.en_binlog_event NOT NULL,
   t_binlog_name text,
-  i_binlog_position integer,
+  i_binlog_position bigint,
   i_xid bigint,
   ts_event_datetime timestamp without time zone NOT NULL DEFAULT clock_timestamp(),
   jsb_event_after jsonb,
@@ -147,7 +147,8 @@ CREATE TABLE sch_chameleon.t_replica_tables
   v_schema_name character varying(100) NOT NULL,
   v_table_pkey character varying(100)[] NOT NULL,
   t_binlog_name text,
-  i_binlog_position integer,
+  i_binlog_position bigint,
+  i_xid bigint,
   b_replica_enabled boolean NOT NULL DEFAULT true,
   CONSTRAINT pk_t_replica_tables PRIMARY KEY (i_id_table)
 )
@@ -344,10 +345,10 @@ $BODY$
 					)
 				SELECT 
 					CASE
-						WHEN enm_binlog_event = 'ddl'
+						WHEN enm_event = 'ddl'
 						THEN 
 							t_query
-						WHEN enm_binlog_event = 'insert'
+						WHEN enm_event = 'insert'
 						THEN
 							format(
 								'INSERT INTO %I.%I (%s) VALUES (%s);',
@@ -357,7 +358,7 @@ $BODY$
 								array_to_string(t_event_data,',')
 								
 							)
-						WHEN enm_binlog_event = 'update'
+						WHEN enm_event = 'update'
 						THEN
 							format(
 								'UPDATE %I.%I SET %s WHERE %s;',
@@ -366,7 +367,7 @@ $BODY$
 								t_update,
 								t_pk_update
 							)
-						WHEN enm_binlog_event = 'delete'
+						WHEN enm_event = 'delete'
 						THEN
 							format(
 								'DELETE FROM %I.%I WHERE %s;',
@@ -378,7 +379,7 @@ $BODY$
 					END AS t_sql,
 					i_id_event,
 					i_id_batch,
-					enm_binlog_event,
+					enm_event,
 					v_schema_name,
 					v_table_name,
 					t_pk_data
@@ -389,7 +390,7 @@ $BODY$
 						i_id_batch,
 						v_table_name,
 						v_schema_name,
-						enm_binlog_event,
+						enm_event,
 						t_query,
 						ts_event_datetime,
 						t_pk_data,
@@ -404,7 +405,7 @@ $BODY$
 							i_id_batch,
 							v_table_name,
 							v_schema_name,
-							enm_binlog_event,
+							enm_event,
 							jsb_event_after,
 							jsb_event_before,
 							t_query,
@@ -419,7 +420,7 @@ $BODY$
 								log.i_id_batch,
 								log.v_table_name,
 								log.v_schema_name,
-								log.enm_binlog_event,
+								log.enm_event,
 								log.jsb_event_after,
 								log.jsb_event_before,
 								log.t_query,
@@ -442,7 +443,7 @@ $BODY$
 							i_id_batch,
 							v_table_name,
 							v_schema_name,
-							enm_binlog_event,
+							enm_event,
 							jsb_event_after,
 							jsb_event_before,
 							t_query,
@@ -453,7 +454,7 @@ $BODY$
 						i_id_batch,
 						v_table_name,
 						v_schema_name,
-						enm_binlog_event,
+						enm_event,
 						t_query,
 						ts_event_datetime,
 						t_pk_data,
@@ -463,7 +464,7 @@ $BODY$
 		LOOP
 			BEGIN
 				EXECUTE v_r_statements.t_sql;
-				IF v_r_statements.enm_binlog_event='ddl'
+				IF v_r_statements.enm_event='ddl'
 				THEN
 					v_i_ddl:=v_i_ddl+1;
 				ELSE
