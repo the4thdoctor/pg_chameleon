@@ -1061,13 +1061,21 @@ class mysql_source(object):
 								global_data["action"] = "insert"
 								event_after=row["values"]
 							for column_name in event_after:
-								column_type=column_map[column_name]
+								try:
+									column_type=column_map[column_name]
+								except KeyError:
+									self.logger.info("Detected inconsistent structure for the table  %s. The replay may fail. " % (table_name))
+									column_type = 'text'
 								if column_type in self.hexify and event_after[column_name]:
 									event_after[column_name]=binascii.hexlify(event_after[column_name]).decode()
 								elif column_type in self.hexify and isinstance(event_after[column_name], bytes):
 									event_after[column_name] = ''
 							for column_name in event_before:
-								column_type=column_map[column_name]
+								try:
+									column_type=column_map[column_name]
+								except KeyError:
+									self.logger.info("Detected inconsistent structure for the table  %s. The replay may fail. " % (table_name))
+									column_type = 'text'
 								if column_type in self.hexify and event_before[column_name]:
 									event_before[column_name]=binascii.hexlify(event_before[column_name]).decode()
 								elif column_type in self.hexify and isinstance(event_before[column_name], bytes):
