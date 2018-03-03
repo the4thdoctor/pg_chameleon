@@ -1,5 +1,34 @@
 RELEASE NOTES
 *************************
+2.0.3
+--------------------------
+The bugfix release 2.0.3 fixes the issue #63 changeing all the fields  `i_binlog_position` to bigint. Previously binlog files larger than 2GB would cause an integer overflow during the phase of write rows in the PostgreSQL database.
+The issue can affect also MySQL databases with smaller `max_binlog_size` as it seems that this value is a soft limit.
+
+As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
+
+* If working via ssh is suggested to open a screen session 
+* Before the upgrade stop all the replica processes.
+* Upgrade pg_chameleon with `pip install pg_chameleon --upgrade`
+* Run the upgrade command `chameleon upgrade_replica_schema --config <your_config>`
+* Start the replica processes
+
+Please note that because the upgrade command will alter the data types with subsequent table rewrite.
+The process can take long time, in particular if the log tables are large. 
+If working over a remote machine the best way to proceed is to run the command in a screen session.
+
+
+This release fixes a regression introduced with the release 2.0.1.
+When an alter table comes in the form of `ALTER TABLE ADD COLUMN is in the form datatype DEFAULT (NOT) NULL` the parser captures two words instead of one,
+causing the  replica process crash.
+
+The speed of the initial cleanup, when the replica starts has been improved as now the delete runs only on the sources log tables instead of the parent table.
+This improvement is more effective when many sources are configured all togheter. 
+
+From this version the setup.py switches the psycopg2 requirement to using the psycopg2-binary which ensures that psycopg2 will install using the wheel package when available.
+
+
+
 2.0.2
 --------------------------
 This bugfix relase adds a missing functionality which wasn't added during the application development and fixes a bug in the ``sync_tables`` command. 
