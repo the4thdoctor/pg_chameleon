@@ -1,5 +1,21 @@
 RELEASE NOTES
 *************************
+
+2.0.4
+--------------------------
+The maintenance release 2.0.4 fix the wrong handling of the ``ALTER TABLE`` when generating the ``MODIFY`` translation. 
+The regression was added in the version 2.0.3 and can result in a broken replica process.
+
+This version improves the way to handle the replica from tables with dropped columns in the future. 
+The `python-mysql-replication library with this commit <https://github.com/noplay/python-mysql-replication/commit/4c48538168f4cd3239563393a29b542cc6ffcf4b>`_ adds a way to 
+manage the replica with the tables having columns dropped before the read replica is started.
+
+Previously the auto generated column name caused the replica process to crash as the type map dictionary didn't had the corresponding key.
+
+The version 2.0.4 handles the ``KeyError`` exception and allow the row to be stored on the PostgreSQL target database.
+However this will very likely cause the table to be removed from the replica in the replay step. A debug log message is emitted when this happens in order to 
+when the issue occurs.
+
 2.0.3
 --------------------------
 The bugfix release 2.0.3 fixes the issue #63 changeing all the fields  `i_binlog_position` to bigint. Previously binlog files larger than 2GB would cause an integer overflow during the phase of write rows in the PostgreSQL database.

@@ -1,6 +1,12 @@
 changelog 
 *************************
 
+2.0.4 - 04 March 2018
+..........................................................
+* Fix regression added in 2.0.3 when handling MODIFY DDL
+* Improved handling of dropped columns during the replica
+
+
 2.0.3 - 11 February 2018
 ..........................................................
 
