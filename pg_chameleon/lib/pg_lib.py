@@ -594,6 +594,7 @@ class pg_engine(object):
 		
 		self.migrations = [
 			{'version': '2.0.1',  'script': '200_to_201.sql'}, 
+			{'version': '2.0.2',  'script': '201_to_202.sql'}, 
 		]
 		
 	def __del__(self):

@@ -67,7 +67,7 @@ class replica_engine(object):
 		"""
 			Class constructor.
 		"""
-		self.catalog_version = '2.0.1'
+		self.catalog_version = '2.0.2'
 		self.upgradable_version = '1.7'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
