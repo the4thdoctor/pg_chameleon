@@ -8,3 +8,4 @@ ALTER TABLE sch_chameleon.t_last_received
 
 ALTER TABLE sch_chameleon.t_last_replayed
 	ADD COLUMN b_paused boolean NOT NULL DEFAULT False;
+

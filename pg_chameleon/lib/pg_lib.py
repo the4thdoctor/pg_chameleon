@@ -830,7 +830,72 @@ class pg_engine(object):
 							self.logger.warning("The role %s does not exist" % (db_role, ))
 						else:
 							self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-			
+	
+	def set_read_paused(self):
+		"""
+			The method sets the read proces flag b_paused to true for the given source.
+		"""
+		sql_pause = """
+			UPDATE sch_chameleon.t_last_received 
+				SET b_paused='t' 
+			WHERE 
+					i_id_source=%s 
+				AND	b_paused='f'
+			;
+		"""
+		self.pgsql_cur.execute(sql_pause, (self.i_id_source, ))
+		
+	def set_read_resumed(self):
+		"""
+			The method sets the read proces flag b_paused to false for the given source.
+		"""
+		sql_pause = """
+			UPDATE sch_chameleon.t_last_received 
+				SET b_paused='f' 
+			WHERE 
+					i_id_source=%s 
+				AND	b_paused='t'
+			;
+		"""
+		self.pgsql_cur.execute(sql_pause, (self.i_id_source, ))
+	
+	def pause_replica(self):
+		"""
+			The method pause the replica updating the b_paused flag for all the sources in the target database
+		"""
+		sql_pause = """
+			UPDATE sch_chameleon.t_sources SET b_paused='t';
+		"""
+		self.pgsql_cur.execute(sql_pause)
+	
+	def resume_replica(self):
+		"""
+			The method resumes the replica updating the b_paused flag for all the sources in the target database
+		"""
+		sql_resume = """
+			UPDATE sch_chameleon.t_sources SET b_paused='f';
+		"""
+		self.pgsql_cur.execute(sql_resume)
+	
+	def get_replica_paused(self):
+		"""
+			The method returns the status of the replica. This value is used in both read/replay replica methods for updating the corresponding flags.
+			:return: the b_paused flag for the current source
+			:rtype: boolean
+		"""
+		sql_get = """
+			SELECT 
+				b_paused 
+			FROM 
+				sch_chameleon.t_sources 
+			WHERE 
+				i_id_source=%s
+			;
+		"""
+		self.pgsql_cur.execute(sql_get, (self.i_id_source, ))
+		replica_paused = self.pgsql_cur.fetchone()
+		return replica_paused[0]
+	
 	def replay_replica(self):
 		"""
 			The method replays the row images in the target database using the function 

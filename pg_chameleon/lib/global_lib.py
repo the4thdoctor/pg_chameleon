@@ -728,8 +728,20 @@ class replica_engine(object):
 			elif drop_src in  self.lst_yes:
 				print('Please type YES all uppercase to confirm')
 				
+	def run_maintenance(self):
+		"""
+			The method runs a maintenance process on the target postgresql database specified in the given source.
+		"""
+		self.logger.info("Pausing the replica daemons")
+		self.pg_engine.connect_db()
+		self.pg_engine.pause_replica()
+		self.logger.info("Starting the maintenance on the replica catalogue")
+		self.pg_engine.run_maintenance()
+		self.logger.info("Maintenance on the replica catalogue complete")
+		self.logger.info("Resuming the replica daemons")
+		self.pg_engine.resume_replica()
+		self.pg_engine.disconnect_db()
 		
-			
 	def __init_logger(self):
 		"""
 		The method initialise a new logger object using the configuration parameters.
