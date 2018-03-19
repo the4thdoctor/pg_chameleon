@@ -1127,10 +1127,10 @@ class mysql_source(object):
 		self.pg_engine.set_source_status("running")
 		replica_paused = self.pg_engine.get_replica_paused()
 		if replica_paused:
-			self.logger.info("Replica is paused")
-			self.pg_engine.set_read_paused()
+			self.logger.info("Read replica is paused")
+			self.pg_engine.set_read_paused(True)
 		else:
-			self.pg_engine.set_read_resumed()
+			self.pg_engine.set_read_paused(False)
 			batch_data = self.pg_engine.get_batch_data()
 			if len(batch_data)>0:
 				id_batch=batch_data[0][0]

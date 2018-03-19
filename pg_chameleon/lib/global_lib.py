@@ -732,15 +732,12 @@ class replica_engine(object):
 		"""
 			The method runs a maintenance process on the target postgresql database specified in the given source.
 		"""
-		self.logger.info("Pausing the replica daemons")
-		self.pg_engine.connect_db()
-		self.pg_engine.pause_replica()
-		self.logger.info("Starting the maintenance on the replica catalogue")
-		self.pg_engine.run_maintenance()
-		self.logger.info("Maintenance on the replica catalogue complete")
-		self.logger.info("Resuming the replica daemons")
-		self.pg_engine.resume_replica()
-		self.pg_engine.disconnect_db()
+		if self.args.source == "*":
+			print("You must specify a source name with the argument --source")
+		else:
+			self.logger.info("Starting the maintenance on the source %s" % (self.args.source, ))
+			self.pg_engine.run_maintenance()
+			
 		
 	def __init_logger(self):
 		"""

@@ -831,51 +831,67 @@ class pg_engine(object):
 						else:
 							self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
 	
-	def set_read_paused(self):
+	def set_read_paused(self, read_paused):
 		"""
 			The method sets the read proces flag b_paused to true for the given source.
+			The update is performed for the given source and for the negation of b_paused.
+			This approach will prevent unnecessary updates on the table t_last_received.
+			
+			:param read_paused: the flag to set for the read replica process.
 		"""
+		not_read_paused = not read_paused
 		sql_pause = """
 			UPDATE sch_chameleon.t_last_received 
-				SET b_paused='t' 
+				SET b_paused=%s
 			WHERE 
 					i_id_source=%s 
-				AND	b_paused='f'
+				AND	b_paused=%s
 			;
 		"""
-		self.pgsql_cur.execute(sql_pause, (self.i_id_source, ))
+		self.pgsql_cur.execute(sql_pause, (read_paused, self.i_id_source, not_read_paused))
 		
-	def set_read_resumed(self):
+	def set_replay_paused(self, read_paused):
 		"""
-			The method sets the read proces flag b_paused to false for the given source.
+			The method sets the read proces flag b_paused to true for the given source.
+			The update is performed for the given source and for the negation of b_paused.
+			This approach will prevent unnecessary updates on the table t_last_received.
+			
+			:param read_paused: the flag to set for the read replica process.
 		"""
+		not_read_paused = not read_paused
 		sql_pause = """
-			UPDATE sch_chameleon.t_last_received 
-				SET b_paused='f' 
+			UPDATE sch_chameleon.t_last_replayed
+				SET b_paused=%s
 			WHERE 
 					i_id_source=%s 
-				AND	b_paused='t'
+				AND	b_paused=%s
 			;
 		"""
-		self.pgsql_cur.execute(sql_pause, (self.i_id_source, ))
+		self.pgsql_cur.execute(sql_pause, (read_paused, self.i_id_source, not_read_paused))
 	
-	def pause_replica(self):
+	def __pause_replica(self):
 		"""
 			The method pause the replica updating the b_paused flag for all the sources in the target database
 		"""
 		sql_pause = """
-			UPDATE sch_chameleon.t_sources SET b_paused='t';
+			UPDATE sch_chameleon.t_sources 
+				SET b_paused='t' 
+			WHERE 
+				i_id_source=%s;
 		"""
-		self.pgsql_cur.execute(sql_pause)
+		self.pgsql_cur.execute(sql_pause, (self.i_id_source, ))
 	
-	def resume_replica(self):
+	def __resume_replica(self):
 		"""
 			The method resumes the replica updating the b_paused flag for all the sources in the target database
 		"""
 		sql_resume = """
-			UPDATE sch_chameleon.t_sources SET b_paused='f';
+			UPDATE sch_chameleon.t_sources 
+				SET b_paused='f' 
+			WHERE 
+				i_id_source=%s;
 		"""
-		self.pgsql_cur.execute(sql_resume)
+		self.pgsql_cur.execute(sql_resume, (self.i_id_source, ))
 	
 	def get_replica_paused(self):
 		"""
@@ -896,6 +912,122 @@ class pg_engine(object):
 		replica_paused = self.pgsql_cur.fetchone()
 		return replica_paused[0]
 	
+	def __wait_for_pause(self):
+		"""
+			The method returns the status of the replica. This value is used in both read/replay replica methods for updating the corresponding flags.
+			:return: the b_paused flag for the current source
+			:rtype: boolean
+		"""
+		sql_wait = """
+			SELECT 
+				CASE
+					WHEN src.enm_status IN ('stopped','initialised','synced')
+						THEN 'proceed'
+					WHEN src.enm_status = 'running'
+						THEN 
+							CASE
+								WHEN 
+										src.b_paused 
+									AND	rcv.b_paused
+									AND	rep.b_paused
+								THEN
+									'proceed'
+								WHEN 
+										src.b_paused 
+								THEN
+									'wait'
+								ELSE
+									'abort'
+							END
+					ELSE
+						'abort'
+				END AS t_action,
+				src.enm_status,
+				rcv.b_paused,
+				rep.b_paused,
+				src.b_paused
+				
+			FROM 
+				sch_chameleon.t_sources src
+				INNER JOIN sch_chameleon.t_last_received rcv
+				ON
+					src.i_id_source=rcv.i_id_source
+				INNER JOIN sch_chameleon.t_last_replayed rep
+				ON
+					src.i_id_source=rep.i_id_source
+				
+			WHERE 
+					src.i_id_source=%s
+			;
+		"""
+		self.logger.info("Waiting for the replica daemons to pause")
+		wait_result = 'wait'
+		while wait_result == 'wait':
+			self.pgsql_cur.execute(sql_wait, (self.i_id_source, ))
+			wait_result = self.pgsql_cur.fetchone()[0]
+			time.sleep(5)
+		
+		return wait_result
+		
+	def __vacuum_log_tables(self):
+		"""
+			The method runs a VACUUM FULL on the log tables for the given source after detaching them from the parent table.
+		"""
+		sql_inherit = """
+			SELECT 
+				format('ALTER TABLE sch_chameleon.%%I %%s INHERIT sch_chameleon.t_log_replica;',
+				v_log_table,
+				%s
+				),
+				v_log_table,
+				format('VACUUM FULL sch_chameleon.%%I ;',
+				v_log_table
+				)
+			FROM
+			(
+			SELECT 
+				unnest(v_log_table) AS v_log_table 
+			FROM 
+				sch_chameleon.t_sources 
+			WHERE 
+				i_id_source=%s
+			) log
+			;
+		"""
+		self.pgsql_cur.execute(sql_inherit, ('NO',  self.i_id_source))
+		detach_sql = self.pgsql_cur.fetchall()
+		for sql_stat in detach_sql:
+			self.logger.info("Detaching the table %s" % (sql_stat[1]))
+			self.pgsql_cur.execute(sql_stat[0])
+		for sql_stat in detach_sql:
+			self.logger.info("Running VACUUM FULL on the table %s" % (sql_stat[1]))
+			self.pgsql_cur.execute(sql_stat[2])
+		self.pgsql_cur.execute(sql_inherit, ('',  self.i_id_source))
+		attach_sql = self.pgsql_cur.fetchall()
+		for sql_stat in attach_sql:
+			self.logger.info("Attaching the table %s" % (sql_stat[1]))
+			self.pgsql_cur.execute(sql_stat[0])
+			
+	def run_maintenance(self):
+		"""
+			The method runs the maintenance for the given source.
+			After the replica daemons are paused the procedure detach the log tables from the parent log table and performs a VACUUM FULL againts the tables.
+			If any error occurs the tables are attached to the parent table and the replica daemons resumed.
+			
+		"""
+		self.logger.info("Pausing the replica daemons")
+		self.connect_db()
+		self.set_source_id()
+		self.__pause_replica()
+		wait_result = self.__wait_for_pause()
+		if wait_result == 'abort':
+			self.logger.error("Cannot proceed with the maintenance")
+			return wait_result
+		self.__vacuum_log_tables()
+		self.logger.info("Resuming the replica daemons")
+		self.__resume_replica()
+		self.disconnect_db()
+	
 	def replay_replica(self):
 		"""
 			The method replays the row images in the target database using the function 
@@ -913,24 +1045,29 @@ class pg_engine(object):
 			
 		"""
 		tables_error = []
-		#return tables_error
-		continue_loop = True
-		self.source_config = self.sources[self.source]
-		replay_max_rows = self.source_config["replay_max_rows"]
-		exit_on_error = True if self.source_config["on_error_replay"]=='exit' else False
-		while continue_loop:
-			sql_replay = """SELECT * FROM sch_chameleon.fn_replay_mysql(%s,%s,%s);""";
-			self.pgsql_cur.execute(sql_replay, (replay_max_rows, self.i_id_source, exit_on_error))
-			replay_status = self.pgsql_cur.fetchone()
-			if replay_status[0]:
-				self.logger.info("Replayed at most %s rows for source %s" % (replay_max_rows, self.source) )
-			continue_loop = replay_status[0]
-			function_error = replay_status[1]
-			if function_error:
-				raise Exception('The replay process crashed')
-			if replay_status[2]:
-				tables_error.append(replay_status[2])
-		self. __cleanup_replayed_batches()
+		replica_paused = self.get_replica_paused()
+		if replica_paused:
+			self.logger.info("Replay replica is paused")
+			self.set_replay_paused(True)
+		else:
+			self.set_replay_paused(False)
+			continue_loop = True
+			self.source_config = self.sources[self.source]
+			replay_max_rows = self.source_config["replay_max_rows"]
+			exit_on_error = True if self.source_config["on_error_replay"]=='exit' else False
+			while continue_loop:
+				sql_replay = """SELECT * FROM sch_chameleon.fn_replay_mysql(%s,%s,%s);""";
+				self.pgsql_cur.execute(sql_replay, (replay_max_rows, self.i_id_source, exit_on_error))
+				replay_status = self.pgsql_cur.fetchone()
+				if replay_status[0]:
+					self.logger.info("Replayed at most %s rows for source %s" % (replay_max_rows, self.source) )
+				continue_loop = replay_status[0]
+				function_error = replay_status[1]
+				if function_error:
+					raise Exception('The replay process crashed')
+				if replay_status[2]:
+					tables_error.append(replay_status[2])
+			self. __cleanup_replayed_batches()
 		return tables_error
 			
 	
