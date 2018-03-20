@@ -893,6 +893,19 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_resume, (self.i_id_source, ))
 	
+	def __set_last_maintenance(self):
+		"""
+			The method updates the field ts_last_maintenance for the given source in the table t_sources
+		"""
+		sql_set = """
+			UPDATE sch_chameleon.t_sources 
+				SET ts_last_maintenance=now() 
+			WHERE 
+				i_id_source=%s;
+		"""
+		self.pgsql_cur.execute(sql_set, (self.i_id_source, ))
+	
+	
 	def get_replica_paused(self):
 		"""
 			The method returns the status of the replica. This value is used in both read/replay replica methods for updating the corresponding flags.
@@ -965,7 +978,7 @@ class pg_engine(object):
 		while wait_result == 'wait':
 			self.pgsql_cur.execute(sql_wait, (self.i_id_source, ))
 			wait_result = self.pgsql_cur.fetchone()[0]
-			time.sleep(5)
+			time.sleep(1)
 		
 		return wait_result
 		
@@ -1027,9 +1040,13 @@ class pg_engine(object):
 			self.logger.error("Cannot proceed with the maintenance")
 			return wait_result
 		self.__vacuum_log_tables()
+		self.__set_last_maintenance()
 		self.logger.info("Resuming the replica daemons")
 		self.__resume_replica()
 		self.disconnect_db()
+		notifier_message = "maintenance for source %s is complete" % self.source
+		self.notifier.send_message(notifier_message, 'info')
+		self.logger.info(notifier_message)
 	
 	def replay_replica(self):
 		"""
@@ -2436,7 +2453,8 @@ class pg_engine(object):
 					ELSE
 						'No'
 				END as consistent_status,
-				enm_source_type
+				enm_source_type,
+				coalesce(date_trunc('seconds',ts_last_maintenance)::text,'N/A') as last_maintenance
 				
 				
 			FROM 

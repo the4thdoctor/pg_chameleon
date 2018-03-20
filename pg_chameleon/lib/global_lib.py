@@ -106,7 +106,7 @@ class replica_engine(object):
 		self.pg_engine.source = self.args.source
 		self.pg_engine.type_override = self.config["type_override"]
 		self.pg_engine.sources = self.config["sources"]
-		
+		self.pg_engine.notifier = self.notifier
 		
 		#mysql_source instance initialisation
 		self.mysql_source = mysql_source()
@@ -668,6 +668,7 @@ class replica_engine(object):
 			last_replay = status[6]
 			consistent = status[7]
 			source_type = status[8]
+			last_maintenance = status[9]
 			tab_row = [source_id, source_name, source_type,   source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
 			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
@@ -693,6 +694,8 @@ class replica_engine(object):
 			tab_body.append(tab_row)
 			tables_all= table_status[2]
 			tab_row = ['All tables', tables_all[1]]
+			tab_body.append(tab_row)
+			tab_row = ['Last maintenance', last_maintenance]
 			tab_body.append(tab_row)
 			if replica_counters:
 				tab_row = ['Replayed rows', replica_counters[0]]
