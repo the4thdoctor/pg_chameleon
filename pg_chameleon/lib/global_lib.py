@@ -644,6 +644,7 @@ class replica_engine(object):
 				print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
 		else:
 			print('There are no errors in the log')
+
 	def show_status(self):
 		"""
 			list the replica status from the replica catalogue.
@@ -732,12 +733,27 @@ class replica_engine(object):
 		"""
 			The method runs a maintenance process on the target postgresql database specified in the given source.
 		"""
+		maintenance_pid = os.path.expanduser('%s/%s_maintenance.pid' % (self.config["pid_dir"],self.args.source))
 		if self.args.source == "*":
 			print("You must specify a source name with the argument --source")
 		else:
-			self.logger.info("Starting the maintenance on the source %s" % (self.args.source, ))
-			self.pg_engine.run_maintenance()
-			
+			if self.args.debug:
+				self.pg_engine.run_maintenance()
+			else:
+				if self.config["log_dest"]  == 'stdout':
+					foreground = True
+				else:
+					self.logger.info("Starting the maintenance on the source %s" % (self.args.source, ))
+					foreground = False
+					print("Starting the maintenance process for source %s" % (self.args.source))
+					keep_fds = [self.logger_fds]
+					
+					app_name = "%s_maintenance" % self.args.source
+					maintenance_daemon = Daemonize(app=app_name, pid=maintenance_pid, action=self.pg_engine.run_maintenance, foreground=foreground , keep_fds=keep_fds)
+					try:
+						maintenance_daemon.start()
+					except:
+						print("The  maintenance process is already started. Aborting the command.")
 		
 	def __init_logger(self):
 		"""

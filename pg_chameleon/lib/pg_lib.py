@@ -1001,7 +1001,10 @@ class pg_engine(object):
 			self.pgsql_cur.execute(sql_stat[0])
 		for sql_stat in detach_sql:
 			self.logger.info("Running VACUUM FULL on the table %s" % (sql_stat[1]))
-			self.pgsql_cur.execute(sql_stat[2])
+			try:
+				self.pgsql_cur.execute(sql_stat[2])
+			except:
+				self.logger.error("An error occurred when running VACUUM FULL on the table %s" % (sql_stat[1]))
 		self.pgsql_cur.execute(sql_inherit, ('',  self.i_id_source))
 		attach_sql = self.pgsql_cur.fetchall()
 		for sql_stat in attach_sql:
