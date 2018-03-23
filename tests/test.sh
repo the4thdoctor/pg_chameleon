@@ -11,6 +11,8 @@ chameleon.py init_replica --config test --source pgsql --debug
 chameleon.py start_replica --config test --source mysql
 chameleon.py show_status --config test --source mysql
 chameleon.py stop_replica --config test --source mysql
+chameleon.py start_replica --config test --source mysql
+chameleon.py stop_all_replicas --config test
 chameleon.py drop_replica_schema --config test
 
 
@@ -22,6 +24,8 @@ chameleon init_replica --config test --source pgsql --debug
 chameleon start_replica --config test --source mysql
 chameleon show_status --config test --source mysql
 chameleon stop_replica --config test --source mysql
+chameleon start_replica --config test --source mysql
+chameleon stop_all_replicas --config test
 chameleon drop_replica_schema --config test
 
 

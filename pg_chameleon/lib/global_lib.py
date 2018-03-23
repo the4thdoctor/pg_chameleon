@@ -96,9 +96,11 @@ class replica_engine(object):
 		
 		self.load_config()
 		self.logger = self.__init_logger()
+		
 		#notifier configuration
 		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.args.rollbar_level ,  self.logger )
 		
+					
 		#pg_engine instance initialisation
 		self.pg_engine = pg_engine()
 		self.pg_engine.dest_conn = self.config["pg_conn"]
@@ -411,6 +413,9 @@ class replica_engine(object):
 				sync_daemon .start()
 	
 	def __stop_all_active_sources(self):
+		"""
+			The method stops all the active sources within the target PostgreSQL database.
+		"""
 		active_source = self.pg_engine.get_active_sources()
 		for source in active_source:
 			self.source = source[0]
@@ -503,7 +508,10 @@ class replica_engine(object):
 		signal.signal(signal.SIGINT, self.terminate_replica)
 		queue = mp.Queue()
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
-		check_timeout = self.sleep_loop#*10
+		if self.args.debug:
+			check_timeout = self.sleep_loop
+		else:
+			check_timeout = self.sleep_loop*10
 		self.logger.info("Starting the replica daemons for source %s " % (self.args.source))
 		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue,))
 		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue,))
@@ -608,6 +616,12 @@ class replica_engine(object):
 		"""
 		self.__stop_replica()
 	
+	def stop_all_replicas(self):
+		"""
+			The method  stops all the active replicas within the target database
+		"""
+		self.__stop_all_active_sources()
+		
 	def show_errors(self):
 		"""
 			displays the error log entries if any.

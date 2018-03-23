@@ -23,7 +23,8 @@ commands = [
 	'detach_replica', 
 	'set_configuration_files', 
 	'show_errors', 
-	'run_maintenance'
+	'run_maintenance', 
+	'stop_all_replicas'
 	]
 
 command_help = ','.join(commands)
