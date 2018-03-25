@@ -131,7 +131,7 @@ class mysql_source(object):
 			self.conn_unbuffered.close()
 		except:
 			pass
-
+			
 	def __build_table_exceptions(self):
 		"""
 			The method builds two dictionaries from the limit_tables and skip tables values set for the source.
@@ -148,7 +148,8 @@ class mysql_source(object):
 		if self.tables !='*':
 			tables = [table.strip() for table in self.tables.split(',')]
 			if limit_tables:
-				limit_tables = [table for table in tables if table in limit_tables]
+				limit_schemas = [table.split('.')[0] for table in limit_tables]
+				limit_tables = [table for table in tables if table in limit_tables or table.split('.')[0] not in limit_schemas]
 			else:
 				limit_tables = tables
 			self.schema_only = {table.split('.')[0] for table in limit_tables}
@@ -1065,7 +1066,7 @@ class mysql_source(object):
 								try:
 									column_type=column_map[column_name]
 								except KeyError:
-									self.logger.info("Detected inconsistent structure for the table  %s. The replay may fail. " % (table_name))
+									self.logger.debug("Detected inconsistent structure for the table  %s. The replay may fail. " % (table_name))
 									column_type = 'text'
 									
 								if column_type in self.hexify and event_after[column_name]:
@@ -1076,7 +1077,7 @@ class mysql_source(object):
 								try:
 									column_type=column_map[column_name]
 								except KeyError:
-									self.logger.info("Detected inconsistent structure for the table  %s. The replay may fail. " % (table_name))
+									self.logger.debug("Detected inconsistent structure for the table  %s. The replay may fail. " % (table_name))
 									column_type = 'text'
 								
 								if column_type in self.hexify and event_before[column_name]:
@@ -1124,28 +1125,34 @@ class mysql_source(object):
 		"""
 		self.__init_read_replica()
 		self.pg_engine.set_source_status("running")
-		
-		batch_data = self.pg_engine.get_batch_data()
-		if len(batch_data)>0:
-			id_batch=batch_data[0][0]
-			replica_data=self.__read_replica_stream(batch_data)
-			master_data=replica_data[0]
-			close_batch=replica_data[1]
-			if close_batch:
-				self.master_status=[]
-				self.master_status.append(master_data)
-				self.logger.debug("trying to save the master data...")
-				next_id_batch=self.pg_engine.save_master_status(self.master_status)
-				if next_id_batch:
-					self.logger.debug("new batch created, saving id_batch %s in class variable" % (id_batch))
-					self.id_batch=id_batch
-				else:
-					self.logger.debug("batch not saved. using old id_batch %s" % (self.id_batch))
-				if self.id_batch:
-					self.logger.debug("updating processed flag for id_batch %s", (id_batch))
-					self.pg_engine.set_batch_processed(id_batch)
-					self.id_batch=None
-		self.pg_engine.check_source_consistent()
+		replica_paused = self.pg_engine.get_replica_paused()
+		if replica_paused:
+			self.logger.info("Read replica is paused")
+			self.pg_engine.set_read_paused(True)
+		else:
+			self.pg_engine.set_read_paused(False)
+			batch_data = self.pg_engine.get_batch_data()
+			if len(batch_data)>0:
+				id_batch=batch_data[0][0]
+				replica_data=self.__read_replica_stream(batch_data)
+				master_data=replica_data[0]
+				close_batch=replica_data[1]
+				if close_batch:
+					self.master_status=[]
+					self.master_status.append(master_data)
+					self.logger.debug("trying to save the master data...")
+					next_id_batch=self.pg_engine.save_master_status(self.master_status)
+					if next_id_batch:
+						self.logger.debug("new batch created, saving id_batch %s in class variable" % (id_batch))
+						self.id_batch=id_batch
+					else:
+						self.logger.debug("batch not saved. using old id_batch %s" % (self.id_batch))
+					if self.id_batch:
+						self.logger.debug("updating processed flag for id_batch %s", (id_batch))
+						self.pg_engine.set_batch_processed(id_batch)
+						self.id_batch=None
+			self.pg_engine.check_source_consistent()
+			
 
 		self.disconnect_db_buffered()
 		

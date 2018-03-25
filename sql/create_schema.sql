@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '2.0.1'::TEXT t_version
+	SELECT '2.0.2'::TEXT t_version
 ;
 
 --TYPES
@@ -54,6 +54,8 @@ CREATE TABLE sch_chameleon.t_sources
 	t_binlog_name text,
 	i_binlog_position bigint,
 	b_consistent boolean NOT NULL DEFAULT TRUE,
+	b_paused boolean NOT NULL DEFAULT FALSE,
+	ts_last_maintenance timestamp without time zone NULL ,
 	enm_source_type sch_chameleon.en_src_type NOT NULL,
 	v_log_table character varying[] ,
 	CONSTRAINT pk_t_sources PRIMARY KEY (i_id_source)
@@ -63,7 +65,8 @@ CREATE TABLE sch_chameleon.t_sources
 CREATE TABLE sch_chameleon.t_last_received
 (
 	i_id_source			bigserial,
-	ts_last_received timestamp without time zone,
+	b_paused 			boolean NOT NULL DEFAULT FALSE,
+	ts_last_received 		timestamp without time zone,
 	CONSTRAINT pk_t_last_received PRIMARY KEY (i_id_source),
 	CONSTRAINT fk_last_received_id_source FOREIGN KEY (i_id_source) 
 	REFERENCES  sch_chameleon.t_sources(i_id_source)
@@ -74,6 +77,7 @@ CREATE TABLE sch_chameleon.t_last_received
 CREATE TABLE sch_chameleon.t_last_replayed
 (
 	i_id_source			bigserial,
+	b_paused 			boolean NOT NULL DEFAULT FALSE,
 	ts_last_replayed timestamp without time zone,
 	CONSTRAINT pk_t_last_replayed PRIMARY KEY (i_id_source),
 	CONSTRAINT fk_last_replayed_id_source FOREIGN KEY (i_id_source) 

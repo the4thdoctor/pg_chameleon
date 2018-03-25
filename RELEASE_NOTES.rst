@@ -1,5 +1,53 @@
 RELEASE NOTES
 *************************
+
+2.0.5
+--------------------------
+The maintenance release 2.0.5 a regression which prevented some tables to be synced with `sync_tables` when the parameter `limit_tables` was set.
+Previously having two or more schemas mapped with only one schema listed in `limit_tables` prevented the other schema's tables to be synchronised with `sync_tables`.
+
+This release add two new commands to improve the general performance and the management.
+
+The command `stop_all_replicas` stops all the running sources within the target postgresql database.
+
+The command `run_maintenance` performs a VACUUM FULL on the specified source's log tables.
+In order to limit the impact on other sources eventually configured the command performs the following steps.
+
+* The read and replay processes for the given source are paused
+* The log tables are detached from the parent table `sch_chameleon.t_log_replica` with the command `NO INHERIT`
+* The log tables are vacuumed with `VACUUM FULL`
+* The log tables are attached to the parent table `sch_chameleon.t_log_replica` with the command `INHERIT`
+* The read and replay processes are resumed
+
+Currently the process is manual but it will become eventually automated if it's proven to be sufficiently robust.
+
+The pause for the replica processes creates the infrastructure necessary to have a self healing replica.
+This functionality will appear in future releases of the branch 2.0.
+
+As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
+
+* If working via ssh is suggested to open a screen session 
+* Before the upgrade stop all the replica processes.
+* Upgrade pg_chameleon with `pip install pg_chameleon --upgrade`
+* Run the upgrade command `chameleon upgrade_replica_schema --config <your_config>`
+* Start the replica processes
+
+
+2.0.4
+--------------------------
+The maintenance release 2.0.4 fix the wrong handling of the ``ALTER TABLE`` when generating the ``MODIFY`` translation. 
+The regression was added in the version 2.0.3 and can result in a broken replica process.
+
+This version improves the way to handle the replica from tables with dropped columns in the future. 
+The `python-mysql-replication library with this commit <https://github.com/noplay/python-mysql-replication/commit/4c48538168f4cd3239563393a29b542cc6ffcf4b>`_ adds a way to 
+manage the replica with the tables having columns dropped before the read replica is started.
+
+Previously the auto generated column name caused the replica process to crash as the type map dictionary didn't had the corresponding key.
+
+The version 2.0.4 handles the ``KeyError`` exception and allow the row to be stored on the PostgreSQL target database.
+However this will very likely cause the table to be removed from the replica in the replay step. A debug log message is emitted when this happens in order to 
+when the issue occurs.
+
 2.0.3
 --------------------------
 The bugfix release 2.0.3 fixes the issue #63 changeing all the fields  `i_binlog_position` to bigint. Previously binlog files larger than 2GB would cause an integer overflow during the phase of write rows in the PostgreSQL database.

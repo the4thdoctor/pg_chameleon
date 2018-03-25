@@ -67,7 +67,7 @@ class replica_engine(object):
 		"""
 			Class constructor.
 		"""
-		self.catalog_version = '2.0.1'
+		self.catalog_version = '2.0.2'
 		self.upgradable_version = '1.7'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
@@ -96,9 +96,11 @@ class replica_engine(object):
 		
 		self.load_config()
 		self.logger = self.__init_logger()
+		
 		#notifier configuration
 		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.args.rollbar_level ,  self.logger )
 		
+					
 		#pg_engine instance initialisation
 		self.pg_engine = pg_engine()
 		self.pg_engine.dest_conn = self.config["pg_conn"]
@@ -106,7 +108,7 @@ class replica_engine(object):
 		self.pg_engine.source = self.args.source
 		self.pg_engine.type_override = self.config["type_override"]
 		self.pg_engine.sources = self.config["sources"]
-		
+		self.pg_engine.notifier = self.notifier
 		
 		#mysql_source instance initialisation
 		self.mysql_source = mysql_source()
@@ -411,6 +413,9 @@ class replica_engine(object):
 				sync_daemon .start()
 	
 	def __stop_all_active_sources(self):
+		"""
+			The method stops all the active sources within the target PostgreSQL database.
+		"""
 		active_source = self.pg_engine.get_active_sources()
 		for source in active_source:
 			self.source = source[0]
@@ -503,7 +508,10 @@ class replica_engine(object):
 		signal.signal(signal.SIGINT, self.terminate_replica)
 		queue = mp.Queue()
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
-		check_timeout = self.sleep_loop#*10
+		if self.args.debug:
+			check_timeout = self.sleep_loop
+		else:
+			check_timeout = self.sleep_loop*10
 		self.logger.info("Starting the replica daemons for source %s " % (self.args.source))
 		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue,))
 		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue,))
@@ -608,6 +616,12 @@ class replica_engine(object):
 		"""
 		self.__stop_replica()
 	
+	def stop_all_replicas(self):
+		"""
+			The method  stops all the active replicas within the target database
+		"""
+		self.__stop_all_active_sources()
+		
 	def show_errors(self):
 		"""
 			displays the error log entries if any.
@@ -644,6 +658,7 @@ class replica_engine(object):
 				print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
 		else:
 			print('There are no errors in the log')
+
 	def show_status(self):
 		"""
 			list the replica status from the replica catalogue.
@@ -667,6 +682,7 @@ class replica_engine(object):
 			last_replay = status[6]
 			consistent = status[7]
 			source_type = status[8]
+			last_maintenance = status[9]
 			tab_row = [source_id, source_name, source_type,   source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
 			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
@@ -692,6 +708,8 @@ class replica_engine(object):
 			tab_body.append(tab_row)
 			tables_all= table_status[2]
 			tab_row = ['All tables', tables_all[1]]
+			tab_body.append(tab_row)
+			tab_row = ['Last maintenance', last_maintenance]
 			tab_body.append(tab_row)
 			if replica_counters:
 				tab_row = ['Replayed rows', replica_counters[0]]
@@ -728,8 +746,32 @@ class replica_engine(object):
 			elif drop_src in  self.lst_yes:
 				print('Please type YES all uppercase to confirm')
 				
+	def run_maintenance(self):
+		"""
+			The method runs a maintenance process on the target postgresql database specified in the given source.
+		"""
+		maintenance_pid = os.path.expanduser('%s/%s_maintenance.pid' % (self.config["pid_dir"],self.args.source))
+		if self.args.source == "*":
+			print("You must specify a source name with the argument --source")
+		else:
+			if self.args.debug:
+				self.pg_engine.run_maintenance()
+			else:
+				if self.config["log_dest"]  == 'stdout':
+					foreground = True
+				else:
+					self.logger.info("Starting the maintenance on the source %s" % (self.args.source, ))
+					foreground = False
+					print("Starting the maintenance process for source %s" % (self.args.source))
+					keep_fds = [self.logger_fds]
+					
+					app_name = "%s_maintenance" % self.args.source
+					maintenance_daemon = Daemonize(app=app_name, pid=maintenance_pid, action=self.pg_engine.run_maintenance, foreground=foreground , keep_fds=keep_fds)
+					try:
+						maintenance_daemon.start()
+					except:
+						print("The  maintenance process is already started. Aborting the command.")
 		
-			
 	def __init_logger(self):
 		"""
 		The method initialise a new logger object using the configuration parameters.
