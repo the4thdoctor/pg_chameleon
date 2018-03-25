@@ -43,6 +43,8 @@ Command line reference
     ``stop_replica``, Stops the replica process daemon, ``--config`` ``--source`` 
     ``detach_replica``, Detaches a replica from the mysql master configuring the postgres schemas to work as a standalone system. Useful for migrations., ``--config`` ``--source`` 
     ``enable_replica``, Enables the replica for the given source changing the source status to stopped. It's useful if the replica crashes., ``--config`` ``--source`` 
+    ``run_maintenance``, Runs a vacuum full on the log tables for the given source., ``--config`` ``--source`` 
+    ``stop_all_replicas``, Stops all the running sources within the target postgresql database., ``--config``
 
     
 Example

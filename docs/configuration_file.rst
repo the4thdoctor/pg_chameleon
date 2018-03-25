@@ -46,7 +46,7 @@ PostgreSQL target connection
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 19-23
+   :lines: 19-26
    :linenos:
 
 The pg_conn key maps the target database connection string.  
