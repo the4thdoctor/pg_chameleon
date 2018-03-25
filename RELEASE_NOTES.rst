@@ -24,6 +24,14 @@ Currently the process is manual but it will become eventually automated if it's 
 The pause for the replica processes creates the infrastructure necessary to have a self healing replica.
 This functionality will appear in future releases of the branch 2.0.
 
+As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
+
+* If working via ssh is suggested to open a screen session 
+* Before the upgrade stop all the replica processes.
+* Upgrade pg_chameleon with `pip install pg_chameleon --upgrade`
+* Run the upgrade command `chameleon upgrade_replica_schema --config <your_config>`
+* Start the replica processes
+
 
 2.0.4
 --------------------------
