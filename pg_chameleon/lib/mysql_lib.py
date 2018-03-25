@@ -147,8 +147,8 @@ class mysql_source(object):
 		
 		if self.tables !='*':
 			tables = [table.strip() for table in self.tables.split(',')]
-			limit_schemas = [table.split('.')[0] for table in limit_tables]
 			if limit_tables:
+				limit_schemas = [table.split('.')[0] for table in limit_tables]
 				limit_tables = [table for table in tables if table in limit_tables or table.split('.')[0] not in limit_schemas]
 			else:
 				limit_tables = tables
