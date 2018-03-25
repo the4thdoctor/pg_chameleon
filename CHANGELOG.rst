@@ -1,11 +1,11 @@
 changelog 
 *************************
 
-2.0.5 - XX March 2018
+2.0.5 - 25 March 2018
 ..........................................................
 * fix wrong exclusion when running sync_tables with limit_tables set
 * add `run_maintenance` command to perform a VACUUM FULL on the source's log tables
-* add `stop_all_replicas` sto stop all the running sources within the target postgresql database
+* add `stop_all_replicas` command to stop all the running sources within the target postgresql database
 
 2.0.4 - 04 March 2018
 ..........................................................

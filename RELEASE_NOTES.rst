@@ -1,6 +1,30 @@
 RELEASE NOTES
 *************************
 
+2.0.5
+--------------------------
+The maintenance release 2.0.5 a regression which prevented some tables to be synced with `sync_tables` when the parameter `limit_tables` was set.
+Previously having two or more schemas mapped with only one schema listed in `limit_tables` prevented the other schema's tables to be synchronised with `sync_tables`.
+
+This release add two new commands to improve the general performance and the management.
+
+The command `stop_all_replicas` stops all the running sources within the target postgresql database.
+
+The command `run_maintenance` performs a VACUUM FULL on the specified source's log tables.
+In order to limit the impact on other sources eventually configured the command performs the following steps.
+
+* The read and replay processes for the given source are paused
+* The log tables are detached from the parent table `sch_chameleon.t_log_replica` with the command `NO INHERIT`
+* The log tables are vacuumed with `VACUUM FULL`
+* The log tables are attached to the parent table `sch_chameleon.t_log_replica` with the command `INHERIT`
+* The read and replay processes are resumed
+
+Currently the process is manual but it will become eventually automated if it's proven to be sufficiently robust.
+
+The pause for the replica processes creates the infrastructure necessary to have a self healing replica.
+This functionality will appear in future releases of the branch 2.0.
+
+
 2.0.4
 --------------------------
 The maintenance release 2.0.4 fix the wrong handling of the ``ALTER TABLE`` when generating the ``MODIFY`` translation. 
