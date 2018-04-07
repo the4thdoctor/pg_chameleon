@@ -889,7 +889,29 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_count, (self.i_id_source, ))
 		count_maintenance = self.pgsql_cur.fetchone()
 		return count_maintenance[0]
-		
+
+	def __start_maintenance(self):
+		"""
+			The method sets the flag b_maintenance to true for the given source
+		"""
+		sql_start = """
+			UPDATE sch_chameleon.t_sources 
+				SET b_maintenance='t'
+			WHERE i_id_source=%s; 
+		""" 
+		self.pgsql_cur.execute(sql_start, (self.i_id_source, ))
+
+	def __end_maintenance(self):
+		"""
+			The method sets the flag b_maintenance to false for the given source
+		"""
+		sql_end = """
+			UPDATE sch_chameleon.t_sources 
+				SET b_maintenance='f'
+			WHERE i_id_source=%s; 
+		""" 
+		self.pgsql_cur.execute(sql_end, (self.i_id_source, ))
+	
 	def __pause_replica(self, others):
 		"""
 			The method pause the replica updating the b_paused flag for the given current source or the other sources in the target database
@@ -954,7 +976,63 @@ class pg_engine(object):
 		replica_paused = self.pgsql_cur.fetchone()
 		return replica_paused[0]
 	
-	#def __wait_for_all_paused(self):
+	def __wait_for_other_pause(self):
+		"""
+			The method waits for the other sources to be paused or stopped within the same postgres database.
+
+		"""
+		
+		sql_wait = """
+		SELECT 
+			CASE
+				WHEN count(t_action) = count(t_action) FILTER ( WHERE t_action='proceed' )
+				THEN 
+					'proceed'
+				ELSE
+					'wait'
+			END AS t_action
+
+		FROM
+		(
+			SELECT 
+				CASE
+					WHEN src.enm_status = 'running'
+				THEN 
+					CASE
+						WHEN 
+							src.b_paused 
+						AND	rcv.b_paused
+						AND	rep.b_paused
+					THEN
+						'proceed'
+					ELSE
+						'wait'
+					END
+				ELSE
+					'proceed'
+				END AS t_action
+
+			FROM 
+				sch_chameleon.t_sources src
+				INNER JOIN sch_chameleon.t_last_received rcv
+				ON
+					src.i_id_source=rcv.i_id_source
+				INNER JOIN sch_chameleon.t_last_replayed rep
+				ON
+					src.i_id_source=rep.i_id_source
+
+			WHERE 
+				src.i_id_source<>%s
+
+		) chk_others
+		;
+		"""
+		self.logger.info("Waiting for the other replicas daemons to pause")
+		wait_result = 'wait'
+		while wait_result == 'wait':
+			self.pgsql_cur.execute(sql_wait, (self.i_id_source, ))
+			wait_result = self.pgsql_cur.fetchone()[0]
+			time.sleep(5)
 	
 	def __wait_for_self_pause(self):
 		"""
@@ -1009,7 +1087,7 @@ class pg_engine(object):
 		while wait_result == 'wait':
 			self.pgsql_cur.execute(sql_wait, (self.i_id_source, ))
 			wait_result = self.pgsql_cur.fetchone()[0]
-			time.sleep(1)
+			time.sleep(5)
 		
 		return wait_result
 		
@@ -1041,6 +1119,7 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_inherit, ('NO',  self.i_id_source))
 		detach_sql = self.pgsql_cur.fetchall()
 		self.__pause_replica(others=True)
+		self.__wait_for_other_pause()
 		for sql_stat in detach_sql:
 			self.logger.info("Detaching the table %s" % (sql_stat[1]))
 			self.pgsql_cur.execute(sql_stat[0])
@@ -1054,6 +1133,7 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_inherit, ('',  self.i_id_source))
 		attach_sql = self.pgsql_cur.fetchall()
 		self.__pause_replica(others=True)
+		self.__wait_for_other_pause()
 		for sql_stat in attach_sql:
 			self.logger.info("Attaching the table %s" % (sql_stat[1]))
 			self.pgsql_cur.execute(sql_stat[0])
@@ -1070,6 +1150,7 @@ class pg_engine(object):
 		self.set_source_id()
 		count_maintenance = self.__count_maintenance_src()
 		if count_maintenance == 0:
+			self.__start_maintenance()
 			self.__pause_replica(others=False)
 			wait_result = self.__wait_for_self_pause()
 			if wait_result == 'abort':
@@ -1079,6 +1160,7 @@ class pg_engine(object):
 			self.__set_last_maintenance()
 			self.logger.info("Resuming the replica daemons")
 			self.__resume_replica(others=False)
+			self.__end_maintenance()
 			self.disconnect_db()
 			notifier_message = "maintenance for source %s is complete" % self.source
 			self.notifier.send_message(notifier_message, 'info')
