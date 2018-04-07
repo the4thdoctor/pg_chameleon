@@ -94,6 +94,8 @@ class replica_engine(object):
 			self.set_configuration_files()
 			sys.exit()
 		
+		self.__set_conf_permissions(cham_dir)
+		
 		self.load_config()
 		self.logger = self.__init_logger()
 		
@@ -610,6 +612,16 @@ class replica_engine(object):
 			except:
 				print("An error occurred when trying to signal the replica process")
 	
+	def __set_conf_permissions(self,  cham_dir):
+		"""
+			The method sets the permissions of the configuration directory to 700 
+			
+			:param cham_dir: the chameleon configuration directory to fix
+		"""
+		if os.path.isdir(cham_dir):
+			os.chmod(cham_dir, 0o700)
+		
+		
 	def stop_replica(self):
 		"""
 			The method calls the private method __stop_replica to stop the replica process.
