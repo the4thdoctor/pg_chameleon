@@ -56,7 +56,11 @@ class mysql_source(object):
 		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'binlog_row_image';"""
 		self.cursor_buffered.execute(sql_log_bin)
 		variable_check = self.cursor_buffered.fetchone()
-		binlog_row_image = variable_check["Value"]
+		if variable_check:
+			binlog_row_image = variable_check["Value"]
+		else:
+			binlog_row_image = 'FULL'
+			
 		if log_bin.upper() == 'ON' and binlog_format.upper() == 'ROW' and binlog_row_image.upper() == 'FULL':
 			self.replica_possible = True
 		else:
@@ -64,7 +68,7 @@ class mysql_source(object):
 			self.pg_engine.set_source_status("error")
 			self.logger.error("The MySQL configuration does not allow the replica. Exiting now")
 			self.logger.error("Source settings - log_bin %s, binlog_format %s, binlog_row_image %s" % (log_bin.upper(),  binlog_format.upper(), binlog_row_image.upper() ))
-			self.logger.error("Mandatory settings - log_bin ON, binlog_format ROW, binlog_row_image FULL")
+			self.logger.error("Mandatory settings - log_bin ON, binlog_format ROW, binlog_row_image FULL (only for MySQL 5.6+) ")
 			sys.exit()
 		
 	
