@@ -1091,7 +1091,7 @@ class pg_engine(object):
 		
 		return wait_result
 		
-	def __vacuum_log_tables(self):
+	def __vacuum_full_log_tables(self):
 		"""
 			The method runs a VACUUM FULL on the log tables for the given source after detaching them from the parent table.
 		"""
@@ -1138,6 +1138,39 @@ class pg_engine(object):
 			self.logger.info("Attaching the table %s" % (sql_stat[1]))
 			self.pgsql_cur.execute(sql_stat[0])
 		self.__resume_replica(others=True)
+		
+		
+	def __vacuum_log_tables(self):
+		"""
+			The method runs a VACUUM on the log tables for the given source 
+		"""
+		sql_vacuum = """
+			SELECT 
+				v_log_table,
+				format('VACUUM sch_chameleon.%%I ;',
+				v_log_table
+				)
+			FROM
+			(
+			SELECT 
+				unnest(v_log_table) AS v_log_table 
+			FROM 
+				sch_chameleon.t_sources 
+			WHERE 
+				i_id_source=%s
+			) log
+			;
+		"""
+		self.pgsql_cur.execute(sql_vacuum, (self.i_id_source, ))
+		vacuum_sql = self.pgsql_cur.fetchall()
+		for sql_stat in vacuum_sql:
+			self.logger.info("Running VACUUM on the table %s" % (sql_stat[0]))
+			try:
+				self.pgsql_cur.execute(sql_stat[1])
+			except:
+				self.logger.error("An error occurred when running VACUUM FULL on the table %s" % (sql_stat[0]))
+		
+		
 	def run_maintenance(self):
 		"""
 			The method runs the maintenance for the given source.
