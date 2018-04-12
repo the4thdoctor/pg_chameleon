@@ -12,8 +12,6 @@ chameleon.py start_replica --config test --source mysql
 chameleon.py show_status --config test --source mysql
 chameleon.py stop_replica --config test --source mysql
 chameleon.py start_replica --config test --source mysql
-chameleon.py run_maintenance --config test --source mysql --debug
-chameleon.py run_maintenance --config test --source mysql --debug --full
 chameleon.py stop_all_replicas --config test
 chameleon.py drop_replica_schema --config test
 
@@ -27,8 +25,6 @@ chameleon start_replica --config test --source mysql
 chameleon show_status --config test --source mysql
 chameleon stop_replica --config test --source mysql
 chameleon start_replica --config test --source mysql
-chameleon run_maintenance --config test --source mysql --debug
-chameleon run_maintenance --config test --source mysql --debug --full
 chameleon stop_all_replicas --config test
 chameleon drop_replica_schema --config test
 
