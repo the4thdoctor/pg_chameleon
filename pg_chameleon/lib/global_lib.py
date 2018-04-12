@@ -108,6 +108,7 @@ class replica_engine(object):
 		self.pg_engine.dest_conn = self.config["pg_conn"]
 		self.pg_engine.logger = self.logger
 		self.pg_engine.source = self.args.source
+		self.pg_engine.full = self.args.full
 		self.pg_engine.type_override = self.config["type_override"]
 		self.pg_engine.sources = self.config["sources"]
 		self.pg_engine.notifier = self.notifier
