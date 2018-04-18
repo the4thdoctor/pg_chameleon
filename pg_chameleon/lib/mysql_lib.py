@@ -24,7 +24,7 @@ class mysql_source(object):
 		self.schema_list = []
 		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
 		self.schema_only = {}
-	
+		
 	def __del__(self):
 		"""
 			Class destructor, tries to disconnect the mysql connection.
@@ -678,14 +678,25 @@ class mysql_source(object):
 			The method calls the pre-steps required by the read replica method.
 			
 		"""
+		
 		self.replica_conn = {}
 		self.source_config = self.sources[self.source]
+		try:
+			exit_on_error = True if self.source_config["on_error_read"]=='exit' else False
+		except KeyError:
+			exit_on_error = True
 		self.my_server_id = self.source_config["my_server_id"]
 		self.limit_tables = self.source_config["limit_tables"]
 		self.skip_tables = self.source_config["skip_tables"]
 		self.replica_batch_size = self.source_config["replica_batch_size"]
 		self.hexify = [] + self.hexify_always
-		self.connect_db_buffered()
+		try:
+			self.connect_db_buffered()
+		except:
+			if exit_on_error:
+				raise
+			else: 
+				return "skip"
 		self.pg_engine.connect_db()
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
 		self.schema_replica = [schema for schema in self.schema_mappings]
@@ -1127,38 +1138,41 @@ class mysql_source(object):
 			If the variable is not empty then the previous batch gets closed with a simple update of the processed flag.
 		
 		"""
-		self.__init_read_replica()
-		self.pg_engine.set_source_status("running")
-		replica_paused = self.pg_engine.get_replica_paused()
-		if replica_paused:
-			self.logger.info("Read replica is paused")
-			self.pg_engine.set_read_paused(True)
+		skip = self.__init_read_replica()
+		if skip:
+			self.logger.warning("Couldn't connect to the source database for reading the replica. Ignoring.")
 		else:
-			self.pg_engine.set_read_paused(False)
-			batch_data = self.pg_engine.get_batch_data()
-			if len(batch_data)>0:
-				id_batch=batch_data[0][0]
-				replica_data=self.__read_replica_stream(batch_data)
-				master_data=replica_data[0]
-				close_batch=replica_data[1]
-				if close_batch:
-					self.master_status=[]
-					self.master_status.append(master_data)
-					self.logger.debug("trying to save the master data...")
-					next_id_batch=self.pg_engine.save_master_status(self.master_status)
-					if next_id_batch:
-						self.logger.debug("new batch created, saving id_batch %s in class variable" % (id_batch))
-						self.id_batch=id_batch
-					else:
-						self.logger.debug("batch not saved. using old id_batch %s" % (self.id_batch))
-					if self.id_batch:
-						self.logger.debug("updating processed flag for id_batch %s", (id_batch))
-						self.pg_engine.set_batch_processed(id_batch)
-						self.id_batch=None
-			self.pg_engine.check_source_consistent()
-			
+			self.pg_engine.set_source_status("running")
+			replica_paused = self.pg_engine.get_replica_paused()
+			if replica_paused:
+				self.logger.info("Read replica is paused")
+				self.pg_engine.set_read_paused(True)
+			else:
+				self.pg_engine.set_read_paused(False)
+				batch_data = self.pg_engine.get_batch_data()
+				if len(batch_data)>0:
+					id_batch=batch_data[0][0]
+					replica_data=self.__read_replica_stream(batch_data)
+					master_data=replica_data[0]
+					close_batch=replica_data[1]
+					if close_batch:
+						self.master_status=[]
+						self.master_status.append(master_data)
+						self.logger.debug("trying to save the master data...")
+						next_id_batch=self.pg_engine.save_master_status(self.master_status)
+						if next_id_batch:
+							self.logger.debug("new batch created, saving id_batch %s in class variable" % (id_batch))
+							self.id_batch=id_batch
+						else:
+							self.logger.debug("batch not saved. using old id_batch %s" % (self.id_batch))
+						if self.id_batch:
+							self.logger.debug("updating processed flag for id_batch %s", (id_batch))
+							self.pg_engine.set_batch_processed(id_batch)
+							self.id_batch=None
+				self.pg_engine.check_source_consistent()
+				
 
-		self.disconnect_db_buffered()
+			self.disconnect_db_buffered()
 		
 		
 	def init_replica(self):
