@@ -36,6 +36,8 @@ logid_help = """Specifies the log id entry for displaying the error details"""
 debug_help = """Forces the debug mode with logging on stdout and log level debug."""
 version_help = """Displays pg_chameleon's installed  version."""
 rollbar_help = """Overrides the level for messages to be sent to rolllbar. One of: "critical", "error", "warning", "info". The Default is "info" """
+full_help = """When specified with run_maintenance the switch performs a vacuum full instead of a normal vacuum. """
+
 
 parser = argparse.ArgumentParser(description='Command line for pg_chameleon.',  add_help=True)
 parser.add_argument('command', type=str, help=command_help)
@@ -47,7 +49,7 @@ parser.add_argument('--logid', type=str,  default='*',  required=False, help=log
 parser.add_argument('--debug', default=False, required=False, help=debug_help, action='store_true')
 parser.add_argument('--version', action='version', help=version_help,version='{version}'.format(version=__version__))
 parser.add_argument('--rollbar-level', type=str, default="info", required=False, help=rollbar_help)
-
+parser.add_argument('--full', default=False, required=False, help=full_help, action='store_false')
 args = parser.parse_args()
 
 
