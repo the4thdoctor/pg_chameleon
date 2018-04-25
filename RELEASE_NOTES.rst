@@ -1,9 +1,21 @@
 RELEASE NOTES
 *************************
 
+2.0.6
+--------------------------
+The maintenance release 2.0.X a regression when a new column was added with the default value ``NOW()``. The maintenance introduced in the version 2.0.5 has been changed to 
+a less aggressive approach. In particular the ``run_maintenance`` command now executes a ``VACUUM`` unless the switch ``--full`` is specified. In that case a ``VACUUM FULL`` is executed
+but without detaching the partitions. This approach will cause other sources to be blocked by the maintenance. However, because the detach approach has proven to be very fragile
+vacuuming full the log tables without removing them from the partitioned structure is  a more robust approach.
+
+This release adds an optional parameter ``on_error_read: ``  on the mysql type's sources which allow the read process to stay up if the mysql database is refusing connections (e.g. RDS doing maintenance).
+
+This release adds the support for mysql 5.5 which doesn't have the parameter ``binlog_row_image``.
+
+
 2.0.5
 --------------------------
-The maintenance release 2.0.5 a regression which prevented some tables to be synced with `sync_tables` when the parameter `limit_tables` was set.
+The maintenance release 2.0.5 fixes a regression which prevented some tables to be synced with `sync_tables` when the parameter `limit_tables` was set.
 Previously having two or more schemas mapped with only one schema listed in `limit_tables` prevented the other schema's tables to be synchronised with `sync_tables`.
 
 This release add two new commands to improve the general performance and the management.

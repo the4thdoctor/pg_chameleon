@@ -1,6 +1,15 @@
 changelog 
 *************************
 
+2.0.6 - XX April 2018
+..........................................................
+* fix for issue #69 add optional parameter ``on_error_read: `` for the source for ignoring connection issues with the source database (e.g. RDS in maintenance)
+* remove the detach partition during the maintenance process as this proved to be a very fragile approach
+* add switch ``--full`` to run a ``VACUUM FULL`` during the maintenance 
+* when running the maintentenance execute a ``VACUUM`` instead of a ``VACUUM FULL``
+* fix for issue #68. fallback to ``binlog_row_image=FULL`` if the parameter is missing in mysql 5.5.
+* add cleanup for default value ``NOW()`` when adding a new column with ``ALTER TABLE``
+
 2.0.5 - 25 March 2018
 ..........................................................
 * fix wrong exclusion when running sync_tables with limit_tables set

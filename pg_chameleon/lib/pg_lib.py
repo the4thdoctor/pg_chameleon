@@ -1512,7 +1512,7 @@ class pg_engine(object):
 			FROM
 				sch_chameleon.t_sources
 			WHERE
-				enm_status NOT IN ('ready','stopped')
+				enm_status NOT IN ('ready','stopped','initialised')
 			;
 		"""
 		self.pgsql_cur.execute(sql_count)
