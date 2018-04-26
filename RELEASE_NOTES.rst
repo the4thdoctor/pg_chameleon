@@ -11,7 +11,7 @@ The detach has been disabled and may be completely removed in the future release
 
 However running VACUUM FULL on the log tables can cause  the other sources to be blocked during the maintenance run.
 
-This release adds an optional parameter ``on_error_read: ``  on the mysql type's sources which allow the read process to stay up if the mysql database is refusing connections (e.g. RDS doing maintenance).
+This release adds an optional parameter ``on_error_read:``  on the mysql type's sources which allow the read process to stay up if the mysql database is refusing connections (e.g. RDS doing maintenance).
 Following the  principle of least astonishment the parameter if omitted doesn't cause any change of behaviour. If added with the value continue (e.g. ``on_error_read: continue``) 
 will prevent the replica process to stop in the case of connection issues from the MySQL database with a warning is emitted on the replica log .
 
