@@ -3,12 +3,17 @@ RELEASE NOTES
 
 2.0.6
 --------------------------
-The maintenance release 2.0.X a regression when a new column was added with the default value ``NOW()``. The maintenance introduced in the version 2.0.5 has been changed to 
-a less aggressive approach. In particular the ``run_maintenance`` command now executes a ``VACUUM`` unless the switch ``--full`` is specified. In that case a ``VACUUM FULL`` is executed
-but without detaching the partitions. This approach will cause other sources to be blocked by the maintenance. However, because the detach approach has proven to be very fragile
-vacuuming full the log tables without removing them from the partitioned structure is  a more robust approach.
+The maintenance release 2.0.6 fixes a crash occurring when a new column is added on the source database with the default value ``NOW()``. 
+
+The maintenance introduced in the version 2.0.5 is now less aggressive.
+In particular the ``run_maintenance`` command now executes a conventional ``VACUUM`` on the source's log tables, unless the switch ``--full`` is specified. In that case a ``VACUUM FULL`` is executed.
+The detach has been disabled and may be completely removed in the future releases because very fragile and prone to errors. 
+
+However running VACUUM FULL on the log tables can cause  the other sources to be blocked during the maintenance run.
 
 This release adds an optional parameter ``on_error_read: ``  on the mysql type's sources which allow the read process to stay up if the mysql database is refusing connections (e.g. RDS doing maintenance).
+Following the  principle of least astonishment the parameter if omitted doesn't cause any change of behaviour. If added with the value continue (e.g. ``on_error_read: continue``) 
+will prevent the replica process to stop in the case of connection issues from the MySQL database with a warning is emitted on the replica log .
 
 This release adds the support for mysql 5.5 which doesn't have the parameter ``binlog_row_image``.
 
