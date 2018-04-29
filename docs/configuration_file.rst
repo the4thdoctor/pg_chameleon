@@ -57,7 +57,7 @@ sources configuration
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 28-83
+   :lines: 28-84
    :linenos:
 
 The key sources allow to setup multiple replica sources writing on the same postgresql database. 
@@ -74,7 +74,7 @@ Database connection
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 28-55
+   :lines: 28-56
    :emphasize-lines: 3-9
    :linenos:
 
@@ -86,7 +86,7 @@ Schema mappings
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 28-55
+   :lines: 28-56
    :emphasize-lines: 10-11
    :linenos:
 
@@ -98,7 +98,7 @@ Limit and skip tables
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 28-55
+   :lines: 28-56
    :emphasize-lines: 12-15
    :linenos:
 
@@ -112,7 +112,7 @@ Grant select to option
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 28-55
+   :lines: 28-56
    :emphasize-lines: 16-17
    :linenos:
 
@@ -128,8 +128,8 @@ Source configuration parameters
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 28-55
-   :emphasize-lines: 18-28
+   :lines: 28-56
+   :emphasize-lines: 18-29
    :linenos:
    
 * lock_timeout the max time in seconds that the target postgresql connections should wait for acquiring a lock. This parameter applies  to init_replica,refresh_schema and sync_tables when performing the relation's swap.
@@ -141,6 +141,7 @@ Source configuration parameters
 * out_dir the directory where the csv files are dumped during the init_replica process if the copy mode is file.
 * sleep_loop seconds between a two replica batches.
 * on_error_replay specifies whether the replay process should ``exit`` or ``continue``  if any error during the replay happens. If ``continue`` is specified the offending tables are removed from the replica.
+* on_error_read specifies whether the read process should ``exit`` or ``continue``  if a connection error during the read process happens. If ``continue`` is specified the process emits a warning and waits for the connection to come back. If the parameter is omitted the default is ``exit`` which cause the replica process to stop with error.
 * type specifies the source database type. The system supports ``mysql`` or  ``pgsql``. See below for the pgsql limitations.
    
 PostgreSQL source type (EXPERIMENTAL)
