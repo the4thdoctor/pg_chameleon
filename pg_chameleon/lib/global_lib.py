@@ -67,7 +67,7 @@ class replica_engine(object):
 		"""
 			Class constructor.
 		"""
-		self.catalog_version = '2.0.2'
+		self.catalog_version = '2.0.3'
 		self.upgradable_version = '1.7'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
 		python_lib=get_python_lib()
@@ -94,6 +94,8 @@ class replica_engine(object):
 			self.set_configuration_files()
 			sys.exit()
 		
+		self.__set_conf_permissions(cham_dir)
+		
 		self.load_config()
 		self.logger = self.__init_logger()
 		
@@ -106,6 +108,7 @@ class replica_engine(object):
 		self.pg_engine.dest_conn = self.config["pg_conn"]
 		self.pg_engine.logger = self.logger
 		self.pg_engine.source = self.args.source
+		self.pg_engine.full = self.args.full
 		self.pg_engine.type_override = self.config["type_override"]
 		self.pg_engine.sources = self.config["sources"]
 		self.pg_engine.notifier = self.notifier
@@ -138,6 +141,8 @@ class replica_engine(object):
 		if self.args.command == 'upgrade_replica_schema':
 			self.pg_engine.sources = self.config["sources"]
 			print("WARNING, entering upgrade mode. Disabling the catalogue version's check. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
+		elif self.args.command == 'enable_replica' and self.catalog_version != catalog_version:
+			print("WARNING, catalogue mismatch. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
 		else:
 			if  catalog_version:
 				if self.catalog_version != catalog_version:
@@ -610,6 +615,16 @@ class replica_engine(object):
 			except:
 				print("An error occurred when trying to signal the replica process")
 	
+	def __set_conf_permissions(self,  cham_dir):
+		"""
+			The method sets the permissions of the configuration directory to 700 
+			
+			:param cham_dir: the chameleon configuration directory to fix
+		"""
+		if os.path.isdir(cham_dir):
+			os.chmod(cham_dir, 0o700)
+		
+		
 	def stop_replica(self):
 		"""
 			The method calls the private method __stop_replica to stop the replica process.

@@ -6,7 +6,7 @@ Command line reference
 
 .. code-block:: bash
     
-    chameleon command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] [ --rollbar-level ] ] [ --version ] 
+    chameleon command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] [ --rollbar-level ] ] [ --version ] [ --full ] 
 
 .. csv-table:: Options 
    :header: "Option", "Description", "Default","Example"
@@ -18,8 +18,8 @@ Command line reference
    ``--logid``, Specifies the log id entry for displaying the error details, N/A, ``--logid 30``
    ``--debug``,When added to the command line the debug option disables any daemonisation and outputs all the logging to the console. The keybord interrupt signal is trapped correctly., N/A, ``--debug``
    ``--version``,Displays the package version., N/A, ``--version``
-   ``--rollbar-level``, Sets the maximum level for the messages to be sent  to rolllbar. Accepted values: "critical", "error", "warning", "info", ``info`` ,``--rollbar-level error``
-
+   ``--rollbar-level``, Sets the maximum level for the messages to be sent  to rolllbar. Accepted values: "critical" "error" "warning" "info", ``info`` ,``--rollbar-level error``
+   ``--full``,Runs a VACUUM FULL  on the log tables when the run_maintenance is executed, N/A,``--full``
    
    
 .. csv-table:: Command list reference
@@ -43,7 +43,7 @@ Command line reference
     ``stop_replica``, Stops the replica process daemon, ``--config`` ``--source`` 
     ``detach_replica``, Detaches a replica from the mysql master configuring the postgres schemas to work as a standalone system. Useful for migrations., ``--config`` ``--source`` 
     ``enable_replica``, Enables the replica for the given source changing the source status to stopped. It's useful if the replica crashes., ``--config`` ``--source`` 
-    ``run_maintenance``, Runs a vacuum full on the log tables for the given source., ``--config`` ``--source`` 
+    ``run_maintenance``, Runs a VACUUM on the log tables for the given source. If  is specified then the maintenance runs a VACUUM FULL, ``--config`` ``--source`` ``--full`` 
     ``stop_all_replicas``, Stops all the running sources within the target postgresql database., ``--config``
 
     

@@ -1,9 +1,40 @@
 RELEASE NOTES
 *************************
 
+2.0.6
+--------------------------
+The maintenance release 2.0.6 fixes a crash occurring when a new column is added on the source database with the default value ``NOW()``. 
+
+The maintenance introduced in the version 2.0.5 is now less aggressive.
+In particular the ``run_maintenance`` command now executes a conventional ``VACUUM`` on the source's log tables, unless the switch ``--full`` is specified. In that case a ``VACUUM FULL`` is executed.
+The detach has been disabled and may be completely removed in the future releases because very fragile and prone to errors. 
+
+However running VACUUM FULL on the log tables can cause  the other sources to be blocked during the maintenance run.
+
+This release adds an optional parameter ``on_error_read:``  on the mysql type's sources which allow the read process to stay up if the mysql database is refusing connections (e.g. MySQL down for maintenance).
+Following the  principle of least astonishment the parameter if omitted doesn't cause any change of behaviour. If added with the value continue (e.g. ``on_error_read: continue``) 
+will prevent the replica process to stop in the case of connection issues from the MySQL database with a warning is emitted on the replica log .
+
+This release adds the support for mysql 5.5 which doesn't have the parameter ``binlog_row_image``.
+
+``enable_replica`` now can reset the replica status to ``stopped`` even if the catalogue version is mismatched.
+This simplifies the upgrade procedure in case of errored or wrongly running replicas.
+
+As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
+
+* If working via ssh is suggested to open a screen session 
+* Before upgrading pg_chameleon **stop all the replica processes.**
+* Upgrade the pg_chameleon package with `pip install pg_chameleon --upgrade`
+* Upgrade  the replica schema with the command `chameleon upgrade_replica_schema --config <your_config>`
+* Start the replica processes
+
+If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses with the ``enable_replica`` command.
+
+If the catalogue upgrade is still  not possible downgrading pgchameleon to the version 2.0.5 with `pip install pg_chameleon==2.0.5` should make the replicas startable again.
+
 2.0.5
 --------------------------
-The maintenance release 2.0.5 a regression which prevented some tables to be synced with `sync_tables` when the parameter `limit_tables` was set.
+The maintenance release 2.0.5 fixes a regression which prevented some tables to be synced with `sync_tables` when the parameter `limit_tables` was set.
 Previously having two or more schemas mapped with only one schema listed in `limit_tables` prevented the other schema's tables to be synchronised with `sync_tables`.
 
 This release add two new commands to improve the general performance and the management.
