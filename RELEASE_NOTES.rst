@@ -17,6 +17,17 @@ will prevent the replica process to stop in the case of connection issues from t
 
 This release adds the support for mysql 5.5 which doesn't have the parameter ``binlog_row_image``.
 
+``enable_replica`` now can reset the replica status to ``stopped`` even if the catalogue version is mismatched.
+This simplifies the upgrade procedure in case of errored or wrongly running replicas.
+
+As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
+
+* If working via ssh is suggested to open a screen session 
+* Before upgrading pg_chameleon **stop all the replica processes.**
+* Upgrade the pg_chameleon package with `pip install pg_chameleon --upgrade`
+* Upgrade  the replica schema with the command `chameleon upgrade_replica_schema --config <your_config>`
+* Start the replica processes
+
 
 2.0.5
 --------------------------

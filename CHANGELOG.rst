@@ -9,6 +9,7 @@ changelog
 * when running the maintentenance execute a ``VACUUM`` instead of a ``VACUUM FULL``
 * fix for issue #68. fallback to ``binlog_row_image=FULL`` if the parameter is missing in mysql 5.5.
 * add cleanup for default value ``NOW()`` when adding a new column with ``ALTER TABLE``
+* allow ``enable_replica`` to reset the source status in the case of a catalogue version mismatch 
 
 2.0.5 - 25 March 2018
 ..........................................................

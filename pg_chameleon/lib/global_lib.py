@@ -141,6 +141,8 @@ class replica_engine(object):
 		if self.args.command == 'upgrade_replica_schema':
 			self.pg_engine.sources = self.config["sources"]
 			print("WARNING, entering upgrade mode. Disabling the catalogue version's check. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
+		elif self.args.command == 'enable_replica' and self.catalog_version != catalog_version:
+			print("WARNING, catalogue mismatch. Expected version %s, installed version %s" % (self.catalog_version, catalog_version))
 		else:
 			if  catalog_version:
 				if self.catalog_version != catalog_version:
