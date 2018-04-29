@@ -3,7 +3,7 @@ changelog
 
 2.0.6 - XX April 2018
 ..........................................................
-* fix for issue #69 add optional parameter ``on_error_read: `` for the source for ignoring connection issues with the source database (e.g. RDS in maintenance)
+* fix for issue #69 add source's optional parameter ``on_error_read:`` to allow the read process to continue in case of connection issues with the source database (e.g. MySQL in maintenance)
 * remove the detach partition during the maintenance process as this proved to be a very fragile approach
 * add switch ``--full`` to run a ``VACUUM FULL`` during the maintenance 
 * when running the maintentenance execute a ``VACUUM`` instead of a ``VACUUM FULL``

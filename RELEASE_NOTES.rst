@@ -11,7 +11,7 @@ The detach has been disabled and may be completely removed in the future release
 
 However running VACUUM FULL on the log tables can cause  the other sources to be blocked during the maintenance run.
 
-This release adds an optional parameter ``on_error_read:``  on the mysql type's sources which allow the read process to stay up if the mysql database is refusing connections (e.g. RDS doing maintenance).
+This release adds an optional parameter ``on_error_read:``  on the mysql type's sources which allow the read process to stay up if the mysql database is refusing connections (e.g. MySQL down for maintenance).
 Following the  principle of least astonishment the parameter if omitted doesn't cause any change of behaviour. If added with the value continue (e.g. ``on_error_read: continue``) 
 will prevent the replica process to stop in the case of connection issues from the MySQL database with a warning is emitted on the replica log .
 
@@ -28,6 +28,9 @@ As this change requires a replica catalogue upgrade is very important to follow 
 * Upgrade  the replica schema with the command `chameleon upgrade_replica_schema --config <your_config>`
 * Start the replica processes
 
+If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses with the ``enable_replica`` command.
+
+If the catalogue upgrade is still  not possible downgrading pgchameleon to the version 2.0.5 with `pip install pg_chameleon==2.0.5` should make the replicas startable again.
 
 2.0.5
 --------------------------
