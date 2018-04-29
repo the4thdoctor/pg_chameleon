@@ -123,8 +123,8 @@ Configuration directory
 ********************************
 The system wide install is now supported correctly. 
 
-The first time ``chameleon`` is executed it creates a configuration directory in $HOME/.pg_chameleon.
-Inside the directory there are two subdirectories. 
+The configuration is set with the command ``chameleon set_configuration_files`` in $HOME/.pg_chameleon .
+Inside the directory there are three subdirectories. 
 
 
 * configuration is where the configuration files are stored. 
