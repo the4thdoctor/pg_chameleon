@@ -1,7 +1,7 @@
 changelog 
 *************************
 
-2.0.6 - XX April 2018
+2.0.6 - 29 April 2018
 ..........................................................
 * fix for issue #69 add source's optional parameter ``on_error_read:`` to allow the read process to continue in case of connection issues with the source database (e.g. MySQL in maintenance)
 * remove the detach partition during the maintenance process as this proved to be a very fragile approach
