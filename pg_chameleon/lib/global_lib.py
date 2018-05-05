@@ -97,7 +97,9 @@ class replica_engine(object):
 		self.__set_conf_permissions(cham_dir)
 		
 		self.load_config()
-		self.logger = self.__init_logger()
+		log_list = self.__init_logger("global")
+		self.logger = log_list[0]
+		self.logger_fds = log_list[1]
 		
 		#notifier configuration
 		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.args.rollbar_level ,  self.logger )
@@ -470,11 +472,13 @@ class replica_engine(object):
 			self.pg_engine.update_schema_mappings()
 			
 			
-	def read_replica(self, queue):
+	def read_replica(self, queue, log_read):
 		"""
 			The method reads the replica stream for the given source and stores the row images 
 			in the target postgresql database.
 		"""
+		self.mysql_source.logger  = log_read[0]
+		self.pg_engine.logger  = log_read[0]
 		while True:
 			try:
 				self.mysql_source.read_replica()
@@ -483,10 +487,11 @@ class replica_engine(object):
 			    queue.put(traceback.format_exc())
 			    break
 	
-	def replay_replica(self, queue):
+	def replay_replica(self, queue, log_replay):
 		"""
 			The method replays the row images stored in the target postgresql database.
 		"""
+		self.pg_engine.logger  = log_replay[0]
 		tables_error  = []
 		self.pg_engine.connect_db()
 		self.pg_engine.set_source_id()
@@ -510,6 +515,9 @@ class replica_engine(object):
 			It can be daemonised or run in foreground according with the --debug configuration or the log 
 			destination.
 		"""
+		log_read = self.__init_logger("read")
+		log_replay = self.__init_logger("replay")
+		
 		signal.signal(signal.SIGINT, self.terminate_replica)
 		queue = mp.Queue()
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
@@ -518,8 +526,8 @@ class replica_engine(object):
 		else:
 			check_timeout = self.sleep_loop*10
 		self.logger.info("Starting the replica daemons for source %s " % (self.args.source))
-		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue,))
-		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue,))
+		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue, log_read,))
+		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue, log_replay,))
 		self.read_daemon.start()
 		self.replay_daemon.start()
 		while True:
@@ -580,7 +588,6 @@ class replica_engine(object):
 					if self.config["log_dest"]  == 'stdout':
 						foreground = True
 					else:
-						self.logger = self.__init_logger()
 						foreground = False
 						print("Starting the replica process for source %s" % (self.args.source))
 						keep_fds = [self.logger_fds]
@@ -787,12 +794,16 @@ class replica_engine(object):
 					except:
 						print("The  maintenance process is already started. Aborting the command.")
 		
-	def __init_logger(self):
+	def __init_logger(self, logger_name):
 		"""
 		The method initialise a new logger object using the configuration parameters.
 		The formatter is different if the debug option is enabler or not.
 		The method returns a new logger object and sets the logger's file descriptor in the class variable 
 		logger_fds, used when the process is demonised.
+		:param logger_name: the name of the logger used to build the file name and get the correct logger
+		:return: list with logger and file descriptor
+		:rtype: list
+
 		"""
 		log_dir = self.config["log_dir"] 
 		log_level = self.config["log_level"] 
@@ -804,10 +815,10 @@ class replica_engine(object):
 		if source_name == '*':
 			log_name = "%s_general" % (config_name)
 		else:
-			log_name = "%s_%s" % (config_name, source_name)
+			log_name = "%s_%s_%s" % (config_name, source_name, logger_name)
 		
 		log_file = os.path.expanduser('%s/%s.log' % (log_dir,log_name))
-		logger = logging.getLogger(__name__)
+		logger = logging.getLogger(logger_name)
 		logger.setLevel(logging.DEBUG)
 		logger.propagate = False
 		if debug_mode:
@@ -829,5 +840,5 @@ class replica_engine(object):
 			
 		fh.setFormatter(formatter)
 		logger.addHandler(fh)
-		self.logger_fds = fh.stream.fileno()
-		return logger
+		logger_fds = fh.stream.fileno()
+		return [logger, logger_fds]
