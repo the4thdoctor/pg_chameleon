@@ -73,7 +73,7 @@ class replica_engine(object):
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
 		
-		
+			
 		local_conf = "%s/configuration/" % cham_dir 
 		self.global_conf_example = '%s/pg_chameleon/configuration/config-example.yml' % python_lib
 		self.local_conf_example = '%s/config-example.yml' % local_conf
@@ -97,13 +97,13 @@ class replica_engine(object):
 		self.__set_conf_permissions(cham_dir)
 		
 		self.load_config()
+		
 		log_list = self.__init_logger("global")
 		self.logger = log_list[0]
 		self.logger_fds = log_list[1]
 		
 		#notifier configuration
 		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.args.rollbar_level ,  self.logger )
-		
 					
 		#pg_engine instance initialisation
 		self.pg_engine = pg_engine()
@@ -515,6 +515,11 @@ class replica_engine(object):
 			It can be daemonised or run in foreground according with the --debug configuration or the log 
 			destination.
 		"""
+		if "auto_maintenance" not in  self.config["sources"][self.args.source]:
+			auto_maintenance = "disabled" 
+		else:
+			auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
+		
 		log_read = self.__init_logger("read")
 		log_replay = self.__init_logger("replay")
 		
@@ -555,6 +560,9 @@ class replica_engine(object):
 					
 				break
 			time.sleep(check_timeout)
+			#if auto_maintenance != "disabled":
+			#	self.run_maintenance()
+			
 		self.logger.info("Replica process for source %s ended" % (self.args.source))
 	
 	def start_replica(self):

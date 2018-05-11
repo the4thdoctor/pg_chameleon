@@ -53,6 +53,7 @@ sources:
         sleep_loop: 1
         on_error_replay: continue
         on_error_read: continue
+        auto_maintenance: "disabled"
         type: mysql
 
     pgsql:
