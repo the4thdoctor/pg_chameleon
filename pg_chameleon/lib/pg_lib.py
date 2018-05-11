@@ -1407,9 +1407,9 @@ class pg_engine(object):
 				ddl_pre_alter.append(enm_alter["pre_alter"])
 				column_type= enm_alter["column_type"]
 				if 	column_type in ["character varying", "character", 'numeric', 'bit', 'float']:
-						column_type=column_type+"("+str(alter_dic["dimension"])+")"
+						column_type = column_type+"("+str(alter_dic["dimension"])+")"
 				if alter_dic["default"]:
-					default_value = "DEFAULT %s" % alter_dic["default"]
+					default_value = "DEFAULT %s::%s" % (alter_dic["default"], column_type.strip())
 				else:
 					default_value=""
 				alter_cmd.append("%s \"%s\" %s NULL %s" % (alter_dic["command"], column_name, column_type, default_value))	
