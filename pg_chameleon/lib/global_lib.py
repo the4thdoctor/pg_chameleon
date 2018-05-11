@@ -800,6 +800,7 @@ class replica_engine(object):
 		The formatter is different if the debug option is enabler or not.
 		The method returns a new logger object and sets the logger's file descriptor in the class variable 
 		logger_fds, used when the process is demonised.
+		
 		:param logger_name: the name of the logger used to build the file name and get the correct logger
 		:return: list with logger and file descriptor
 		:rtype: list
@@ -814,6 +815,8 @@ class replica_engine(object):
 		debug_mode = self.args.debug
 		if source_name == '*':
 			log_name = "%s_general" % (config_name)
+		elif  logger_name == "global":
+			log_name = "%s_%s" % (config_name, source_name)
 		else:
 			log_name = "%s_%s_%s" % (config_name, source_name, logger_name)
 		
