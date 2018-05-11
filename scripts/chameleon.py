@@ -49,7 +49,7 @@ parser.add_argument('--logid', type=str,  default='*',  required=False, help=log
 parser.add_argument('--debug', default=False, required=False, help=debug_help, action='store_true')
 parser.add_argument('--version', action='version', help=version_help,version='{version}'.format(version=__version__))
 parser.add_argument('--rollbar-level', type=str, default="info", required=False, help=rollbar_help)
-parser.add_argument('--full', default=False, required=False, help=full_help, action='store_false')
+parser.add_argument('--full', default=False, required=False, help=full_help, action='store_true')
 args = parser.parse_args()
 
 

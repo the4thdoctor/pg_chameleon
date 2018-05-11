@@ -1,6 +1,12 @@
 changelog 
 *************************
 
+2.0.7 - XX May 2018
+..........................................................
+* Fix for issue #71, make the multiprocess logging safe. Now each replica process logs in a separate file
+* Fix the ``--full`` option to store true instead of false. Previously the option had no effect.
+
+
 2.0.6 - 29 April 2018
 ..........................................................
 * fix for issue #69 add source's optional parameter ``on_error_read:`` to allow the read process to continue in case of connection issues with the source database (e.g. MySQL in maintenance)

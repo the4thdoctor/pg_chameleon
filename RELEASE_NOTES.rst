@@ -1,6 +1,10 @@
 RELEASE NOTES
 *************************
 
+2.0.7
+--------------------------
+
+
 2.0.6
 --------------------------
 The maintenance release 2.0.6 fixes a crash occurring when a new column is added on the source database with the default value ``NOW()``. 
