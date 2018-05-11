@@ -345,19 +345,15 @@ class sql_token(object):
 				elif command == 'ADD':
 					alter_string = alter_item[1].strip()
 					
-					## this is an horrible hack, it needs to be improved
-					alter_string = re.sub(r'DEFAULT', '', alter_string, re.IGNORECASE)
-					alter_string = re.sub(r'NOT', '', alter_string, re.IGNORECASE)
-					alter_string = re.sub(r'NULL', '', alter_string, re.IGNORECASE)
-					alter_string = re.sub(r'NOW \(  \)', '', alter_string, re.IGNORECASE)
-					
-					
 					alter_column=self.m_alter_column.search(alter_string)
 					default_value = self.m_default_value.search(alter_string)
 					if alter_column:
+						## this is a lesser horrible hack, still needs to be improved
+						column_type = alter_column.group(2).lower().strip()
+						
 						alter_dic["command"] = command
 						alter_dic["name"] = alter_column.group(1).strip().strip('`')
-						alter_dic["type"] = alter_column.group(2).lower().strip()
+						alter_dic["type"] = column_type.split(' ')[0]
 						try:
 							alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 						except:
