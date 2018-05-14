@@ -1163,6 +1163,9 @@ class pg_engine(object):
 				replay_status = self.pgsql_cur.fetchone()
 				if replay_status[0]:
 					self.logger.info("Replayed at most %s rows for source %s" % (replay_max_rows, self.source) )
+				replica_paused = self.get_replica_paused()
+				if replica_paused:
+					break
 				continue_loop = replay_status[0]
 				function_error = replay_status[1]
 				if function_error:
@@ -3109,7 +3112,31 @@ class pg_engine(object):
 			self.logger.debug("Cleaning table %s" % log_table[0])
 			self.pgsql_cur.execute(sql_cleanup, (self.i_id_source, ))
 			
-	
+
+	def check_auto_maintenance(self):
+		"""
+			This method checks if the the maintenance for the given source is required. 
+			The SQL compares the last maintenance stored in the replica catalogue with the NOW() function.
+			If the value is bigger than the configuration parameter auto_maintenance then it returns true.
+			Otherwise returns false.
+			
+			:return: flag which tells if the maintenance should run or not
+			:rtype: boolean
+
+		"""
+		self.set_source_id()
+		sql_maintenance = """
+			SELECT 
+				now()-coalesce(ts_last_maintenance,now())>%s::interval 
+			FROM 
+				sch_chameleon.t_sources 
+			WHERE 
+				i_id_source=%s;
+		"""
+		self.pgsql_cur.execute(sql_maintenance, (self.auto_maintenance, self.i_id_source, ))
+		maintenance = self.pgsql_cur.fetchone()
+		return maintenance[0]
+		
 	def check_source_consistent(self):
 		"""
 			This method checks if the database is consistent using the source's high watermark and the 

@@ -560,8 +560,15 @@ class replica_engine(object):
 					
 				break
 			time.sleep(check_timeout)
-			#if auto_maintenance != "disabled":
-			#	self.run_maintenance()
+			if auto_maintenance != "disabled":
+				self.pg_engine.auto_maintenance = auto_maintenance
+				self.pg_engine.connect_db()
+				run_maintenance = self.pg_engine.check_auto_maintenance()
+				self.pg_engine.disconnect_db()
+				if run_maintenance:
+					self.run_maintenance()
+				
+
 			
 		self.logger.info("Replica process for source %s ended" % (self.args.source))
 	
