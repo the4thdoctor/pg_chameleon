@@ -870,20 +870,19 @@ class pg_engine(object):
 		"""
 		self.pgsql_cur.execute(sql_pause, (read_paused, self.i_id_source, not_read_paused))
 	
-	def __count_maintenance_src(self):
+	def __check_maintenance(self):
 		"""
-			The method counts if the number of other sources in maintenance status using i_id_source and the flag b_maintenance.
-			:return: the the number of sources in maintenance status
-			:rtype: integer
+			The method returns the flag b_maintenance for the current source.
+			:return: 
+			:rtype: boolean
 		"""
 		sql_count = """
 			SELECT 
-				count(*) 
+				b_maintenance
 			FROM 
 				sch_chameleon.t_sources 
 			WHERE 
-					i_id_source<>%s
-				AND	b_maintenance='t'
+					i_id_source=%s
 			;
 		"""
 		self.pgsql_cur.execute(sql_count, (self.i_id_source, ))
@@ -1107,8 +1106,10 @@ class pg_engine(object):
 		self.logger.info("Pausing the replica daemons")
 		self.connect_db()
 		self.set_source_id()
-		count_maintenance = self.__count_maintenance_src()
-		if count_maintenance == 0:
+		check_maintenance = self.__check_maintenance()
+		if check_maintenance:
+			self.logger.info("The source is already in maintenance. Skipping the maintenance run.")
+		else:
 			self.__start_maintenance()
 			self.__pause_replica(others=False)
 			wait_result = self.__wait_for_self_pause()
@@ -1127,8 +1128,7 @@ class pg_engine(object):
 			notifier_message = "maintenance for source %s is complete" % self.source
 			self.notifier.send_message(notifier_message, 'info')
 			self.logger.info(notifier_message)
-		else:
-			self.logger.info("Another source is in maintenance status. Skipping the maintenance run.")
+			
 			
 	def replay_replica(self):
 		"""
@@ -2539,7 +2539,8 @@ class pg_engine(object):
 						'No'
 				END as consistent_status,
 				enm_source_type,
-				coalesce(date_trunc('seconds',ts_last_maintenance)::text,'N/A') as last_maintenance
+				coalesce(date_trunc('seconds',ts_last_maintenance)::text,'N/A') as last_maintenance,
+				coalesce(date_trunc('seconds',ts_last_maintenance+nullif(%%s,'disabled')::interval)::text,'N/A') AS next_maintenance
 				
 				
 			FROM 
@@ -2552,7 +2553,7 @@ class pg_engine(object):
 			;
 			
 		""" % (source_filter, )
-		self.pgsql_cur.execute(sql_status)
+		self.pgsql_cur.execute(sql_status, (self.auto_maintenance, ))
 		configuration_status = self.pgsql_cur.fetchall()
 		
 		

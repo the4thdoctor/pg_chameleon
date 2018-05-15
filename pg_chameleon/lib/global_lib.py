@@ -566,7 +566,7 @@ class replica_engine(object):
 				run_maintenance = self.pg_engine.check_auto_maintenance()
 				self.pg_engine.disconnect_db()
 				if run_maintenance:
-					self.run_maintenance()
+					self.pg_engine.run_maintenance()
 				
 
 			
@@ -701,6 +701,11 @@ class replica_engine(object):
 			list the replica status from the replica catalogue.
 			If the source is specified gives some extra details on the source status.
 		"""
+		if "auto_maintenance" not in  self.config["sources"][self.args.source]:
+			self.pg_engine.auto_maintenance = "disabled" 
+		else:
+			self.pg_engine.auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
+			
 		self.pg_engine.source = self.args.source
 		configuration_data = self.pg_engine.get_status()
 		configuration_status = configuration_data[0]
@@ -720,6 +725,7 @@ class replica_engine(object):
 			consistent = status[7]
 			source_type = status[8]
 			last_maintenance = status[9]
+			next_maintenance = status[10]
 			tab_row = [source_id, source_name, source_type,   source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
 			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
@@ -747,6 +753,8 @@ class replica_engine(object):
 			tab_row = ['All tables', tables_all[1]]
 			tab_body.append(tab_row)
 			tab_row = ['Last maintenance', last_maintenance]
+			tab_body.append(tab_row)
+			tab_row = ['Next maintenance', next_maintenance]
 			tab_body.append(tab_row)
 			if replica_counters:
 				tab_row = ['Replayed rows', replica_counters[0]]

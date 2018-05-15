@@ -5,7 +5,7 @@ changelog
 ..........................................................
 * Fix for issue #71, make the multiprocess logging safe. Now each replica process logs in a separate file
 * Fix the ``--full`` option to store true instead of false. Previously the option had no effect.
-
+* Add `auto_maintenance` optional parameter to trigger a vacuum over the log tables after a specific timeout
 
 2.0.6 - 29 April 2018
 ..........................................................
