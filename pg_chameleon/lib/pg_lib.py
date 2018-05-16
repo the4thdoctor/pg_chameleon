@@ -886,8 +886,8 @@ class pg_engine(object):
 			;
 		"""
 		self.pgsql_cur.execute(sql_count, (self.i_id_source, ))
-		count_maintenance = self.pgsql_cur.fetchone()
-		return count_maintenance[0]
+		maintenance_running = self.pgsql_cur.fetchone()
+		return maintenance_running[0]
 
 	def __start_maintenance(self):
 		"""

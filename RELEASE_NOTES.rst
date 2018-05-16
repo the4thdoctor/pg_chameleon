@@ -3,7 +3,13 @@ RELEASE NOTES
 
 2.0.7
 --------------------------
+The maintenance release fixes the issue #71 by makin the multiprocess logging safe. Now each replica process logs in a separate file.
 
+The ``--full`` option now is working. Previously the option had no effect causing the maintenance to run always a conventional vacuum.
+
+A new optional source's parameter is added. ``auto_maintenance``  trigger a vacuum on the log tables after a specific timeout. 
+The timeout shall be expressed like a PostgreSQL interval (e.g. "1 day"). The special value "disabled" disables the auto maintenance.
+If the parameter is omitted the auto maintenance is disabled.
 
 2.0.6
 --------------------------
