@@ -701,10 +701,10 @@ class replica_engine(object):
 			list the replica status from the replica catalogue.
 			If the source is specified gives some extra details on the source status.
 		"""
-		if "auto_maintenance" not in  self.config["sources"][self.args.source]:
-			self.pg_engine.auto_maintenance = "disabled" 
-		else:
-			self.pg_engine.auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
+		self.pg_engine.auto_maintenance = "disabled" 
+		if self.args.source != "*":
+			if "auto_maintenance" in  self.config["sources"][self.args.source]:
+				self.pg_engine.auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
 			
 		self.pg_engine.source = self.args.source
 		configuration_data = self.pg_engine.get_status()

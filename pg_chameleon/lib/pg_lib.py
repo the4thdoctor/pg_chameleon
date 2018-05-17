@@ -2815,8 +2815,8 @@ class pg_engine(object):
 			except psycopg2.Error as e:
 				if e.pgcode == "22P05":
 					self.logger.warning("%s - %s. Trying to cleanup the row" % (e.pgcode, e.pgerror))
-					event_after = {key: str(value).replace("\x00", "") for key, value in event_after.items()}
-					event_before = {key: str(value).replace("\x00", "") for key, value in event_before.items()}
+					event_after = {key: str(value).replace("\x00", "") for key, value in event_after.items() if value}
+					event_before = {key: str(value).replace("\x00", "") for key, value in event_before.items() if value}
 					try:
 						self.pgsql_cur.execute(sql_insert,(
 								global_data["batch_id"], 
