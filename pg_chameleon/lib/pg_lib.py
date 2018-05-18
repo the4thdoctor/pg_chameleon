@@ -2815,8 +2815,16 @@ class pg_engine(object):
 			except psycopg2.Error as e:
 				if e.pgcode == "22P05":
 					self.logger.warning("%s - %s. Trying to cleanup the row" % (e.pgcode, e.pgerror))
-					event_after = {key: str(value).replace("\x00", "") for key, value in event_after.items() if value}
-					event_before = {key: str(value).replace("\x00", "") for key, value in event_before.items() if value}
+					for key, value in event_after.items():
+						if value:
+							event_after[key] = str(value).replace("\x00", "")
+							
+					for key, value in event_before.items():
+						if value:
+							event_before[key] = str(value).replace("\x00", "")
+					
+					#event_after = {key: str(value).replace("\x00", "") for key, value in event_after.items() if value}
+					#event_before = {key: str(value).replace("\x00", "") for key, value in event_before.items() if value}
 					try:
 						self.pgsql_cur.execute(sql_insert,(
 								global_data["batch_id"], 
@@ -3435,11 +3443,18 @@ class pg_engine(object):
 					self.logger.error(self.pgsql_cur.mogrify(sql_head,data_row))
 			except ValueError:
 				self.logger.warning("character mismatch when inserting the data, trying to cleanup the row data")
-				data_row = [str(item).replace("\x00", "") for item in data_row]
+				cleanup_data_row = []
+				for item in data_row:
+					if item:
+						cleanup_data_row.append(str(item).replace("\x00", ""))
+					else:
+						cleanup_data_row.append(item)
+				data_row = cleanup_data_row
 				try:
 					self.pgsql_cur.execute(sql_head,data_row)	
 				except:
 					self.logger.error("error when inserting the row, skipping the row")
+					
 					
 			except:
 				self.logger.error("unexpected error when processing the row")
