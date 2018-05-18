@@ -86,7 +86,7 @@ ADD COLUMN newstatus INT(10) UNSIGNED NOT NULL AFTER `log`;
 ALTER TABLE `test` DROP PRIMARY KEY;
 
 				"""
-statement="""alter table test_tiny add column value3 character varying(30);"""
+statement="""truncate table `test` ;"""
 
 
 token_sql=sql_token()
