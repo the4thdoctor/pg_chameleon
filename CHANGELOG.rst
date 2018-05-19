@@ -1,7 +1,7 @@
 changelog 
 *************************
 
-2.0.7 - XX May 2018
+2.0.7 - 19 May 2018
 ..........................................................
 * Fix for issue #71, make the multiprocess logging safe. Now each replica process logs in a separate file
 * Fix the ``--full`` option to store true instead of false. Previously the option had no effect.
