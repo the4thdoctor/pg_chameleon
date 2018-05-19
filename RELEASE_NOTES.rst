@@ -1,6 +1,25 @@
 RELEASE NOTES
 *************************
 
+2.0.7
+--------------------------
+The maintenance release makes the multiprocess logging safe. Now each replica process logs in a separate file.
+
+The ``--full`` option now is working. Previously the option had no effect causing the maintenance to run always a conventional vacuum.
+
+This release fixes the issues reported  in ticket #73 and #75 by pg_chameleon's users.
+
+The bug reported in ticket #73 caused a wrong data type tokenisation when an alter table adds a column with options (e.g. ``ADD COLUMN foo DEFAULT NULL``)
+
+The bug reported in ticket #75 , caused a wrong conversion to string for the row keys with None value  during the cleanup of malformed rows for the init replica and the replica process.
+
+A fix for the TRUNCATE TABLE tokenisation is implemented as well. Now if the statement specifies the table with the schema the truncate works properly.
+
+A new optional source's parameter is added. ``auto_maintenance``  trigger a vacuum on the log tables after a specific timeout. 
+The timeout shall be expressed like a PostgreSQL interval (e.g. "1 day"). The special value "disabled" disables the auto maintenance.
+If the parameter is omitted the auto maintenance is disabled.
+
+
 2.0.6
 --------------------------
 The maintenance release 2.0.6 fixes a crash occurring when a new column is added on the source database with the default value ``NOW()``. 

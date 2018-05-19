@@ -73,7 +73,7 @@ class replica_engine(object):
 		python_lib=get_python_lib()
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
 		
-		
+			
 		local_conf = "%s/configuration/" % cham_dir 
 		self.global_conf_example = '%s/pg_chameleon/configuration/config-example.yml' % python_lib
 		self.local_conf_example = '%s/config-example.yml' % local_conf
@@ -97,11 +97,13 @@ class replica_engine(object):
 		self.__set_conf_permissions(cham_dir)
 		
 		self.load_config()
-		self.logger = self.__init_logger()
+		
+		log_list = self.__init_logger("global")
+		self.logger = log_list[0]
+		self.logger_fds = log_list[1]
 		
 		#notifier configuration
 		self.notifier = rollbar_notifier(self.config["rollbar_key"],self.config["rollbar_env"] , self.args.rollbar_level ,  self.logger )
-		
 					
 		#pg_engine instance initialisation
 		self.pg_engine = pg_engine()
@@ -470,11 +472,13 @@ class replica_engine(object):
 			self.pg_engine.update_schema_mappings()
 			
 			
-	def read_replica(self, queue):
+	def read_replica(self, queue, log_read):
 		"""
 			The method reads the replica stream for the given source and stores the row images 
 			in the target postgresql database.
 		"""
+		self.mysql_source.logger  = log_read[0]
+		self.pg_engine.logger  = log_read[0]
 		while True:
 			try:
 				self.mysql_source.read_replica()
@@ -483,10 +487,11 @@ class replica_engine(object):
 			    queue.put(traceback.format_exc())
 			    break
 	
-	def replay_replica(self, queue):
+	def replay_replica(self, queue, log_replay):
 		"""
 			The method replays the row images stored in the target postgresql database.
 		"""
+		self.pg_engine.logger  = log_replay[0]
 		tables_error  = []
 		self.pg_engine.connect_db()
 		self.pg_engine.set_source_id()
@@ -510,6 +515,14 @@ class replica_engine(object):
 			It can be daemonised or run in foreground according with the --debug configuration or the log 
 			destination.
 		"""
+		if "auto_maintenance" not in  self.config["sources"][self.args.source]:
+			auto_maintenance = "disabled" 
+		else:
+			auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
+		
+		log_read = self.__init_logger("read")
+		log_replay = self.__init_logger("replay")
+		
 		signal.signal(signal.SIGINT, self.terminate_replica)
 		queue = mp.Queue()
 		self.sleep_loop = self.config["sources"][self.args.source]["sleep_loop"]
@@ -518,8 +531,8 @@ class replica_engine(object):
 		else:
 			check_timeout = self.sleep_loop*10
 		self.logger.info("Starting the replica daemons for source %s " % (self.args.source))
-		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue,))
-		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue,))
+		self.read_daemon = mp.Process(target=self.read_replica, name='read_replica', daemon=True, args=(queue, log_read,))
+		self.replay_daemon = mp.Process(target=self.replay_replica, name='replay_replica', daemon=True, args=(queue, log_replay,))
 		self.read_daemon.start()
 		self.replay_daemon.start()
 		while True:
@@ -547,6 +560,16 @@ class replica_engine(object):
 					
 				break
 			time.sleep(check_timeout)
+			if auto_maintenance != "disabled":
+				self.pg_engine.auto_maintenance = auto_maintenance
+				self.pg_engine.connect_db()
+				run_maintenance = self.pg_engine.check_auto_maintenance()
+				self.pg_engine.disconnect_db()
+				if run_maintenance:
+					self.pg_engine.run_maintenance()
+				
+
+			
 		self.logger.info("Replica process for source %s ended" % (self.args.source))
 	
 	def start_replica(self):
@@ -580,7 +603,6 @@ class replica_engine(object):
 					if self.config["log_dest"]  == 'stdout':
 						foreground = True
 					else:
-						self.logger = self.__init_logger()
 						foreground = False
 						print("Starting the replica process for source %s" % (self.args.source))
 						keep_fds = [self.logger_fds]
@@ -679,6 +701,11 @@ class replica_engine(object):
 			list the replica status from the replica catalogue.
 			If the source is specified gives some extra details on the source status.
 		"""
+		self.pg_engine.auto_maintenance = "disabled" 
+		if self.args.source != "*":
+			if "auto_maintenance" in  self.config["sources"][self.args.source]:
+				self.pg_engine.auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
+			
 		self.pg_engine.source = self.args.source
 		configuration_data = self.pg_engine.get_status()
 		configuration_status = configuration_data[0]
@@ -698,6 +725,7 @@ class replica_engine(object):
 			consistent = status[7]
 			source_type = status[8]
 			last_maintenance = status[9]
+			next_maintenance = status[10]
 			tab_row = [source_id, source_name, source_type,   source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
 			tab_body.append(tab_row)
 		print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
@@ -725,6 +753,8 @@ class replica_engine(object):
 			tab_row = ['All tables', tables_all[1]]
 			tab_body.append(tab_row)
 			tab_row = ['Last maintenance', last_maintenance]
+			tab_body.append(tab_row)
+			tab_row = ['Next maintenance', next_maintenance]
 			tab_body.append(tab_row)
 			if replica_counters:
 				tab_row = ['Replayed rows', replica_counters[0]]
@@ -787,12 +817,17 @@ class replica_engine(object):
 					except:
 						print("The  maintenance process is already started. Aborting the command.")
 		
-	def __init_logger(self):
+	def __init_logger(self, logger_name):
 		"""
 		The method initialise a new logger object using the configuration parameters.
 		The formatter is different if the debug option is enabler or not.
 		The method returns a new logger object and sets the logger's file descriptor in the class variable 
 		logger_fds, used when the process is demonised.
+		
+		:param logger_name: the name of the logger used to build the file name and get the correct logger
+		:return: list with logger and file descriptor
+		:rtype: list
+
 		"""
 		log_dir = self.config["log_dir"] 
 		log_level = self.config["log_level"] 
@@ -803,11 +838,13 @@ class replica_engine(object):
 		debug_mode = self.args.debug
 		if source_name == '*':
 			log_name = "%s_general" % (config_name)
-		else:
+		elif  logger_name == "global":
 			log_name = "%s_%s" % (config_name, source_name)
+		else:
+			log_name = "%s_%s_%s" % (config_name, source_name, logger_name)
 		
 		log_file = os.path.expanduser('%s/%s.log' % (log_dir,log_name))
-		logger = logging.getLogger(__name__)
+		logger = logging.getLogger(logger_name)
 		logger.setLevel(logging.DEBUG)
 		logger.propagate = False
 		if debug_mode:
@@ -829,5 +866,5 @@ class replica_engine(object):
 			
 		fh.setFormatter(formatter)
 		logger.addHandler(fh)
-		self.logger_fds = fh.stream.fileno()
-		return logger
+		logger_fds = fh.stream.fileno()
+		return [logger, logger_fds]

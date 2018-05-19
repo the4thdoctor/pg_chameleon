@@ -75,7 +75,7 @@ Database connection
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
    :lines: 28-56
-   :emphasize-lines: 3-9
+   :emphasize-lines: 2-8
    :linenos:
 
 The db_conn key maps the target database connection string.  Within the connection is possible to configure the connect_timeout which is 10 seconds by default.
@@ -87,7 +87,7 @@ Schema mappings
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
    :lines: 28-56
-   :emphasize-lines: 10-11
+   :emphasize-lines: 9-10
    :linenos:
 
 The key schema mappings is a dictionary. Each key is a MySQL database that needs to be replicated in PostgreSQL. Each value is the destination schema in the PostgreSQL database.
@@ -99,7 +99,7 @@ Limit and skip tables
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
    :lines: 28-56
-   :emphasize-lines: 12-15
+   :emphasize-lines: 11-14
    :linenos:
 
 * limit_tables list with the tables to replicate. If the list is empty then the entire mysql database is replicated.
@@ -113,7 +113,7 @@ Grant select to option
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
    :lines: 28-56
-   :emphasize-lines: 16-17
+   :emphasize-lines: 15-16
    :linenos:
 
 This key allows to specify a list of database roles which will get select access on the replicate tables.
@@ -129,7 +129,7 @@ Source configuration parameters
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
    :lines: 28-56
-   :emphasize-lines: 18-29
+   :emphasize-lines: 17-29
    :linenos:
    
 * lock_timeout the max time in seconds that the target postgresql connections should wait for acquiring a lock. This parameter applies  to init_replica,refresh_schema and sync_tables when performing the relation's swap.
@@ -142,6 +142,7 @@ Source configuration parameters
 * sleep_loop seconds between a two replica batches.
 * on_error_replay specifies whether the replay process should ``exit`` or ``continue``  if any error during the replay happens. If ``continue`` is specified the offending tables are removed from the replica.
 * on_error_read specifies whether the read process should ``exit`` or ``continue``  if a connection error during the read process happens. If ``continue`` is specified the process emits a warning and waits for the connection to come back. If the parameter is omitted the default is ``exit`` which cause the replica process to stop with error.
+* auto_maintenance specifies the timeout after an automatic maintenance is triggered. The parameter accepts values valid for the `PostgreSQL interval data type <https://www.postgresql.org/docs/current/static/datatype-datetime.html#DATATYPE-INTERVAL-INPUT>`_ (e.g. ``1 day``). If the value is set to ``disabled`` the automatic maintenance doesn't run. If the parameter is omitted the default is ``disabled``.
 * type specifies the source database type. The system supports ``mysql`` or  ``pgsql``. See below for the pgsql limitations.
    
 PostgreSQL source type (EXPERIMENTAL)

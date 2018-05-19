@@ -52,7 +52,7 @@ class sql_token(object):
 		self.m_rename_table = re.compile(r'(RENAME\s*TABLE)\s*(.*)', re.IGNORECASE)
 		self.m_create_table = re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:(?:`)?(?:\w*)(?:`)?\.)?(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table = re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
-		self.m_truncate_table = re.compile(r'(TRUNCATE)\s*(?:TABLE)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
+		self.m_truncate_table = re.compile(r'(TRUNCATE)\s*(?:TABLE)?\s*(?:(?:`)?(\w*)(?:`)?)(?:.)?(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_alter_index = re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+(?:UNIQUE)?\s*?(?:INDEX).*,?)', re.IGNORECASE)
 		self.m_alter_table = re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?.*,?)', re.IGNORECASE)
 		self.m_alter_list = re.compile(r'((?:\b(?:ADD|DROP|CHANGE|MODIFY)\b\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
@@ -345,19 +345,15 @@ class sql_token(object):
 				elif command == 'ADD':
 					alter_string = alter_item[1].strip()
 					
-					## this is an horrible hack, it needs to be improved
-					alter_string = re.sub(r'DEFAULT', '', alter_string, re.IGNORECASE)
-					alter_string = re.sub(r'NOT', '', alter_string, re.IGNORECASE)
-					alter_string = re.sub(r'NULL', '', alter_string, re.IGNORECASE)
-					alter_string = re.sub(r'NOW \(  \)', '', alter_string, re.IGNORECASE)
-					
-					
 					alter_column=self.m_alter_column.search(alter_string)
 					default_value = self.m_default_value.search(alter_string)
 					if alter_column:
+						## this is a lesser horrible hack, still needs to be improved
+						column_type = alter_column.group(2).lower().strip()
+						
 						alter_dic["command"] = command
 						alter_dic["name"] = alter_column.group(1).strip().strip('`')
-						alter_dic["type"] = alter_column.group(2).lower().strip()
+						alter_dic["type"] = column_type.split(' ')[0]
 						try:
 							alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
 						except:
@@ -491,7 +487,10 @@ class sql_token(object):
 			elif mtruncate_table:
 				command=' '.join(mtruncate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
-				stat_dic["name"]=mtruncate_table.group(2)
+				if mtruncate_table.group(3) == '':
+					stat_dic["name"]=mtruncate_table.group(2)
+				else:
+					stat_dic["name"]=mtruncate_table.group(3)
 			elif mdrop_primary:
 				stat_dic["command"]="DROP PRIMARY KEY"
 				stat_dic["name"]=mdrop_primary.group(1).strip().strip(',').replace('`', '').strip()
