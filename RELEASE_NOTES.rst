@@ -11,6 +11,8 @@ A new optional source's parameter is added. ``auto_maintenance``  trigger a vacu
 The timeout shall be expressed like a PostgreSQL interval (e.g. "1 day"). The special value "disabled" disables the auto maintenance.
 If the parameter is omitted the auto maintenance is disabled.
 
+
+
 2.0.6
 --------------------------
 The maintenance release 2.0.6 fixes a crash occurring when a new column is added on the source database with the default value ``NOW()``. 

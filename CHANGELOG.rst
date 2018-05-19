@@ -6,6 +6,9 @@ changelog
 * Fix for issue #71, make the multiprocess logging safe. Now each replica process logs in a separate file
 * Fix the ``--full`` option to store true instead of false. Previously the option had no effect.
 * Add `auto_maintenance` optional parameter to trigger a vacuum over the log tables after a specific timeout
+* Fix for issue #75, avoid the wrong conversion to string for None keys when cleaning up malformed rows during the init replica and replica process
+* Fix for issue #73, fix for wrong data type tokenisation when an alter table adds a column with options (e.g. ``ADD COLUMN foo DEFAULT NULL``)
+* Fix wrong TRUNCATE TABLE tokenisation if the statement specifies the table with the schema.
 
 2.0.6 - 29 April 2018
 ..........................................................
