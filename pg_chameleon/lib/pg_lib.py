@@ -1858,7 +1858,7 @@ class pg_engine(object):
 			FROM 
 				sch_chameleon.t_sources 
 			WHERE 
-				i_id_source=1
+				i_id_source=%s
 			;
 		"""
 		
