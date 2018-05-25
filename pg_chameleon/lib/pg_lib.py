@@ -1844,6 +1844,38 @@ class pg_engine(object):
 					;
 						"""
 		self.pgsql_cur.execute(sql_delete, (self.i_id_source, ))	
+		
+	
+		
+	def cleanup_table_events(self):
+		"""
+			The method cleans up the log events in the source's log tables for the given tables
+			
+		"""
+		sql_get_log_tables = """
+			SELECT 
+				v_log_table 
+			FROM 
+				sch_chameleon.t_sources 
+			WHERE 
+				i_id_source=1
+			;
+		"""
+		
+		self.pgsql_cur.execute(sql_get_log_tables, (self.i_id_source, ))	
+		log_tables = self.pgsql_cur.fetchone()
+		list_conditions = []
+		for schema in self.schema_tables:
+			for table_name in self.schema_tables[schema]:
+				table_schema = self.schema_loading[schema]["destination"]
+				where_cond = "format('%%I.%%I','%s','%s')" % (table_schema, table_name)
+				list_conditions.append(where_cond)
+		sql_cleanup = "DELETE FROM sch_chameleon.{} WHERE format('%%I.%%I',v_schema_name,v_table_name) IN (%s) ;" % ' ,'.join(list_conditions)
+		for log_table in log_tables[0]:
+			self.logger.debug("Cleaning up log events in log table %s " % (log_table,))
+			sql_clean_log = sql.SQL(sql_cleanup).format(sql.Identifier(log_table))
+			self.pgsql_cur.execute(sql_clean_log)	
+		
 	
 	def __count_table_schema(self, table, schema):
 		"""
