@@ -136,6 +136,30 @@ class mysql_source(object):
 		except:
 			pass
 			
+	def __build_skip_events(self):
+		"""
+			The method builds a class attribute self.skip_events. The attribute is a dictionary with the tables and schemas listed under the three kind of skippable events  (insert,delete,update) using 
+			the configuration parameter skip_events.
+		"""
+		self.skip_events = None
+		if "skip_events" in  self.source_config:
+			skip_events  = self.source_config["skip_events"]
+			self.skip_events = {}
+			if "insert" in skip_events:
+				self.skip_events["insert"] = skip_events["insert"] 
+			else:
+				self.skip_events["insert"] = []
+			if "update" in skip_events:
+				self.skip_events["update"] = skip_events["update"] 
+			else:
+				self.skip_events["update"] = []
+			if "delete" in skip_events:
+				self.skip_events["delete"] = skip_events["delete"] 
+			else:
+				self.skip_events["delete"] = []
+			
+		
+	
 	def __build_table_exceptions(self):
 		"""
 			The method builds two dictionaries from the limit_tables and skip tables values set for the source.
@@ -706,6 +730,7 @@ class mysql_source(object):
 		self.replica_conn["passwd"] = str(db_conn["password"])
 		self.replica_conn["port"] = int(db_conn["port"])
 		self.__build_table_exceptions()
+		self.__build_skip_events()
 		
 	
 	def __init_sync(self):
@@ -876,7 +901,7 @@ class mysql_source(object):
 		The private method returns whether the table event should be stored or not in the postgresql log replica.
 			
 		:param table: The table's name to check
-		:param table: The table's schema name
+		:param schema: The table's schema name
 		:return: true if the table should be replicated, false if shouldn't
 		:rtype: boolean
 		"""
@@ -892,8 +917,30 @@ class mysql_source(object):
 
 		return True
 		
+	
+	def __skip_event(self, table, schema, binlogevent):
+		"""
+			The method returns true or false if whether the event should be skipped or not.
+			The dictionary self.skip_events is used for the check.
+			
+			:param table: The table's name to check
+			:param schema: The table's schema name
+			:param binlogevent: The binlog event to evaluate
+			:return: list with first element a boolean and the second element the event type
+			:rtype: listt
+		"""
+		if isinstance(binlogevent, DeleteRowsEvent):
+			event = "delete"
+		elif isinstance(binlogevent, UpdateRowsEvent):
+			event = "update"
+		elif isinstance(binlogevent, WriteRowsEvent):
+			event = "insert"
 		
-		
+		skip_event = False
+		table_name = "%s.%s" % (schema, table)
+		if schema in self.skip_events[event] or table_name in self.skip_events[event]:
+			skip_event = True
+		return [skip_event, event]
 	
 	def __read_replica_stream(self, batch_data):
 		"""
@@ -1040,7 +1087,8 @@ class mysql_source(object):
 					destination_schema = self.schema_mappings[schema_row]
 					table_key_dic = "%s.%s" % (destination_schema, table_name)
 					store_row = self.__store_binlog_event(table_name, schema_row)
-					if store_row:
+					skip_event = self.__skip_event(table_name, schema_row, binlogevent)
+					if store_row and not skip_event[0]:
 						if table_key_dic in inc_tables:
 							table_consistent = False
 							log_seq = int(log_file.split('.')[1])
@@ -1069,14 +1117,14 @@ class mysql_source(object):
 											"event_time":event_time
 										}
 						if add_row:
-							if isinstance(binlogevent, DeleteRowsEvent):
+							if skip_event[1] == "delete":
 								global_data["action"] = "delete"
 								event_after=row["values"]
-							elif isinstance(binlogevent, UpdateRowsEvent):
+							elif skip_event[1] == "update":
 								global_data["action"] = "update"
 								event_after=row["after_values"]
 								event_before=row["before_values"]
-							elif isinstance(binlogevent, WriteRowsEvent):
+							elif skip_event[1] == "insert":
 								global_data["action"] = "insert"
 								event_after=row["values"]
 							for column_name in event_after:

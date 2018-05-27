@@ -213,6 +213,7 @@ class replica_engine(object):
 		self.config = yaml.load(config_file.read())
 		config_file.close()
 		
+		
 	
 	def show_sources(self):
 		"""
@@ -497,8 +498,7 @@ class replica_engine(object):
 		self.pg_engine.set_source_id()
 		while True:
 			try:
-				#tables_error = self.pg_engine.replay_replica()
-				tables_error = []
+				tables_error = self.pg_engine.replay_replica()
 				if len(tables_error) > 0:
 					table_list = [item for sublist in tables_error for item in sublist]
 					tables_removed = "\n".join(table_list)
@@ -510,7 +510,7 @@ class replica_engine(object):
 			    queue.put(traceback.format_exc())
 			    break
 			
-	def run_replica(self):
+	def __run_replica(self):
 		"""
 			This method is the method which manages the two separate processes using the multiprocess library.
 			It can be daemonised or run in foreground according with the --debug configuration or the log 
@@ -520,6 +520,8 @@ class replica_engine(object):
 			auto_maintenance = "disabled" 
 		else:
 			auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
+		
+		
 		
 		log_read = self.__init_logger("read")
 		log_replay = self.__init_logger("replay")
@@ -599,7 +601,7 @@ class replica_engine(object):
 				self.pg_engine.clean_not_processed_batches()
 				self.pg_engine.disconnect_db()
 				if self.args.debug:
-					self.run_replica()
+					self.__run_replica()
 				else:
 					if self.config["log_dest"]  == 'stdout':
 						foreground = True
@@ -609,7 +611,7 @@ class replica_engine(object):
 						keep_fds = [self.logger_fds]
 						
 						app_name = "%s_replica" % self.args.source
-						replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.run_replica, foreground=foreground , keep_fds=keep_fds)
+						replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.__run_replica, foreground=foreground , keep_fds=keep_fds)
 						try:
 							replica_daemon.start()
 						except:

@@ -15,6 +15,9 @@ type_override:
     override_tables:
       - "*"
 
+  
+      
+
 #postgres  destination connection
 pg_conn:
   host: "localhost"
@@ -54,6 +57,11 @@ sources:
     on_error_read: continue
     auto_maintenance: "disabled"
     type: mysql
+    skip_events:
+      insert:
+      delete:
+      update:
+    
 
   pgsql:
   db_conn:
