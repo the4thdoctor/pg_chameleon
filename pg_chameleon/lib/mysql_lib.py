@@ -937,11 +937,15 @@ class mysql_source(object):
 			event = "insert"
 		
 		skip_event = False
-		table_name = "%s.%s" % (schema, table)
-		if schema in self.skip_events[event] or table_name in self.skip_events[event]:
-			skip_event = True
-		return [skip_event, event]
-	
+		
+		if self.skip_events:
+			if self.skip_events[event]:
+				table_name = "%s.%s" % (schema, table)
+				if schema in self.skip_events[event] or table_name in self.skip_events[event]:
+					skip_event = True
+				
+		return [skip_event, event]	
+		
 	def __read_replica_stream(self, batch_data):
 		"""
 		Stream the replica using the batch data. This method evaluates the different events streamed from MySQL 
