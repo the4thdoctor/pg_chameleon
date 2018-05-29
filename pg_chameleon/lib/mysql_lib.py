@@ -24,6 +24,7 @@ class mysql_source(object):
 		self.schema_list = []
 		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
 		self.schema_only = {}
+		self.gtid_mode = False
 		
 	def __del__(self):
 		"""
@@ -43,6 +44,15 @@ class mysql_source(object):
 			binlog_row_image - must be FULL, otherwise the row image will be incomplete
 			
 		"""
+		
+		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'gtid_mode';"""
+		self.cursor_buffered.execute(sql_log_bin)
+		variable_check = self.cursor_buffered.fetchone()
+		gtid_mode = variable_check["Value"]
+		
+		if gtid_mode.upper() == 'ON':
+			self.gtid_mode = True
+			
 		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'log_bin';"""
 		self.cursor_buffered.execute(sql_log_bin)
 		variable_check = self.cursor_buffered.fetchone()
@@ -733,8 +743,9 @@ class mysql_source(object):
 		self.replica_conn["port"] = int(db_conn["port"])
 		self.__build_table_exceptions()
 		self.__build_skip_events()
-		master_data = self.get_master_coordinates()
-		self.start_xid = master_data[0]["Executed_Gtid_Set"].split(':')[1].split('-')[0]
+		if self.gtid_mode:
+			master_data = self.get_master_coordinates()
+			self.start_xid = master_data[0]["Executed_Gtid_Set"].split(':')[1].split('-')[0]
 	
 	def __init_sync(self):
 		"""
@@ -953,8 +964,10 @@ class mysql_source(object):
 		"""
 			The method builds a gtid set using the current gtid and
 		"""
-		gtid_data = gtid.split(':')
-		gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
+		gtid_set = ""
+		if self.gtid_mode:
+			gtid_data = gtid.split(':')
+			gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
 		return gtid_set
 		
 	def __read_replica_stream(self, batch_data):
@@ -1036,7 +1049,7 @@ class mysql_source(object):
 						group_insert=[]
 					my_stream.close()
 					return [master_data, close_batch]
-			elif isinstance(binlogevent, GtidEvent):
+			elif isinstance(binlogevent, GtidEvent) and self.gtid_mode:
 				next_gtid  = binlogevent.gtid
 				
 			elif isinstance(binlogevent, QueryEvent):
