@@ -733,7 +733,8 @@ class mysql_source(object):
 		self.replica_conn["port"] = int(db_conn["port"])
 		self.__build_table_exceptions()
 		self.__build_skip_events()
-		
+		master_data = self.get_master_coordinates()
+		self.start_xid = master_data[0]["Executed_Gtid_Set"].split(':')[1].split('-')[0]
 	
 	def __init_sync(self):
 		"""
@@ -952,10 +953,8 @@ class mysql_source(object):
 		"""
 			The method builds a gtid set using the current gtid and
 		"""
-		master_data = self.get_master_coordinates()
-		txid_start = master_data[0]["Executed_Gtid_Set"].split(':')[1].split('-')[0]
 		gtid_data = gtid.split(':')
-		gtid_set = str("%s:%s-%s") % (gtid_data[0], txid_start, gtid_data[1])  
+		gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
 		return gtid_set
 		
 	def __read_replica_stream(self, batch_data):
@@ -1030,14 +1029,14 @@ class mysql_source(object):
 						master_data["File"]=binlogfile
 						master_data["Position"]=position
 						master_data["Time"]=event_time
-						master_data["Executed_Gtid_Set"] = next_gtid
+						master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
 					if len(group_insert)>0:
 						self.pg_engine.write_batch(group_insert)
 						group_insert=[]
 					my_stream.close()
 					return [master_data, close_batch]
 			elif isinstance(binlogevent, GtidEvent):
-				next_gtid  = self.__build_gtid_set( binlogevent.gtid)
+				next_gtid  = binlogevent.gtid
 				
 			elif isinstance(binlogevent, QueryEvent):
 				event_time = binlogevent.timestamp
@@ -1053,7 +1052,7 @@ class mysql_source(object):
 					master_data["File"] = binlogfile
 					master_data["Position"] = log_position
 					master_data["Time"] = event_time
-					master_data["Executed_Gtid_Set"] = next_gtid
+					master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
 					
 					if len(group_insert)>0:
 						self.pg_engine.write_batch(group_insert)
@@ -1184,7 +1183,7 @@ class mysql_source(object):
 						master_data["File"]=log_file
 						master_data["Position"]=log_position
 						master_data["Time"]=event_time
-						master_data["Executed_Gtid_Set"] = next_gtid
+						master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
 						
 						if len(group_insert)>=self.replica_batch_size:
 							self.logger.info("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
