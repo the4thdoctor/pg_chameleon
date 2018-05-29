@@ -96,6 +96,7 @@ CREATE TABLE sch_chameleon.t_replica_batch
   i_id_source bigint NOT NULL,
   t_binlog_name text,
   i_binlog_position bigint,
+  t_gtid text,
   b_started boolean NOT NULL DEFAULT False,
   b_processed boolean NOT NULL DEFAULT False,
   b_replayed boolean NOT NULL DEFAULT False,

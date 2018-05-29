@@ -596,6 +596,7 @@ class pg_engine(object):
 			{'version': '2.0.1',  'script': '200_to_201.sql'}, 
 			{'version': '2.0.2',  'script': '201_to_202.sql'}, 
 			{'version': '2.0.3',  'script': '202_to_203.sql'}, 
+			{'version': '2.0.4',  'script': '203_to_204.sql'}, 
 		]
 		
 	def __del__(self):
@@ -2013,7 +2014,8 @@ class pg_engine(object):
 				i_id_batch,
 				t_binlog_name,
 				i_binlog_position,
-				(SELECT v_log_table[1] from sch_chameleon.t_sources WHERE i_id_source=%s) as v_log_table
+				(SELECT v_log_table[1] from sch_chameleon.t_sources WHERE i_id_source=%s) as v_log_table,
+				t_gtid_set
 				
 			;
 		"""
@@ -3302,6 +3304,7 @@ class pg_engine(object):
 		master_data = master_status[0]
 		binlog_name = master_data["File"]
 		binlog_position = master_data["Position"]
+		executed_gtid_set = master_data["Executed_Gtid_Set"]
 		try:
 			event_time = master_data["Time"]
 		except:
@@ -3312,10 +3315,12 @@ class pg_engine(object):
 				(
 					i_id_source,
 					t_binlog_name, 
-					i_binlog_position
+					i_binlog_position,
+					t_gtid_set
 				)
 			VALUES 
 				(
+					%s,
 					%s,
 					%s,
 					%s
@@ -3348,7 +3353,7 @@ class pg_engine(object):
 		"""
 		
 		try:
-			self.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position))
+			self.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position, executed_gtid_set))
 			results =self.pgsql_cur.fetchone()
 			next_batch_id=results[0]
 			self.pgsql_cur.execute(sql_log_table, (self.i_id_source, ))
@@ -3365,7 +3370,7 @@ class pg_engine(object):
 			
 		except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-					self.logger.error(self.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position)))
+					self.logger.error(self.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position, executed_gtid_set)))
 		
 		return next_batch_id
 
