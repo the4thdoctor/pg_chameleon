@@ -1053,7 +1053,6 @@ class mysql_source(object):
 					master_data["Position"] = log_position
 					master_data["Time"] = event_time
 					master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
-					
 					if len(group_insert)>0:
 						self.pg_engine.write_batch(group_insert)
 						group_insert=[]
@@ -1183,9 +1182,10 @@ class mysql_source(object):
 						master_data["File"]=log_file
 						master_data["Position"]=log_position
 						master_data["Time"]=event_time
-						master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
+						
 						
 						if len(group_insert)>=self.replica_batch_size:
+							master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
 							self.logger.info("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
 							self.logger.debug("Master coordinates: %s" % (master_data, ))
 							self.pg_engine.write_batch(group_insert)
