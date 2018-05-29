@@ -1008,8 +1008,7 @@ class mysql_source(object):
 			log_pos = log_position, 
 			auto_position = gtid_set, 
 			resume_stream = True, 
-			only_schemas = self.schema_replica, 
-			blocking = False
+			only_schemas = self.schema_replica
 		)
 		if gtid_set:
 			self.logger.debug("gtid: %s. id_batch: %s " % (gtid_set, id_batch))
