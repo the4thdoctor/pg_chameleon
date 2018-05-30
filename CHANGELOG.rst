@@ -1,6 +1,11 @@
 changelog 
 *************************
 
+2.0.8 - XX Jun 2018
+..........................................................
+* Support for skip events, now is possible to skip events (insert,delete,update) per single tables or entire schemas
+* Support for GTID. When configured on MySQL pgchameleon will use the GTID to auto position the replica stream.
+
 2.0.7 - 19 May 2018
 ..........................................................
 * Fix for issue #71, make the multiprocess logging safe. Now each replica process logs in a separate file
