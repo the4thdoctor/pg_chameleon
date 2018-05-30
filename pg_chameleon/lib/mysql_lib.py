@@ -52,7 +52,7 @@ class mysql_source(object):
 		
 		if gtid_mode.upper() == 'ON':
 			self.gtid_mode = True
-			
+		
 		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'log_bin';"""
 		self.cursor_buffered.execute(sql_log_bin)
 		variable_check = self.cursor_buffered.fetchone()
@@ -744,6 +744,7 @@ class mysql_source(object):
 		self.replica_conn["port"] = int(db_conn["port"])
 		self.__build_table_exceptions()
 		self.__build_skip_events()
+		self.__check_mysql_config()
 		if self.gtid_mode:
 			master_data = self.get_master_coordinates()
 			self.start_xid = master_data[0]["Executed_Gtid_Set"].split(':')[1].split('-')[0]
@@ -967,8 +968,11 @@ class mysql_source(object):
 		"""
 		gtid_set = ""
 		if self.gtid_mode:
-			gtid_data = gtid.split(':')
-			gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
+			try:
+				gtid_data = gtid.split(':')
+				gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
+			except AttributeError:
+				pass
 		return gtid_set
 		
 	def __read_replica_stream(self, batch_data):
@@ -1012,8 +1016,11 @@ class mysql_source(object):
 		log_file = batch_data[0][1]
 		log_position = batch_data[0][2]
 		log_table = batch_data[0][3]
-		gtid_set = batch_data[0][4]
-		
+		if self.gtid_mode:
+			gtid_set = batch_data[0][4]
+		else:
+			gtid_set = None
+			
 		my_stream = BinLogStreamReader(
 			connection_settings = self.replica_conn, 
 			server_id = self.my_server_id, 
@@ -1238,6 +1245,7 @@ class mysql_source(object):
 			If the variable is not empty then the previous batch gets closed with a simple update of the processed flag.
 		
 		"""
+		
 		skip = self.__init_read_replica()
 		if skip:
 			self.logger.warning("Couldn't connect to the source database for reading the replica. Ignoring.")
