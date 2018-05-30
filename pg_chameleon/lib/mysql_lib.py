@@ -973,7 +973,7 @@ class mysql_source(object):
 				gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
 			except AttributeError:
 				pass
-		return gtid_set
+		return gti
 		
 	def __read_replica_stream(self, batch_data):
 		"""
