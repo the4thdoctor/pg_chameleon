@@ -5,7 +5,7 @@ import pymysql
 import codecs
 import binascii
 from pymysqlreplication import BinLogStreamReader
-from pymysqlreplication.event import QueryEvent, GtidEvent
+from pymysqlreplication.event import QueryEvent, GtidEvent, HeartbeatLogEvent
 from pymysqlreplication.row_event import DeleteRowsEvent,UpdateRowsEvent,WriteRowsEvent
 from pymysqlreplication.event import RotateEvent
 from pg_chameleon import sql_token
@@ -725,6 +725,7 @@ class mysql_source(object):
 		self.limit_tables = self.source_config["limit_tables"]
 		self.skip_tables = self.source_config["skip_tables"]
 		self.replica_batch_size = self.source_config["replica_batch_size"]
+		self.sleep_loop = self.source_config["sleep_loop"]
 		self.hexify = [] + self.hexify_always
 		try:
 			self.connect_db_buffered()
@@ -1016,13 +1017,13 @@ class mysql_source(object):
 		my_stream = BinLogStreamReader(
 			connection_settings = self.replica_conn, 
 			server_id = self.my_server_id, 
-			only_events = [RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent, GtidEvent], 
+			only_events = [RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent, GtidEvent, HeartbeatLogEvent], 
 			log_file = log_file, 
 			log_pos = log_position, 
 			auto_position = gtid_set, 
 			resume_stream = True, 
 			only_schemas = self.schema_replica, 
-			slave_heartbeat = 2, 
+			slave_heartbeat = self.sleep_loop, 
 			
 		)
 		if gtid_set:
@@ -1049,8 +1050,15 @@ class mysql_source(object):
 						group_insert=[]
 					my_stream.close()
 					return [master_data, close_batch]
-			elif isinstance(binlogevent, GtidEvent) and self.gtid_mode:
+			elif isinstance(binlogevent, GtidEvent):
 				next_gtid  = binlogevent.gtid
+			elif isinstance(binlogevent, HeartbeatLogEvent):
+				if len(group_insert)>0:
+						self.pg_engine.write_batch(group_insert)
+						group_insert=[]
+						my_stream.close()
+						master_data["File"]=binlogevent.ident
+						return [master_data, True]
 				
 			elif isinstance(binlogevent, QueryEvent):
 				event_time = binlogevent.timestamp
