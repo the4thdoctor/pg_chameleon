@@ -5,7 +5,7 @@ import pymysql
 import codecs
 import binascii
 from pymysqlreplication import BinLogStreamReader
-from pymysqlreplication.event import QueryEvent
+from pymysqlreplication.event import QueryEvent, GtidEvent, HeartbeatLogEvent
 from pymysqlreplication.row_event import DeleteRowsEvent,UpdateRowsEvent,WriteRowsEvent
 from pymysqlreplication.event import RotateEvent
 from pg_chameleon import sql_token
@@ -24,6 +24,7 @@ class mysql_source(object):
 		self.schema_list = []
 		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
 		self.schema_only = {}
+		self.gtid_mode = False
 		
 	def __del__(self):
 		"""
@@ -43,6 +44,15 @@ class mysql_source(object):
 			binlog_row_image - must be FULL, otherwise the row image will be incomplete
 			
 		"""
+		
+		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'gtid_mode';"""
+		self.cursor_buffered.execute(sql_log_bin)
+		variable_check = self.cursor_buffered.fetchone()
+		gtid_mode = variable_check["Value"]
+		
+		if gtid_mode.upper() == 'ON':
+			self.gtid_mode = True
+		
 		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'log_bin';"""
 		self.cursor_buffered.execute(sql_log_bin)
 		variable_check = self.cursor_buffered.fetchone()
@@ -149,10 +159,12 @@ class mysql_source(object):
 				self.skip_events["insert"] = skip_events["insert"] 
 			else:
 				self.skip_events["insert"] = []
+			
 			if "update" in skip_events:
 				self.skip_events["update"] = skip_events["update"] 
 			else:
 				self.skip_events["update"] = []
+				
 			if "delete" in skip_events:
 				self.skip_events["delete"] = skip_events["delete"] 
 			else:
@@ -713,6 +725,7 @@ class mysql_source(object):
 		self.limit_tables = self.source_config["limit_tables"]
 		self.skip_tables = self.source_config["skip_tables"]
 		self.replica_batch_size = self.source_config["replica_batch_size"]
+		self.sleep_loop = self.source_config["sleep_loop"]
 		self.hexify = [] + self.hexify_always
 		try:
 			self.connect_db_buffered()
@@ -731,7 +744,10 @@ class mysql_source(object):
 		self.replica_conn["port"] = int(db_conn["port"])
 		self.__build_table_exceptions()
 		self.__build_skip_events()
-		
+		self.__check_mysql_config()
+		if self.gtid_mode:
+			master_data = self.get_master_coordinates()
+			self.start_xid = master_data[0]["Executed_Gtid_Set"].split(':')[1].split('-')[0]
 	
 	def __init_sync(self):
 		"""
@@ -944,7 +960,20 @@ class mysql_source(object):
 				if schema in self.skip_events[event] or table_name in self.skip_events[event]:
 					skip_event = True
 				
-		return [skip_event, event]	
+		return [skip_event, event]
+	
+	def __build_gtid_set(self, gtid):
+		"""
+			The method builds a gtid set using the current gtid and
+		"""
+		gtid_set = ""
+		if self.gtid_mode:
+			try:
+				gtid_data = gtid.split(':')
+				gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
+			except AttributeError:
+				pass
+		return gti
 		
 	def __read_replica_stream(self, batch_data):
 		"""
@@ -982,23 +1011,32 @@ class mysql_source(object):
 		close_batch = False
 		master_data = {}
 		group_insert = []
-		
+		next_gtid = None
 		id_batch = batch_data[0][0]
 		log_file = batch_data[0][1]
 		log_position = batch_data[0][2]
 		log_table = batch_data[0][3]
-		
+		if self.gtid_mode:
+			gtid_set = batch_data[0][4]
+		else:
+			gtid_set = None
+			
 		my_stream = BinLogStreamReader(
 			connection_settings = self.replica_conn, 
 			server_id = self.my_server_id, 
-			only_events = [RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent], 
+			only_events = [RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent, GtidEvent, HeartbeatLogEvent], 
 			log_file = log_file, 
 			log_pos = log_position, 
+			auto_position = gtid_set, 
 			resume_stream = True, 
 			only_schemas = self.schema_replica, 
+			slave_heartbeat = self.sleep_loop, 
 			
 		)
-		self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
+		if gtid_set:
+			self.logger.debug("gtid: %s. id_batch: %s " % (gtid_set, id_batch))
+		else:
+			self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		
 		for binlogevent in my_stream:
 			if isinstance(binlogevent, RotateEvent):
@@ -1013,11 +1051,22 @@ class mysql_source(object):
 						master_data["File"]=binlogfile
 						master_data["Position"]=position
 						master_data["Time"]=event_time
+						master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
 					if len(group_insert)>0:
 						self.pg_engine.write_batch(group_insert)
 						group_insert=[]
 					my_stream.close()
 					return [master_data, close_batch]
+			elif isinstance(binlogevent, GtidEvent):
+				next_gtid  = binlogevent.gtid
+			elif isinstance(binlogevent, HeartbeatLogEvent):
+				if len(group_insert)>0:
+						self.pg_engine.write_batch(group_insert)
+						group_insert=[]
+						my_stream.close()
+						master_data["File"]=binlogevent.ident
+						return [master_data, True]
+				
 			elif isinstance(binlogevent, QueryEvent):
 				event_time = binlogevent.timestamp
 				try:
@@ -1032,6 +1081,7 @@ class mysql_source(object):
 					master_data["File"] = binlogfile
 					master_data["Position"] = log_position
 					master_data["Time"] = event_time
+					master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
 					if len(group_insert)>0:
 						self.pg_engine.write_batch(group_insert)
 						group_insert=[]
@@ -1079,6 +1129,7 @@ class mysql_source(object):
 			else:
 				
 				for row in binlogevent.rows:
+					#print(row["values"])
 					event_after={}
 					event_before={}
 					event_insert = {}
@@ -1160,8 +1211,10 @@ class mysql_source(object):
 						master_data["File"]=log_file
 						master_data["Position"]=log_position
 						master_data["Time"]=event_time
+						master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
 						
 						if len(group_insert)>=self.replica_batch_size:
+							
 							self.logger.info("Max rows per batch reached. Writing %s. rows. Size in bytes: %s " % (len(group_insert), size_insert))
 							self.logger.debug("Master coordinates: %s" % (master_data, ))
 							self.pg_engine.write_batch(group_insert)
@@ -1192,6 +1245,7 @@ class mysql_source(object):
 			If the variable is not empty then the previous batch gets closed with a simple update of the processed flag.
 		
 		"""
+		
 		skip = self.__init_read_replica()
 		if skip:
 			self.logger.warning("Couldn't connect to the source database for reading the replica. Ignoring.")
