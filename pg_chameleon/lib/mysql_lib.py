@@ -973,7 +973,7 @@ class mysql_source(object):
 				gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
 			except AttributeError:
 				pass
-		return gti
+		return gtid_set
 		
 	def __read_replica_stream(self, batch_data):
 		"""
@@ -1025,8 +1025,8 @@ class mysql_source(object):
 			connection_settings = self.replica_conn, 
 			server_id = self.my_server_id, 
 			only_events = [RotateEvent, DeleteRowsEvent, WriteRowsEvent, UpdateRowsEvent, QueryEvent, GtidEvent, HeartbeatLogEvent], 
-			log_file = log_file, 
-			log_pos = log_position, 
+			#log_file = log_file, 
+			#log_pos = log_position, 
 			auto_position = gtid_set, 
 			resume_stream = True, 
 			only_schemas = self.schema_replica, 
