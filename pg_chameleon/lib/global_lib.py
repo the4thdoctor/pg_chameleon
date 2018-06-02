@@ -43,18 +43,19 @@ class rollbar_notifier(object):
 			The method sends a message to rollbar. If it fails it just logs an error 
 			without causing the process to crash.
 		"""
-		exc_info = sys.exc_info()
-		try:
-			notification_level = self.levels[level]
-			if notification_level <= self.rollbar_level:
-				try:
-					self.notifier.report_message(message, level)
-					if exc_info[0]:
-						self.notifier.report_exc_info(exc_info)
-				except:
-					self.logger.error("Could not send the message to rollbar.")
-		except:
-			self.logger.error("Wrong rollbar level specified.")
+		if self.notifier:
+			exc_info = sys.exc_info()
+			try:
+				notification_level = self.levels[level]
+				if notification_level <= self.rollbar_level:
+					try:
+						self.notifier.report_message(message, level)
+						if exc_info[0]:
+							self.notifier.report_exc_info(exc_info)
+					except:
+						self.logger.error("Could not send the message to rollbar.")
+			except:
+				self.logger.error("Wrong rollbar level specified.")
 		
 class replica_engine(object):
 	"""

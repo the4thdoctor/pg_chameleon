@@ -3304,7 +3304,10 @@ class pg_engine(object):
 		master_data = master_status[0]
 		binlog_name = master_data["File"]
 		binlog_position = master_data["Position"]
-		executed_gtid_set = master_data["Executed_Gtid_Set"]
+		if "Executed_Gtid_Set" in master_data:
+			executed_gtid_set = master_data["Executed_Gtid_Set"]
+		else:
+			executed_gtid_set = None
 		try:
 			event_time = master_data["Time"]
 		except:

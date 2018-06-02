@@ -48,11 +48,12 @@ class mysql_source(object):
 		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'gtid_mode';"""
 		self.cursor_buffered.execute(sql_log_bin)
 		variable_check = self.cursor_buffered.fetchone()
-		gtid_mode = variable_check["Value"]
-		
-		if gtid_mode.upper() == 'ON':
-			self.gtid_mode = True
-		
+		if variable_check:
+			gtid_mode = variable_check["Value"]
+			if gtid_mode.upper() == 'ON':
+				self.gtid_mode = True
+		else:
+			self.gtid_mode = False
 		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'log_bin';"""
 		self.cursor_buffered.execute(sql_log_bin)
 		variable_check = self.cursor_buffered.fetchone()
