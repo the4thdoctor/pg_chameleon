@@ -970,7 +970,8 @@ class mysql_source(object):
 		gtid_set = ""
 		if self.gtid_mode:
 			try:
-				gtid_data = gtid.split(':')
+				
+				gtid_data = gtid.replace('\n','').split(',')[0].split(':')
 				gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
 			except AttributeError:
 				pass
