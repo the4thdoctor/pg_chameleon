@@ -52,6 +52,18 @@ class mysql_source(object):
 			gtid_mode = variable_check["Value"]
 			if gtid_mode.upper() == 'ON':
 				self.gtid_mode = True
+				sql_uuid = """SHOW SLAVE STATUS;"""
+				self.cursor_buffered.execute(sql_uuid)
+				slave_status = self.cursor_buffered.fetchall()
+				if len(slave_status)>0:
+					gtid_set=slave_status[0]["Retrieved_Gtid_Set"]
+				else:
+					sql_uuid = """SHOW GLOBAL VARIABLES LIKE 'server_uuid';"""
+					self.cursor_buffered.execute(sql_uuid)
+					server_uuid = self.cursor_buffered.fetchone()
+					gtid_set = server_uuid["Value"]
+				self.gtid_uuid = gtid_set.split(':')[0]
+				
 		else:
 			self.gtid_mode = False
 		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'log_bin';"""
@@ -967,15 +979,19 @@ class mysql_source(object):
 		"""
 			The method builds a gtid set using the current gtid and
 		"""
-		gtid_set = ""
-		if self.gtid_mode:
-			try:
-				
-				gtid_data = gtid.replace('\n','').split(',')[0].split(':')
-				gtid_set = "%s:%s-%s" % (gtid_data[0], self.start_xid, gtid_data[1])  
-			except AttributeError:
-				pass
-		return gtid_set
+		gtid_pack = []
+		master_data= self.get_master_coordinates()
+		gtid_set = master_data[0]["Executed_Gtid_Set"]
+		gtid_list = gtid_set.split(",\n")
+		for gtid_item in gtid_list:
+			if gtid_item.split(':')[0] in gtid:
+				gtid_old = gtid_item.split(':')
+				gtid_new = "%s:%s-%s" % (gtid_old[0],gtid_old[0].split('-')[0],gtid[gtid_old[0]])
+				gtid_pack.append(gtid_new)
+			else:
+				gtid_pack.append(gtid_item)
+		new_set = ",\n".join(gtid_pack)
+		return new_set
 		
 	def __read_replica_stream(self, batch_data):
 		"""
@@ -1013,7 +1029,7 @@ class mysql_source(object):
 		close_batch = False
 		master_data = {}
 		group_insert = []
-		next_gtid = None
+		next_gtid = {}
 		id_batch = batch_data[0][0]
 		log_file = batch_data[0][1]
 		log_position = batch_data[0][2]
@@ -1053,14 +1069,15 @@ class mysql_source(object):
 						master_data["File"]=binlogfile
 						master_data["Position"]=position
 						master_data["Time"]=event_time
-						master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
+						master_data["gtid"] = next_gtid
 					if len(group_insert)>0:
 						self.pg_engine.write_batch(group_insert)
 						group_insert=[]
 					my_stream.close()
 					return [master_data, close_batch]
 			elif isinstance(binlogevent, GtidEvent):
-				next_gtid  = binlogevent.gtid
+				gtid  = binlogevent.gtid.split(':')
+				next_gtid[gtid [0]]  = gtid [1]
 			elif isinstance(binlogevent, HeartbeatLogEvent):
 				if len(group_insert)>0:
 						self.pg_engine.write_batch(group_insert)
@@ -1083,7 +1100,7 @@ class mysql_source(object):
 					master_data["File"] = binlogfile
 					master_data["Position"] = log_position
 					master_data["Time"] = event_time
-					master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
+					master_data["gtid"] = next_gtid
 					if len(group_insert)>0:
 						self.pg_engine.write_batch(group_insert)
 						group_insert=[]
@@ -1213,7 +1230,7 @@ class mysql_source(object):
 						master_data["File"]=log_file
 						master_data["Position"]=log_position
 						master_data["Time"]=event_time
-						master_data["Executed_Gtid_Set"] = self.__build_gtid_set( next_gtid)
+						master_data["gtid"] = next_gtid
 						
 						if len(group_insert)>=self.replica_batch_size:
 							
@@ -1265,6 +1282,7 @@ class mysql_source(object):
 					replica_data=self.__read_replica_stream(batch_data)
 					master_data=replica_data[0]
 					close_batch=replica_data[1]
+					master_data["Executed_Gtid_Set"] = self.__build_gtid_set(master_data["gtid"])
 					if close_batch:
 						self.master_status=[]
 						self.master_status.append(master_data)
