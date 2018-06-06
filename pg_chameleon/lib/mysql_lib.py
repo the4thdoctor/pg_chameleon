@@ -986,7 +986,7 @@ class mysql_source(object):
 		for gtid_item in gtid_list:
 			if gtid_item.split(':')[0] in gtid:
 				gtid_old = gtid_item.split(':')
-				gtid_new = "%s:%s-%s" % (gtid_old[0],gtid_old[0].split('-')[0],gtid[gtid_old[0]])
+				gtid_new = "%s:%s-%s" % (gtid_old[0],gtid_old[1].split('-')[0],gtid[gtid_old[0]])
 				gtid_pack.append(gtid_new)
 			else:
 				gtid_pack.append(gtid_item)
