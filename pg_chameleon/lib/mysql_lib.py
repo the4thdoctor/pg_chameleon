@@ -1282,7 +1282,10 @@ class mysql_source(object):
 					replica_data=self.__read_replica_stream(batch_data)
 					master_data=replica_data[0]
 					close_batch=replica_data[1]
-					master_data["Executed_Gtid_Set"] = self.__build_gtid_set(master_data["gtid"])
+					if "gtid" in master_data:
+						master_data["Executed_Gtid_Set"] = self.__build_gtid_set(master_data["gtid"])
+					else:
+						master_data["Executed_Gtid_Set"] = ""
 					if close_batch:
 						self.master_status=[]
 						self.master_status.append(master_data)
