@@ -479,6 +479,7 @@ class replica_engine(object):
 			The method reads the replica stream for the given source and stores the row images 
 			in the target postgresql database.
 		"""
+		
 		self.mysql_source.logger  = log_read[0]
 		self.pg_engine.logger  = log_read[0]
 		while True:
@@ -522,6 +523,12 @@ class replica_engine(object):
 		else:
 			auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
 		
+		if "gtid_enable" not in  self.config["sources"][self.args.source]:
+			gtid_enable = False 
+		else:
+			gtid_enable =  self.config["sources"][self.args.source]["gtid_enable"]
+		
+		self.mysql_source.gtid_enable = gtid_enable
 		
 		
 		log_read = self.__init_logger("read")

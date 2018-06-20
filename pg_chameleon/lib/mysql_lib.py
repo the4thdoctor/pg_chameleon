@@ -44,28 +44,31 @@ class mysql_source(object):
 			binlog_row_image - must be FULL, otherwise the row image will be incomplete
 			
 		"""
-		
-		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'gtid_mode';"""
-		self.cursor_buffered.execute(sql_log_bin)
-		variable_check = self.cursor_buffered.fetchone()
-		if variable_check:
-			gtid_mode = variable_check["Value"]
-			if gtid_mode.upper() == 'ON':
-				self.gtid_mode = True
-				sql_uuid = """SHOW SLAVE STATUS;"""
-				self.cursor_buffered.execute(sql_uuid)
-				slave_status = self.cursor_buffered.fetchall()
-				if len(slave_status)>0:
-					gtid_set=slave_status[0]["Retrieved_Gtid_Set"]
-				else:
-					sql_uuid = """SHOW GLOBAL VARIABLES LIKE 'server_uuid';"""
+		if self.gtid_enable:
+			sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'gtid_mode';"""
+			self.cursor_buffered.execute(sql_log_bin)
+			variable_check = self.cursor_buffered.fetchone()
+			if variable_check:
+				gtid_mode = variable_check["Value"]
+				if gtid_mode.upper() == 'ON':
+					self.gtid_mode = True
+					sql_uuid = """SHOW SLAVE STATUS;"""
 					self.cursor_buffered.execute(sql_uuid)
-					server_uuid = self.cursor_buffered.fetchone()
-					gtid_set = server_uuid["Value"]
-				self.gtid_uuid = gtid_set.split(':')[0]
-				
+					slave_status = self.cursor_buffered.fetchall()
+					if len(slave_status)>0:
+						gtid_set=slave_status[0]["Retrieved_Gtid_Set"]
+					else:
+						sql_uuid = """SHOW GLOBAL VARIABLES LIKE 'server_uuid';"""
+						self.cursor_buffered.execute(sql_uuid)
+						server_uuid = self.cursor_buffered.fetchone()
+						gtid_set = server_uuid["Value"]
+					self.gtid_uuid = gtid_set.split(':')[0]
+					
+			else:
+				self.gtid_mode = False
 		else:
 			self.gtid_mode = False
+			
 		sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'log_bin';"""
 		self.cursor_buffered.execute(sql_log_bin)
 		variable_check = self.cursor_buffered.fetchone()

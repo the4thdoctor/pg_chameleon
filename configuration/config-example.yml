@@ -56,6 +56,7 @@ sources:
     on_error_replay: continue
     on_error_read: continue
     auto_maintenance: "disabled"
+    gtid_enable: No
     type: mysql
     skip_events:
       insert:
