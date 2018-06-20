@@ -25,6 +25,7 @@ class mysql_source(object):
 		self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
 		self.schema_only = {}
 		self.gtid_mode = False
+		self.gtid_enable = False
 		
 	def __del__(self):
 		"""
