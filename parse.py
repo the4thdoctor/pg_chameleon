@@ -86,8 +86,14 @@ ADD COLUMN newstatus INT(10) UNSIGNED NOT NULL AFTER `log`;
 ALTER TABLE `test` DROP PRIMARY KEY;
 
 				"""
-statement="""truncate table `test` ;"""
+statement="""ALTER TABLE t_user_info ADD (
+group_id INT(11) UNSIGNED DEFAULT NULL,
+contact_phone VARCHAR(20) DEFAULT NULL
+);"""
 
+statement="""ALTER TABLE foo MODIFY bar INT UNSIGNED DEFAULT NULL;"""
+#statement="""ALTER TABLE foo change bar bar INT UNSIGNED;"""
+#statement="""alter table test change   date_create_new date_create_new timestamp;"""
 
 token_sql=sql_token()
 token_sql.parse_sql(statement)
