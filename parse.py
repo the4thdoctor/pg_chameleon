@@ -91,7 +91,7 @@ group_id INT(11) UNSIGNED DEFAULT NULL,
 contact_phone VARCHAR(20) DEFAULT NULL
 );"""
 
-statement="""ALTER TABLE foo MODIFY bar INT UNSIGNED DEFAULT NULL;"""
+#statement="""ALTER TABLE foo MODIFY bar INT UNSIGNED DEFAULT NULL;"""
 #statement="""ALTER TABLE foo change bar bar INT UNSIGNED;"""
 #statement="""alter table test change   date_create_new date_create_new timestamp;"""
 
