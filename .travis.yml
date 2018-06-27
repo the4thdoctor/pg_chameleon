@@ -8,7 +8,7 @@ python:
   - "3.5"
   - "3.6"
 # install pg_chameleon
-install: "pip install ."
+install: "pip install pip --upgrade && pip install ."
 
 services:
   - mysql
