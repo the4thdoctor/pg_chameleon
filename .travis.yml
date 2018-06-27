@@ -3,12 +3,11 @@ dist: trusty
 group: deprecated-2017Q3
 language: python
 python:
-  - "3.3"
   - "3.4"
   - "3.5"
   - "3.6"
 # install pg_chameleon
-install: "pip install pip --upgrade && pip install ."
+install: "pip install ."
 
 services:
   - mysql
