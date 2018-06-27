@@ -50,13 +50,13 @@ class sql_token(object):
 		
 		#re for query type
 		self.m_rename_table = re.compile(r'(RENAME\s*TABLE)\s*(.*)', re.IGNORECASE)
+		self.m_alter_rename_table = re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+(?:RENAME)\s+(?:TO)?\s+(.*)', re.IGNORECASE)
 		self.m_create_table = re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:(?:`)?(?:\w*)(?:`)?\.)?(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_drop_table = re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_truncate_table = re.compile(r'(TRUNCATE)\s*(?:TABLE)?\s*(?:(?:`)?(\w*)(?:`)?)(?:.)?(?:`)?(\w*)(?:`)?', re.IGNORECASE)
 		self.m_alter_index = re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+(?:UNIQUE)?\s*?(?:INDEX).*,?)', re.IGNORECASE)
 		self.m_alter_table = re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?.*,?)', re.IGNORECASE)
 		self.m_alter_list = re.compile(r'((?:\b(?:ADD|DROP|CHANGE|MODIFY)\b\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
-		#self.m_alter_table = re.compile(r'(\bALTER\b\s+\bTABLE\b)\s+(.*?)\s+(.*)', re.IGNORECASE)
 		self.m_alter_column = re.compile(r'\(?\s*`?(\w*)`?\s*(\w*(?:\s*\w*)?)\s*(?:\((.*?)\))?\)?', re.IGNORECASE)
 		self.m_default_value = re.compile(r"(\bDEFAULT\b)\s*('?\w*'?)\s*", re.IGNORECASE)
 		self.m_alter_change = re.compile(r'\s*`?(\w*)`?\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
@@ -327,6 +327,7 @@ class sql_token(object):
 		alter_cmd=[]
 		alter_stat=malter_table.group(0) + ','
 		stat_dic["command"]=malter_table.group(1).upper().strip()
+		print(malter_table.groups())
 		stat_dic["name"]=malter_table.group(2).strip().strip('`')
 		dim_groups=self.m_dimension.findall(alter_stat)
 		
@@ -459,6 +460,7 @@ class sql_token(object):
 			stat_cleanup=stat_cleanup.replace('\n', ' ')
 			stat_cleanup = re.sub("\([\w*\s*]\)", " ",  stat_cleanup)
 			stat_cleanup = stat_cleanup.strip()
+			malter_rename = self.m_alter_rename_table.match(stat_cleanup)
 			mrename_table = self.m_rename_table.match(stat_cleanup)
 			mcreate_table = self.m_create_table.match(stat_cleanup)
 			mdrop_table = self.m_drop_table.match(stat_cleanup)
@@ -466,7 +468,13 @@ class sql_token(object):
 			malter_index = self.m_alter_index.match(stat_cleanup)
 			mdrop_primary = self.m_drop_primary.match(stat_cleanup)
 			mtruncate_table = self.m_truncate_table.match(stat_cleanup)
-			if mrename_table:
+			if malter_rename:
+				stat_dic["command"] = "RENAME TABLE"
+				stat_dic["name"] = malter_rename.group(2)
+				stat_dic["new_name"] = malter_rename.group(3)
+				self.tokenised.append(stat_dic)
+				stat_dic = {}
+			elif mrename_table:
 				rename_list = self.parse_rename_table(mrename_table.group(2))
 				for rename_table in rename_list:
 					stat_dic["command"] = "RENAME TABLE"
@@ -474,6 +482,7 @@ class sql_token(object):
 					stat_dic["new_name"] = rename_table[1]
 					self.tokenised.append(stat_dic)
 					stat_dic = {}
+			
 			elif mcreate_table:
 				command=' '.join(mcreate_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command
