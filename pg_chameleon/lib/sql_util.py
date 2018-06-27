@@ -327,7 +327,6 @@ class sql_token(object):
 		alter_cmd=[]
 		alter_stat=malter_table.group(0) + ','
 		stat_dic["command"]=malter_table.group(1).upper().strip()
-		print(malter_table.groups())
 		stat_dic["name"]=malter_table.group(2).strip().strip('`')
 		dim_groups=self.m_dimension.findall(alter_stat)
 		
