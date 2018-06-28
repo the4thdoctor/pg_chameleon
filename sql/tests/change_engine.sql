@@ -1,5 +1,5 @@
 -- MySQL supports different storage engines, PostgreSQL doesn't.
--- The ALTER TABLE to change a table engine should be ignore.
+-- The ALTER TABLE to change a table engine should be ignored.
 
 CREATE TABLE test_engine (
     id INT PRIMARY KEY
