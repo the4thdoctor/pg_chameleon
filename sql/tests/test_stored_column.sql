@@ -2,6 +2,6 @@
 
 CREATE TABLE test_stored_col (
     id INT PRIMARY KEY,
-    v INT GENERATED ALWAYS AS (id + 1) STORED NOT NULL
+    v INT GENERATED ALWAYS AS (id + 1) STORED
 ) ENGINE InnoDB;
 INSERT INTO test_stored_col (id) VALUES (100);
