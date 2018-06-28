@@ -1,7 +1,7 @@
 -- CREATE TABLE IF NOT EXISTS is supported by both MySQL and PostgreSQL
 -- but we want to check if it works when a table only exists in MySQL,
 -- or it only works in PostgreSQL.
--- Note that MySQL always replicates IF [NOT] EXISTS statements.
+-- Note that MySQL always replicates IF NOT EXISTS statements.
 
 -- Create table in MySQL only,
 -- then test CREATE TABLE IF NOT EXISTS.
