@@ -983,18 +983,20 @@ class mysql_source(object):
 		"""
 			The method builds a gtid set using the current gtid and
 		"""
+		new_set = None
 		gtid_pack = []
 		master_data= self.get_master_coordinates()
-		gtid_set = master_data[0]["Executed_Gtid_Set"]
-		gtid_list = gtid_set.split(",\n")
-		for gtid_item in gtid_list:
-			if gtid_item.split(':')[0] in gtid:
-				gtid_old = gtid_item.split(':')
-				gtid_new = "%s:%s-%s" % (gtid_old[0],gtid_old[1].split('-')[0],gtid[gtid_old[0]])
-				gtid_pack.append(gtid_new)
-			else:
-				gtid_pack.append(gtid_item)
-		new_set = ",\n".join(gtid_pack)
+		if "Executed_Gtid_Set" in master_data[0]:
+			gtid_set = master_data[0]["Executed_Gtid_Set"]
+			gtid_list = gtid_set.split(",\n")
+			for gtid_item in gtid_list:
+				if gtid_item.split(':')[0] in gtid:
+					gtid_old = gtid_item.split(':')
+					gtid_new = "%s:%s-%s" % (gtid_old[0],gtid_old[1].split('-')[0],gtid[gtid_old[0]])
+					gtid_pack.append(gtid_new)
+				else:
+					gtid_pack.append(gtid_item)
+			new_set = ",\n".join(gtid_pack)
 		return new_set
 		
 	def __read_replica_stream(self, batch_data):
