@@ -75,6 +75,7 @@ setup(
 		"pg_chameleon.lib.mysql_lib",
 		"pg_chameleon.lib.pg_lib",
 		"pg_chameleon.lib.sql_util"
+		"pg_chameleon.lib.notifiers"
 	],
 	scripts=[
 		"scripts/chameleon.py", 
@@ -88,7 +89,8 @@ setup(
 		'PyYAML>=3.12', 
 		'tabulate>=0.8.1', 
 		'daemonize>=2.4.7', 
-		'rollbar>=0.13.17'
+		'rollbar>=0.13.17',
+		'emails>=0.5.15'
 	],
 	data_files = data_files, 
 	include_package_data = True, 
