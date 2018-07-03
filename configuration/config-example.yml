@@ -5,8 +5,20 @@ log_dir: '~/.pg_chameleon/logs/'
 log_dest: file
 log_level: info
 log_days_keep: 10
-rollbar_key: ''
-rollbar_env: ''
+
+notifier:
+  kind: email
+  attributes:
+    smtp: smtp.server.com
+    credentials: xyz/xyz  # can be omitted
+    from: "noreply@server.com"
+    to: ["noreply@server.com"]
+    subject: "MySQL-PostgreSQL Replica alert!"
+    ssl: false
+#  kind: rollbar
+#  attributes:
+#    rollbar_key: ''
+#    rollbar_env: ''
 
 # type_override allows the user to override the default type conversion into a different one. 
 type_override:
@@ -56,32 +68,32 @@ sources:
     type: mysql
 
   pgsql:
-  db_conn:
-    host: "localhost"
-    port: "5432"
-    user: "usr_replica"
-    password: "never_commit_passwords"
-    database:  "db_replica"
-    charset: 'utf8'
-    connect_timeout: 10
-      schema_mappings:
-        loxodonta_africana: elephas_maximus
-      limit_tables:
-        - loxodonta_africana.foo
-      skip_tables:
-        - loxodonta_africana.bar
-      copy_max_memory: "300M"
-      grant_select_to:
-        - usr_readonly
-      lock_timeout: "10s"
-      my_server_id: 100
-      replica_batch_size: 3000
-      replay_max_rows : 10000
-      sleep_loop: 5
-      batch_retention: '1 day'
-      copy_mode: 'file'  
-      out_dir: /tmp
-      type: pgsql
+    db_conn:
+      host: "localhost"
+      port: "5432"
+      user: "usr_replica"
+      password: "never_commit_passwords"
+      database:  "db_replica"
+      charset: 'utf8'
+      connect_timeout: 10
+        schema_mappings:
+          loxodonta_africana: elephas_maximus
+        limit_tables:
+          - loxodonta_africana.foo
+        skip_tables:
+          - loxodonta_africana.bar
+        copy_max_memory: "300M"
+        grant_select_to:
+          - usr_readonly
+        lock_timeout: "10s"
+        my_server_id: 100
+        replica_batch_size: 3000
+        replay_max_rows : 10000
+        sleep_loop: 5
+        batch_retention: '1 day'
+        copy_mode: 'file'
+        out_dir: /tmp
+        type: pgsql
 
 
 
