@@ -1173,7 +1173,6 @@ class pg_engine(object):
 					raise Exception('The replay process crashed')
 				if replay_status[2]:
 					tables_error.append(replay_status[2])
-			self. __cleanup_replayed_batches()
 		return tables_error
 			
 	
@@ -1224,12 +1223,14 @@ class pg_engine(object):
 		return table_pkey[0]
 	
 	
-	def __cleanup_replayed_batches(self):
+	def cleanup_replayed_batches(self):
 		"""
 			The method cleanup the replayed batches for the given source accordingly with the source's parameter  batch_retention
 		"""
-		batch_retention = self.source_config["batch_retention"]
-		self.logger.info("Cleaning replayed batches for source %s older than %s" % (self.source,batch_retention) )
+		self.connect_db()
+		source_config = self.sources[self.source]
+		batch_retention = source_config["batch_retention"]
+		self.logger.debug("Cleaning replayed batches for source %s older than %s" % (self.source,batch_retention) )
 		sql_cleanup = """
 			DELETE FROM 
 				sch_chameleon.t_replica_batch
@@ -1242,6 +1243,7 @@ class pg_engine(object):
 			;
 		"""
 		self.pgsql_cur.execute(sql_cleanup, (batch_retention, self.i_id_source ))
+		self.disconnect_db()
 	
 	def __generate_ddl(self, token,  destination_schema):
 		""" 

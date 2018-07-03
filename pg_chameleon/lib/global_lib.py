@@ -551,6 +551,7 @@ class replica_engine(object):
 			replay_alive = self.replay_daemon.is_alive()
 			if  read_alive and replay_alive:
 				self.logger.debug("Replica process for source %s is running" % (self.args.source))
+				self.pg_engine.cleanup_replayed_batches()
 			else:
 				stack_trace = queue.get()
 				self.logger.error("Read process alive: %s - Replay process alive: %s" % (read_alive, replay_alive, ))
