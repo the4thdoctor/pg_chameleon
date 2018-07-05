@@ -562,9 +562,13 @@ class replica_engine(object):
 				if replay_alive:
 					self.replay_daemon.terminate()
 					self.logger.error("Read daemon crashed. Terminating the replay daemon.")
+				if self.args.debug:
+					replica_status = "stopped"
+				else:
+					replica_status = "error"
 				try:
 					self.pg_engine.connect_db()
-					self.pg_engine.set_source_status("error")
+					self.pg_engine.set_source_status(replica_status)
 				except:
 					pass
 				notifier_message = "The replica process crashed.\n Source: %s\n Stack trace: %s " %(self.args.source, stack_trace)
