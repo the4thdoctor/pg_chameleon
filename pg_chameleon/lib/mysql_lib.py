@@ -996,7 +996,7 @@ class mysql_source(object):
 					gtid_pack.append(gtid_new)
 				else:
 					gtid_pack.append(gtid_item)
-			new_set = ",".join(gtid_pack)
+			new_set = ",\n".join(gtid_pack)
 		return new_set
 		
 	def __read_replica_stream(self, batch_data):
@@ -1045,7 +1045,7 @@ class mysql_source(object):
 			gtid_pack = gtid_position.split(",\n")
 			for gtid in gtid_pack:
 				gtid  = gtid.split(':')
-				next_gtid[gtid [0]]  = gtid [1].split("-")[1]
+				next_gtid[gtid [0]]  = gtid [1].split("-")[-1]
 				gtid_set = self.__build_gtid_set(next_gtid)
 		else:
 			gtid_set = None
