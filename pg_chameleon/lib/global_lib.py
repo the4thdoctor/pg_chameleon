@@ -507,10 +507,11 @@ class replica_engine(object):
 					notifier_message = "There was an error during the replay of data. %s. The affected tables are no longer replicated." % (tables_removed)
 					self.logger.error(notifier_message)
 					self.notifier.send_message(notifier_message, 'error')
-				time.sleep(self.sleep_loop)
+				
 			except Exception:
 			    queue.put(traceback.format_exc())
 			    break
+			time.sleep(self.sleep_loop)
 			
 	def __run_replica(self):
 		"""
