@@ -1073,31 +1073,30 @@ class mysql_source(object):
 				binlogfile = binlogevent.next_binlog
 				position = binlogevent.position
 				self.logger.debug("ROTATE EVENT - binlogfile %s, position %s. " % (binlogfile, position))
-				if log_file != binlogfile:
-					close_batch = True
-				if close_batch:
-					if log_file!=binlogfile:
-						master_data["File"]=binlogfile
-						master_data["Position"]=position
-						master_data["Time"]=event_time
-						master_data["gtid"] = next_gtid
-					if len(group_insert)>0:
-						self.pg_engine.write_batch(group_insert)
-						group_insert=[]
-					my_stream.close()
-					return [master_data, close_batch]
+				if len(group_insert)>0:
+					self.pg_engine.write_batch(group_insert)
+					group_insert=[]
+				if self.gtid_mode:
+					pass
+				else:
+					if log_file != binlogfile:
+						close_batch = True
+					if close_batch:
+						if log_file!=binlogfile:
+							master_data["File"]=binlogfile
+							master_data["Position"]=position
+							master_data["Time"]=event_time
+							master_data["gtid"] = next_gtid
+						my_stream.close()
+						return [master_data, close_batch]
 			elif isinstance(binlogevent, GtidEvent):
 				gtid  = binlogevent.gtid.split(':')
 				next_gtid[gtid [0]]  = gtid [1]
 			elif isinstance(binlogevent, HeartbeatLogEvent):
 				self.logger.debug("HEARTBEAT EVENT - binlogfile %s " % (binlogevent.ident,))
 				if len(group_insert)>0:
-						self.pg_engine.write_batch(group_insert)
-						group_insert=[]
-						my_stream.close()
-						master_data["File"]=binlogevent.ident
-						return [master_data, True]
-				
+					break
+			
 			elif isinstance(binlogevent, QueryEvent):
 				event_time = binlogevent.timestamp
 				try:
