@@ -1092,6 +1092,7 @@ class mysql_source(object):
 			elif isinstance(binlogevent, GtidEvent):
 				gtid  = binlogevent.gtid.split(':')
 				next_gtid[gtid [0]]  = gtid [1]
+				master_data["gtid"] = next_gtid
 			elif isinstance(binlogevent, HeartbeatLogEvent):
 				self.logger.debug("HEARTBEAT EVENT - binlogfile %s " % (binlogevent.ident,))
 				if len(group_insert)>0:
