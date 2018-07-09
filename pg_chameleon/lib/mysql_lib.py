@@ -1096,6 +1096,8 @@ class mysql_source(object):
 			elif isinstance(binlogevent, HeartbeatLogEvent):
 				self.logger.debug("HEARTBEAT EVENT - binlogfile %s " % (binlogevent.ident,))
 				if len(group_insert)>0:
+					master_data["File"]=binlogevent.ident
+					close_batch = True
 					break
 			
 			elif isinstance(binlogevent, QueryEvent):
