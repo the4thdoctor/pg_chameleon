@@ -2017,7 +2017,7 @@ class pg_engine(object):
 				t_binlog_name,
 				i_binlog_position,
 				(SELECT v_log_table[1] from sch_chameleon.t_sources WHERE i_id_source=%s) as v_log_table,
-				t_gtid
+				t_gtid_set
 				
 			;
 		"""
@@ -3321,7 +3321,7 @@ class pg_engine(object):
 					i_id_source,
 					t_binlog_name, 
 					i_binlog_position,
-					t_gtid
+					t_gtid_set
 				)
 			VALUES 
 				(
