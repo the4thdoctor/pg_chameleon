@@ -1049,7 +1049,7 @@ class mysql_source(object):
 				gtid_set = self.__build_gtid_set(next_gtid)
 		else:
 			gtid_set = None
-			
+		stream_connected = False
 		my_stream = BinLogStreamReader(
 			connection_settings = self.replica_conn, 
 			server_id = self.my_server_id, 
@@ -1060,6 +1060,7 @@ class mysql_source(object):
 			resume_stream = True, 
 			only_schemas = self.schema_replica, 
 			slave_heartbeat = self.sleep_loop, 
+			blocking=False,
 			
 		)
 		if gtid_set:
@@ -1076,27 +1077,24 @@ class mysql_source(object):
 				if len(group_insert)>0:
 					self.pg_engine.write_batch(group_insert)
 					group_insert=[]
-				if self.gtid_mode:
-					pass
-				else:
-					if log_file != binlogfile:
-						close_batch = True
-					if close_batch:
-						if log_file!=binlogfile:
-							master_data["File"]=binlogfile
-							master_data["Position"]=position
-							master_data["Time"]=event_time
-							master_data["gtid"] = next_gtid
-						my_stream.close()
-						return [master_data, close_batch]
+				if (log_file != binlogfile and stream_connected) or len(group_insert)>0:
+					close_batch = True
+				master_data["File"]=binlogfile
+				master_data["Position"]=position
+				master_data["Time"]=event_time
+				master_data["gtid"] = next_gtid
+				stream_connected = True
+				if close_batch:
+					break
 			elif isinstance(binlogevent, GtidEvent):
 				gtid  = binlogevent.gtid.split(':')
 				next_gtid[gtid [0]]  = gtid [1]
 				master_data["gtid"] = next_gtid
+				
 			elif isinstance(binlogevent, HeartbeatLogEvent):
 				self.logger.debug("HEARTBEAT EVENT - binlogfile %s " % (binlogevent.ident,))
-				if len(group_insert)>0:
-					master_data["File"]=binlogevent.ident
+				if len(group_insert)>0 or log_file != binlogevent.ident:
+					master_data["File"] = binlogevent.ident
 					close_batch = True
 					break
 			
