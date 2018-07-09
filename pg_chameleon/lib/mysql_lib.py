@@ -1043,11 +1043,13 @@ class mysql_source(object):
 		if self.gtid_mode:
 			gtid_position = batch_data[0][4]
 			gtid_pack = gtid_position.split(",\n")
+			blocking = True
 			for gtid in gtid_pack:
 				gtid  = gtid.split(':')
 				next_gtid[gtid [0]]  = gtid [1].split("-")[-1]
 				gtid_set = self.__build_gtid_set(next_gtid)
 		else:
+			blocking = False
 			gtid_set = None
 		stream_connected = False
 		my_stream = BinLogStreamReader(
@@ -1060,23 +1062,27 @@ class mysql_source(object):
 			resume_stream = True, 
 			only_schemas = self.schema_replica, 
 			slave_heartbeat = self.sleep_loop, 
-			blocking=False,
+			blocking = blocking,
 			
 		)
 		if gtid_set:
-			self.logger.debug("gtid: %s. id_batch: %s " % (gtid_set, id_batch))
+			self.logger.debug("GTID ENABLED - gtid: %s. id_batch: %s " % (gtid_set, id_batch))
 		else:
-			self.logger.debug("log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
+			self.logger.debug("GTID DISABLED - log_file %s, log_position %s. id_batch: %s " % (log_file, log_position, id_batch))
 		
 		for binlogevent in my_stream:
-			if isinstance(binlogevent, RotateEvent):
+			if isinstance(binlogevent, GtidEvent):
+				if close_batch:
+					break
+				gtid  = binlogevent.gtid.split(':')
+				next_gtid[gtid [0]]  = gtid [1]
+				master_data["gtid"] = next_gtid
+			
+			elif isinstance(binlogevent, RotateEvent):
 				event_time = binlogevent.timestamp
 				binlogfile = binlogevent.next_binlog
 				position = binlogevent.position
 				self.logger.debug("ROTATE EVENT - binlogfile %s, position %s. " % (binlogfile, position))
-				if len(group_insert)>0:
-					self.pg_engine.write_batch(group_insert)
-					group_insert=[]
 				if (log_file != binlogfile and stream_connected) or len(group_insert)>0:
 					close_batch = True
 				master_data["File"]=binlogfile
@@ -1086,14 +1092,11 @@ class mysql_source(object):
 				stream_connected = True
 				if close_batch:
 					break
-			elif isinstance(binlogevent, GtidEvent):
-				gtid  = binlogevent.gtid.split(':')
-				next_gtid[gtid [0]]  = gtid [1]
-				master_data["gtid"] = next_gtid
 				
 			elif isinstance(binlogevent, HeartbeatLogEvent):
 				self.logger.debug("HEARTBEAT EVENT - binlogfile %s " % (binlogevent.ident,))
 				if len(group_insert)>0 or log_file != binlogevent.ident:
+					self.logger.debug("WRITING ROWS - binlogfile %s " % (binlogevent.ident,))
 					master_data["File"] = binlogevent.ident
 					close_batch = True
 					break
