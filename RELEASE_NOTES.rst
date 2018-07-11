@@ -1,9 +1,13 @@
 RELEASE NOTES
 *************************
 
+2.0.8
+--------------------------
+
+
 2.0.7
 --------------------------
-The maintenance release makes the multiprocess logging safe. Now each replica process logs in a separate file.
+This maintenance release makes the multiprocess logging safe. Now each replica process logs in a separate file.
 
 The ``--full`` option now is working. Previously the option had no effect causing the maintenance to run always a conventional vacuum.
 

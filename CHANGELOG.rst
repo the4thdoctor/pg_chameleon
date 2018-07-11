@@ -1,10 +1,14 @@
 changelog 
 *************************
 
-2.0.8 - XX Jun 2018
+2.0.8 - XX Jul 2018
 ..........................................................
 * Support for skip events, now is possible to skip events (insert,delete,update) per single tables or entire schemas
-* Support for GTID. When configured on MySQL pgchameleon will use the GTID to auto position the replica stream.
+* **EXPERIMENTAL** support for the GTID. When configured on MySQL (Sorry no mariadb support) pg_chameleon will use the GTID to auto position the replica stream.
+* Several fixes in ALTER TABLE regexp parsing
+* Disable erroring the source when running with ``--debug`` switch enabled
+
+
 
 2.0.7 - 19 May 2018
 ..........................................................
