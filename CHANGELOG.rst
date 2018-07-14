@@ -3,8 +3,8 @@ changelog
 
 2.0.8 - XX Jul 2018
 ..........................................................
-* Support for skip events, now is possible to skip events (insert,delete,update) per single tables or entire schemas
-* **EXPERIMENTAL** support for the GTID. When configured on MySQL (Sorry no mariadb support) pg_chameleon will use the GTID to auto position the replica stream.
+* Add support for skip events as requested in issue #76. Is now possible to skip events (insert,delete,update) for single tables or for entire schemas. 
+* **EXPERIMENTAL** support for the GTID. When configured on MySQL or Percona server pg_chameleon will use the GTID to auto position the replica stream. Mariadb is not supported by this change.
 * Several fixes in ALTER TABLE regexp parsing
 * Disable erroring the source when running with ``--debug`` switch enabled
 

@@ -59,7 +59,7 @@ RELEASE NOTES
     <./release_notes.rst>
 
 
-1.8 to 2.0 upgrade
+Upgrade procedure
 ********************
 
 .. toctree::

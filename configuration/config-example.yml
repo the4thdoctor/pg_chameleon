@@ -60,7 +60,9 @@ sources:
     type: mysql
     skip_events:
       insert:
+        - delphis_mediterranea.foo #skips inserts on the table delphis_mediterranea.foo
       delete:
+        - delphis_mediterranea #skips deletes on schema delphis_mediterranea
       update:
     
 

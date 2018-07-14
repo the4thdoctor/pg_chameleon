@@ -1,4 +1,34 @@
-Upgrade procedure 1.8 to 2.0
+Maintenance release upgrade 
+********************************
+Upgrading a maintenance release is in general very simple but requires some attention.
+
+Always check the `release notes <release_notes.html>`_.
+If there is no schema upgrade the procedure is straightforward 
+
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>`` 
+* Install the upgrade with ``pip install pg_chameleon --upgrade``
+* Check if the version is upgraded with ``chameleon --version`` 
+* Start all the replicas.
+ 
+
+ If the release comes with a schema upgrade, **after stopping the replicas** take a backup of the schema ``sch_chameleon`` with pg_dump for good measure.
+
+``pg_dump -h <your_database_server > -n sch_chameleon -Fc -f sch_chameleon.dmp -U <your_username >-d <your_database>``
+
+* If working via ssh is suggested to use screen or tmux for the upgrade
+* Upgrade the pg_chameleon package with ``pip install pg_chameleon --upgrade``
+* Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
+* Start the replica processes
+
+If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses using the command ``chameleon enable_replica --source <source_name>``.
+
+If the catalogue upgrade is still  not possible downgrading pgchameleon to the previous version. E.g. ``pip install pg_chameleon==2.0.7``.
+
+
+
+
+
+Version 1.8 to 2.0 upgrade
 ********************************
 pg_chameleon 2.0 can upgrade an existing 1.8 replica catalogue using the command ``upgrade_replica_schema``.
 As the new version supports different schema mappings  within the same source the parameter ``schema_mappings`` must match all the pairs

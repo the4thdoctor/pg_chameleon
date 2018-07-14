@@ -3,6 +3,35 @@ RELEASE NOTES
 
 2.0.8
 --------------------------
+This maintenance release adds the support for skip events. Is now is possible to skip events (insert,delete,update) for single tables or for entire schemas.
+
+A new optional source parameter ``skip_events:`` is available for the sources with type mysql. 
+Under skip events there are three keys one per each DML operation. Is possible to list an entire schema or single tables in the form of ``schema.table``. 
+The example snippet disables the inserts on the table ``delphis_mediterranea.foo`` and the deletes on the entire schema ``delphis_mediterranea``.
+
+.. code-block:: yaml
+
+    skip_events:
+      insert:
+        - delphis_mediterranea.foo #skips inserts on the table delphis_mediterranea.foo
+      delete:
+        - delphis_mediterranea #skips deletes on schema delphis_mediterranea
+      update:   
+
+
+	
+The release 2.0.8 adds the  **EXPERIMENTAL** support for the GTID for MySQL or Percona server. The GTID in MariaDb is currently not supported.
+A new optional parameter ``gtid_enable:`` which defaults to ``No`` is available for the source type mysql.
+
+When `MySQL is configured with the GTID <https://dev.mysql.com/doc/refman/8.0/en/replication-gtids-concepts.html>`_ and the parameter ``gtid_enable:`` is set to Yes,  pg_chameleon will use the GTID to auto position the replica stream.
+This allows pg_chameleon to reconfigure the source within the MySQL replicas without the need to run init_replica. 
+
+This feature has been extensively tested but as it's new has to be considered  **EXPERIMENTAL**. 
+
+
+* Several fixes in ALTER TABLE regexp parsing
+* Disable erroring the source when running with ``--debug`` switch enabled
+
 
 
 2.0.7
@@ -48,7 +77,7 @@ As this change requires a replica catalogue upgrade is very important to follow 
 * If working via ssh is suggested to open a screen session 
 * Before upgrading pg_chameleon **stop all the replica processes.**
 * Upgrade the pg_chameleon package with `pip install pg_chameleon --upgrade`
-* Upgrade  the replica schema with the command `chameleon upgrade_replica_schema --config <your_config>`
+* Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
 * Start the replica processes
 
 If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses with the ``enable_replica`` command.
