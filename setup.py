@@ -39,7 +39,7 @@ data_files.append(sql_up_files)
 
 setup(
 	name="pg_chameleon",
-	version="2.0.7",
+	version="2.0.8",
 	description="MySQL to PostgreSQL replica and migration",
 	long_description=readme(),
 	author = "Federico Campoli",
