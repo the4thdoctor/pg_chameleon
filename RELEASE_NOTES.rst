@@ -29,9 +29,28 @@ This allows pg_chameleon to reconfigure the source within the MySQL replicas wit
 This feature has been extensively tested but as it's new has to be considered  **EXPERIMENTAL**. 
 
 
-* Several fixes in ALTER TABLE regexp parsing
-* Disable erroring the source when running with ``--debug`` switch enabled
+ALTER TABLE RENAME is now correctly parsed and executed.
+ALTER TABLE MODIFY is now parsed correctly when the field have a default value. Previously modify with default values would parse wrongly and fail when translating to PostgreSQL dialect
 
+The source no longer gets an error state when  running with ``--debug``. 
+
+The logged events are now cleaned when refreshing schema and syncing tables. Previously spurious logged events could lead to primary key violations when syncing single tables or refreshing single schemas.
+
+As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
+
+
+* If working via ssh is suggested to use screen or tmux for the upgrade
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>`` 
+* Take a backup of the schema ``sch_chameleon`` with pg_dump for good measure.
+* Install the upgrade with ``pip install pg_chameleon --upgrade``
+* Check if the version is upgraded with ``chameleon --version`` 
+* Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
+* Start all the replicas.
+ 
+
+If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses using the command ``chameleon enable_replica --source <source_name>``.
+
+If the catalogue upgrade is still  not possible downgrading pgchameleon to the previous version. E.g. ``pip install pg_chameleon==2.0.7``.
 
 
 2.0.7
@@ -51,6 +70,7 @@ A fix for the TRUNCATE TABLE tokenisation is implemented as well. Now if the sta
 A new optional source's parameter is added. ``auto_maintenance``  trigger a vacuum on the log tables after a specific timeout. 
 The timeout shall be expressed like a PostgreSQL interval (e.g. "1 day"). The special value "disabled" disables the auto maintenance.
 If the parameter is omitted the auto maintenance is disabled.
+
 
 
 2.0.6
@@ -77,12 +97,12 @@ As this change requires a replica catalogue upgrade is very important to follow 
 * If working via ssh is suggested to open a screen session 
 * Before upgrading pg_chameleon **stop all the replica processes.**
 * Upgrade the pg_chameleon package with `pip install pg_chameleon --upgrade`
-* Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
+* Upgrade  the replica schema with the command `chameleon upgrade_replica_schema --config <your_config>`
 * Start the replica processes
 
 If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses with the ``enable_replica`` command.
 
-If the catalogue upgrade is still  not possible downgrading pgchameleon to the version 2.0.5 with `pip install pg_chameleon==2.0.5` should make the replicas startable again.
+If the catalogue upgrade is still  not possible downgrading pgchameleon to the version 2.0.5 with ``pip install pg_chameleon==2.0.5`` should make the replicas startable again.
 
 2.0.5
 --------------------------
