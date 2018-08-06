@@ -47,13 +47,13 @@ WHERE
 	AND	i_id_batch=26;
 
 */
-
+INSERT INTO db_sakila.test_partition (id,id_partition) VALUES ('1','30'); INSERT INTO db_sakila.test_partition (id,id_partition) VALUES ('2','30'); INSERT INTO db_sakila.test_partition (id,id_partition) VALUES ('3','345'); TRUNCATE TABLE "db_sakila"."test_partition" CASCADE;
 --string_agg(agg.t_pk_data,' AND ') as  t_pk_data
 SELECT 
-	string_agg(t_sql,'
-	 '),
+	string_agg(t_sql,' '),
 	v_schema_name,
-	v_table_name 
+	v_table_name ,
+	array_agg(i_id_event[1])
 FROM 
 (
 	SELECT
@@ -90,7 +90,9 @@ FROM
 				)
 			
 		END AS t_sql,
-		*
+		v_schema_name,
+		v_table_name,
+		i_id_event 
 	FROM
 	(
 		SELECT
