@@ -12,6 +12,7 @@ $BODY$
 		v_v_log_table		text;
 		v_t_ddl			text;
 		v_t_main_sql		text;
+		v_t_delete_sql		text;
 		v_i_replayed		integer;
 		v_i_skipped		integer;
 		v_i_ddl			integer;
@@ -24,6 +25,7 @@ $BODY$
 		v_i_replayed:=0;
 		v_i_ddl:=0;
 		v_i_skipped:=0;
+		v_ty_status.b_continue:=FALSE;
 		
 		RAISE DEBUG 'Searching batches to replay for source id: %', p_i_id_source;
 		v_i_id_batch:= (
@@ -61,6 +63,7 @@ $BODY$
 		END IF;
 		
 		RAISE DEBUG 'Found id_batch %, data in log table %', v_i_id_batch,v_v_log_table;
+		RAISE DEBUG 'Building a list of event id with max length %...', p_i_max_events;
 		v_i_evt_replay:=(
 			SELECT 
 				i_id_event[1:p_i_max_events] 
@@ -69,8 +72,8 @@ $BODY$
 			WHERE 
 				i_id_batch=v_i_id_batch
 		);
+		RAISE DEBUG 'got: % ',v_i_evt_replay;
 		
-		RAISE DEBUG 'Building a list of event id with max length %...', p_i_max_events;
 		v_i_evt_queue:=(
 			SELECT 
 				i_id_event[p_i_max_events+1:array_length(i_id_event,1)] 
@@ -79,7 +82,7 @@ $BODY$
 			WHERE 
 				i_id_batch=v_i_id_batch
 		);
-		RAISE DEBUG 'got: % ',v_i_evt_queue;
+		
 		RAISE DEBUG 'Finding the last executed event''s timestamp...';
 		v_ts_evt_source:=(
 			SELECT 
@@ -162,7 +165,7 @@ $BODY$
 									ELSE
 										jsb_event_after->>v_table_pkey
 								END 	
-							),'','') as  t_pk_data
+							),'' AND '') as  t_pk_data
 				FROM 
 				(
 					SELECT 
@@ -208,13 +211,15 @@ $BODY$
 				EXECUTE v_r_statements.t_sql;
 				v_i_ddl:=v_i_ddl+v_r_statements.i_ddl;
 				v_i_replayed:=v_i_replayed+v_r_statements.i_replayed;
-					
+				v_t_delete_sql:=format('DELETE FROM sch_chameleon.%I WHERE i_id_event=ANY(%L);',v_v_log_table,v_r_statements.i_id_event);
+				RAISE DEBUG 'DELETING THE PROCESSED ROWS: %',v_t_delete_sql;
 				
 			EXCEPTION
 				WHEN OTHERS
 				THEN
 				RAISE NOTICE 'An error occurred when replaying data for the table %.%',v_r_statements.v_schema_name,v_r_statements.v_table_name;
 				RAISE NOTICE 'SQLSTATE: % - ERROR MESSAGE %',SQLSTATE, SQLERRM;
+				RAISE DEBUG 'SQL EXECUTED: % ',v_r_statements.t_sql;
 				RAISE NOTICE 'The table %.% has been removed from the replica',v_r_statements.v_schema_name,v_r_statements.v_table_name;
 				UPDATE sch_chameleon.t_replica_tables 
 					SET b_replica_enabled=False 
@@ -226,9 +231,96 @@ $BODY$
 				RAISE NOTICE 'Adding error log entry for table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
 			END;
 		END LOOP;
+		IF v_ts_evt_source IS NOT NULL
+		THEN
+			UPDATE sch_chameleon.t_last_replayed
+				SET
+					ts_last_replayed=v_ts_evt_source
+			WHERE 	
+				i_id_source=p_i_id_source
+			;
+		END IF;
+		IF v_i_replayed=0 AND v_i_ddl=0
+		THEN
+			DELETE FROM sch_chameleon.t_log_replica
+			WHERE
+    			    i_id_batch=v_i_id_batch
+			;
+				
+			GET DIAGNOSTICS v_i_skipped = ROW_COUNT;
+
+			UPDATE ONLY sch_chameleon.t_replica_batch  
+			SET 
+				b_replayed=True,
+				i_skipped=v_i_skipped,
+				ts_replayed=clock_timestamp()
+				
+			WHERE
+				i_id_batch=v_i_id_batch
+			;
+
+			DELETE FROM sch_chameleon.t_batch_events
+			WHERE
+				i_id_batch=v_i_id_batch
+			;
+
+			v_ty_status.b_continue:=FALSE;
+		ELSE
+			UPDATE ONLY sch_chameleon.t_replica_batch  
+			SET 
+				i_ddl=coalesce(i_ddl,0)+v_i_ddl,
+				i_replayed=coalesce(i_replayed,0)+v_i_replayed,
+				i_skipped=v_i_skipped,
+				ts_replayed=clock_timestamp()
+				
+			WHERE
+				i_id_batch=v_i_id_batch
+			;
+
+			UPDATE sch_chameleon.t_batch_events
+				SET
+					i_id_event = v_i_evt_queue
+			WHERE
+				i_id_batch=v_i_id_batch
+			;
+
+			DELETE FROM sch_chameleon.t_log_replica
+			WHERE
+					i_id_batch=v_i_id_batch
+				AND 	i_id_event=ANY(v_i_evt_replay) 
+			;
+			v_ty_status.b_continue:=TRUE;
+			RETURN v_ty_status;
+		END IF;
+				v_i_id_batch:= (
+			SELECT 
+				bat.i_id_batch 
+			FROM 
+				sch_chameleon.t_replica_batch bat
+				INNER JOIN  sch_chameleon.t_batch_events evt
+				ON
+					evt.i_id_batch=bat.i_id_batch
+			WHERE 
+					bat.b_started 
+				AND	bat.b_processed 
+				AND	NOT bat.b_replayed
+				AND	bat.i_id_source=p_i_id_source
+			ORDER BY 
+				bat.ts_created 
+			LIMIT 1
+			)
+		;
+		
+		IF v_i_id_batch IS NOT NULL
+		THEN
+			v_ty_status.b_continue:=TRUE;
+		END IF;
 		
 		
 		RETURN v_ty_status;
+
+		
+		
 	END;
 	
 $BODY$
