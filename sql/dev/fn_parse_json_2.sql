@@ -1,4 +1,8 @@
 ﻿SELECT 
+	array_agg(i_id_event) AS i_id_event,
+	v_table_name,
+	v_schema_name,
+	string_agg(
 	CASE
 		WHEN enm_binlog_event = 'ddl'
 		THEN 
@@ -30,7 +34,7 @@
 				t_pk_data
 			)
 		
-	END AS t_sql
+	END,' ') AS t_sql
 FROM 
 (
 	SELECT 
@@ -81,7 +85,8 @@ FROM
 						tab.v_table_name=log.v_table_name
 					AND	tab.v_schema_name=log.v_schema_name
 		WHERE
-			True 
+				tab.b_replica_enabled
+			AND	True 
 			--i_id_event = any('{{809611,809614,809615}}'::integer[])
 	) dec
 	GROUP BY 
@@ -92,4 +97,6 @@ FROM
 		dec.t_query,
 		dec.ts_event_datetime
 ) par
-ORDER BY i_id_event ASC
+GROUP BY 	
+	v_table_name,
+	v_schema_name
