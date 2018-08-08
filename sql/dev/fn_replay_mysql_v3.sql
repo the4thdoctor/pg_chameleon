@@ -93,7 +93,7 @@ $BODY$
 					i_id_event=v_i_evt_replay[array_length(v_i_evt_replay,1)]
 				AND	i_id_batch=v_i_id_batch
 		);
-		RAISE DEBUG 'got %',v_ts_evt_source;
+		
 		RAISE DEBUG 'Generating the main loop sql';
 
 		v_t_main_sql:=format('
@@ -212,7 +212,7 @@ $BODY$
 				v_i_ddl:=v_i_ddl+v_r_statements.i_ddl;
 				v_i_replayed:=v_i_replayed+v_r_statements.i_replayed;
 				v_t_delete_sql:=format('DELETE FROM sch_chameleon.%I WHERE i_id_event=ANY(%L);',v_v_log_table,v_r_statements.i_id_event);
-				RAISE DEBUG 'DELETING THE PROCESSED ROWS: %',v_t_delete_sql;
+				RAISE DEBUG 'DELETING THE PROCESSED ROWS';
 				
 			EXCEPTION
 				WHEN OTHERS
