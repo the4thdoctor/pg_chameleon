@@ -100,8 +100,8 @@ $BODY$
 			SELECT 
 				i_id_event AS i_id_event,
 				enm_binlog_event,
-				(enm_binlog_event=''ddl'')::int as i_ddl,
-				(enm_binlog_event<>''ddl'')::int as i_replay,
+				(enm_binlog_event=''ddl'')::integer as i_ddl,
+				(enm_binlog_event<>''ddl'')::integer as i_replay,
 				t_binlog_name,
 				i_binlog_position,
 				v_table_name,
@@ -210,7 +210,7 @@ $BODY$
 			;
 		
 		',v_v_log_table,v_i_evt_replay);
-		--RAISE DEBUG 'Generated SQL: %', v_t_main_sql;
+		
 		FOR v_r_statements IN EXECUTE v_t_main_sql
 		LOOP
 			
@@ -227,12 +227,6 @@ $BODY$
 				RAISE NOTICE 'SQLSTATE: % - ERROR MESSAGE %',SQLSTATE, SQLERRM;
 				RAISE DEBUG 'SQL EXECUTED: % ',v_r_statements.t_sql;
 				RAISE NOTICE 'The table %.% has been removed from the replica',v_r_statements.v_schema_name,v_r_statements.v_table_name;
-				UPDATE sch_chameleon.t_replica_tables 
-					SET b_replica_enabled=False 
-				WHERE 
-						v_table_name=v_r_statements.v_table_name
-					AND	v_schema_name=v_r_statements.v_schema_name
-				;
 				v_ty_status.v_table_error:=array_append(v_ty_status.v_table_error, format('%I.%I SQLSTATE: %s - ERROR MESSAGE: %s',v_r_statements.v_schema_name,v_r_statements.v_table_name,SQLSTATE, SQLERRM)::character varying) ;
 				RAISE NOTICE 'Adding error log entry for table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
 				INSERT INTO sch_chameleon.t_error_log
@@ -351,7 +345,7 @@ $BODY$
 			v_ty_status.b_continue:=TRUE;
 			RETURN v_ty_status;
 		END IF;
-				v_i_id_batch:= (
+		v_i_id_batch:= (
 			SELECT 
 				bat.i_id_batch 
 			FROM 
