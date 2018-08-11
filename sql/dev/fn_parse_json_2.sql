@@ -1,8 +1,13 @@
-﻿SELECT 
-	array_agg(i_id_event) AS i_id_event,
+﻿--select * from sch_chameleon.t_error_log
+SELECT 
+	i_id_event,
 	v_table_name,
 	v_schema_name,
-	string_agg(
+	t_binlog_name,
+	i_binlog_position,
+	enm_binlog_event,
+	(enm_binlog_event='ddl')::int as i_ddl,
+	(enm_binlog_event<>'ddl')::int as v_i_replayed,
 	CASE
 		WHEN enm_binlog_event = 'ddl'
 		THEN 
@@ -34,7 +39,7 @@
 				t_pk_data
 			)
 		
-	END,' ') AS t_sql
+	END AS t_sql
 FROM 
 (
 	SELECT 
@@ -42,6 +47,8 @@ FROM
 		dec.v_table_name,
 		dec.v_schema_name,
 		dec.enm_binlog_event,
+		dec.t_binlog_name,
+		dec.i_binlog_position,
 		dec.t_query as t_query,
 		dec.ts_event_datetime,
 		CASE
@@ -63,7 +70,7 @@ FROM
 						ELSE
 							jsb_event_after->>v_table_pkey
 					END 	
-				),',') as  t_pk_data
+				),' AND ') as  t_pk_data
 	FROM 
 	(
 		SELECT 
@@ -71,6 +78,8 @@ FROM
 			log.v_table_name,
 			log.v_schema_name,
 			log.enm_binlog_event,
+			log.t_binlog_name,
+			log.i_binlog_position,
 			coalesce(log.jsb_event_after,'{"foo":"bar"}'::jsonb) as jsb_event_after,
 			(jsonb_each_text(coalesce(log.jsb_event_after,'{"foo":"bar"}'::jsonb))).key AS t_column,
 			log.jsb_event_before,
@@ -86,8 +95,7 @@ FROM
 					AND	tab.v_schema_name=log.v_schema_name
 		WHERE
 				tab.b_replica_enabled
-			AND	True 
-			--i_id_event = any('{{809611,809614,809615}}'::integer[])
+			AND	TRUE--i_id_event = any('{{809611,809614,809615}}'::integer[])
 	) dec
 	GROUP BY 
 		dec.i_id_event,
@@ -95,8 +103,7 @@ FROM
 		dec.v_schema_name,
 		dec.enm_binlog_event,
 		dec.t_query,
-		dec.ts_event_datetime
+		dec.ts_event_datetime,
+		dec.t_binlog_name,
+		dec.i_binlog_position
 ) par
-GROUP BY 	
-	v_table_name,
-	v_schema_name

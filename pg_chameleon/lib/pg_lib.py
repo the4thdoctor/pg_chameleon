@@ -1949,18 +1949,22 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_insert, insert_vals)
 	
 	
-	def get_tables_disabled(self):
+	def get_tables_disabled(self, format="csv"):
 		"""
-			The method returns a CSV list of tables excluded from the replica.
+			The method returns a CSV or a python list of tables excluded from the replica.
 			The origin's schema is determined from the source's schema mappings jsonb.
 			
 			:return: CSV list of tables excluded from the replica
 			:rtype: text
 			
 		"""
+		if format=='csv':
+			select_clause = """string_agg(format('%s.%s',(t_mappings).key,v_table_name),',') """
+		elif format=='list':
+			select_clause = """array_agg(format('%s.%s',(t_mappings).key,v_table_name)) """
 		sql_get = """
 			SELECT 
-				string_agg(format('%s.%s',(t_mappings).key,v_table_name),',') 
+				%s
 			FROM 
 				sch_chameleon.t_replica_tables tab
 				INNER JOIN 
@@ -1978,7 +1982,7 @@ class pg_engine(object):
 			WHERE 	
 				NOT tab.b_replica_enabled
 			;
-		"""
+		""" % select_clause
 		self.pgsql_cur.execute(sql_get)
 		tables_disabled = self.pgsql_cur.fetchone()
 		return tables_disabled[0]
