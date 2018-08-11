@@ -1045,16 +1045,15 @@ class mysql_source(object):
 		log_file = batch_data[0][1]
 		log_position = batch_data[0][2]
 		log_table = batch_data[0][3]
+		master_data["log_table"] = log_table
 		if self.gtid_mode:
 			gtid_position = batch_data[0][4]
 			gtid_pack = gtid_position.split(",\n")
-			blocking = True
 			for gtid in gtid_pack:
 				gtid  = gtid.split(':')
 				next_gtid[gtid [0]]  = gtid [1].split("-")[-1]
 				gtid_set = self.__build_gtid_set(next_gtid)
 		else:
-			blocking = False
 			gtid_set = None
 		stream_connected = False
 		my_stream = BinLogStreamReader(
@@ -1067,7 +1066,6 @@ class mysql_source(object):
 			resume_stream = True, 
 			only_schemas = self.schema_replica, 
 			slave_heartbeat = self.sleep_loop, 
-			blocking = blocking,
 			
 		)
 		if gtid_set:
