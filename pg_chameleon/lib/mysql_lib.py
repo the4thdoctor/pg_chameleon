@@ -490,6 +490,7 @@ class mysql_source(object):
 		sql_master = "SHOW MASTER STATUS;" 
 		self.cursor_buffered.execute(sql_master)
 		master_status = self.cursor_buffered.fetchall()
+		master_status[0]["log_table"] = "t_log_replica"
 		return master_status
 		
 	def copy_data(self, schema, table):

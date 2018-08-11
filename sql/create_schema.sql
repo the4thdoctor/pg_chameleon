@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '2.0.4'::TEXT t_version
+	SELECT '2.0.5'::TEXT t_version
 ;
 
 --TYPES
@@ -95,6 +95,7 @@ CREATE TABLE sch_chameleon.t_replica_batch
   i_id_batch bigserial NOT NULL,
   i_id_source bigint NOT NULL,
   t_binlog_name text,
+  v_log_table character varying NOT NULL DEFAULT 't_log_replica',
   i_binlog_position bigint,
   t_gtid_set text,
   b_started boolean NOT NULL DEFAULT False,
@@ -634,8 +635,7 @@ $BODY$
 		THEN
 			v_ty_status.b_continue:=TRUE;
 		END IF;
-		
-		
+
 		RETURN v_ty_status;
 
 	END;

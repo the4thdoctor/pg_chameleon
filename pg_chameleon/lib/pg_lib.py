@@ -597,6 +597,7 @@ class pg_engine(object):
 			{'version': '2.0.2',  'script': '201_to_202.sql'}, 
 			{'version': '2.0.3',  'script': '202_to_203.sql'}, 
 			{'version': '2.0.4',  'script': '203_to_204.sql'}, 
+			{'version': '2.0.5',  'script': '204_to_205.sql'}, 			
 		]
 		
 	def __del__(self):
@@ -3382,7 +3383,7 @@ class pg_engine(object):
 			
 		except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-					self.logger.error(self.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position, executed_gtid_set)))
+					self.logger.error(self.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position, executed_gtid_set, log_table)))
 		
 		return next_batch_id
 
