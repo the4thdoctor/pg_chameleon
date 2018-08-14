@@ -3207,7 +3207,7 @@ class pg_engine(object):
 		self.set_source_id()
 		sql_maintenance = """
 			SELECT 
-				now()-coalesce(ts_last_maintenance,now())>%s::interval 
+				now()-coalesce(ts_last_maintenance,'1970-01-01 00:00:00'::timestamp)>%s::interval 
 			FROM 
 				sch_chameleon.t_sources 
 			WHERE 
