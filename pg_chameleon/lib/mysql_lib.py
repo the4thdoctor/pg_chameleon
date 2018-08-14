@@ -490,7 +490,6 @@ class mysql_source(object):
 		sql_master = "SHOW MASTER STATUS;" 
 		self.cursor_buffered.execute(sql_master)
 		master_status = self.cursor_buffered.fetchall()
-		master_status[0]["log_table"] = "t_log_replica"
 		return master_status
 		
 	def copy_data(self, schema, table):
@@ -787,6 +786,8 @@ class mysql_source(object):
 		self.pg_engine.connect_db()
 		self.schema_mappings = self.pg_engine.get_schema_mappings()
 		self.pg_engine.schema_tables = self.schema_tables
+		
+		
 		
 	
 	def refresh_schema(self):
@@ -1298,6 +1299,7 @@ class mysql_source(object):
 				batch_data = self.pg_engine.get_batch_data()
 				if len(batch_data)>0:
 					id_batch=batch_data[0][0]
+					self.logger.debug("Batch data %s " % (batch_data))
 					replica_data=self.__read_replica_stream(batch_data)
 					master_data=replica_data[0]
 					close_batch=replica_data[1]
@@ -1306,8 +1308,7 @@ class mysql_source(object):
 					else:
 						master_data["Executed_Gtid_Set"] = ""
 					if close_batch:
-						self.master_status=[]
-						self.master_status.append(master_data)
+						self.master_status=[master_data]
 						self.logger.debug("trying to save the master data...")
 						next_id_batch=self.pg_engine.save_master_status(self.master_status)
 						if next_id_batch:

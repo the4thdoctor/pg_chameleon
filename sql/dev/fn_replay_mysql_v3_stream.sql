@@ -1,5 +1,5 @@
-﻿-- fn_replay_mysql_v3.sql
-CREATE OR REPLACE FUNCTION sch_chameleon.fn_replay_mysql_str(integer,integer,boolean)
+-- fn_replay_mysql_v3.sql
+CREATE OR REPLACE FUNCTION sch_chameleon.fn_replay_mysql(integer,integer,boolean)
 RETURNS sch_chameleon.ty_replay_status AS
 $BODY$
 	DECLARE
@@ -301,6 +301,7 @@ $BODY$
 			;
 				
 			GET DIAGNOSTICS v_i_skipped = ROW_COUNT;
+			RAISE DEBUG 'SKIPPED ROWS: % ',v_i_skipped;
 
 			UPDATE ONLY sch_chameleon.t_replica_batch  
 			SET 

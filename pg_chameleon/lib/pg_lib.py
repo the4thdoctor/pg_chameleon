@@ -1987,6 +1987,36 @@ class pg_engine(object):
 		self.pgsql_cur.execute(sql_get)
 		tables_disabled = self.pgsql_cur.fetchone()
 		return tables_disabled[0]
+
+	def swap_source_log_table(self):
+		"""
+			The method swaps the sources's log table and returns the next log table stored in the v_log_table array.
+			The method expects an active database connection.
+			
+			:return: The t_log_replica's active subpartition
+			:rtype: text
+			
+		"""
+		sql_log_table="""
+			UPDATE sch_chameleon.t_sources 
+			SET 
+				v_log_table=ARRAY[v_log_table[2],v_log_table[1]]
+				
+			WHERE 
+				i_id_source=%s
+			RETURNING 
+				v_log_table[1]
+			; 
+		"""
+		self.set_source_id()
+		self.pgsql_cur.execute(sql_log_table, (self.i_id_source, ))
+		results = self.pgsql_cur.fetchone()
+		log_table = results[0]
+		self.logger.debug("New log table : %s " % (log_table,))
+		return log_table
+		
+			
+
 	
 	def get_batch_data(self):
 		"""
@@ -2021,12 +2051,12 @@ class pg_engine(object):
 				i_id_batch,
 				t_binlog_name,
 				i_binlog_position,
-				(SELECT v_log_table[1] from sch_chameleon.t_sources WHERE i_id_source=%s) as v_log_table,
+				v_log_table,
 				t_gtid_set
 				
 			;
 		"""
-		self.pgsql_cur.execute(sql_batch, (self.i_id_source, self.i_id_source, self.i_id_source, ))
+		self.pgsql_cur.execute(sql_batch, (self.i_id_source, self.i_id_source,  ))
 		return self.pgsql_cur.fetchall()
 	
 	
@@ -3311,7 +3341,7 @@ class pg_engine(object):
 		master_data = master_status[0]
 		binlog_name = master_data["File"]
 		binlog_position = master_data["Position"]
-		log_table = master_data["log_table"]
+		log_table = self.swap_source_log_table()
 		if "Executed_Gtid_Set" in master_data:
 			executed_gtid_set = master_data["Executed_Gtid_Set"]
 		else:
@@ -3342,18 +3372,6 @@ class pg_engine(object):
 			;
 		"""
 		
-		sql_log_table="""
-			UPDATE sch_chameleon.t_sources 
-			SET 
-				v_log_table=ARRAY[v_log_table[2],v_log_table[1]]
-				
-			WHERE 
-				i_id_source=%s
-			RETURNING 
-				v_log_table[1]
-			; 
-		"""
-
 		sql_last_update = """
 			UPDATE 
 				sch_chameleon.t_last_received  
@@ -3369,9 +3387,6 @@ class pg_engine(object):
 			self.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position, executed_gtid_set, log_table))
 			results =self.pgsql_cur.fetchone()
 			next_batch_id=results[0]
-			self.pgsql_cur.execute(sql_log_table, (self.i_id_source, ))
-			results = self.pgsql_cur.fetchone()
-			log_table_name = results[0]
 			self.pgsql_cur.execute(sql_last_update, (event_time, self.i_id_source, ))
 			results = self.pgsql_cur.fetchone()
 			db_event_time = results[0]
@@ -3379,7 +3394,7 @@ class pg_engine(object):
 			self.logger.debug("Binlog file: %s" % (binlog_name, ))
 			self.logger.debug("Binlog position:%s" % (binlog_position, ))
 			self.logger.debug("Last event: %s" % (db_event_time, ))
-			self.logger.debug("Next log table name: %s" % ( log_table_name, ))
+			self.logger.debug("Next log table name: %s" % ( log_table, ))
 			
 		except psycopg2.Error as e:
 					self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
