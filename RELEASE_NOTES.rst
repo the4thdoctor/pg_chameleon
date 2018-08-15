@@ -1,6 +1,9 @@
 RELEASE NOTES
 *************************
 
+2.0.9
+--------------------------
+
 2.0.8
 --------------------------
 This maintenance release adds the support for skip events. Is now is possible to skip events (insert,delete,update) for single tables or for entire schemas.

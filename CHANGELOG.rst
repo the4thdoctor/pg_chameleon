@@ -1,6 +1,13 @@
 changelog 
 *************************
 
+2.0.9 - XX Aug 2018
+..........................................................
+* Fix wrong check for the next auto maintenance run if the maintenance wasn't run before
+* Improve the replay function's speed
+* Remove blocking from the GTID operational mode
+
+
 2.0.8 - 14 Jul 2018
 ..........................................................
 * Add support for skip events as requested in issue #76. Is now possible to skip events (insert,delete,update) for single tables or for entire schemas. 
