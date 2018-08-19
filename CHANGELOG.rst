@@ -1,7 +1,7 @@
 changelog 
 *************************
 
-2.0.9 - XX Aug 2018
+2.0.9 - 19 Aug 2018
 ..........................................................
 * Fix wrong check for the next auto maintenance run if the maintenance wasn't run before
 * Improve the replay function's speed

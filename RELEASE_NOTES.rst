@@ -13,6 +13,23 @@ However your mileage may vary.
 
 The GTID operational mode has been improved removing the blocking mode which caused increased lag in systems with larger binlog size.
 
+As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
+
+
+* If working via ssh is suggested to use screen or tmux for the upgrade
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>`` 
+* Take a backup of the schema ``sch_chameleon`` with pg_dump for good measure.
+* Install the upgrade with ``pip install pg_chameleon --upgrade``
+* Check if the version is upgraded with ``chameleon --version`` 
+* Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
+* Start all the replicas.
+ 
+
+If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses using the command ``chameleon enable_replica --source <source_name>``.
+
+If the catalogue upgrade is still  not possible downgrading pgchameleon to the previous version. E.g. ``pip install pg_chameleon==2.0.8`` will make the replica startable again.
+
+
 2.0.8
 --------------------------
 This maintenance release adds the support for skip events. Is now is possible to skip events (insert,delete,update) for single tables or for entire schemas.
@@ -62,7 +79,7 @@ As this change requires a replica catalogue upgrade is very important to follow 
 
 If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses using the command ``chameleon enable_replica --source <source_name>``.
 
-If the catalogue upgrade is still  not possible downgrading pgchameleon to the previous version. E.g. ``pip install pg_chameleon==2.0.7``.
+If the catalogue upgrade is still  not possible downgrading pgchameleon to the previous version. E.g. ``pip install pg_chameleon==2.0.7`` will make the replica startable again.
 
 
 2.0.7
