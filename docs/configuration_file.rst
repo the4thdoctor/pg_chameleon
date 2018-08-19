@@ -181,6 +181,6 @@ The following limitations apply.
 
 .. literalinclude:: ../configuration/config-example.yml
    :language: yaml
-   :lines: 57-85
+   :lines: 69-95
    :emphasize-lines: 7,16,25,27
    :linenos:
