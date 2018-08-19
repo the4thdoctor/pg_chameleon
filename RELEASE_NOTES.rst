@@ -3,6 +3,15 @@ RELEASE NOTES
 
 2.0.9
 --------------------------
+This maintenance release  fixes a wrong check for the next auto maintenance run if the maintenance wasn't run before.
+Previously when changing the value of ``auto_maintenance`` from disabled to an interval, the process didn't run the automatic maintenance unless a manual maintenance
+was executed before.
+
+This release adds improvements on the replay function's speed. The new version is now replaying the data without accessing the parent log partition and 
+the decoding logic has been simplified. Not autoritative tests has shown a cpu gain of at least 10% and a better memory allocation. 
+However your mileage may vary.
+
+The GTID operational mode has been improved removing the blocking mode which caused increased lag in systems with larger binlog size.
 
 2.0.8
 --------------------------
