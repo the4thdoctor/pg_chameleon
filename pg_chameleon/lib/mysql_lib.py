@@ -1004,6 +1004,30 @@ class mysql_source(object):
 					gtid_pack.append(gtid_item)
 			new_set = ",\n".join(gtid_pack)
 		return new_set
+	
+	def __decode_dic_keys(self, dic_encoded):
+		""" 
+		Private method to recursively decode the dictionary keys  and values into strings.
+		This is used fixing the the json data types in the __read_replica_stream method because
+		at moment the mysql-replication library returns the keys of the json  data types as binary values in python3.
+		
+		:param dic_encoded: The dictionary with the encoded keys
+		:return: The dictionary with the decoded keys
+		:rtype: dictionary
+		"""
+		dic_decoded = {}
+		if not isinstance(dic_encoded, dict):
+			try:
+				return dic_encoded.decode("UTF-8")
+			except AttributeError:
+				return dic_encoded
+		else:
+			for key, value in dic_encoded.items():
+				try:
+					dic_decoded[key.decode("UTF-8")] = self.__decode_dic_keys(value)
+				except AttributeError:
+					dic_decoded[key] = self.__decode_dic_keys(value)
+		return dic_decoded
 		
 	def __read_replica_stream(self, batch_data):
 		"""
@@ -1221,28 +1245,32 @@ class mysql_source(object):
 							elif skip_event[1] == "insert":
 								global_data["action"] = "insert"
 								event_after=row["values"]
+								
 							for column_name in event_after:
 								try:
 									column_type=column_map[column_name]
 								except KeyError:
 									self.logger.debug("Detected inconsistent structure for the table  %s. The replay may fail. " % (table_name))
 									column_type = 'text'
-									
 								if column_type in self.hexify and event_after[column_name]:
 									event_after[column_name]=binascii.hexlify(event_after[column_name]).decode()
 								elif column_type in self.hexify and isinstance(event_after[column_name], bytes):
 									event_after[column_name] = ''
+								elif column_type == 'json':
+									event_after[column_name] = self.__decode_dic_keys(event_after[column_name])
+									
 							for column_name in event_before:
 								try:
 									column_type=column_map[column_name]
 								except KeyError:
 									self.logger.debug("Detected inconsistent structure for the table  %s. The replay may fail. " % (table_name))
 									column_type = 'text'
-								
 								if column_type in self.hexify and event_before[column_name]:
 									event_before[column_name]=binascii.hexlify(event_before[column_name]).decode()
 								elif column_type in self.hexify and isinstance(event_before[column_name], bytes):
 									event_before[column_name] = ''
+								elif column_type == 'json':
+									event_before[column_name] = self.__decode_dic_keys(event_after[column_name])
 							event_insert={"global_data":global_data,"event_after":event_after,  "event_before":event_before}
 							size_insert += len(str(event_insert))
 							group_insert.append(event_insert)

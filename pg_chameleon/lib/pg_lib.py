@@ -20,6 +20,7 @@ class pg_encoder(json.JSONEncoder):
 			isinstance(obj, decimal.Decimal) or \
 			isinstance(obj, datetime.timedelta) or \
 			isinstance(obj, set) or\
+			isinstance(obj, frozenset) or\
 			isinstance(obj, bytes):
 				
 			return str(obj)
