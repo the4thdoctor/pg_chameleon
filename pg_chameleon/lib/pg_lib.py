@@ -581,7 +581,7 @@ class pg_engine(object):
 			'year':'integer', 
 			'enum':'enum', 
 			'set':'text', 
-			'json':'text', 
+			'json':'json', 
 			'bool':'boolean', 
 			'boolean':'boolean', 
 			'geometry':'bytea',
