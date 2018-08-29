@@ -598,7 +598,8 @@ class pg_engine(object):
 			{'version': '2.0.2',  'script': '201_to_202.sql'}, 
 			{'version': '2.0.3',  'script': '202_to_203.sql'}, 
 			{'version': '2.0.4',  'script': '203_to_204.sql'}, 
-			{'version': '2.0.5',  'script': '204_to_205.sql'}, 			
+			{'version': '2.0.5',  'script': '204_to_205.sql'}, 
+			{'version': '2.0.6',  'script': '205_to_206.sql'},
 		]
 		
 	def __del__(self):

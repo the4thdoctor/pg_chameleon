@@ -402,17 +402,24 @@ $BODY$
 							string_agg(format(''%%I=%%L'',dec.t_column,jsb_event_after->>t_column),'','')
 						
 					END AS t_dec_data,
-					string_agg(DISTINCT format(
-								''%%I=%%L'',
-								dec.v_table_pkey,
-								CASE 
-									WHEN dec.enm_binlog_event = ''update''
-									THEN
-										jsb_event_before->>v_table_pkey
-									ELSE
-										jsb_event_after->>v_table_pkey
-								END 	
-							),'' AND '') as  t_pk_data
+					string_agg(DISTINCT 
+							CASE
+								WHEN dec.v_table_pkey IS NOT NULL
+								THEN
+									format(
+										''%%I=%%L'',
+										dec.v_table_pkey,
+										CASE 
+											WHEN dec.enm_binlog_event = ''update''
+											THEN
+												jsb_event_before->>v_table_pkey
+											ELSE
+												jsb_event_after->>v_table_pkey
+										END 	
+								
+									)
+							END
+					,'' AND '') as  t_pk_data
 				FROM 
 				(
 					SELECT 
@@ -453,7 +460,6 @@ $BODY$
 			;
 		
 		',v_v_log_table,v_i_evt_replay);
-		
 		FOR v_r_statements IN EXECUTE v_t_main_sql
 		LOOP
 			
