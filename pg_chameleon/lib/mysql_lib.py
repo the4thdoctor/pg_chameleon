@@ -1016,7 +1016,12 @@ class mysql_source(object):
 		:rtype: dictionary
 		"""
 		dic_decoded = {}
-		if not isinstance(dic_encoded, dict):
+		lst_decode = []
+		if isinstance(dic_encoded, list):
+			for item in dic_encoded:
+				lst_decode.append(self.__decode_dic_keys(item))
+			return lst_decode
+		elif not isinstance(dic_encoded, dict):
 			try:
 				return dic_encoded.decode("UTF-8")
 			except AttributeError:
