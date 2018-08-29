@@ -1,6 +1,9 @@
 RELEASE NOTES
 *************************
 
+2.0.10
+--------------------------
+
 2.0.9
 --------------------------
 This maintenance release  fixes a wrong check for the next auto maintenance run if the maintenance wasn't run before.

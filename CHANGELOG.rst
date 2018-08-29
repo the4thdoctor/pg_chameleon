@@ -1,6 +1,12 @@
 changelog 
 *************************
 
+2.0.10 - XX Sep 2018
+..........................................................
+* Fix regression in new replay function with PostgreSQL 10
+* Convert to string the dictionary entries pulled from a json field 
+
+
 2.0.9 - 19 Aug 2018
 ..........................................................
 * Fix wrong check for the next auto maintenance run if the maintenance wasn't run before
