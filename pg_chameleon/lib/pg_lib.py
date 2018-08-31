@@ -904,7 +904,7 @@ class pg_engine(object):
 		""" 
 		self.pgsql_cur.execute(sql_start, (self.i_id_source, ))
 
-	def __end_maintenance(self):
+	def end_maintenance(self):
 		"""
 			The method sets the flag b_maintenance to false for the given source
 		"""
@@ -1127,7 +1127,7 @@ class pg_engine(object):
 			self.__set_last_maintenance()
 			self.logger.info("Resuming the replica daemons")
 			self.__resume_replica(others=False)
-			self.__end_maintenance()
+			self.end_maintenance()
 			self.disconnect_db()
 			notifier_message = "maintenance for source %s is complete" % self.source
 			self.notifier.send_message(notifier_message, 'info')

@@ -299,11 +299,11 @@ class replica_engine(object):
 	
 	def enable_replica(self):
 		"""
-			The method  resets the source status to stopped
+			The method  resets the source status to stopped and disables any leftover maintenance mode
 		"""
 		self.pg_engine.connect_db()
 		self.pg_engine.set_source_status("stopped")
-		
+		self.pg_engine.end_maintenance()
 		
 	def init_replica(self):
 		"""
