@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS sch_chameleon;
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-	SELECT '2.0.5'::TEXT t_version
+	SELECT '2.0.6'::TEXT t_version
 ;
 
 --TYPES
@@ -385,81 +385,115 @@ $BODY$
 			FROM 
 			(
 				SELECT 
-					dec.i_id_event,
-					dec.v_table_name,
-					dec.v_schema_name,
-					dec.enm_binlog_event,
-					dec.t_binlog_name,
-					dec.i_binlog_position,
-					dec.t_query as t_query,
-					dec.ts_event_datetime,
-					CASE
-						WHEN dec.enm_binlog_event = ''insert''
-						THEN
-						format(''(%%s) VALUES (%%s)'',string_agg(format(''%%I'',dec.t_column),'',''),string_agg(format(''%%L'',jsb_event_after->>t_column),'',''))
-						WHEN dec.enm_binlog_event = ''update''
-						THEN
-							string_agg(format(''%%I=%%L'',dec.t_column,jsb_event_after->>t_column),'','')
-						
-					END AS t_dec_data,
+					pk.i_id_event,
+					pk.v_table_name,
+					pk.v_schema_name,
+					pk.enm_binlog_event,
+					pk.t_binlog_name,
+					pk.i_binlog_position,
+					pk.t_query as t_query,
+					pk.ts_event_datetime,
+					pk.t_dec_data,
 					string_agg(DISTINCT 
 							CASE
-								WHEN dec.v_table_pkey IS NOT NULL
+								WHEN pk.v_table_pkey IS NOT NULL
 								THEN
 									format(
 										''%%I=%%L'',
-										dec.v_table_pkey,
+										pk.v_table_pkey,
 										CASE 
-											WHEN dec.enm_binlog_event = ''update''
+											WHEN pk.enm_binlog_event = ''update''
 											THEN
-												jsb_event_before->>v_table_pkey
+												pk.jsb_event_before->>v_table_pkey
 											ELSE
-												jsb_event_after->>v_table_pkey
+												pk.jsb_event_after->>v_table_pkey
 										END 	
 								
 									)
 							END
 					,'' AND '') as  t_pk_data
-				FROM 
+					
+				FROM
 				(
 					SELECT 
-						log.i_id_event,
-						log.v_table_name,
-						log.v_schema_name,
-						log.enm_binlog_event,
-						log.t_binlog_name,
-						log.i_binlog_position,
-						coalesce(log.jsb_event_after,''{"foo":"bar"}''::jsonb) as jsb_event_after,
-						(jsonb_each_text(coalesce(log.jsb_event_after,''{"foo":"bar"}''::jsonb))).key AS t_column,
-						log.jsb_event_before,
-						log.t_query as t_query,
-						log.ts_event_datetime,
-						unnest(v_table_pkey) as v_table_pkey
+						dec.i_id_event,
+						dec.v_table_name,
+						dec.v_schema_name,
+						dec.enm_binlog_event,
+						dec.t_binlog_name,
+						dec.i_binlog_position,
+						dec.t_query as t_query,
+						dec.ts_event_datetime,
+						CASE
+							WHEN dec.enm_binlog_event = ''insert''
+							THEN
+							format(''(%%s) VALUES (%%s)'',string_agg(format(''%%I'',dec.t_column),'',''),string_agg(format(''%%L'',dec.jsb_event_after->>t_column),'',''))
+							WHEN dec.enm_binlog_event = ''update''
+							THEN
+								string_agg(format(''%%I=%%L'',dec.t_column,dec.jsb_event_after->>t_column),'','')
+							
+						END AS t_dec_data,
+						unnest(v_table_pkey) as v_table_pkey,
+						dec.jsb_event_after,
+						dec.jsb_event_before
+						
 					FROM 
-						sch_chameleon.%I log
-						INNER JOIN sch_chameleon.t_replica_tables tab
-							ON 
-									tab.v_table_name=log.v_table_name
-								AND	tab.v_schema_name=log.v_schema_name
-					WHERE
-							tab.b_replica_enabled
-						AND	i_id_event = ANY(%L)
-				) dec
+					(
+						SELECT 
+							log.i_id_event,
+							log.v_table_name,
+							log.v_schema_name,
+							log.enm_binlog_event,
+							log.t_binlog_name,
+							log.i_binlog_position,
+							coalesce(log.jsb_event_after,''{"foo":"bar"}''::jsonb) as jsb_event_after,
+							(jsonb_each_text(coalesce(log.jsb_event_after,''{"foo":"bar"}''::jsonb))).key AS t_column,
+							log.jsb_event_before,
+							log.t_query as t_query,
+							log.ts_event_datetime,
+							v_table_pkey
+						FROM 
+							sch_chameleon.%I log
+							INNER JOIN sch_chameleon.t_replica_tables tab
+								ON 
+										tab.v_table_name=log.v_table_name
+									AND	tab.v_schema_name=log.v_schema_name
+						WHERE
+								tab.b_replica_enabled
+							AND	i_id_event = ANY(%L)
+						
+					) dec
+					GROUP BY 
+						dec.i_id_event,
+						dec.v_table_name,
+						dec.v_schema_name,
+						dec.enm_binlog_event,
+						dec.t_query,
+						dec.ts_event_datetime,
+						dec.t_binlog_name,
+						dec.i_binlog_position,
+						dec.v_table_pkey,
+						dec.jsb_event_after,
+						dec.jsb_event_before
+					) pk
 				GROUP BY 
-					dec.i_id_event,
-					dec.v_table_name,
-					dec.v_schema_name,
-					dec.enm_binlog_event,
-					dec.t_query,
-					dec.ts_event_datetime,
-					dec.t_binlog_name,
-					dec.i_binlog_position
+					pk.i_id_event,
+					pk.v_table_name,
+					pk.v_schema_name,
+					pk.enm_binlog_event,
+					pk.t_binlog_name,
+					pk.i_binlog_position,
+					pk.t_query,
+					pk.ts_event_datetime,
+					pk.t_dec_data
+				
+					
 			) par
 			ORDER BY 
 				i_id_event ASC
-			;
-		
+			;		
 		',v_v_log_table,v_i_evt_replay);
+		RAISE DEBUG '%',v_t_main_sql;
 		FOR v_r_statements IN EXECUTE v_t_main_sql
 		LOOP
 			
