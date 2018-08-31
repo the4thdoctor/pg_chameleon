@@ -5,7 +5,7 @@ changelog
 ..........................................................
 * Fix regression in new replay function with PostgreSQL 10
 * Convert to string the dictionary entries pulled from a json field 
-
+* Let ``enable_replica`` to disable any leftover maintenance flag
 
 2.0.9 - 19 Aug 2018
 ..........................................................
