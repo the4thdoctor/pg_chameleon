@@ -3,6 +3,35 @@ RELEASE NOTES
 
 2.0.10
 --------------------------
+This maintenance release  fixes a  regression caused by the new replay function with PostgreSQL 10. The unnested primary key was put in cartesian product with the 
+json elements generating NULL identifiers which made the subsequent format function to fail.
+
+This release fixes adds a workaround for decoding the keys in the mysql's json fields. This allows the sytem to replicate the json data type as well.
+
+The command ``enable_replica`` fixes a race condition when the maintenance flag is not returned to false (e.g. an application crash during the maintenance run) allowing the replica to start again.
+
+
+The tokeniser for the ``CHANGE `` statement now parses the tables in the form of ``schema.table``. However the query's schema is not used as the replica method uses the schema name pulled out from the mysql's binlog.
+
+
+As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
+
+
+* If working via ssh is suggested to use screen or tmux for the upgrade
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>`` 
+* Take a backup of the schema ``sch_chameleon`` with pg_dump for good measure.
+* Install the upgrade with ``pip install pg_chameleon --upgrade``
+* Check if the version is upgraded with ``chameleon --version`` 
+* Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
+* Start all the replicas.
+ 
+
+If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses using the command ``chameleon enable_replica --source <source_name>``.
+
+If the catalogue upgrade is still  not possible downgrading pgchameleon to the previous version. E.g. ``pip install pg_chameleon==2.0.9`` will make the replica startable again.
+
+
+
 
 2.0.9
 --------------------------
