@@ -11,7 +11,8 @@ This release fixes adds a workaround for decoding the keys in the mysql's json f
 The command ``enable_replica`` fixes a race condition when the maintenance flag is not returned to false (e.g. an application crash during the maintenance run) allowing the replica to start again.
 
 
-The tokeniser for the ``CHANGE `` statement now parses the tables in the form of ``schema.table``. However the query's schema is not used as the replica method uses the schema name pulled out from the mysql's binlog.
+The tokeniser for the ``CHANGE`` statement now parses the tables in the form of ``schema.table``. However the tokenised schema is not used to determine the 
+query's schema because the ``__read_replica_stream`` method uses the schema name pulled out from the mysql's binlog.
 
 
 As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.

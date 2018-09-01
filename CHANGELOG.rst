@@ -1,7 +1,7 @@
 changelog 
 *************************
 
-2.0.10 - XX Sep 2018
+2.0.10 - 01 Sep 2018
 ..........................................................
 * Fix regression in new replay function with PostgreSQL 10
 * Convert to string the dictionary entries pulled from a json field 
