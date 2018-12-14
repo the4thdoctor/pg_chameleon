@@ -622,14 +622,14 @@ class replica_engine(object):
 					else:
 						foreground = False
 						print("Starting the replica process for source %s" % (self.args.source))
-						keep_fds = [self.logger_fds]
 						
-						app_name = "%s_replica" % self.args.source
-						replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.__run_replica, foreground=foreground , keep_fds=keep_fds)
-						try:
-							replica_daemon.start()
-						except:
-							print("The replica process is already started. Aborting the command.")
+					keep_fds = [self.logger_fds]
+					app_name = "%s_replica" % self.args.source
+					replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.__run_replica, foreground=foreground , keep_fds=keep_fds)
+					try:
+						replica_daemon.start()
+					except:
+						print("The replica process is already started. Aborting the command.")
 				
 	
 	def __stop_replica(self):
