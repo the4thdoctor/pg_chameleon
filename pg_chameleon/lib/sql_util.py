@@ -28,6 +28,8 @@ class sql_token(object):
 		#re for column definitions
 		self.m_columns=re.compile(r'\((.*)\)', re.IGNORECASE)
 		self.m_inner=re.compile(r'\((.*)\)', re.IGNORECASE)
+		#re for like clauses
+		self.m_like=re.compile(r'LIKE\s(?P<subject>[\w\.]*)', re.IGNORECASE)
 		
 		#re for keys and indices
 		self.m_pkeys=re.compile(r',\s*(?:CONSTRAINT)?\s*`?\w*`?\s*PRIMARY\s*KEY\s*\((.*?)\)\s?', re.IGNORECASE)
@@ -274,9 +276,15 @@ class sql_token(object):
 			:rtype: dictionary
 		"""
 		
+		table_dic = {}
+		
+		like_match = self.m_like.search(sql_create)
+		if like_match is not None:
+			table_dic["like"] = like_match.group('subject')
+			return table_dic
+		
 		m_inner = self.m_inner.search(sql_create)
 		inner_stat = m_inner.group(1).strip()
-		table_dic = {}
 		
 		column_list = self.m_pkeys.sub( '', inner_stat)
 		column_list = self.m_keys.sub( '', column_list)
@@ -487,8 +495,11 @@ class sql_token(object):
 				stat_dic["command"]=command
 				stat_dic["name"]=mcreate_table.group(2)
 				create_parsed=self.parse_create_table(stat_cleanup, stat_dic["name"])
-				stat_dic["columns"]=create_parsed["columns"]
-				stat_dic["indices"]=create_parsed["indices"]				
+				if "like" in create_parsed:
+					stat_dic["like"]=create_parsed["like"]
+				else:
+					stat_dic["columns"]=create_parsed["columns"]
+					stat_dic["indices"]=create_parsed["indices"]
 			elif mdrop_table:
 				command=' '.join(mdrop_table.group(1).split()).upper().strip()
 				stat_dic["command"]=command

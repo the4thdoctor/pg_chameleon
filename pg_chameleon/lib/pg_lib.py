@@ -1269,17 +1269,25 @@ class pg_engine(object):
 		count_table = self.__count_table_schema(token["name"], destination_schema)
 		query=""
 		if token["command"] =="CREATE TABLE":
-			table_metadata = token["columns"]
-			table_name = token["name"]
-			index_data = token["indices"]	
-			table_ddl = self.__build_create_table_mysql(table_metadata,  table_name,  destination_schema, temporary_schema=False)
-			table_enum = ''.join(table_ddl["enum"])
-			table_statement = table_ddl["table"] 
-			index_ddl = self.build_create_index( destination_schema, table_name, index_data)
-			table_pkey = index_ddl[0]
-			table_indices = ''.join([val for key ,val in index_ddl[1].items()])
-			self.store_table(destination_schema, table_name, table_pkey, None)
-			query = "%s %s %s " % (table_enum, table_statement,  table_indices)
+			if "like" in token:
+				table_name = token["name"]
+				parent_table = token["like"]
+				query = """CREATE TABLE "%s"."%s" (LIKE "%s"."%s" );""" % (destination_schema, table_name, destination_schema, parent_table)
+			table_pkey = self.get_table_pkey(destination_schema, parent_table)
+			if table_pkey:
+					self.store_table(destination_schema, table_name, table_pkey, None)
+			else:
+				table_metadata = token["columns"]
+				table_name = token["name"]
+				index_data = token["indices"]
+				table_ddl = self.__build_create_table_mysql(table_metadata,  table_name,  destination_schema, temporary_schema=False)
+				table_enum = ''.join(table_ddl["enum"])
+				table_statement = table_ddl["table"]
+				index_ddl = self.build_create_index( destination_schema, table_name, index_data)
+				table_pkey = index_ddl[0]
+				table_indices = ''.join([val for key ,val in index_ddl[1].items()])
+				self.store_table(destination_schema, table_name, table_pkey, None)
+				query = "%s %s %s " % (table_enum, table_statement,  table_indices)
 		else:
 			if count_table == 1:
 				if token["command"] =="RENAME TABLE":
