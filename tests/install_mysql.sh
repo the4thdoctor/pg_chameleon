@@ -7,9 +7,9 @@ sudo rm -rf /var/lib/mysql
 sudo rm -rf /var/log/mysql
 sudo rm -rf /etc/mysql
 echo mysql-apt-config mysql-apt-config/enable-repo select mysql-5.7 | sudo debconf-set-selections
-wget https://dev.mysql.com/get/mysql-apt-config_0.8.9-1_all.deb
-sudo DEBIAN_FRONTEND=noninteractive dpkg --install mysql-apt-config_0.8.9-1_all.deb
-sudo apt-key adv --keyserver pgp.mit.edu --recv-keys 5072E1F5
+wget https://dev.mysql.com/get/mysql-apt-config_0.8.12-1_all.deb
+sudo DEBIAN_FRONTEND=noninteractive dpkg --install mysql-apt-config_0.8.12-1_all.deb
+sudo apt-key adv --keyserver keys.gnupg.net --recv-keys 5072E1F5 
 sudo apt-get update -q
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -q -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" mysql-server
 echo "trying to connect to mysql via socket"
