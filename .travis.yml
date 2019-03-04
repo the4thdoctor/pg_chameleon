@@ -1,6 +1,6 @@
 sudo: true
 dist: trusty
-group: deprecated-2017Q3
+#group: deprecated-2017Q3
 language: python
 python:
   - "3.6"
@@ -10,12 +10,20 @@ install: "pip install ."
 services:
   - mysql
 
-env:
-   - MYVER='5.7'
-
 addons:
-  postgresql: "9.6"
+  postgresql: "11"
+   apt:
+    sources:
+      - mysql-5.7-trusty
+    packages:
+      - mysql-server
+      - mysql-client
   
+before_install:
+  - sudo mysql -e "use mysql; update user set authentication_string=PASSWORD('root') where User='root'; update user set plugin='mysql_native_password';FLUSH PRIVILEGES;"
+  - sudo mysql_upgrade -u root -pnew_password
+  - sudo service mysql restart
+
 before_script:
  - tests/setup_db.sh
  
