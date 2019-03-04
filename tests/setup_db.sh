@@ -11,9 +11,9 @@ sudo cat /var/log/mysql/error.log
 wget http://downloads.mysql.com/docs/sakila-db.tar.gz
 tar xfz sakila-db.tar.gz
 
-sudo mysql -u root -proot < sakila-db/sakila-schema.sql
-sudo mysql -u root -proot < sakila-db/sakila-data.sql
+sudo mysql -u root  < sakila-db/sakila-schema.sql
+sudo mysql -u root < sakila-db/sakila-data.sql
 
-sudo mysql -u root -proot < ${here}/setup_mysql.sql
+sudo mysql -u root < ${here}/setup_mysql.sql
 
 
