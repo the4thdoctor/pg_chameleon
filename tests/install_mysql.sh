@@ -8,8 +8,10 @@ sudo rm -rf /var/log/mysql
 sudo rm -rf /etc/mysql
 echo mysql-apt-config mysql-apt-config/enable-repo select mysql-5.7 | sudo debconf-set-selections
 wget https://dev.mysql.com/get/mysql-apt-config_0.8.12-1_all.deb
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0x762E3157
+sudo apt-key adv --keyserver keys.gnupg.net --recv-keys 0x5072E1F5 
 sudo DEBIAN_FRONTEND=noninteractive dpkg --install mysql-apt-config_0.8.12-1_all.deb
-sudo apt-key adv --keyserver keys.gnupg.net --recv-keys 5072E1F5 
+
 
 
 sudo apt-get update -q
