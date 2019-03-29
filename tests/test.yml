@@ -1,5 +1,5 @@
 ---
-#global settings
+# global settings
 pid_dir: '~/.pg_chameleon/pid/'
 log_dir: '~/.pg_chameleon/logs/'
 log_dest: file
@@ -8,15 +8,15 @@ log_days_keep: 10
 rollbar_key: ''
 rollbar_env: ''
 
-#postgres  destination connection
+# postgres  destination connection
 pg_conn:
     host: "localhost"
-    port: "5432"    
+    port: "5432"
     user: "usr_test"
     password: "test"
     database: "db_test"
     charset: "utf8"
-    
+
 sources:
     mysql:
         db_conn:
@@ -27,7 +27,7 @@ sources:
             charset: 'utf8'
             connect_timeout: 10
         schema_mappings:
-                sakila: my_sakila
+            sakila: my_sakila
         limit_tables:
         skip_tables:
         grant_select_to:
@@ -37,22 +37,22 @@ sources:
         replay_max_rows: 10000
         batch_retention: '1 day'
         copy_max_memory: "300M"
-        copy_mode: 'file'  
+        copy_mode: 'file'
         out_dir: /tmp
         sleep_loop: 1
         type: mysql
 
     pgsql:
         db_conn:
-                host: "localhost"
-                port: "5432"
-                user: "usr_test"
-                password: "test"
-                database:  "db_test"
-                charset: 'utf8'
-                connect_timeout: 10
+            host: "localhost"
+            port: "5432"
+            user: "usr_test"
+            password: "test"
+            database: "db_test"
+            charset: 'utf8'
+            connect_timeout: 10
         schema_mappings:
-                my_sakila: pgsql_sakila
+            my_sakila: pgsql_sakila
         limit_tables:
         skip_tables:
         copy_max_memory: "300M"
@@ -60,18 +60,22 @@ sources:
         lock_timeout: "10s"
         my_server_id: 100
         replica_batch_size: 3000
-        replay_max_rows : 10000
+        replay_max_rows: 10000
         sleep_loop: 5
         batch_retention: '1 day'
-        copy_mode: 'file'  
+        copy_mode: 'file'
         out_dir: /tmp
         type: pgsql
 
 
-# type_override allows the user to override the default type conversion into a different one. 
-# override_to specifies the destination type which must be a postgresql type and the type cast should be possible
-# override_tables specifies which tables the override apply. If set to "*" then applies to all tables in the replicated schema
-# the override applies during the init_replica,sync_tables process and for each matching DDL (create table/alter table)
+# type_override allows the user to override the default
+# type conversion into a different one.
+# override_to specifies the destination type which must be a postgresql type
+# and the type cast should be possible override_tables specifies
+# which tables the override apply.
+# If set to "*" then applies to all tables in the replicated schema
+# the override applies during the init_replica,sync_tables process
+# and for each matching DDL (create table/alter table)
 type_override:
     "tinyint(1)":
         override_to: boolean
