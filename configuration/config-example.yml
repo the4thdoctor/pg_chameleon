@@ -67,29 +67,29 @@ sources:
 
 
   pgsql:
-  db_conn:
-    host: "localhost"
-    port: "5432"
-    user: "usr_replica"
-    password: "never_commit_passwords"
-    database: "db_replica"
-    charset: 'utf8'
-    connect_timeout: 10
-    schema_mappings:
-      loxodonta_africana: elephas_maximus
-    limit_tables:
-      - loxodonta_africana.foo
-    skip_tables:
-      - loxodonta_africana.bar
-    copy_max_memory: "300M"
-    grant_select_to:
-      - usr_readonly
-    lock_timeout: "10s"
-    my_server_id: 100
-    replica_batch_size: 3000
-    replay_max_rows: 10000
-    sleep_loop: 5
-    batch_retention: '1 day'
-    copy_mode: 'file'
-    out_dir: /tmp
-    type: pgsql
+    db_conn:
+      host: "localhost"
+      port: "5432"
+      user: "usr_replica"
+      password: "never_commit_passwords"
+      database: "db_replica"
+      charset: 'utf8'
+      connect_timeout: 10
+      schema_mappings:
+        loxodonta_africana: elephas_maximus
+      limit_tables:
+        - loxodonta_africana.foo
+      skip_tables:
+        - loxodonta_africana.bar
+      copy_max_memory: "300M"
+      grant_select_to:
+        - usr_readonly
+      lock_timeout: "10s"
+      my_server_id: 100
+      replica_batch_size: 3000
+      replay_max_rows: 10000
+      sleep_loop: 5
+      batch_retention: '1 day'
+      copy_mode: 'file'
+      out_dir: /tmp
+      type: pgsql
