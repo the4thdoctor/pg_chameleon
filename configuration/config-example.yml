@@ -1,5 +1,5 @@
 ---
-#global settings
+# global settings
 pid_dir: '~/.pg_chameleon/pid/'
 log_dir: '~/.pg_chameleon/logs/'
 log_dest: file
@@ -8,25 +8,25 @@ log_days_keep: 10
 rollbar_key: ''
 rollbar_env: ''
 
-# type_override allows the user to override the default type conversion into a different one. 
+# type_override allows the user to override the default type conversion
+# into a different one.
+
 type_override:
   "tinyint(1)":
     override_to: boolean
     override_tables:
       - "*"
 
-  
-      
 
-#postgres  destination connection
+# postgres  destination connection
 pg_conn:
   host: "localhost"
-  port: "5432"    
+  port: "5432"
   user: "usr_replica"
   password: "never_commit_password"
   database: "db_replica"
   charset: "utf8"
-    
+
 sources:
   mysql:
     db_conn:
@@ -50,31 +50,31 @@ sources:
     replay_max_rows: 10000
     batch_retention: '1 day'
     copy_max_memory: "300M"
-    copy_mode: 'file'  
+    copy_mode: 'file'
     out_dir: /tmp
     sleep_loop: 1
     on_error_replay: continue
     on_error_read: continue
     auto_maintenance: "disabled"
-    gtid_enable: No
+    gtid_enable: false
     type: mysql
     skip_events:
       insert:
-        - delphis_mediterranea.foo #skips inserts on the table delphis_mediterranea.foo
+        - delphis_mediterranea.foo  # skips inserts on delphis_mediterranea.foo
       delete:
-        - delphis_mediterranea #skips deletes on schema delphis_mediterranea
+        - delphis_mediterranea  # skips deletes on schema delphis_mediterranea
       update:
-    
+
 
   pgsql:
-  db_conn:
-    host: "localhost"
-    port: "5432"
-    user: "usr_replica"
-    password: "never_commit_passwords"
-    database:  "db_replica"
-    charset: 'utf8'
-    connect_timeout: 10
+    db_conn:
+      host: "localhost"
+      port: "5432"
+      user: "usr_replica"
+      password: "never_commit_passwords"
+      database: "db_replica"
+      charset: 'utf8'
+      connect_timeout: 10
       schema_mappings:
         loxodonta_africana: elephas_maximus
       limit_tables:
@@ -87,12 +87,9 @@ sources:
       lock_timeout: "10s"
       my_server_id: 100
       replica_batch_size: 3000
-      replay_max_rows : 10000
+      replay_max_rows: 10000
       sleep_loop: 5
       batch_retention: '1 day'
-      copy_mode: 'file'  
+      copy_mode: 'file'
       out_dir: /tmp
       type: pgsql
-
-
-
