@@ -2142,35 +2142,39 @@ class pg_engine(object):
 		else:
 			exclude_id = -1
 		schema_mappings = json.dumps(self.sources[self.source]["schema_mappings"])
-		sql_check = """
-			WITH t_check  AS
-			(
-					SELECT 
-						(jsonb_each_text(jsb_schema_mappings)).value AS dest_schema
-					FROM 
-						sch_chameleon.t_sources
-					WHERE 
-						i_id_source <> %s
-				UNION ALL
-					SELECT 
-						value AS dest_schema 
-					FROM 
-						json_each_text(%s::json) 
-			)
-		SELECT 
-			count(dest_schema),
-			dest_schema 
-		FROM 
-			t_check 
-		GROUP BY 
-			dest_schema
-		HAVING 
-			count(dest_schema)>1
-		;
-		"""
-		self.pgsql_cur.execute(sql_check, (exclude_id, schema_mappings, ))
-		check_mappings = self.pgsql_cur.fetchone()
-		return check_mappings
+		if schema_mappings=='null':
+			print("Schema mapping cannot be empty. Check your configuration file.")
+			sys.exit()
+		else:
+			sql_check = """
+				WITH t_check  AS
+				(
+						SELECT 
+							(jsonb_each_text(jsb_schema_mappings)).value AS dest_schema
+						FROM 
+							sch_chameleon.t_sources
+						WHERE 
+							i_id_source <> %s
+					UNION ALL
+						SELECT 
+							value AS dest_schema 
+						FROM 
+							json_each_text(%s::json) 
+				)
+			SELECT 
+				count(dest_schema),
+				dest_schema 
+			FROM 
+				t_check 
+			GROUP BY 
+				dest_schema
+			HAVING 
+				count(dest_schema)>1
+			;
+			"""
+			self.pgsql_cur.execute(sql_check, (exclude_id, schema_mappings, ))
+			check_mappings = self.pgsql_cur.fetchone()
+			return check_mappings
 		
 	def check_source(self):
 		"""

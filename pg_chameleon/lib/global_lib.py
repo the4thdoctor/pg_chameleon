@@ -211,7 +211,7 @@ class replica_engine(object):
 			sys.exit()
 		
 		config_file = open(self.config_file, 'r')
-		self.config = yaml.load(config_file.read())
+		self.config = yaml.load(config_file.read(), Loader=yaml.FullLoader)
 		config_file.close()
 		
 		
