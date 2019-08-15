@@ -1009,7 +1009,7 @@ class mysql_source(object):
 		""" 
 		Private method to recursively decode the dictionary keys  and values into strings.
 		This is used fixing the the json data types in the __read_replica_stream method because
-		at moment the mysql-replication library returns the keys of the json  data types as binary values in python3.
+		at moment the mysql-replication library returns the keys of the json data types as binary values in python3.
 		
 		:param dic_encoded: The dictionary with the encoded keys
 		:return: The dictionary with the decoded keys
