@@ -1,6 +1,19 @@
 RELEASE NOTES
 *************************
 
+2.0.11
+--------------------------
+This maintenance release fixes few things.
+As reported in #95 the yaml filles were not completely valid. @rebtoor fixed them.
+@clifff made a pull request to have the start_replica running in foreground when log_file == stdout. Previously the process remained in background.
+
+As Travis seems to break down constantly the CI configuration is disabled until a fix or a different CI is found .
+
+Finally the method which loads the yaml file is now using an explicit loader as required by the new PyYAML version.
+
+Previously with newer version of PyYAML there was a warning emitted by the library because the default loader is unsafe.
+
+
 2.0.10
 --------------------------
 This maintenance release  fixes a  regression caused by the new replay function with PostgreSQL 10. The unnested primary key was put in cartesian product with the 
