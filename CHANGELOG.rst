@@ -1,7 +1,7 @@
 changelog 
 *************************
 
-2.0.11 - XX Oct 2019
+2.0.11 - 25 Oct 2019
 ..........................................................
 * Fix wrong formatting for yaml example files. @rebtoor 
 * Make start_replica run in foreground when log_file == stdout . @clifff
