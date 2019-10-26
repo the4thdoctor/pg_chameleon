@@ -10,9 +10,6 @@
 .. image:: https://img.shields.io/badge/license-BSD-blue.svg   
         :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/master/LICENSE
 	
-.. image:: https://api.travis-ci.org/the4thdoctor/pg_chameleon.svg?branch=ver2.0
-    :target: https://travis-ci.org/the4thdoctor/pg_chameleon
-
 .. image:: https://img.shields.io/pypi/dm/pg_chameleon.svg
     :target: https://pypi.org/project/pg_chameleon
 

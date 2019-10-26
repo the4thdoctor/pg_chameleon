@@ -1,6 +1,13 @@
 changelog 
 *************************
 
+2.0.11 - 25 Oct 2019
+..........................................................
+* Fix wrong formatting for yaml example files. @rebtoor 
+* Make start_replica run in foreground when log_file == stdout . @clifff
+* Travis seems to break down constantly, Disable the CI until a fix is found. Evaluate to use a different CI.
+* Add the add loader to yaml.load as required by the new PyYAML version.
+
 2.0.10 - 01 Sep 2018
 ..........................................................
 * Fix regression in new replay function with PostgreSQL 10
