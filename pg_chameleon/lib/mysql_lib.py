@@ -248,7 +248,7 @@ class mysql_source(object):
 		"""
 		sql_tables="""
 			SELECT 
-				table_name
+				table_name as table_name
 			FROM 
 				information_schema.TABLES 
 			WHERE 
@@ -316,17 +316,17 @@ class mysql_source(object):
 		"""
 		sql_metadata="""
 			SELECT 
-				column_name,
-				column_default,
-				ordinal_position,
-				data_type,
-				column_type,
-				character_maximum_length,
-				extra,
-				column_key,
-				is_nullable,
-				numeric_precision,
-				numeric_scale,
+				column_name as column_name,
+				column_default as column_default,
+				ordinal_position as ordinal_position,
+				data_type as data_type,
+				column_type as column_type,
+				character_maximum_length as character_maximum_length,
+				extra as extra,
+				column_key as column_key,
+				is_nullable as is_nullable,
+				numeric_precision as numeric_precision,
+				numeric_scale as numeric_scale,
 				CASE 
 					WHEN data_type="enum"
 				THEN	
@@ -355,11 +355,11 @@ class mysql_source(object):
 		self.logger.info("retrieving foreign keys metadata for schemas %s" % schema_replica)
 		sql_fkeys = """ 
 			SELECT
-				table_name,
-				table_schema,
-				constraint_name,
-				referenced_table_name,
-				referenced_table_schema,
+				table_name as table_name,
+				table_schema as table_schema,
+				constraint_name as constraint_name,
+				referenced_table_name as referenced_table_name,
+				referenced_table_schema as referenced_table_schema,
 				GROUP_CONCAT(concat('"',column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as fk_cols,
 				GROUP_CONCAT(concat('"',REFERENCED_COLUMN_NAME,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as ref_columns
 			FROM
@@ -419,7 +419,7 @@ class mysql_source(object):
 					WHEN 
 						data_type IN ('datetime','timestamp','date')
 					THEN
-						concat('nullif(`',column_name,'`,"0000-00-00 00:00:00")')
+						concat('nullif(`',column_name,'`,cast("0000-00-00 00:00:00" as date))')
 
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""")')
@@ -437,14 +437,14 @@ class mysql_source(object):
 					WHEN 
 						data_type IN ('datetime','timestamp','date')
 					THEN
-						concat('nullif(`',column_name,'`,"0000-00-00 00:00:00") AS `',column_name,'`')
+						concat('nullif(`',column_name,'`,cast("0000-00-00 00:00:00" as date)) AS `',column_name,'`')
 					
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""") AS','`',column_name,'`')
 					
 				END
 				AS select_stat,
-				column_name
+				column_name as column_name
 			FROM 
 				information_schema.COLUMNS 
 			WHERE 
@@ -509,7 +509,7 @@ class mysql_source(object):
 		self.logger.debug("estimating rows in %s.%s" % (schema , table))
 		sql_rows = """ 
 			SELECT 
-				table_rows,
+				table_rows as table_rows,
 				CASE
 					WHEN avg_row_length>0
 					then
@@ -660,8 +660,8 @@ class mysql_source(object):
 		self.logger.debug("Creating indices on table %s.%s " % (schema, table))
 		sql_index = """
 			SELECT 
-				index_name,
-				non_unique,
+				index_name as index_name,
+				non_unique as non_unique,
 				GROUP_CONCAT(column_name ORDER BY seq_in_index) as index_columns
 			FROM
 				information_schema.statistics
@@ -894,8 +894,8 @@ class mysql_source(object):
 		for schema in self.schema_replica:
 			sql_tables = """	
 				SELECT 
-					table_schema,
-					table_name
+					table_schema as table_schema,
+					table_name as table_name
 				FROM 
 					information_schema.TABLES 
 				WHERE 
@@ -910,8 +910,8 @@ class mysql_source(object):
 				column_type = {}
 				sql_columns = """
 					SELECT 
-						column_name,
-						data_type
+						column_name as column_name,
+						data_type as data_type
 					FROM 
 						information_schema.COLUMNS 
 					WHERE 
