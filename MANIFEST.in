@@ -1,5 +1,5 @@
-include configuration/config-example.yml
-include sql/create_schema.sql
-include sql/drop_schema.sql
-include sql/upgrade/*.sql
+include pg_chameleon/configuration/config-example.yml
+include pg_chameleon/sql/create_schema.sql
+include pg_chameleon/sql/drop_schema.sql
+include pg_chameleon/sql/upgrade/*.sql
 include LICENSE.txt

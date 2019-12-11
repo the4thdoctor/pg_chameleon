@@ -543,8 +543,8 @@ class pgsql_source(object):
 
 class pg_engine(object):
 	def __init__(self):
-		python_lib=get_python_lib()
-		self.sql_dir = "%s/pg_chameleon/sql/" % python_lib
+		python_lib=python_lib=os.path.dirname(os.path.realpath(__file__))
+		self.sql_dir = "%s/../sql/" % python_lib
 		self.sql_upgrade_dir = "%s/upgrade/" % self.sql_dir
 		self.table_ddl={}
 		self.idx_ddl={}

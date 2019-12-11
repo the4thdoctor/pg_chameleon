@@ -71,12 +71,13 @@ class replica_engine(object):
 		self.catalog_version = '2.0.6'
 		self.upgradable_version = '1.7'
 		self.lst_yes= ['yes',  'Yes', 'y', 'Y']
-		python_lib=get_python_lib()
+		python_lib=os.path.dirname(os.path.realpath(__file__))
+		
 		cham_dir = "%s/.pg_chameleon" % os.path.expanduser('~')	
 		
 			
 		local_conf = "%s/configuration/" % cham_dir 
-		self.global_conf_example = '%s/pg_chameleon/configuration/config-example.yml' % python_lib
+		self.global_conf_example = '%s/../configuration/config-example.yml' % python_lib
 		self.local_conf_example = '%s/config-example.yml' % local_conf
 		
 		local_logs = "%s/logs/" % cham_dir 
