@@ -1,5 +1,14 @@
 RELEASE NOTES
 *************************
+2.0.12
+--------------------------
+This maintenance release fixes the issue #96 where the replica initialisation failed on MySQL 8 because of the wrong field names pulled out from the information_schema.
+Thanks to @daniel-qcode for contributing with his fix.
+
+The configuration and SQL files are now moved inside into the directory pg_chameleon. This change simplifies the setup.py file and allow pg_chameleon to be
+built as source and wheel package.
+
+As python 3.4 has now reached its end-of-life and has been retired the minimum requirement for pg_chameleon has been updated to Python 3.5.
 
 2.0.11
 --------------------------

@@ -7,7 +7,7 @@ The configuration consists of three configuration groups.
 Global settings
 ..............................
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 2-9
    :linenos:
@@ -25,7 +25,7 @@ If both rollbar_key and rollbar_env are configured some messages are sent to the
 type override
 ...............................................
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 11-16
    :linenos:
@@ -44,7 +44,7 @@ The override is also applied for each matching DDL (create table/alter table) if
 PostgreSQL target connection
 ...............................................
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 21-28
    :linenos:
@@ -55,7 +55,7 @@ The pg_conn key maps the target database connection string.
 sources configuration
 ...............................................
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 30-95
    :linenos:
@@ -72,7 +72,7 @@ Database connection
 =============================
 
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 30-66
    :emphasize-lines: 3-9
@@ -84,7 +84,7 @@ Larger values could help the tool working better on slow networks. Low values ca
 Schema mappings
 =============================
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 30-66
    :emphasize-lines: 10-11
@@ -96,7 +96,7 @@ In the example provided the MySQL database ``delphis_mediterranea`` is replicate
 Limit and skip tables
 =============================
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 30-66
    :emphasize-lines: 12-15
@@ -110,7 +110,7 @@ The table's names should be in the form SCHEMA_NAME.TABLE_NAME.
 Grant select to option
 =============================================================
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 30-66
    :emphasize-lines: 16-17
@@ -126,7 +126,7 @@ This key allows to specify a list of database roles which will get select access
 Source configuration parameters
 ====================================
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 30-66
    :emphasize-lines: 18-31
@@ -150,7 +150,7 @@ Source configuration parameters
 Skip events configuration
 ====================================
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 30-66
    :emphasize-lines: 32-37
@@ -179,7 +179,7 @@ The following limitations apply.
 * In the ``show_status`` detailed command the replicated tables counters are always zero
 
 
-.. literalinclude:: ../configuration/config-example.yml
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 69-95
    :emphasize-lines: 7,16,25,27

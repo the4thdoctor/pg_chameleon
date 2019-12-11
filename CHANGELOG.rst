@@ -1,5 +1,11 @@
 changelog 
 *************************
+2.0.12 - 11 Dec 2019
+..........................................................
+* Fixes for issue #96 thanks to @daniel-qcode
+* Change for configuration and SQL files location
+* Package can build now as source and wheel 
+* The minimum python requirements now is 3.5
 
 2.0.11 - 25 Oct 2019
 ..........................................................

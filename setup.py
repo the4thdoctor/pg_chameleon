@@ -7,10 +7,6 @@ def readme():
         return f.read()
 
 package_data = {'pg_chameleon': ['configuration/config-example.yml','sql/upgrade/*.sql','sql/drop_schema.sql','sql/create_schema.sql', 'LICENSE.txt']}
-	
-
-
-
 
 setup(
 	name="pg_chameleon",
@@ -63,7 +59,6 @@ setup(
 		'daemonize>=2.4.7', 
 		'rollbar>=0.13.17'
 	],
-	#data_files = data_files, 
 	include_package_data = True, 
 	package_data=package_data,
 	packages=setuptools.find_packages(),
