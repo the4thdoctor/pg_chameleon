@@ -11,7 +11,7 @@
         :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/master/LICENSE
 
 .. image:: https://img.shields.io/github/release/the4thdoctor/pg_chameleon
-		:target: https://github.com/the4thdoctor/repcloud/pg_chameleone
+		:target: https://github.com/the4thdoctor/pg_chameleon/release
 	
 .. image:: https://img.shields.io/pypi/dm/pg_chameleon.svg
     :target: https://pypi.org/project/pg_chameleon
