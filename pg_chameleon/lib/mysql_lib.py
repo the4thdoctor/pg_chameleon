@@ -420,6 +420,10 @@ class mysql_source(object):
 						data_type IN ('datetime','timestamp','date')
 					THEN
 						concat('nullif(`',column_name,'`,cast("0000-00-00 00:00:00" as date))')
+					WHEN
+						data_type IN ('point')
+					THEN
+						concat('ST_AsText(',column_name,')')
 
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""")')
