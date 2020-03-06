@@ -1097,6 +1097,7 @@ class mysql_source(object):
 			resume_stream = True, 
 			only_schemas = self.schema_replica, 
 			slave_heartbeat = self.sleep_loop, 
+			only_tables= self.limit_tables[self.schema_replica[0]]
 			
 		)
 		if gtid_set:
