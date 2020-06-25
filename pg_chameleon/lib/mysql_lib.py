@@ -891,9 +891,15 @@ class mysql_source(object):
 			self.logger.critical(notifier_message)
 			raise
 
-	def __get_text_geometry(self,charset,raw_data):
+	def __get_text_point(self,charset,raw_data):
 		"""
-			The method returns the text representation for the raw data using the ST_AsText function
+			The method returns the text representation converted in postgresql format
+			for the raw data point using the ST_AsText function and the regular expressions
+
+			:param charset: The table's character set
+			:param raw_data: The raw_data returned by the mysql-replication library
+			:return: text representation converted in postgresql format
+			:rtype: text
 		"""
 		if charset:
 			raw_data.decode(charset)
@@ -1303,7 +1309,7 @@ class mysql_source(object):
 								elif column_type == 'json':
 									event_after[column_name] = self.__decode_dic_keys(event_after[column_name])
 								elif column_type == 'point':
-									event_after[column_name] = self.__get_text_geometry(table_charset,event_after[column_name])
+									event_after[column_name] = self.__get_text_point(table_charset,event_after[column_name])
 
 
 							for column_name in event_before:
@@ -1319,7 +1325,7 @@ class mysql_source(object):
 								elif column_type == 'json':
 									event_before[column_name] = self.__decode_dic_keys(event_after[column_name])
 								elif column_type == 'point':
-									event_before[column_name] = self.__get_text_geometry(table_charset,event_before[column_name])
+									event_before[column_name] = self.__get_text_point(table_charset,event_before[column_name])
 							event_insert={"global_data":global_data,"event_after":event_after,  "event_before":event_before}
 							size_insert += len(str(event_insert))
 							group_insert.append(event_insert)
