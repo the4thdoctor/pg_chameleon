@@ -420,6 +420,10 @@ class mysql_source(object):
 						data_type IN ('datetime','timestamp','date')
 					THEN
 						concat('nullif(`',column_name,'`,cast("0000-00-00 00:00:00" as date))')
+					WHEN
+						data_type IN ('point')
+					THEN
+						concat('concat("(",ST_X(',column_name,'),", ",ST_Y(',column_name,'),")")')
 
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""")')
@@ -438,6 +442,10 @@ class mysql_source(object):
 						data_type IN ('datetime','timestamp','date')
 					THEN
 						concat('nullif(`',column_name,'`,cast("0000-00-00 00:00:00" as date)) AS `',column_name,'`')
+					WHEN
+						data_type IN ('point')
+					THEN
+						concat('concat("(",ST_X(',column_name,'),", ",ST_Y(',column_name,'),")")')
 					
 				ELSE
 					concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""") AS','`',column_name,'`')
