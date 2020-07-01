@@ -5,27 +5,27 @@ import argparse
 from pg_chameleon import replica_engine
 
 commands = [
-	'show_config',
-	'show_sources',
-	'show_status', 
-	'create_replica_schema',
-	'drop_replica_schema',
-	'upgrade_replica_schema',
-	'add_source',
-	'drop_source',
-	'init_replica',
-	'enable_replica',
-	'update_schema_mappings',
-	'refresh_schema',
-	'sync_tables',
-	'start_replica', 
-	'stop_replica', 
-	'detach_replica', 
-	'set_configuration_files', 
-	'show_errors', 
-	'run_maintenance', 
-	'stop_all_replicas'
-	]
+    'show_config',
+    'show_sources',
+    'show_status',
+    'create_replica_schema',
+    'drop_replica_schema',
+    'upgrade_replica_schema',
+    'add_source',
+    'drop_source',
+    'init_replica',
+    'enable_replica',
+    'update_schema_mappings',
+    'refresh_schema',
+    'sync_tables',
+    'start_replica',
+    'stop_replica',
+    'detach_replica',
+    'set_configuration_files',
+    'show_errors',
+    'run_maintenance',
+    'stop_all_replicas'
+    ]
 
 command_help = ','.join(commands)
 config_help = """Specifies the configuration to use without the suffix yml. If  the parameter is omitted then ~/.pg_chameleon/configuration/default.yml is used"""
@@ -55,10 +55,10 @@ args = parser.parse_args()
 
 replica = replica_engine(args)
 if args.debug:
-	getattr(replica, args.command)()
+    getattr(replica, args.command)()
 else:
-	try:
-		getattr(replica, args.command)()
-	except AttributeError:
-		print("ERROR - Invalid command" )
-		print(command_help)
+    try:
+        getattr(replica, args.command)()
+    except AttributeError:
+        print("ERROR - Invalid command" )
+        print(command_help)
