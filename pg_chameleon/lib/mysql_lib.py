@@ -1240,21 +1240,21 @@ class mysql_source(object):
 					return [master_data, close_batch]
 			else:
 
-				for row in binlogevent.rows:
-					event_after={}
-					event_before={}
-					event_insert = {}
-					add_row = True
-					log_file=binlogfile
-					log_position=binlogevent.packet.log_pos
-					table_name=binlogevent.table
-					event_time=binlogevent.timestamp
-					schema_row = binlogevent.schema
-					destination_schema = self.schema_mappings[schema_row]
-					table_key_dic = "%s.%s" % (destination_schema, table_name)
-					store_row = self.__store_binlog_event(table_name, schema_row)
-					skip_event = self.__skip_event(table_name, schema_row, binlogevent)
-					if store_row and not skip_event[0]:
+				table_name=binlogevent.table
+				event_time=binlogevent.timestamp
+				schema_row = binlogevent.schema
+				skip_event = self.__skip_event(table_name, schema_row, binlogevent)
+				store_row = self.__store_binlog_event(table_name, schema_row)
+				if store_row and not skip_event[0]:
+					for row in binlogevent.rows:
+						event_after={}
+						event_before={}
+						event_insert = {}
+						add_row = True
+						log_file=binlogfile
+						log_position=binlogevent.packet.log_pos
+						destination_schema = self.schema_mappings[schema_row]
+						table_key_dic = "%s.%s" % (destination_schema, table_name)
 						if table_key_dic in inc_tables:
 							table_consistent = False
 							log_seq = int(log_file.split('.')[1])
