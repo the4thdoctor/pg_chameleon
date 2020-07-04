@@ -836,15 +836,19 @@ class mysql_source(object):
         self.schema_list = [self.schema]
         self.get_table_list()
         self.create_destination_schemas()
-        self.pg_engine.schema_loading = self.schema_loading
-        self.pg_engine.schema_tables = self.schema_tables
-        self.create_destination_tables()
-        self.disconnect_db_buffered()
         try:
-            self.__copy_tables()
-            self.pg_engine.grant_select()
-            self.pg_engine.swap_schemas()
-            self.drop_loading_schemas()
+            self.pg_engine.schema_loading = self.schema_loading
+            self.pg_engine.schema_tables = self.schema_tables
+            if self.keep_existing_schema:
+                self.disconnect_db_buffered()
+                self.__copy_tables()
+            else:
+                self.create_destination_tables()
+                self.disconnect_db_buffered()
+                self.__copy_tables()
+                self.pg_engine.grant_select()
+                self.pg_engine.swap_schemas()
+                self.drop_loading_schemas()
             self.pg_engine.set_source_status("initialised")
             self.connect_db_buffered()
             master_end = self.get_master_coordinates()
@@ -855,7 +859,8 @@ class mysql_source(object):
             self.notifier.send_message(notifier_message, 'info')
             self.logger.info(notifier_message)
         except:
-            self.drop_loading_schemas()
+            if not self.keep_existing_schema:
+                self.drop_loading_schemas()
             self.pg_engine.set_source_status("error")
             notifier_message = "refresh schema %s for source %s failed" % (self.schema, self.source)
             self.notifier.send_message(notifier_message, 'critical')
@@ -1445,7 +1450,6 @@ class mysql_source(object):
         self.__build_table_exceptions()
         self.get_table_list()
         self.create_destination_schemas()
-
         try:
             self.pg_engine.insert_source_timings()
             self.pg_engine.schema_loading = self.schema_loading
