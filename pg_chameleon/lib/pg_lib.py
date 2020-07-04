@@ -3427,6 +3427,16 @@ class pg_engine(object):
 
         return next_batch_id
 
+    def reindex_table(self, schema, table):
+        """
+            The method run a REINDEX TABLE on the table defined by schema and name.
+            :param schema: the table's schema
+            :param table: the table's name
+        """
+        sql_truncate = sql.SQL("REINDEX TABLE {}.{} ;").format(sql.Identifier(schema), sql.Identifier(table))
+        self.pgsql_cur.execute(sql_truncate)
+
+
     def truncate_table(self, schema, table):
         """
             The method truncates the table defined by schema and name.

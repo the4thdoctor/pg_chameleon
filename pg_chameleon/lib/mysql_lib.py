@@ -696,7 +696,6 @@ class mysql_source(object):
         """
         self.cursor_buffered.execute(sql_index, (schema, table))
         index_data = self.cursor_buffered.fetchall()
-        print(index_data)
         table_pkey = self.pg_engine.create_indices(loading_schema, table, index_data)
         self.disconnect_db_buffered()
         return table_pkey
@@ -725,6 +724,9 @@ class mysql_source(object):
                     master_status = self.copy_data(schema, table)
                     if not self.keep_existing_schema:
                         table_pkey = self.__create_indices(schema, table)
+                    else:
+                        self.logger.info("Reindexing the destination table  %s.%s" %(destination_schema, table) )
+                        self.pg_engine.reindex_table(destination_schema,table)
                     self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
                 except:
                     self.logger.info("Could not copy the table %s. Excluding it from the replica." %(table) )
