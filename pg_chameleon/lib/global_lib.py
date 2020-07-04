@@ -796,16 +796,20 @@ class replica_engine(object):
         if self.args.source == "*":
             print("You must specify a source name with the argument --source")
         elif self.args.tables != "*":
-            print("You cannot specify a table name when running init_replica.")
+            print("You cannot specify a table name when running detach_replica.")
         else:
             drp_msg = 'Detaching the replica will remove any reference for the source %s.\n Are you sure? YES/No\n'  % self.args.source
-
             drop_src = input(drp_msg)
             if drop_src == 'YES':
+                if "keep_existing_schema" in self.config["sources"][self.args.source]:
+                    keep_existing_schema = self.config["sources"][self.args.source]["keep_existing_schema"]
+                else:
+                    keep_existing_schema = False
+                self.pg_engine.keep_existing_schema = keep_existing_schema
                 self.pg_engine.fk_metadata = self.mysql_source.get_foreign_keys_metadata()
                 self.__stop_replica()
                 self.pg_engine.detach_replica()
-            elif drop_src in  self.lst_yes:
+            elif drop_src in self.lst_yes:
                 print('Please type YES all uppercase to confirm')
 
     def run_maintenance(self):
