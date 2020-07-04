@@ -99,7 +99,6 @@ class replica_engine(object):
         self.__set_conf_permissions(cham_dir)
 
         self.load_config()
-
         log_list = self.__init_logger("global")
         self.logger = log_list[0]
         self.logger_fds = log_list[1]
@@ -127,6 +126,7 @@ class replica_engine(object):
         self.mysql_source.sources = self.config["sources"]
         self.mysql_source.type_override = self.config["type_override"]
         self.mysql_source.notifier = self.notifier
+
 
         #pgsql_source instance initialisation
         self.pgsql_source = pgsql_source()

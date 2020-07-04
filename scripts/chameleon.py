@@ -37,7 +37,7 @@ debug_help = """Forces the debug mode with logging on stdout and log level debug
 version_help = """Displays pg_chameleon's installed  version."""
 rollbar_help = """Overrides the level for messages to be sent to rolllbar. One of: "critical", "error", "warning", "info". The Default is "info" """
 full_help = """When specified with run_maintenance the switch performs a vacuum full instead of a normal vacuum. """
-
+truncate_help = """Truncate the existing tables instead of replacing them."""
 
 parser = argparse.ArgumentParser(description='Command line for pg_chameleon.',  add_help=True)
 parser.add_argument('command', type=str, help=command_help)

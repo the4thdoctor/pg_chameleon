@@ -64,7 +64,7 @@ sources:
       delete:
         - delphis_mediterranea  # skips deletes on schema delphis_mediterranea
       update:
-
+    keep_existing_schema: No
 
   pgsql:
     db_conn:

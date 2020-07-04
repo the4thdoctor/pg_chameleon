@@ -286,15 +286,23 @@ class mysql_source(object):
             As postgresql allows, by default up to 64  characters for an identifier, the original schema is truncated to 59 characters,
             in order to fit the maximum identifier's length.
             The mappings are stored in the class dictionary schema_loading.
+            If the source parameter keep_existing_schema is set to true the method doesn't create the schemas.
+            Instead assumes the schema and the tables are already there.
         """
-        for schema in self.schema_list:
-            destination_schema = self.schema_mappings[schema]
-            loading_schema = "_%s_tmp" % destination_schema[0:59]
-            self.schema_loading[schema] = {'destination':destination_schema, 'loading':loading_schema}
-            self.logger.debug("Creating the schema %s." % loading_schema)
-            self.pg_engine.create_database_schema(loading_schema)
-            self.logger.debug("Creating the schema %s." % destination_schema)
-            self.pg_engine.create_database_schema(destination_schema)
+        if self.keep_existing_schema:
+            self.logger.debug("Keep existing schema is set to True. Skipping the schema creation." )
+            for schema in self.schema_list:
+                destination_schema = self.schema_mappings[schema]
+                self.schema_loading[schema] = {'destination':destination_schema, 'loading':destination_schema}
+        else:
+            for schema in self.schema_list:
+                destination_schema = self.schema_mappings[schema]
+                loading_schema = "_%s_tmp" % destination_schema[0:59]
+                self.schema_loading[schema] = {'destination':destination_schema, 'loading':loading_schema}
+                self.logger.debug("Creating the loading schema %s." % loading_schema)
+                self.pg_engine.create_database_schema(loading_schema)
+                self.logger.debug("Creating the destination schema %s." % destination_schema)
+                self.pg_engine.create_database_schema(destination_schema)
 
     def drop_loading_schemas(self):
         """
@@ -688,6 +696,7 @@ class mysql_source(object):
         """
         self.cursor_buffered.execute(sql_index, (schema, table))
         index_data = self.cursor_buffered.fetchall()
+        print(index_data)
         table_pkey = self.pg_engine.create_indices(loading_schema, table, index_data)
         self.disconnect_db_buffered()
         return table_pkey
@@ -697,6 +706,8 @@ class mysql_source(object):
         """
             The method copies the data between tables, from the mysql schema to the corresponding
             postgresql loading schema. Before the copy starts the table is locked and then the lock is released.
+            If keep_existing_schema is true for the source then the tables are truncated before the copy,
+            the indices are left in place and a REINDEX TABLE is executed after the copy.
         """
 
 
@@ -707,8 +718,13 @@ class mysql_source(object):
             for table in table_list:
                 self.logger.info("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
                 try:
+                    if self.keep_existing_schema:
+                        self.logger.info("Truncating the destination table  %s.%s" %(destination_schema, table) )
+                        self.pg_engine.truncate_table(destination_schema,table)
+                        table_pkey = self.pg_engine.get_existing_pkey(destination_schema,table)
                     master_status = self.copy_data(schema, table)
-                    table_pkey = self.__create_indices(schema, table)
+                    if not self.keep_existing_schema:
+                        table_pkey = self.__create_indices(schema, table)
                     self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
                 except:
                     self.logger.info("Could not copy the table %s. Excluding it from the replica." %(table) )
@@ -791,6 +807,10 @@ class mysql_source(object):
         self.copy_mode = self.source_config["copy_mode"]
         self.pg_engine.lock_timeout = self.source_config["lock_timeout"]
         self.pg_engine.grant_select_to = self.source_config["grant_select_to"]
+        if "keep_existing_schema" in self.sources[self.source]:
+            self.keep_existing_schema = self.sources[self.source]["keep_existing_schema"]
+        else:
+            self.keep_existing_schema = False
         self.set_copy_max_memory()
         self.hexify = [] + self.hexify_always
         self.connect_db_buffered()
@@ -1413,7 +1433,7 @@ class mysql_source(object):
 
     def init_replica(self):
         """
-            The method performs a full init replica for the given sources
+            The method performs a full init replica for the given source
         """
         self.logger.debug("starting init replica for source %s" % self.source)
         self.__init_sync()
@@ -1425,17 +1445,22 @@ class mysql_source(object):
         self.__build_table_exceptions()
         self.get_table_list()
         self.create_destination_schemas()
+
         try:
             self.pg_engine.insert_source_timings()
             self.pg_engine.schema_loading = self.schema_loading
-            self.create_destination_tables()
-            self.disconnect_db_buffered()
-            self.__copy_tables()
-            self.pg_engine.grant_select()
-            self.pg_engine.swap_schemas()
+            if self.keep_existing_schema:
+                self.disconnect_db_buffered()
+                self.__copy_tables()
+            else:
+                self.create_destination_tables()
+                self.disconnect_db_buffered()
+                self.__copy_tables()
+                self.pg_engine.grant_select()
+                self.pg_engine.swap_schemas()
+                self.drop_loading_schemas()
             self.pg_engine.clean_batch_data()
             self.pg_engine.save_master_status(master_start)
-            self.drop_loading_schemas()
             self.pg_engine.set_source_status("initialised")
             self.connect_db_buffered()
             master_end = self.get_master_coordinates()
@@ -1446,7 +1471,8 @@ class mysql_source(object):
             self.logger.info(notifier_message)
 
         except:
-            self.drop_loading_schemas()
+            if not self.keep_existing_schema:
+                self.drop_loading_schemas()
             self.pg_engine.set_source_status("error")
             notifier_message = "init replica for source %s failed" % self.source
             self.logger.critical(notifier_message)

@@ -3427,6 +3427,16 @@ class pg_engine(object):
 
         return next_batch_id
 
+    def truncate_table(self, schema, table):
+        """
+            The method truncates the table defined by schema and name.
+            The truncate is executed with the CASCADE clause in order to ensure the truncate always succeds even
+            if foreign keys are enforced.
+            :param schema: the table's schema
+            :param table: the table's name
+        """
+        sql_truncate = sql.SQL("TRUNCATE TABLE {}.{} CASCADE;").format(sql.Identifier(schema), sql.Identifier(table))
+        self.pgsql_cur.execute(sql_truncate)
 
     def store_table(self, schema, table, table_pkey, master_status):
         """
@@ -3549,6 +3559,46 @@ class pg_engine(object):
             except:
                 self.logger.error("unexpected error when processing the row")
                 self.logger.error(" - > Table: %s.%s" % (schema, table))
+
+    def get_existing_pkey(self,schema,table):
+        """
+            The method gets the primary key of an existing table and returns the field(s)
+            composing the PKEY as a list.
+            :param schema: the schema name where table belongs
+            :param table: the table name where the data should be inserted
+            :return: a list with the eventual column(s) used as primary key
+            :rtype: list
+        """
+        sql_get_pkey = """
+            SELECT
+                array_agg(att.attname)
+            FROM
+            (
+                SELECT
+                    tab.oid AS taboid,
+                    tab.relname AS table_name,
+                    sch.nspname AS schema_name,
+                    UNNEST(con.conkey) AS conkey
+                FROM
+                    pg_class tab
+                    INNER JOIN pg_constraint con
+                        ON tab.oid=con.conrelid
+                    INNER JOIN pg_catalog.pg_namespace sch
+                        ON tab.relnamespace = sch.oid
+                WHERE
+                    con.contype='p'
+                    AND sch.nspname=%s
+                    AND tab.relname=%s
+            ) con
+            INNER JOIN pg_catalog.pg_attribute att
+            ON
+                    con.taboid=att.attrelid
+                AND con.conkey=att.attnum
+            ;
+        """
+        self.pgsql_cur.execute(sql_get_pkey,(schema,table))
+        pkey_col = self.pgsql_cur.fetchone()
+        return pkey_col[0]
 
     def create_indices(self, schema, table, index_data):
         """
