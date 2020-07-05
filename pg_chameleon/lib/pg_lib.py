@@ -708,6 +708,7 @@ class pg_engine(object):
 
             The foreign keys are first created invalid then validated in a second time.
         """
+        self.connect_db()
         self.set_source_id()
         schema_mappings = self.get_schema_mappings()
         fk_list = []

@@ -806,7 +806,8 @@ class replica_engine(object):
                 else:
                     keep_existing_schema = False
                 self.pg_engine.keep_existing_schema = keep_existing_schema
-                self.pg_engine.fk_metadata = self.mysql_source.get_foreign_keys_metadata()
+                if not keep_existing_schema:
+                    self.pg_engine.fk_metadata = self.mysql_source.get_foreign_keys_metadata()
                 self.__stop_replica()
                 self.pg_engine.detach_replica()
             elif drop_src in self.lst_yes:
