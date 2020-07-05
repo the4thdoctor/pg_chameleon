@@ -967,11 +967,9 @@ class mysql_source(object):
                 SELECT
                     t.table_schema as table_schema,
                     t.table_name as table_name,
-                    c.CHARACTER_SET_NAME as character_set
+                    SUBSTRING_INDEX(t.TABLE_COLLATION,'_',1) as character_set
                 FROM
                     information_schema.TABLES t
-                    INNER JOIN information_schema.CHARACTER_SETS c
-                    ON c.DEFAULT_COLLATE_NAME=t.TABLE_COLLATION
                 WHERE
                         table_type='BASE TABLE'
                     AND	table_schema=%s
@@ -1305,7 +1303,7 @@ class mysql_source(object):
                                 inc_tables = self.pg_engine.get_inconsistent_tables()
                             else:
                                 add_row = False
-
+                        print(table_type_map)
                         column_map = table_type_map[schema_row][table_name]["column_type"]
                         table_charset = table_type_map[schema_row][table_name]["table_charset"]
 
