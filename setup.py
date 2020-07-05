@@ -10,7 +10,7 @@ package_data = {'pg_chameleon': ['configuration/config-example.yml','sql/upgrade
 
 setup(
     name="pg_chameleon",
-    version="2.0.12",
+    version="2.0.13",
     description="MySQL to PostgreSQL replica and migration",
     long_description=readme(),
     author = "Federico Campoli",

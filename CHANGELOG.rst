@@ -1,15 +1,21 @@
-changelog 
+changelog
 *************************
+2.0.13 - 05 July 2020
+..........................................................
+* **EXPERIMENTAL** support for Point datatype - @jovankricka-everon
+* Add ``keep_existing_schema`` in MySQL source type to keep the existing scema in place instead of rebuilding it from the mysql source
+* Change tabs to spaces in code
+
 2.0.12 - 11 Dec 2019
 ..........................................................
 * Fixes for issue #96 thanks to @daniel-qcode
 * Change for configuration and SQL files location
-* Package can build now as source and wheel 
+* Package can build now as source and wheel
 * The minimum python requirements now is 3.5
 
 2.0.11 - 25 Oct 2019
 ..........................................................
-* Fix wrong formatting for yaml example files. @rebtoor 
+* Fix wrong formatting for yaml example files. @rebtoor
 * Make start_replica run in foreground when log_file == stdout . @clifff
 * Travis seems to break down constantly, Disable the CI until a fix is found. Evaluate to use a different CI.
 * Add the add loader to yaml.load as required by the new PyYAML version.
@@ -17,7 +23,7 @@ changelog
 2.0.10 - 01 Sep 2018
 ..........................................................
 * Fix regression in new replay function with PostgreSQL 10
-* Convert to string the dictionary entries pulled from a json field 
+* Convert to string the dictionary entries pulled from a json field
 * Let ``enable_replica`` to disable any leftover maintenance flag
 * Add capture in CHANGE for tables in the form schema.table
 
@@ -30,7 +36,7 @@ changelog
 
 2.0.8 - 14 Jul 2018
 ..........................................................
-* Add support for skip events as requested in issue #76. Is now possible to skip events (insert,delete,update) for single tables or for entire schemas. 
+* Add support for skip events as requested in issue #76. Is now possible to skip events (insert,delete,update) for single tables or for entire schemas.
 * **EXPERIMENTAL** support for the GTID. When configured on MySQL or Percona server pg_chameleon will use the GTID to auto position the replica stream. Mariadb is not supported by this change.
 * ALTER TABLE RENAME is now correctly parsed and executed
 * Add horrible hack to ALTER TABLE MODIFY.  Previously modify with default values would parse wrongly and fail when translating to PostgreSQL dialect
@@ -51,11 +57,11 @@ changelog
 ..........................................................
 * fix for issue #69 add source's optional parameter ``on_error_read:`` to allow the read process to continue in case of connection issues with the source database (e.g. MySQL in maintenance)
 * remove the detach partition during the maintenance process as this proved to be a very fragile approach
-* add switch ``--full`` to run a ``VACUUM FULL`` during the maintenance 
+* add switch ``--full`` to run a ``VACUUM FULL`` during the maintenance
 * when running the maintentenance execute a ``VACUUM`` instead of a ``VACUUM FULL``
 * fix for issue #68. fallback to ``binlog_row_image=FULL`` if the parameter is missing in mysql 5.5.
 * add cleanup for default value ``NOW()`` when adding a new column with ``ALTER TABLE``
-* allow ``enable_replica`` to reset the source status in the case of a catalogue version mismatch 
+* allow ``enable_replica`` to reset the source status in the case of a catalogue version mismatch
 
 2.0.5 - 25 March 2018
 ..........................................................
@@ -106,7 +112,7 @@ changelog
 2.0.0.beta1 - 10 December 2017
 ..........................................................
 * fix a race condition where an unrelated DDL can cause the collected binlog rows to be added several times to the log_table
-* fix regression in write ddl caused by the change of private method 
+* fix regression in write ddl caused by the change of private method
 * fix wrong ddl parsing when a column definition is surrounded by parentheses e.g. ``ALTER TABLE foo ADD COLUMN(bar varchar(30));``
 * error handling for wrong table names, wrong schema names, wrong source name and wrong commands
 * init_replica for source pgsql now can read from an hot standby but the copy is not consistent
@@ -122,7 +128,7 @@ changelog
 * Add stack trace capture to the rollbar and log message when one of the replica daemon crash
 * Add ``on_error_replay`` to set whether the replay process should skip the tables or exit on error
 * Add init_replica support for source type pgsql (EXPERIMENTAL)
- 
+
 
 2.0.0.alpha2 - 18 November 2017
 ..........................................................
@@ -136,12 +142,12 @@ changelog
 * Add fix for issue #33 cleanup NUL markers from the rows before trying to insert them in PostgreSQL
 * Fix broken save_discarded_row
 * Add more detail to show_status when specifying the source with --source
-* Changed some methods to private 
+* Changed some methods to private
 * ensure the match for the alter table's commands are enclosed by  word boundaries
 * add if exists when trying to drop the table in  swap tables. previously adding a new table failed because the table wasn't there
 * fix wrong drop enum type when adding a new field
 * add log error for storing the errors generated during the replay
-* add not functional class pgsql_source for source type pgsql 
+* add not functional class pgsql_source for source type pgsql
 * allow ``type_override`` to be empty
 * add show_status command for displaying the log error entries
 * add separate logs for per source

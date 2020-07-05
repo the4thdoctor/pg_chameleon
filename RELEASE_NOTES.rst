@@ -1,5 +1,24 @@
 RELEASE NOTES
 *************************
+
+2.0.13
+--------------------------
+This maintenance release adds the **EXPERIMENTAL** support for Point datatype thanks to the contribution by @jovankricka-everon.
+
+The support is currently limited to only the POINT datatype with hardcoded stuff to keep the init_replica and the replica working.
+However as this feature is related with PostGIS, the next point release will rewrite this part of code using a more general approach.
+
+The release adds the ``keep_existing_schema`` parameter in the MySQL source type. When set to ``Yes`` init_replica,refresh_schema and
+sync_tables do not recreate the affected tables using the data from the MySQL source.
+Instead the existing tables are truncated and the data is reloaded.
+
+A REINDEX TABLE is executed in order to have the indices in good shape after the reload.
+The next point release will very likely improve the approach on the reload and reindexing.
+
+When ``keep_existing_schema`` is set to Yes the parameter ``grant_select_to`` have no effect.
+
+From this release the codebase switched from tabs to spaces, following the guidelines in PEP-8.
+
 2.0.12
 --------------------------
 This maintenance release fixes the issue #96 where the replica initialisation failed on MySQL 8 because of the wrong field names pulled out from the information_schema.
@@ -23,11 +42,11 @@ As Travis seems to break down constantly the CI configuration is disabled until 
 Finally the method which loads the yaml file is now using an explicit loader as required by the new PyYAML version.
 
 Previously with newer version of PyYAML there was a warning emitted by the library because the default loader is unsafe.
-If you have 
+If you have
 
 2.0.10
 --------------------------
-This maintenance release  fixes a  regression caused by the new replay function with PostgreSQL 10. The unnested primary key was put in cartesian product with the 
+This maintenance release  fixes a  regression caused by the new replay function with PostgreSQL 10. The unnested primary key was put in cartesian product with the
 json elements generating NULL identifiers which made the subsequent format function to fail.
 
 This release fixes adds a workaround for decoding the keys in the mysql's json fields. This allows the sytem to replicate the json data type as well.
@@ -35,7 +54,7 @@ This release fixes adds a workaround for decoding the keys in the mysql's json f
 The command ``enable_replica`` fixes a race condition when the maintenance flag is not returned to false (e.g. an application crash during the maintenance run) allowing the replica to start again.
 
 
-The tokeniser for the ``CHANGE`` statement now parses the tables in the form of ``schema.table``. However the tokenised schema is not used to determine the 
+The tokeniser for the ``CHANGE`` statement now parses the tables in the form of ``schema.table``. However the tokenised schema is not used to determine the
 query's schema because the ``__read_replica_stream`` method uses the schema name pulled out from the mysql's binlog.
 
 
@@ -43,13 +62,13 @@ As this change requires a replica catalogue upgrade is very important to follow 
 
 
 * If working via ssh is suggested to use screen or tmux for the upgrade
-* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>`` 
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>``
 * Take a backup of the schema ``sch_chameleon`` with pg_dump for good measure.
 * Install the upgrade with ``pip install pg_chameleon --upgrade``
-* Check if the version is upgraded with ``chameleon --version`` 
+* Check if the version is upgraded with ``chameleon --version``
 * Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
 * Start all the replicas.
- 
+
 
 If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses using the command ``chameleon enable_replica --source <source_name>``.
 
@@ -64,8 +83,8 @@ This maintenance release  fixes a wrong check for the next auto maintenance run 
 Previously when changing the value of ``auto_maintenance`` from disabled to an interval, the process didn't run the automatic maintenance unless a manual maintenance
 was executed before.
 
-This release adds improvements on the replay function's speed. The new version is now replaying the data without accessing the parent log partition and 
-the decoding logic has been simplified. Not autoritative tests has shown a cpu gain of at least 10% and a better memory allocation. 
+This release adds improvements on the replay function's speed. The new version is now replaying the data without accessing the parent log partition and
+the decoding logic has been simplified. Not autoritative tests has shown a cpu gain of at least 10% and a better memory allocation.
 However your mileage may vary.
 
 The GTID operational mode has been improved removing the blocking mode which caused increased lag in systems with larger binlog size.
@@ -74,13 +93,13 @@ As this change requires a replica catalogue upgrade is very important to follow 
 
 
 * If working via ssh is suggested to use screen or tmux for the upgrade
-* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>`` 
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>``
 * Take a backup of the schema ``sch_chameleon`` with pg_dump for good measure.
 * Install the upgrade with ``pip install pg_chameleon --upgrade``
-* Check if the version is upgraded with ``chameleon --version`` 
+* Check if the version is upgraded with ``chameleon --version``
 * Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
 * Start all the replicas.
- 
+
 
 If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses using the command ``chameleon enable_replica --source <source_name>``.
 
@@ -91,8 +110,8 @@ If the catalogue upgrade is still  not possible downgrading pgchameleon to the p
 --------------------------
 This maintenance release adds the support for skip events. Is now is possible to skip events (insert,delete,update) for single tables or for entire schemas.
 
-A new optional source parameter ``skip_events:`` is available for the sources with type mysql. 
-Under skip events there are three keys one per each DML operation. Is possible to list an entire schema or single tables in the form of ``schema.table``. 
+A new optional source parameter ``skip_events:`` is available for the sources with type mysql.
+Under skip events there are three keys one per each DML operation. Is possible to list an entire schema or single tables in the form of ``schema.table``.
 The example snippet disables the inserts on the table ``delphis_mediterranea.foo`` and the deletes on the entire schema ``delphis_mediterranea``.
 
 .. code-block:: yaml
@@ -102,23 +121,23 @@ The example snippet disables the inserts on the table ``delphis_mediterranea.foo
         - delphis_mediterranea.foo #skips inserts on the table delphis_mediterranea.foo
       delete:
         - delphis_mediterranea #skips deletes on schema delphis_mediterranea
-      update:   
+      update:
 
 
-	
+
 The release 2.0.8 adds the  **EXPERIMENTAL** support for the GTID for MySQL or Percona server. The GTID in MariaDb is currently not supported.
 A new optional parameter ``gtid_enable:`` which defaults to ``No`` is available for the source type mysql.
 
 When `MySQL is configured with the GTID <https://dev.mysql.com/doc/refman/8.0/en/replication-gtids-concepts.html>`_ and the parameter ``gtid_enable:`` is set to Yes,  pg_chameleon will use the GTID to auto position the replica stream.
-This allows pg_chameleon to reconfigure the source within the MySQL replicas without the need to run init_replica. 
+This allows pg_chameleon to reconfigure the source within the MySQL replicas without the need to run init_replica.
 
-This feature has been extensively tested but as it's new has to be considered  **EXPERIMENTAL**. 
+This feature has been extensively tested but as it's new has to be considered  **EXPERIMENTAL**.
 
 
 ALTER TABLE RENAME is now correctly parsed and executed.
 ALTER TABLE MODIFY is now parsed correctly when the field have a default value. Previously modify with default values would parse wrongly and fail when translating to PostgreSQL dialect
 
-The source no longer gets an error state when  running with ``--debug``. 
+The source no longer gets an error state when  running with ``--debug``.
 
 The logged events are now cleaned when refreshing schema and syncing tables. Previously spurious logged events could lead to primary key violations when syncing single tables or refreshing single schemas.
 
@@ -126,13 +145,13 @@ As this change requires a replica catalogue upgrade is very important to follow 
 
 
 * If working via ssh is suggested to use screen or tmux for the upgrade
-* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>`` 
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>``
 * Take a backup of the schema ``sch_chameleon`` with pg_dump for good measure.
 * Install the upgrade with ``pip install pg_chameleon --upgrade``
-* Check if the version is upgraded with ``chameleon --version`` 
+* Check if the version is upgraded with ``chameleon --version``
 * Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
 * Start all the replicas.
- 
+
 
 If the upgrade procedure refuses to upgrade the catalogue because of running or errored replicas is possible to reset the statuses using the command ``chameleon enable_replica --source <source_name>``.
 
@@ -153,7 +172,7 @@ The bug reported in ticket #75 , caused a wrong conversion to string for the row
 
 A fix for the TRUNCATE TABLE tokenisation is implemented as well. Now if the statement specifies the table with the schema the truncate works properly.
 
-A new optional source's parameter is added. ``auto_maintenance``  trigger a vacuum on the log tables after a specific timeout. 
+A new optional source's parameter is added. ``auto_maintenance``  trigger a vacuum on the log tables after a specific timeout.
 The timeout shall be expressed like a PostgreSQL interval (e.g. "1 day"). The special value "disabled" disables the auto maintenance.
 If the parameter is omitted the auto maintenance is disabled.
 
@@ -161,16 +180,16 @@ If the parameter is omitted the auto maintenance is disabled.
 
 2.0.6
 --------------------------
-The maintenance release 2.0.6 fixes a crash occurring when a new column is added on the source database with the default value ``NOW()``. 
+The maintenance release 2.0.6 fixes a crash occurring when a new column is added on the source database with the default value ``NOW()``.
 
 The maintenance introduced in the version 2.0.5 is now less aggressive.
 In particular the ``run_maintenance`` command now executes a conventional ``VACUUM`` on the source's log tables, unless the switch ``--full`` is specified. In that case a ``VACUUM FULL`` is executed.
-The detach has been disabled and may be completely removed in the future releases because very fragile and prone to errors. 
+The detach has been disabled and may be completely removed in the future releases because very fragile and prone to errors.
 
 However running VACUUM FULL on the log tables can cause  the other sources to be blocked during the maintenance run.
 
 This release adds an optional parameter ``on_error_read:``  on the mysql type's sources which allow the read process to stay up if the mysql database is refusing connections (e.g. MySQL down for maintenance).
-Following the  principle of least astonishment the parameter if omitted doesn't cause any change of behaviour. If added with the value continue (e.g. ``on_error_read: continue``) 
+Following the  principle of least astonishment the parameter if omitted doesn't cause any change of behaviour. If added with the value continue (e.g. ``on_error_read: continue``)
 will prevent the replica process to stop in the case of connection issues from the MySQL database with a warning is emitted on the replica log .
 
 This release adds the support for mysql 5.5 which doesn't have the parameter ``binlog_row_image``.
@@ -180,7 +199,7 @@ This simplifies the upgrade procedure in case of errored or wrongly running repl
 
 As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
 
-* If working via ssh is suggested to open a screen session 
+* If working via ssh is suggested to open a screen session
 * Before upgrading pg_chameleon **stop all the replica processes.**
 * Upgrade the pg_chameleon package with `pip install pg_chameleon --upgrade`
 * Upgrade  the replica schema with the command `chameleon upgrade_replica_schema --config <your_config>`
@@ -215,7 +234,7 @@ This functionality will appear in future releases of the branch 2.0.
 
 As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
 
-* If working via ssh is suggested to open a screen session 
+* If working via ssh is suggested to open a screen session
 * Before the upgrade stop all the replica processes.
 * Upgrade pg_chameleon with `pip install pg_chameleon --upgrade`
 * Run the upgrade command `chameleon upgrade_replica_schema --config <your_config>`
@@ -224,17 +243,17 @@ As this change requires a replica catalogue upgrade is very important to follow 
 
 2.0.4
 --------------------------
-The maintenance release 2.0.4 fix the wrong handling of the ``ALTER TABLE`` when generating the ``MODIFY`` translation. 
+The maintenance release 2.0.4 fix the wrong handling of the ``ALTER TABLE`` when generating the ``MODIFY`` translation.
 The regression was added in the version 2.0.3 and can result in a broken replica process.
 
-This version improves the way to handle the replica from tables with dropped columns in the future. 
-The `python-mysql-replication library with this commit <https://github.com/noplay/python-mysql-replication/commit/4c48538168f4cd3239563393a29b542cc6ffcf4b>`_ adds a way to 
+This version improves the way to handle the replica from tables with dropped columns in the future.
+The `python-mysql-replication library with this commit <https://github.com/noplay/python-mysql-replication/commit/4c48538168f4cd3239563393a29b542cc6ffcf4b>`_ adds a way to
 manage the replica with the tables having columns dropped before the read replica is started.
 
 Previously the auto generated column name caused the replica process to crash as the type map dictionary didn't had the corresponding key.
 
 The version 2.0.4 handles the ``KeyError`` exception and allow the row to be stored on the PostgreSQL target database.
-However this will very likely cause the table to be removed from the replica in the replay step. A debug log message is emitted when this happens in order to 
+However this will very likely cause the table to be removed from the replica in the replay step. A debug log message is emitted when this happens in order to
 when the issue occurs.
 
 2.0.3
@@ -244,14 +263,14 @@ The issue can affect also MySQL databases with smaller `max_binlog_size` as it s
 
 As this change requires a replica catalogue upgrade is very important to follow the upgrade instructions provided below.
 
-* If working via ssh is suggested to open a screen session 
+* If working via ssh is suggested to open a screen session
 * Before the upgrade stop all the replica processes.
 * Upgrade pg_chameleon with `pip install pg_chameleon --upgrade`
 * Run the upgrade command `chameleon upgrade_replica_schema --config <your_config>`
 * Start the replica processes
 
 Please note that because the upgrade command will alter the data types with subsequent table rewrite.
-The process can take long time, in particular if the log tables are large. 
+The process can take long time, in particular if the log tables are large.
 If working over a remote machine the best way to proceed is to run the command in a screen session.
 
 
@@ -260,7 +279,7 @@ When an alter table comes in the form of `ALTER TABLE ADD COLUMN is in the form 
 causing the  replica process crash.
 
 The speed of the initial cleanup, when the replica starts has been improved as now the delete runs only on the sources log tables instead of the parent table.
-This improvement is more effective when many sources are configured all togheter. 
+This improvement is more effective when many sources are configured all togheter.
 
 From this version the setup.py switches the psycopg2 requirement to using the psycopg2-binary which ensures that psycopg2 will install using the wheel package when available.
 
@@ -268,18 +287,18 @@ From this version the setup.py switches the psycopg2 requirement to using the ps
 
 2.0.2
 --------------------------
-This bugfix relase adds a missing functionality which wasn't added during the application development and fixes a bug in the ``sync_tables`` command. 
+This bugfix relase adds a missing functionality which wasn't added during the application development and fixes a bug in the ``sync_tables`` command.
 
-Previously the  parameter ``batch_retention`` was ignored making the replayed batches to accumulate in the table ``sch_chameleon.t_replica_batch`` 
+Previously the  parameter ``batch_retention`` was ignored making the replayed batches to accumulate in the table ``sch_chameleon.t_replica_batch``
 with the conseguent performance degradation over time.
 
-This release solves the issue re enabling the batch_retention. 
+This release solves the issue re enabling the batch_retention.
 Please note that after upgrading there will be an initial replay lag building.
-This is normal as the first cleanup will have to remove a lot of rows. 
+This is normal as the first cleanup will have to remove a lot of rows.
 After the cleanup is complete the replay will resume as usual.
 
 The new private method ``_swap_enums`` added to the class ``pg_engine`` moves the enumerated types from the loading schema to the destination schema
-when the method ``swap_tables`` is executed by the command ``sync_tables``. 
+when the method ``swap_tables`` is executed by the command ``sync_tables``.
 
 Previously when running ``sync_tables`` tables with enum fields were created on PostgreSQL without the corresponding enumerated types.
 This happened because the custom enumerated type were not moved into the destination schema and therefore dropped along with the loading schema when the
@@ -288,14 +307,14 @@ procedure performed the final cleanup.
 
 2.0.1
 --------------------------
-The first maintenance release of pg_chameleon v2 adds a performance improvement in the read replica process when 
+The first maintenance release of pg_chameleon v2 adds a performance improvement in the read replica process when
 the variables limit_tables or skip_tables are set.
 
 Previously all the rows were read from the replica stream as the ``BinLogStreamReader`` do not allow the usage of  the tables in the form of
 ``schema_name.table_name``. This caused a large amount of useless data hitting the replica log tables as reported in the issue #58.
 
 The private method ``__store_binlog_event`` now evaluates the row schema and table and returns a boolean value on whether the row or query
-should be stored or not into the log table. 
+should be stored or not into the log table.
 
 The release fixes also a crash in read replica if an alter table added a column was of type ``character varying``.
 
@@ -303,7 +322,7 @@ The release fixes also a crash in read replica if an alter table added a column 
 --------------------------
 This stable release consists of the same code of the RC1 with few usability improvements.
 
-A new option is now available to set to set the maximum level for the messages to be sent to rollbar. 
+A new option is now available to set to set the maximum level for the messages to be sent to rollbar.
 This is quite useful if we configure a periodical init_replica (e.g. pgsql source type refreshed every hour) and we don't want to fill rollbar with noise.
 For example ``chameleon init_replica --source pgsql --rollbar-level critical``  will send to rollbar only messages marked as critical.
 
@@ -317,8 +336,8 @@ A new command ``enable_replica`` is now available to enable the source's replica
 --------------------------
 This release candidate comes with few bug fixes and few usability improvements.
 
-Previously when adding a table with a replicated DDL having an unique key, the table's creation failed because of the fields were 
-set as NULLable . Now the command works properly. 
+Previously when adding a table with a replicated DDL having an unique key, the table's creation failed because of the fields were
+set as NULLable . Now the command works properly.
 
 The system now checks if the MySQL configuration allows the replica when initialising or refreshing replicated entities.
 
@@ -333,12 +352,12 @@ re synchronised at once.
 
 2.0.0.beta1
 --------------------------
-The first beta for the milestone 2.0 adds fixes a long standing bug to the replica process and adds more features to the postgresql support. 
+The first beta for the milestone 2.0 adds fixes a long standing bug to the replica process and adds more features to the postgresql support.
 
 The race condition fixed was caused by a not tokenised DDL preceeded by row images, causing the collected binlog rows to be added several times to the log_table.
 It was quite hard to debug as the only visible effect was a primary key violation on random tables.
 
-The issue is caused if a set of rows lesser than the ``replica_batch_size`` are followed by a DDL that is not tokenised (e.g. ``CREATE TEMPORARY TABLE `foo`;`` ) 
+The issue is caused if a set of rows lesser than the ``replica_batch_size`` are followed by a DDL that is not tokenised (e.g. ``CREATE TEMPORARY TABLE `foo`;`` )
 which coincides with the end of read from the binary log.
 In that case the batch is not closed and the next read replica attempt will restart from the previous position reading and storing again the same set of rows.
 When the batch is closed the replay function will eventually fail because of a primary/unique key violation.
@@ -364,10 +383,10 @@ For the source type ``pgsql`` the following restrictions apply.
 --------------------------
 **please note this is a not production release. do not use it in production**
 
-The third and final alpha3 for the milestone 2.0 fixes some issues and add more features to the system. 
+The third and final alpha3 for the milestone 2.0 fixes some issues and add more features to the system.
 
 As there are changes in the replica catalog if upgrading from the alpha1 there will be need to do a ``drop_replica_schema``
-followed by a ``create_replica_schema``. This **will drop any existing replica** and will require re adding the sources and 
+followed by a ``create_replica_schema``. This **will drop any existing replica** and will require re adding the sources and
 re initialise them with ``init_replica``.
 
 The system now supports a source type ``pgsql`` with the following limitations.
@@ -383,32 +402,32 @@ The system now supports a source type ``pgsql`` with the following limitations.
 A stack trace capture is now added on the log and the rollbar message for better debugging.
 A new parameter ``on_error_replay`` is available for the sources to set whether the replay process should skip the tables or exit on error.
 
-This release adds the command ``upgrade_replica_schema`` for upgrading the replica schema from the version 1.8 to the 2.0. 
+This release adds the command ``upgrade_replica_schema`` for upgrading the replica schema from the version 1.8 to the 2.0.
 
-The upgrade procedure is described in the documentation. 
+The upgrade procedure is described in the documentation.
 
 **Please read it carefully before any upgrade and backup the schema sch_chameleon before attempting any upgrade.**
 
 
-2.0.0.alpha2 
+2.0.0.alpha2
 --------------------------
 **please note this is a not production release. do not use it in production**
 
 The second alpha of the milestone 2.0 comes after a week of full debugging. This release is more usable and stable than the
 alpha1. As there are changes in the replica catalog if upgrading from the alpha1 there will be need to do a ``drop_replica_schema``
-followed by a ``create_replica_schema``. This **will drop any existing replica** and will require re adding the sources and 
+followed by a ``create_replica_schema``. This **will drop any existing replica** and will require re adding the sources and
 re initialise them with ``init_replica``.
 
-The full list of changes is in the CHANGELOG file. However there are few notable remarks. 
+The full list of changes is in the CHANGELOG file. However there are few notable remarks.
 
 There is a detailed display of the ``show_status`` command when a source is specified. In particular the number of replicated and
 not replicated tables is displayed. Also if any table as been pulled out from the replica it appears on the bottom.
 
-From this release there is an error log which saves the exception's data during the replay phase. 
+From this release there is an error log which saves the exception's data during the replay phase.
 The error log can be queried with the new command ``show_errors``.
 
-A new source parameter ``replay_max_rows`` has been added to set the amount of rows to replay. 
-Previously the value was set by the parameter ``replica_batch_size``. If upgrading from alpha1 you may need to add 
+A new source parameter ``replay_max_rows`` has been added to set the amount of rows to replay.
+Previously the value was set by the parameter ``replica_batch_size``. If upgrading from alpha1 you may need to add
 this parameter to your existing configuration.
 
 Finally there is a new class called ``pgsql_source``, not yet functional though.
@@ -416,28 +435,28 @@ This class will add a very basic support for the postgres source type.
 More details will come in the alpha3.
 
 
-2.0.0.alpha1 
+2.0.0.alpha1
 --------------------------
 **please note this is a not production release. do not use it in production**
 
-This is the first alpha of the milestone 2.0. The project has been restructured in many ways thanks to the user's feedback. 
+This is the first alpha of the milestone 2.0. The project has been restructured in many ways thanks to the user's feedback.
 Hopefully this will make the system much simple to use.
 
 The main changes in the version 2 are the following.
 
 The system is Python 3 only compatible. Python 3 is the future and there is no reason why to keep developing thing in 2.7.
 
-The system now can read from multiple MySQL schemas in the same database and replicate them it into a target PostgreSQL database. 
+The system now can read from multiple MySQL schemas in the same database and replicate them it into a target PostgreSQL database.
 The source and target schema names can be different.
 
 The system now use a conservative approach to the replica. The tables which generate errors during the replay are automatically excluded from the replica.
 
 The init_replica process runs in background unless the logging is on the standard output or the debug option is passed to the command line.
 
-The replica process now runs in background with two separated subprocess, one for the read and one for the replay. 
+The replica process now runs in background with two separated subprocess, one for the read and one for the replay.
 If the logging is on the standard output or the debug option is passed to the command line the main process stays in foreground though.
 
-The system now use a soft approach when initialising the replica . 
+The system now use a soft approach when initialising the replica .
 The tables are locked only when copied. Their log coordinates will be used by the replica damon to put the database in a consistent status gradually.
 
 The system can now use the rollbark key and environment to setup the Rollbar integration, for a better error detection.
