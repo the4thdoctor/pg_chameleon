@@ -27,7 +27,6 @@ class mysql_source(object):
         self.schema_only = {}
         self.gtid_mode = False
         self.gtid_enable = False
-        self.reg = re.compile('^[a-z]+(\(.*?\))', re.IGNORECASE)
 
 
     def __del__(self):
@@ -933,7 +932,7 @@ class mysql_source(object):
             self.logger.critical(notifier_message)
             raise
 
-    def __get_text_point(self,charset,raw_data):
+    def __get_text_spatial(self,charset,raw_data):
         """
             The method returns the text representation converted in postgresql format
             for the raw data point using the ST_AsText function and the regular expressions
@@ -943,23 +942,8 @@ class mysql_source(object):
             :return: text representation converted in postgresql format
             :rtype: text
         """
-        if charset:
-            raw_data.decode(charset)
-        else:
-            raw_data.decode()
-        sql_st = """
-            SELECT
-                ST_AsText(%s) as text_repr
-            ;
-        """
-        self.cursor_buffered.execute(sql_st, (raw_data, ))
-        converted_value = self.cursor_buffered.fetchone()
-        regmatch = self.reg.search(converted_value["text_repr"])
-        if regmatch:
-            captured = regmatch.groups()
-            converted_value = captured[0].replace(' ',', ')
-
-        return converted_value
+        decoded_data = binascii.hexlify(raw_data).decode()
+        return decoded_data
 
     def get_table_type_map(self):
         """
@@ -1348,8 +1332,8 @@ class mysql_source(object):
                                     event_after[column_name] = ''
                                 elif column_type == 'json':
                                     event_after[column_name] = self.__decode_dic_keys(event_after[column_name])
-                                elif column_type == 'point':
-                                    event_after[column_name] = self.__get_text_point(table_charset,event_after[column_name])
+                                elif column_type in self.spatial_datatypes and event_after[column_name]:
+                                    event_after[column_name] = self.__get_text_spatial(table_charset,event_after[column_name])
 
 
                             for column_name in event_before:
