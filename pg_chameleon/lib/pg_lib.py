@@ -585,8 +585,6 @@ class pg_engine(object):
             'json':'json',
             'bool':'boolean',
             'boolean':'boolean',
-            'geometry':'bytea',
-            'point': 'point'
         }
         self.dest_conn = None
         self.pgsql_conn = None
@@ -620,6 +618,27 @@ class pg_engine(object):
         self.pgsql_cur.execute(sql_check)
         postgis_check = self.pgsql_cur.fetchone()
         self.postgis_present = postgis_check[0]
+        if self.postgis_present:
+            spatial_data = {
+            'geometry':'geometry',
+            'point':'geometry',
+            'linestring':'geometry',
+            'polygon':'geometry',
+            'multipoint':'geometry',
+            'geometrycollection':'geometry',
+            'multilinestring':'geometry',
+            }
+        else:
+            spatial_data = {
+            'geometry':'bytea',
+            'point':'bytea',
+            'linestring':'bytea',
+            'polygon':'bytea',
+            'multipoint':'bytea',
+            'geometrycollection':'bytea',
+            'multilinestring':'bytea',
+            }
+        self.type_dictionary.update(spatial_data.items())
         return postgis_check[0]
     def __del__(self):
         """

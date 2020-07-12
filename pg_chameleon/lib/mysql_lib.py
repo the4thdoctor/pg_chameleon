@@ -22,7 +22,8 @@ class mysql_source(object):
         self.schema_mappings = {}
         self.schema_loading = {}
         self.schema_list = []
-        self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary','geometry']
+        self.hexify_always = ['blob', 'tinyblob', 'mediumblob','longblob','binary','varbinary']
+        self.spatial_datatypes = ['point','geometry','linestring','polygon', 'multipoint', 'multilinestring', 'geometrycollection']
         self.schema_only = {}
         self.gtid_mode = False
         self.gtid_enable = False
@@ -92,7 +93,6 @@ class mysql_source(object):
 
         if log_bin.upper() == 'ON' and binlog_format.upper() == 'ROW' and binlog_row_image.upper() == 'FULL':
             self.replica_possible = True
-            self.postgis_present = self.pg_engine.check_postgis()
         else:
             self.replica_possible = False
             self.pg_engine.set_source_status("error")
@@ -432,9 +432,9 @@ class mysql_source(object):
                     THEN
                         concat('nullif(`',column_name,'`,cast("0000-00-00 00:00:00" as date))')
                     WHEN
-                        data_type IN ('point')
+                        data_type IN ('"""+"','".join(self.spatial_datatypes)+"""')
                     THEN
-                        concat('concat("(",ST_X(',column_name,'),", ",ST_Y(',column_name,'),")")')
+                        concat('ST_AsText(',column_name,')')
 
                 ELSE
                     concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""")')
@@ -454,9 +454,9 @@ class mysql_source(object):
                     THEN
                         concat('nullif(`',column_name,'`,cast("0000-00-00 00:00:00" as date)) AS `',column_name,'`')
                     WHEN
-                        data_type IN ('point')
+                        data_type IN ('"""+"','".join(self.spatial_datatypes)+"""')
                     THEN
-                        concat('concat("(",ST_X(',column_name,'),", ",ST_Y(',column_name,'),")")')
+                        concat('ST_AsText(',column_name,') AS','`',column_name,'`')
 
                 ELSE
                     concat('cast(`',column_name,'` AS char CHARACTER SET """+ self.charset +""") AS','`',column_name,'`')
@@ -772,7 +772,11 @@ class mysql_source(object):
         self.skip_tables = self.source_config["skip_tables"]
         self.replica_batch_size = self.source_config["replica_batch_size"]
         self.sleep_loop = self.source_config["sleep_loop"]
-        self.hexify = [] + self.hexify_always
+        self.postgis_present = self.pg_engine.check_postgis()
+        if self.postgis_present:
+            self.hexify = self.hexify_always
+        else:
+            self.hexify = self.hexify_always + self.spatial_datatypes
         try:
             self.connect_db_buffered()
         except:
@@ -814,7 +818,11 @@ class mysql_source(object):
         else:
             self.keep_existing_schema = False
         self.set_copy_max_memory()
-        self.hexify = [] + self.hexify_always
+        self.postgis_present = self.pg_engine.check_postgis()
+        if self.postgis_present:
+            self.hexify = self.hexify_always
+        else:
+            self.hexify = self.hexify_always + self.spatial_datatypes
         self.connect_db_buffered()
         self.pg_engine.connect_db()
         self.schema_mappings = self.pg_engine.get_schema_mappings()
