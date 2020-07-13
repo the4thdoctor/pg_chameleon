@@ -932,7 +932,7 @@ class mysql_source(object):
             self.logger.critical(notifier_message)
             raise
 
-    def __get_text_spatial(self,charset,raw_data):
+    def __get_text_spatial(self,raw_data):
         """
             The method returns the text representation converted in postgresql format
             for the raw data point using the ST_AsText function and the regular expressions
@@ -942,8 +942,8 @@ class mysql_source(object):
             :return: text representation converted in postgresql format
             :rtype: text
         """
-        decoded_data = binascii.hexlify(raw_data).decode()
-        return decoded_data
+        decoded_data=binascii.hexlify(raw_data)
+        return decoded_data.decode()[8:]
 
     def get_table_type_map(self):
         """
@@ -1295,7 +1295,6 @@ class mysql_source(object):
                                 inc_tables = self.pg_engine.get_inconsistent_tables()
                             else:
                                 add_row = False
-                        print(table_type_map)
                         column_map = table_type_map[schema_row][table_name]["column_type"]
                         table_charset = table_type_map[schema_row][table_name]["table_charset"]
 
@@ -1333,7 +1332,7 @@ class mysql_source(object):
                                 elif column_type == 'json':
                                     event_after[column_name] = self.__decode_dic_keys(event_after[column_name])
                                 elif column_type in self.spatial_datatypes and event_after[column_name]:
-                                    event_after[column_name] = self.__get_text_spatial(table_charset,event_after[column_name])
+                                    event_after[column_name] = self.__get_text_spatial(event_after[column_name])
 
 
                             for column_name in event_before:
@@ -1348,8 +1347,8 @@ class mysql_source(object):
                                     event_before[column_name] = ''
                                 elif column_type == 'json':
                                     event_before[column_name] = self.__decode_dic_keys(event_after[column_name])
-                                elif column_type == 'point':
-                                    event_before[column_name] = self.__get_text_point(table_charset,event_before[column_name])
+                                elif column_type in self.spatial_datatypes and event_after[column_name]:
+                                    event_before[column_name] = self.__get_text_spatial(event_before[column_name])
                             event_insert={"global_data":global_data,"event_after":event_after,  "event_before":event_before}
                             size_insert += len(str(event_insert))
                             group_insert.append(event_insert)
