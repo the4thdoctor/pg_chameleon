@@ -717,18 +717,18 @@ class mysql_source(object):
                 self.logger.info("Copying the source table %s into %s.%s" %(table, loading_schema, table) )
                 try:
                     if self.keep_existing_schema:
-                        self.logger.info("Collecting constraints and indices from the destination table  %s.%s" %(destination_schema, table) )
-                        self.pg_engine.collect_constraints(destination_schema,table)
-                        self.logger.info("Removing constraints and indices from the destination table  %s.%s" %(destination_schema, table) )
-                        #self.pg_engine.cleanup_constraints(destination_schema,table)
                         table_pkey = self.pg_engine.get_existing_pkey(destination_schema,table)
-                        self.logger.info("Truncating the destination table  %s.%s" %(destination_schema, table) )
+                        self.logger.info("Collecting constraints and indices from the destination table  %s.%s" %(destination_schema, table) )
+                        self.pg_engine.collect_idx_cons(destination_schema,table)
+                        self.logger.info("Removing constraints and indices from the destination table  %s.%s" %(destination_schema, table) )
+                        self.pg_engine.cleanup_idx_cons(destination_schema,table)
                         self.pg_engine.truncate_table(destination_schema,table)
+                        
                     master_status = self.copy_data(schema, table)  
                     self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
                     if self.keep_existing_schema:
                         self.logger.info("Adding constraint and indices to the destination table  %s.%s" %(destination_schema, table) )
-                        #self.pg_engine.restore_constraints(destination_schema,table)
+                        self.pg_engine.create_idx_cons(destination_schema,table)
                     """if self.keep_existing_schema:
                         self.logger.info("Truncating the destination table  %s.%s" %(destination_schema, table) )
                         self.pg_engine.truncate_table(destination_schema,table)

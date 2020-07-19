@@ -118,7 +118,8 @@ SELECT
     v_table_referencing,
     format('ALTER TABLE ONLY %I.%I DROP CONSTRAINT %I ;',v_schema_referencing,v_table_referencing ,v_fk_name) AS t_con_drop,
     format('ALTER TABLE ONLY %I.%I ADD CONSTRAINT %I %s  NOT VALID ;',v_schema_referencing,v_table_referencing,v_fk_name,v_fk_definition) AS t_con_create,
-    format('ALTER TABLE ONLY %I.%I VALIDATE CONSTRAINT %I ;',v_schema_referencing,v_table_referencing ,v_fk_name) AS t_con_validate
+    format('ALTER TABLE ONLY %I.%I VALIDATE CONSTRAINT %I ;',v_schema_referencing,v_table_referencing ,v_fk_name) AS t_con_validate,
+    v_fk_name
 
 FROM
 (
