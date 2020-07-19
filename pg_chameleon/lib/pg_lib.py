@@ -3453,9 +3453,70 @@ class pg_engine(object):
             :param schema: the table's schema
             :param table: the table's name
         """
-        sql_truncate = sql.SQL("REINDEX TABLE {}.{} ;").format(sql.Identifier(schema), sql.Identifier(table))
-        self.pgsql_cur.execute(sql_truncate)
+        sql_reindex = sql.SQL("REINDEX TABLE {}.{} ;").format(sql.Identifier(schema), sql.Identifier(table))
+        self.pgsql_cur.execute(sql_reindex)
 
+    def collect_constraints(self,schema,table):
+        """
+            The method collects indices and primary keys for the given table from the views v_idx_pkeys,v_fkeys.
+            :param schema: the table's schema
+            :param table: the table's name
+        """
+        sql_index = """
+            INSERT INTO sch_chameleon.t_indexes
+            (
+                    v_schema_name,
+                    v_table_name,
+                    v_index_name,
+                    t_index_drop,
+                    t_index_create
+            )
+            SELECT 
+                vip.v_schema_name,
+                vip.v_table_name,
+                vip.v_index_name,
+                vip.t_sql_drop,
+                vip.t_sql_create
+            FROM 
+                sch_chameleon.v_idx_pkeys vip
+                
+            WHERE
+                vip.v_schema_name =%s
+                AND vip.v_table_name =%s
+            AND NOT vip.b_idx_pkey 
+            ON CONFLICT (v_schema_name,v_table_name,v_index_name)
+            DO 
+            UPDATE SET v_index_name = EXCLUDED.v_index_name,t_index_drop=EXCLUDED.t_index_drop,t_index_create=EXCLUDED.t_index_create
+            ;
+        """
+        sql_pkey = """
+            INSERT INTO sch_chameleon.t_pkeys
+            (
+                    v_schema_name,
+                    v_table_name,
+                    v_index_name,
+                    t_pkey_drop,
+                    t_pkey_create
+            )
+            SELECT 
+                vip.v_schema_name,
+                vip.v_table_name,
+                vip.v_index_name,
+                vip.t_sql_drop,
+                vip.t_sql_create
+            FROM 
+                sch_chameleon.v_idx_pkeys vip
+            WHERE
+                vip.v_schema_name =%s
+                AND vip.v_table_name =%s
+            AND vip.b_idx_pkey 
+            ON CONFLICT (v_schema_name,v_table_name)
+            DO 
+            UPDATE SET v_index_name = EXCLUDED.v_index_name,t_pkey_drop=EXCLUDED.t_pkey_drop,t_pkey_create=EXCLUDED.t_pkey_create;
+
+        """
+        self.pgsql_cur.execute(sql_index,(schema,table,))
+        self.pgsql_cur.execute(sql_pkey,(schema,table,))
 
     def truncate_table(self, schema, table):
         """

@@ -3,42 +3,39 @@
 CREATE TABLE sch_chameleon.t_indexes
     (
         i_id_index	bigserial,
-        i_id_table	bigint NOT NULL,
+        v_schema_name varchar NOT NULL,
+        v_table_name varchar NOT NULL,
         v_index_name varchar NOT NULL,
         t_index_drop text NULL,
         t_index_create text NULL,
-        CONSTRAINT pk_t_indexes PRIMARY KEY (i_id_index),
-        CONSTRAINT fk_t_indexes_t_table FOREIGN KEY (i_id_table) REFERENCES sch_chameleon.t_replica_tables (i_id_table)
-            ON UPDATE RESTRICT ON DELETE CASCADE
+        CONSTRAINT pk_t_indexes PRIMARY KEY (i_id_index)
     );
- CREATE UNIQUE INDEX idx_t_indexes_id_table_idx_name ON sch_chameleon.t_indexes USING btree(i_id_table,v_index_name);
+ CREATE UNIQUE INDEX idx_t_indexes_idx_table_schema ON sch_chameleon.t_indexes USING btree(v_schema_name,v_table_name,v_index_name);
 
 CREATE TABLE sch_chameleon.t_pkeys
     (
         i_id_pkey	bigserial,
-        i_id_table	bigint NOT NULL,
+        v_schema_name varchar NOT NULL,
+        v_table_name varchar NOT NULL,
         v_index_name varchar NOT NULL,
         t_pkey_drop text NULL,
         t_pkey_create text NULL,
-        CONSTRAINT pk_t_pkeys PRIMARY KEY (i_id_pkey),
-        CONSTRAINT fk_t_pkeys_t_table FOREIGN KEY (i_id_table) REFERENCES sch_chameleon.t_replica_tables (i_id_table)
-            ON UPDATE RESTRICT ON DELETE CASCADE
+        CONSTRAINT pk_t_pkeys PRIMARY KEY (i_id_pkey)
     );
- CREATE UNIQUE INDEX idx_t_pkeys_id_table ON sch_chameleon.t_pkeys USING btree(i_id_table);
+CREATE UNIQUE INDEX idx_t_pkeys_table_schema ON sch_chameleon.t_pkeys USING btree(v_schema_name,v_table_name);
 
 CREATE TABLE sch_chameleon.t_fkeys
     (
         i_id_fkey	bigserial,
-        i_id_table	bigint NOT NULL,
+        v_schema_name varchar NOT NULL,
+        v_table_name varchar NOT NULL,
         v_constraint_name varchar NOT NULL,
         t_fkey_drop text NULL,
         t_fkey_create text NULL,
-        CONSTRAINT pk_t_fkeys PRIMARY KEY (i_id_fkey),
-        CONSTRAINT fk_i_id_fkey_t_table FOREIGN KEY (i_id_table) REFERENCES sch_chameleon.t_replica_tables (i_id_table)
-            ON UPDATE RESTRICT ON DELETE CASCADE
+        t_fkey_validate text NULL,
+        CONSTRAINT pk_t_fkeys PRIMARY KEY (i_id_fkey)
     );
- CREATE UNIQUE INDEX idx_i_id_fkey_id_table_v_constraint_name ON sch_chameleon.t_fkeys USING btree(i_id_table,v_constraint_name);
-
+ CREATE UNIQUE INDEX idx_t_fkeys_idx_table_schema ON sch_chameleon.t_fkeys USING btree(v_schema_name,v_table_name,v_constraint_name);
 
 
 --VIEWS
@@ -73,8 +70,9 @@ SELECT
              v_constraint_def
          )
     END AS t_sql_create,
-    v_index_name
-
+    v_index_name,
+    v_table_name,
+    v_schema_name
 FROM
 (
     SELECT distinct
@@ -121,7 +119,6 @@ SELECT
     format('ALTER TABLE ONLY %I.%I DROP CONSTRAINT %I ;',v_schema_referencing,v_table_referencing ,v_fk_name) AS t_con_drop,
     format('ALTER TABLE ONLY %I.%I ADD CONSTRAINT %I %s  NOT VALID ;',v_schema_referencing,v_table_referencing,v_fk_name,v_fk_definition) AS t_con_create,
     format('ALTER TABLE ONLY %I.%I VALIDATE CONSTRAINT %I ;',v_schema_referencing,v_table_referencing ,v_fk_name) AS t_con_validate
-
 
 FROM
 (
