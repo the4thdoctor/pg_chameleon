@@ -68,7 +68,7 @@ class replica_engine(object):
         """
             Class constructor.
         """
-        self.catalog_version = '2.0.6'
+        self.catalog_version = '2.0.7'
         self.upgradable_version = '1.7'
         self.lst_yes= ['yes',  'Yes', 'y', 'Y']
         python_lib=os.path.dirname(os.path.realpath(__file__))
