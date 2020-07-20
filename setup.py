@@ -50,7 +50,7 @@ setup(
         "scripts/chameleon"
     ],
     install_requires=[
-        'PyMySQL>=0.7.11', 
+        'PyMySQL==0.9.3', 
         'argparse>=1.2.1', 
         'mysql-replication>=0.15', 
         'psycopg2-binary>=2.8.3', 
