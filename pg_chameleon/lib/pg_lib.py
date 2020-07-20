@@ -599,6 +599,7 @@ class pg_engine(object):
             {'version': '2.0.4',  'script': '203_to_204.sql'},
             {'version': '2.0.5',  'script': '204_to_205.sql'},
             {'version': '2.0.6',  'script': '205_to_206.sql'},
+            {'version': '2.0.7',  'script': '206_to_207.sql'},
         ]
 
 
