@@ -3521,7 +3521,7 @@ class pg_engine(object):
                 self.pgsql_cur.execute(pk[1])
             except:
                 pass
-
+    
     def create_idx_cons(self,schema,table):
         """
             The method creates the constraint and indices for the given table using the statements collected in 
@@ -3680,6 +3680,36 @@ class pg_engine(object):
         self.pgsql_cur.execute(sql_pkey,(schema,table,))
         self.pgsql_cur.execute(sql_fkeys,(schema,table,schema,table,schema,table,))
 
+    def validate_fkeys(self):
+        """
+            The method tries to validate all the invalid foreign keys in the database
+        """
+        sql_get_validate = """
+            SELECT
+                format('ALTER TABLE %I.%I VALIDATE CONSTRAINT %I;',sch.nspname,tab.relname,con.conname) AS t_con_validate,
+                sch.nspname as v_schema_name,
+                con.conname AS v_con_name,
+                tab.relname AS v_table_name
+
+
+            FROM
+                pg_class tab
+                INNER JOIN pg_namespace sch
+                    ON sch.oid=tab.relnamespace
+                INNER JOIN pg_constraint con
+                    ON
+                        con.connamespace=tab.relnamespace
+                    AND	con.conrelid=tab.oid
+            WHERE
+                        con.contype in ('f')
+                    AND NOT con.convalidated
+
+            ;
+        """
+        self.pgsql_cur.execute(sql_get_validate)
+        fk_validate=self.pgsql_cur.fetchall()
+        for fk in fk_validate:
+            self.pgsql_cur.execute(fk[0])
     def truncate_table(self, schema, table):
         """
             The method truncates the table defined by schema and name.
