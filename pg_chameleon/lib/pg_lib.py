@@ -3917,7 +3917,7 @@ class pg_engine(object):
                 index_columns = ['"%s"' % column.strip() for column in idx_col]
                 non_unique = index["non_unique"]
                 if indx =='PRIMARY':
-                    pkey_name = "pk_%s_%s_%s " % (table[0:10],table_timestamp,  self.idx_sequence)
+                    pkey_name = "pk_%s_%s_%s" % (table[0:10],table_timestamp,  self.idx_sequence)
                     pkey_def = 'ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" PRIMARY KEY (%s) ;' % (schema, table, pkey_name, ','.join(index_columns))
                     idx_ddl[pkey_name] = pkey_def
                     table_primary = idx_col
