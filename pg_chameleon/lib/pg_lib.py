@@ -3344,8 +3344,9 @@ class pg_engine(object):
                 """
                 self.pgsql_cur.execute(sql_set_source_consistent, (self.i_id_source,  ))
                 self.pgsql_cur.execute(sql_set_tables_consistent, (self.i_id_source,  ))
-                self.create_foreign_keys()
-                self.validate_fkeys()
+                if self.keep_existing_schema:
+                    self.create_foreign_keys()
+                    self.validate_fkeys()
             else:
                 self.logger.debug("The source: %s is not consistent " %(self.source, ) )
         else:
