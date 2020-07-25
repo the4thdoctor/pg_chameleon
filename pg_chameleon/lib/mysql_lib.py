@@ -733,8 +733,6 @@ class mysql_source(object):
                 except:
                     self.logger.info("Could not copy the table %s. Excluding it from the replica." %(table) )
                     raise
-        self.logger.info("Validating the foreign keys")
-        self.pg_engine.validate_fkeys()
 
     def set_copy_max_memory(self):
         """

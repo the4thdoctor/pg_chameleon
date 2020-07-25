@@ -3345,12 +3345,66 @@ class pg_engine(object):
                 self.pgsql_cur.execute(sql_set_source_consistent, (self.i_id_source,  ))
                 self.pgsql_cur.execute(sql_set_tables_consistent, (self.i_id_source,  ))
                 if self.keep_existing_schema:
-                    self.create_foreign_keys()
-                    self.validate_fkeys()
+                    self.__create_foreign_keys()
+                    self.__validate_fkeys()
+                    self.__cleanup_idx_keys()
             else:
                 self.logger.debug("The source: %s is not consistent " %(self.source, ) )
         else:
             self.logger.debug("The source: %s is consistent" %(self.source, ) )
+
+    def __cleanup_idx_keys(self):
+        """
+            The method removes the index and keys definitions collected for the source
+        """
+        sql_clean_idx = """
+            DELETE FROM sch_chameleon.t_indexes 
+            WHERE 
+                (v_schema_name,v_table_name) 
+            IN 
+                (
+                    SELECT 
+                        v_schema_name,
+                        v_table_name 
+                    FROM 
+                        sch_chameleon.t_replica_tables 
+                    WHERE i_id_source =%s
+                )
+            ;
+        """
+        sql_clean_pkeys = """
+            DELETE FROM sch_chameleon.t_pkeys 
+            WHERE 
+                (v_schema_name,v_table_name) 
+            IN 
+                (
+                    SELECT 
+                        v_schema_name,
+                        v_table_name 
+                    FROM 
+                        sch_chameleon.t_replica_tables 
+                    WHERE i_id_source =%s
+                )
+            ;
+        """
+        sql_clean_fkeys = """
+            DELETE FROM sch_chameleon.t_fkeys 
+            WHERE 
+                (v_schema_name,v_table_name) 
+            IN 
+                (
+                    SELECT 
+                        v_schema_name,
+                        v_table_name 
+                    FROM 
+                        sch_chameleon.t_replica_tables 
+                    WHERE i_id_source =%s
+                )
+            ;
+        """
+        self.pgsql_cur.execute(sql_clean_idx, (self.i_id_source, ))
+        self.pgsql_cur.execute(sql_clean_pkeys, (self.i_id_source, ))
+        self.pgsql_cur.execute(sql_clean_fkeys, (self.i_id_source, ))
 
     def set_source_highwatermark(self, master_status, consistent):
         """
@@ -3525,7 +3579,7 @@ class pg_engine(object):
                 self.pgsql_cur.execute(pk[1])
             except:
                 pass
-    def create_foreign_keys(self):
+    def __create_foreign_keys(self):
         """
             The method creates the foreign keys previously dropped using the data stored in sch_chameleon.t_fkeys.
             In order to reduce the blockage the foreign keys are created invalid and validated in a second step.
@@ -3554,7 +3608,7 @@ class pg_engine(object):
             The method creates the constraint and indices for the given table using the statements collected in
             collect_idx_cons. The foreign keys are not created at this stage as they may be left inconsistent
             during the initial replay phase.
-            The foreign key creation is managed by create_foreign_keys() which is executed when the replica reaches the
+            The foreign key creation is managed by __create_foreign_keys() which is executed when the replica reaches the
             consistent status.
             :param schema: the table's schema
             :param table: the table's name
@@ -3694,7 +3748,7 @@ class pg_engine(object):
         self.pgsql_cur.execute(sql_pkey,(schema,table,))
         self.pgsql_cur.execute(sql_fkeys,(schema,table,schema,table,schema,table,))
 
-    def validate_fkeys(self):
+    def __validate_fkeys(self):
         """
             The method tries to validate all the invalid foreign keys in the database
         """
