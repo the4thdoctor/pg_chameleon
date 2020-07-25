@@ -1431,6 +1431,7 @@ class mysql_source(object):
                             self.logger.debug("updating processed flag for id_batch %s", (id_batch))
                             self.pg_engine.set_batch_processed(id_batch)
                             self.id_batch=None
+                self.pg_engine.keep_existing_schema = self.keep_existing_schema            
                 self.pg_engine.check_source_consistent()
 
 

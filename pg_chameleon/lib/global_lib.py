@@ -479,7 +479,11 @@ class replica_engine(object):
             The method reads the replica stream for the given source and stores the row images
             in the target postgresql database.
         """
-
+        if "keep_existing_schema" in self.config["sources"][self.args.source]:
+            keep_existing_schema = self.config["sources"][self.args.source]["keep_existing_schema"]
+        else:
+            keep_existing_schema = False
+        self.mysql_source.keep_existing_schema = keep_existing_schema
         self.mysql_source.logger  = log_read[0]
         self.pg_engine.logger  = log_read[0]
         while True:
@@ -494,11 +498,6 @@ class replica_engine(object):
         """
             The method replays the row images stored in the target postgresql database.
         """
-        if "keep_existing_schema" in self.config["sources"][self.args.source]:
-            keep_existing_schema = self.config["sources"][self.args.source]["keep_existing_schema"]
-        else:
-            keep_existing_schema = False
-        self.pg_engine.keep_existing_schema = keep_existing_schema
         self.pg_engine.logger  = log_replay[0]
         tables_error  = []
         self.pg_engine.connect_db()
