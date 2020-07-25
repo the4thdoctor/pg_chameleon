@@ -599,6 +599,7 @@ class pg_engine(object):
             {'version': '2.0.4',  'script': '203_to_204.sql'},
             {'version': '2.0.5',  'script': '204_to_205.sql'},
             {'version': '2.0.6',  'script': '205_to_206.sql'},
+            {'version': '2.0.7',  'script': '206_to_207.sql'},
         ]
 
 
@@ -3343,6 +3344,9 @@ class pg_engine(object):
                 """
                 self.pgsql_cur.execute(sql_set_source_consistent, (self.i_id_source,  ))
                 self.pgsql_cur.execute(sql_set_tables_consistent, (self.i_id_source,  ))
+                if self.keep_existing_schema:
+                    self.create_foreign_keys()
+                    self.validate_fkeys()
             else:
                 self.logger.debug("The source: %s is not consistent " %(self.source, ) )
         else:
@@ -3453,19 +3457,281 @@ class pg_engine(object):
             :param schema: the table's schema
             :param table: the table's name
         """
-        sql_truncate = sql.SQL("REINDEX TABLE {}.{} ;").format(sql.Identifier(schema), sql.Identifier(table))
-        self.pgsql_cur.execute(sql_truncate)
+        sql_reindex = sql.SQL("REINDEX TABLE {}.{} ;").format(sql.Identifier(schema), sql.Identifier(table))
+        self.pgsql_cur.execute(sql_reindex)
 
+    def cleanup_idx_cons(self,schema,table):
+        """
+            The method cleansup the constraint and indices for the given table using the statements collected in
+            collect_idx_cons.
+            :param schema: the table's schema
+            :param table: the table's name
+        """
+        sql_get_fk_drop = """
+            SELECT
+                v_constraint_name,
+                t_fkey_drop
+            FROM
+                sch_chameleon.t_fkeys
+            WHERE
+                    v_schema_name=%s
+                AND v_table_name=%s
+            ;
+            """
+        sql_get_idx_drop = """
+            SELECT
+                v_index_name,
+                t_index_drop
+            FROM
+                sch_chameleon.t_indexes
+            WHERE
+                    v_schema_name=%s
+                AND v_table_name=%s
+            ;
+            """
+        sql_get_pk_drop = """
+            SELECT
+                v_index_name,
+                t_pkey_drop
+            FROM
+                sch_chameleon.t_pkeys
+            WHERE
+                    v_schema_name=%s
+                AND v_table_name=%s
+            ;
+            """
+        self.pgsql_cur.execute(sql_get_fk_drop,(schema,table,))
+        fk_drop=self.pgsql_cur.fetchall()
+        self.pgsql_cur.execute(sql_get_idx_drop,(schema,table,))
+        idx_drop=self.pgsql_cur.fetchall()
+        self.pgsql_cur.execute(sql_get_pk_drop,(schema,table,))
+        pk_drop=self.pgsql_cur.fetchall()
+
+        for fk in fk_drop:
+            self.logger.info("Dropping the foreign key {}".format(fk[0],))
+            try:
+                self.pgsql_cur.execute(fk[1])
+            except:
+                pass
+        for idx in idx_drop:
+            self.logger.info("Dropping the index {}".format(idx[0],))
+            try:
+                self.pgsql_cur.execute(idx[1])
+            except:
+                pass
+        for pk in pk_drop:
+            self.logger.info("Dropping the primary key {}".format(pk[0],))
+            try:
+                self.pgsql_cur.execute(pk[1])
+            except:
+                pass
+    def create_foreign_keys(self):
+        """
+            The method creates the foreign keys previously dropped using the data stored in sch_chameleon.t_fkeys.
+            In order to reduce the blockage the foreign keys are created invalid and validated in a second step.
+        """
+        sql_get_fk_create = """
+            SELECT
+                v_constraint_name,
+                t_fkey_create,
+                t_fkey_validate
+            FROM
+                sch_chameleon.t_fkeys
+            ;
+            """
+        self.pgsql_cur.execute(sql_get_fk_create)
+        fk_create=self.pgsql_cur.fetchall()
+        for fk in fk_create:
+            self.logger.info("Creating the foreign key {}".format(fk[0],))
+            try:
+                self.pgsql_cur.execute(fk[1])
+            except:
+                pass
+
+
+    def create_idx_cons(self,schema,table):
+        """
+            The method creates the constraint and indices for the given table using the statements collected in
+            collect_idx_cons. The foreign keys are not created at this stage as they may be left inconsistent
+            during the initial replay phase.
+            The foreign key creation is managed by create_foreign_keys() which is executed when the replica reaches the
+            consistent status.
+            :param schema: the table's schema
+            :param table: the table's name
+        """
+
+        sql_get_idx_create = """
+            SELECT
+                v_index_name,
+                t_index_create
+            FROM
+                sch_chameleon.t_indexes
+            WHERE
+                    v_schema_name=%s
+                AND v_table_name=%s
+            ;
+            """
+        sql_get_pk_create = """
+            SELECT
+                v_index_name,
+                t_pkey_create
+            FROM
+                sch_chameleon.t_pkeys
+            WHERE
+                     v_schema_name=%s
+                AND v_table_name=%s
+           ;
+            """
+        self.pgsql_cur.execute(sql_get_idx_create,(schema,table,))
+        idx_create=self.pgsql_cur.fetchall()
+        self.pgsql_cur.execute(sql_get_pk_create,(schema,table,))
+        pk_create=self.pgsql_cur.fetchall()
+
+        for pk in pk_create:
+            self.logger.info("Creating the primary key {}".format(pk[0],))
+            self.pgsql_cur.execute(pk[1])
+
+        for idx in idx_create:
+            self.logger.info("Creating the index {}".format(idx[0],))
+            self.pgsql_cur.execute(idx[1])
+
+
+
+    def collect_idx_cons(self,schema,table):
+        """
+            The method collects indices and primary keys for the given table from the views v_idx_pkeys,v_fkeys.
+            :param schema: the table's schema
+            :param table: the table's name
+        """
+        sql_index = """
+            INSERT INTO sch_chameleon.t_indexes
+            (
+                    v_schema_name,
+                    v_table_name,
+                    v_index_name,
+                    t_index_drop,
+                    t_index_create
+            )
+            SELECT
+                vip.v_schema_name,
+                vip.v_table_name,
+                vip.v_index_name,
+                vip.t_sql_drop,
+                vip.t_sql_create
+            FROM
+                sch_chameleon.v_idx_pkeys vip
+
+            WHERE
+                vip.v_schema_name =%s
+                AND vip.v_table_name =%s
+            AND NOT vip.b_idx_pkey
+            ON CONFLICT (v_schema_name,v_table_name,v_index_name)
+            DO
+            UPDATE SET t_index_drop=EXCLUDED.t_index_drop,t_index_create=EXCLUDED.t_index_create
+            ;
+        """
+        sql_pkey = """
+            INSERT INTO sch_chameleon.t_pkeys
+            (
+                    v_schema_name,
+                    v_table_name,
+                    v_index_name,
+                    t_pkey_drop,
+                    t_pkey_create
+            )
+            SELECT
+                vip.v_schema_name,
+                vip.v_table_name,
+                vip.v_index_name,
+                vip.t_sql_drop,
+                vip.t_sql_create
+            FROM
+                sch_chameleon.v_idx_pkeys vip
+            WHERE
+                vip.v_schema_name =%s
+                AND vip.v_table_name =%s
+            AND vip.b_idx_pkey
+            ON CONFLICT (v_schema_name,v_table_name)
+            DO
+            UPDATE SET v_index_name = EXCLUDED.v_index_name,t_pkey_drop=EXCLUDED.t_pkey_drop,t_pkey_create=EXCLUDED.t_pkey_create;
+
+        """
+
+        sql_fkeys = """
+            INSERT INTO sch_chameleon.t_fkeys
+            (
+                v_schema_name,
+                v_table_name,
+                v_constraint_name,
+                t_fkey_drop,
+                t_fkey_create,
+                t_fkey_validate
+            )
+            SELECT
+                %s,
+                %s,
+                v_fk_name,
+                t_con_drop,
+                t_con_create,
+                t_con_validate
+
+            FROM
+                sch_chameleon.v_fkeys vf
+            WHERE
+                (		v_schema_referencing =%s
+                    AND	v_table_referencing=%s
+                )
+                OR (
+                        v_schema_referenced =%s
+                    AND v_table_referenced =%s
+                    )
+            ON CONFLICT (v_schema_name,v_table_name,v_constraint_name)
+            DO
+            UPDATE SET v_constraint_name = EXCLUDED.v_constraint_name,t_fkey_drop=EXCLUDED.t_fkey_drop,t_fkey_create=EXCLUDED.t_fkey_create,t_fkey_validate=EXCLUDED.t_fkey_validate;
+            ;
+        """
+        self.pgsql_cur.execute(sql_index,(schema,table,))
+        self.pgsql_cur.execute(sql_pkey,(schema,table,))
+        self.pgsql_cur.execute(sql_fkeys,(schema,table,schema,table,schema,table,))
+
+    def validate_fkeys(self):
+        """
+            The method tries to validate all the invalid foreign keys in the database
+        """
+        sql_get_validate = """
+            SELECT
+                format('ALTER TABLE %I.%I VALIDATE CONSTRAINT %I;',sch.nspname,tab.relname,con.conname) AS t_con_validate,
+                sch.nspname as v_schema_name,
+                con.conname AS v_con_name,
+                tab.relname AS v_table_name
+
+
+            FROM
+                pg_class tab
+                INNER JOIN pg_namespace sch
+                    ON sch.oid=tab.relnamespace
+                INNER JOIN pg_constraint con
+                    ON
+                        con.connamespace=tab.relnamespace
+                    AND	con.conrelid=tab.oid
+            WHERE
+                        con.contype in ('f')
+                    AND NOT con.convalidated
+
+            ;
+        """
+        self.pgsql_cur.execute(sql_get_validate)
+        fk_validate=self.pgsql_cur.fetchall()
+        for fk in fk_validate:
+            self.pgsql_cur.execute(fk[0])
 
     def truncate_table(self, schema, table):
         """
             The method truncates the table defined by schema and name.
-            The truncate is executed with the CASCADE clause in order to ensure the truncate always succeds even
-            if foreign keys are enforced.
             :param schema: the table's schema
             :param table: the table's name
         """
-        sql_truncate = sql.SQL("TRUNCATE TABLE {}.{} CASCADE;").format(sql.Identifier(schema), sql.Identifier(table))
+        sql_truncate = sql.SQL("TRUNCATE TABLE {}.{};").format(sql.Identifier(schema), sql.Identifier(table))
         self.pgsql_cur.execute(sql_truncate)
 
     def store_table(self, schema, table, table_pkey, master_status):
@@ -3652,7 +3918,7 @@ class pg_engine(object):
                 index_columns = ['"%s"' % column.strip() for column in idx_col]
                 non_unique = index["non_unique"]
                 if indx =='PRIMARY':
-                    pkey_name = "pk_%s_%s_%s " % (table[0:10],table_timestamp,  self.idx_sequence)
+                    pkey_name = "pk_%s_%s_%s" % (table[0:10],table_timestamp,  self.idx_sequence)
                     pkey_def = 'ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" PRIMARY KEY (%s) ;' % (schema, table, pkey_name, ','.join(index_columns))
                     idx_ddl[pkey_name] = pkey_def
                     table_primary = idx_col

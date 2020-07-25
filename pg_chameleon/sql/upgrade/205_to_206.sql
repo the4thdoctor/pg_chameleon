@@ -1,5 +1,4 @@
 -- upgrade catalogue script 2.0.5 to 2.0.6
-
 CREATE OR REPLACE FUNCTION sch_chameleon.fn_replay_mysql(integer,integer,boolean)
 RETURNS sch_chameleon.ty_replay_status AS
 $BODY$

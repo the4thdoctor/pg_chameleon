@@ -68,7 +68,7 @@ class replica_engine(object):
         """
             Class constructor.
         """
-        self.catalog_version = '2.0.6'
+        self.catalog_version = '2.0.7'
         self.upgradable_version = '1.7'
         self.lst_yes= ['yes',  'Yes', 'y', 'Y']
         python_lib=os.path.dirname(os.path.realpath(__file__))
@@ -494,6 +494,11 @@ class replica_engine(object):
         """
             The method replays the row images stored in the target postgresql database.
         """
+        if "keep_existing_schema" in self.config["sources"][self.args.source]:
+            keep_existing_schema = self.config["sources"][self.args.source]["keep_existing_schema"]
+        else:
+            keep_existing_schema = False
+        self.pg_engine.keep_existing_schema = keep_existing_schema
         self.pg_engine.logger  = log_replay[0]
         tables_error  = []
         self.pg_engine.connect_db()
