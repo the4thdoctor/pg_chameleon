@@ -1,5 +1,43 @@
 RELEASE NOTES
 *************************
+2.0.14
+--------------------------
+This maintenance release improves the support for spatial datatypes.
+When postgis is installed on the target database then the spatial data types
+``point``,``geometry``,``linestring``,``polygon``, ``multipoint``, ``multilinestring``, ``geometrycollection`` are converted to
+geometry and the data is replicated using the Well-Known Binary (WKB) Format. As the MySQL implementation for WKB is not standard pg_chameleon
+removes the first 4 bytes from the decoded binary data before sending it to PostgreSQL.
+
+When ``keep_existing_schema`` is set to ``yes`` now drops and recreates indices, and primary keys during the ``init_replica`` process.
+The foreign keys are dropped as well and recreated when the replica reaches the consistent status.
+This way the ``init_replica`` may complete successfully even when there are foreign keys in place and with the same speed of the usual ``init_replica``.
+
+The setup.py now forces PyMySQL to version <0.10.0 because it breaks the python-mysql-replication library (issue #117).
+
+Thanks to @porshkevich which fixed issue #115 by trim the space from PK index name.
+
+This release requires a replica catalogue upgrade, therefore is very important to follow the upgrade instructions provided below.
+
+* If working via ssh is suggested to use screen or tmux for the upgrade
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>``
+* Take a backup of the schema ``sch_chameleon`` with pg_dump as a good measure.
+* Install the upgrade with ``pip install pg_chameleon --upgrade``
+* Check if the version is upgraded with ``chameleon --version``
+* Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
+* Start all the replicas.
+
+If the upgrade procedure can't upgrade the replica catalogue because of running or errored replicas is it possible to reset the statuses by
+using the command ``chameleon enable_replica --source <source_name>``.
+
+If the catalogue upgrade is still  not possible then you can downgrade pgchameleon to the previous version. Please note that you may need to
+install manually PyMySQL to fix the issue with the version 0.10.0.
+
+``pip install pg_chameleon==2.0.13``
+
+``pip install "PyMySQL<0.10.0"``
+
+
+
 
 2.0.13
 --------------------------

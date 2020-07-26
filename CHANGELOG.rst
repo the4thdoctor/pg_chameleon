@@ -1,5 +1,12 @@
 changelog
 *************************
+2.0.14 - 26 July 2020
+..........................................................
+* Add support for spatial data types (requires postgis installed on the target database)
+* When ``keep_existing_schema`` is set to ``yes`` now drops and recreates indices, and constraints during the ``init_replica`` process
+* Fix for issue #115 thanks to @porshkevich
+* setup.py now forces PyMySQL to version <0.10.0 because it breaks the python-mysql-replication library (issue #117)
+
 2.0.13 - 05 July 2020
 ..........................................................
 * **EXPERIMENTAL** support for Point datatype - @jovankricka-everon
