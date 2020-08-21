@@ -483,6 +483,31 @@ class mysql_source(object):
         return select_columns
 
 
+    def begintx(self):
+        """
+            The method sets the isolation level to repeatable read and begins a transaction
+        """
+        self.logger.debug("set isolation level")
+        self.cursor_buffered.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        self.logger.debug("beginning transaction")
+        self.cursor_buffered.execute("BEGIN")
+
+    def endtx(self):
+        """
+            The method ends the current transaction by rollback
+            - We should never have changed source anyway
+        """
+        self.logger.debug("rolling back")
+        self.cursor_buffered.execute("ROLLBACK")
+
+    def maketxsnapshot(self, schema, table):
+        """
+            The method forces creation of transaction snapshot by making a read of
+            one row from the source table and discarding it
+        """
+        self.logger.debug("reading and discarding 1 row from `%s`.`%s`" % (schema, table))
+        self.cursor_buffered.execute("SELECT * FROM `%s`.`%s` LIMIT 1" % (schema, table))
+
     def lock_table(self, schema, table):
         """
             The method flushes the given table with read lock.
@@ -496,6 +521,14 @@ class mysql_source(object):
         sql_lock = "FLUSH TABLES `%s`.`%s` WITH READ LOCK;" %(schema, table)
         self.logger.debug("collecting the master's coordinates for table `%s`.`%s`" % (schema, table) )
         self.cursor_buffered.execute(sql_lock)
+
+    def unlock_tables(self):
+        """
+            The method unlocks all tables
+        """
+        self.logger.debug("unlocking the tables")
+        sql_unlock = "UNLOCK TABLES;"
+        self.cursor_buffered.execute(sql_unlock)
 
     def get_master_coordinates(self):
         """
@@ -534,13 +567,16 @@ class mysql_source(object):
                         round(({}/avg_row_length))
                 ELSE
                     0
-                END as copy_limit
+                END as copy_limit,
+                transactions
             FROM
-                information_schema.TABLES
+                information_schema.TABLES,
+                information_schema.ENGINES
             WHERE
                     table_schema=%s
                 AND	table_type='BASE TABLE'
                 AND table_name=%s
+                AND TABLES.engine = ENGINES.engine
             ;
         """
         sql_rows = sql_rows.format(self.copy_max_memory)
@@ -548,17 +584,23 @@ class mysql_source(object):
         count_rows = self.cursor_buffered.fetchone()
         total_rows = count_rows["table_rows"]
         copy_limit = int(count_rows["copy_limit"])
+        tabletxs = count_rows["transactions"] == "YES"
         if copy_limit == 0:
             copy_limit = 1000000
         num_slices = int(total_rows//copy_limit)
         range_slices = list(range(num_slices+1))
         total_slices = len(range_slices)
         slice = range_slices[0]
-        self.logger.debug("The table %s.%s will be copied in %s  estimated slice(s) of %s rows"  % (schema, table, total_slices, copy_limit))
+        self.logger.debug("The table %s.%s will be copied in %s  estimated slice(s) of %s rows, using a transaction %s"  % (schema, table, total_slices, copy_limit, tabletxs))
 
         out_file = '%s/%s_%s.csv' % (self.out_dir, schema, table )
         self.lock_table(schema, table)
+        if tabletxs:
+            self.begintx()
+            self.maketxsnapshot(schema, table)
         master_status = self.get_master_coordinates()
+        if tabletxs:
+            self.unlock_tables()
         select_columns = self.generate_select_statements(schema, table)
         csv_data = ""
         sql_csv = "SELECT %s as data FROM `%s`.`%s`;" % (select_columns["select_csv"], schema, table)
@@ -605,9 +647,10 @@ class mysql_source(object):
             self.insert_table_data(ins_arg)
 
 
-        self.logger.debug("unlocking the table %s.%s" % (schema, table) )
-        sql_unlock = "UNLOCK TABLES;"
-        self.cursor_buffered.execute(sql_unlock)
+        if tabletxs:
+            self.endtx()
+        else:
+            self.unlock_tables()
         self.disconnect_db_buffered()
 
         try:
