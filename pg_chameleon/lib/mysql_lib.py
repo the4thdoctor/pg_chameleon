@@ -483,7 +483,7 @@ class mysql_source(object):
         return select_columns
 
 
-    def begintx(self):
+    def begin_tx(self):
         """
             The method sets the isolation level to repeatable read and begins a transaction
         """
@@ -492,7 +492,7 @@ class mysql_source(object):
         self.logger.debug("beginning transaction")
         self.cursor_buffered.execute("BEGIN")
 
-    def endtx(self):
+    def end_tx(self):
         """
             The method ends the current transaction by rollback
             - We should never have changed source anyway
@@ -500,7 +500,7 @@ class mysql_source(object):
         self.logger.debug("rolling back")
         self.cursor_buffered.execute("ROLLBACK")
 
-    def maketxsnapshot(self, schema, table):
+    def make_tx_snapshot(self, schema, table):
         """
             The method forces creation of transaction snapshot by making a read of
             one row from the source table and discarding it
@@ -596,8 +596,8 @@ class mysql_source(object):
         out_file = '%s/%s_%s.csv' % (self.out_dir, schema, table )
         self.lock_table(schema, table)
         if tabletxs:
-            self.begintx()
-            self.maketxsnapshot(schema, table)
+            self.begin_tx()
+            self.make_tx_snapshot(schema, table)
         master_status = self.get_master_coordinates()
         if tabletxs:
             self.unlock_tables()
@@ -648,7 +648,7 @@ class mysql_source(object):
 
 
         if tabletxs:
-            self.endtx()
+            self.end_tx()
         else:
             self.unlock_tables()
         self.disconnect_db_buffered()
