@@ -483,6 +483,31 @@ class mysql_source(object):
         return select_columns
 
 
+    def begin_tx(self):
+        """
+            The method sets the isolation level to repeatable read and begins a transaction
+        """
+        self.logger.debug("set isolation level")
+        self.cursor_unbuffered.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        self.logger.debug("beginning transaction")
+        self.cursor_unbuffered.execute("BEGIN")
+
+    def end_tx(self):
+        """
+            The method ends the current transaction by rollback
+            - We should never have changed source anyway
+        """
+        self.logger.debug("rolling back")
+        self.cursor_unbuffered.execute("ROLLBACK")
+
+    def make_tx_snapshot(self, schema, table):
+        """
+            The method forces creation of transaction snapshot by making a read of
+            one row from the source table and discarding it
+        """
+        self.logger.debug("reading and discarding 1 row from `%s`.`%s`" % (schema, table))
+        self.cursor_unbuffered.execute("SELECT * FROM `%s`.`%s` LIMIT 1" % (schema, table))
+
     def lock_table(self, schema, table):
         """
             The method flushes the given table with read lock.
@@ -496,6 +521,14 @@ class mysql_source(object):
         sql_lock = "FLUSH TABLES `%s`.`%s` WITH READ LOCK;" %(schema, table)
         self.logger.debug("collecting the master's coordinates for table `%s`.`%s`" % (schema, table) )
         self.cursor_buffered.execute(sql_lock)
+
+    def unlock_tables(self):
+        """
+            The method unlocks all tables
+        """
+        self.logger.debug("unlocking the tables")
+        sql_unlock = "UNLOCK TABLES;"
+        self.cursor_buffered.execute(sql_unlock)
 
     def get_master_coordinates(self):
         """
@@ -534,13 +567,16 @@ class mysql_source(object):
                         round(({}/avg_row_length))
                 ELSE
                     0
-                END as copy_limit
+                END as copy_limit,
+                transactions
             FROM
-                information_schema.TABLES
+                information_schema.TABLES,
+                information_schema.ENGINES
             WHERE
                     table_schema=%s
                 AND	table_type='BASE TABLE'
                 AND table_name=%s
+                AND TABLES.engine = ENGINES.engine
             ;
         """
         sql_rows = sql_rows.format(self.copy_max_memory)
@@ -548,24 +584,29 @@ class mysql_source(object):
         count_rows = self.cursor_buffered.fetchone()
         total_rows = count_rows["table_rows"]
         copy_limit = int(count_rows["copy_limit"])
+        table_txs = count_rows["transactions"] == "YES"
         if copy_limit == 0:
             copy_limit = 1000000
         num_slices = int(total_rows//copy_limit)
         range_slices = list(range(num_slices+1))
         total_slices = len(range_slices)
         slice = range_slices[0]
-        self.logger.debug("The table %s.%s will be copied in %s  estimated slice(s) of %s rows"  % (schema, table, total_slices, copy_limit))
-
+        self.logger.debug("The table %s.%s will be copied in %s  estimated slice(s) of %s rows, using a transaction %s"  % (schema, table, total_slices, copy_limit, table_txs))
         out_file = '%s/%s_%s.csv' % (self.out_dir, schema, table )
         self.lock_table(schema, table)
         master_status = self.get_master_coordinates()
+
         select_columns = self.generate_select_statements(schema, table)
         csv_data = ""
         sql_csv = "SELECT %s as data FROM `%s`.`%s`;" % (select_columns["select_csv"], schema, table)
         column_list = select_columns["column_list"]
         self.logger.debug("Executing query for table %s.%s"  % (schema, table ))
         self.connect_db_unbuffered()
+        if table_txs:
+            self.begin_tx()
         self.cursor_unbuffered.execute(sql_csv)
+        if table_txs:
+            self.unlock_tables()
         while True:
             csv_results = self.cursor_unbuffered.fetchmany(copy_limit)
             if len(csv_results) == 0:
@@ -592,8 +633,6 @@ class mysql_source(object):
             slice+=1
 
             csv_file.close()
-        self.cursor_unbuffered.close()
-        self.disconnect_db_unbuffered()
         if len(slice_insert)>0:
             ins_arg={}
             ins_arg["slice_insert"] = slice_insert
@@ -605,9 +644,12 @@ class mysql_source(object):
             self.insert_table_data(ins_arg)
 
 
-        self.logger.debug("unlocking the table %s.%s" % (schema, table) )
-        sql_unlock = "UNLOCK TABLES;"
-        self.cursor_buffered.execute(sql_unlock)
+        if table_txs:
+            self.end_tx()
+        else:
+            self.unlock_tables()
+        self.cursor_unbuffered.close()
+        self.disconnect_db_unbuffered()
         self.disconnect_db_buffered()
 
         try:
@@ -725,7 +767,7 @@ class mysql_source(object):
                         self.pg_engine.truncate_table(destination_schema,table)
                     else:
                         table_pkey = self.__create_indices(schema, table)
-                    master_status = self.copy_data(schema, table)  
+                    master_status = self.copy_data(schema, table)
                     self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
                     if self.keep_existing_schema:
                         self.logger.info("Adding constraint and indices to the destination table  %s.%s" %(destination_schema, table) )
@@ -1429,7 +1471,7 @@ class mysql_source(object):
                             self.logger.debug("updating processed flag for id_batch %s", (id_batch))
                             self.pg_engine.set_batch_processed(id_batch)
                             self.id_batch=None
-                self.pg_engine.keep_existing_schema = self.keep_existing_schema            
+                self.pg_engine.keep_existing_schema = self.keep_existing_schema
                 self.pg_engine.check_source_consistent()
 
 
