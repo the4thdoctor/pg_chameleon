@@ -68,6 +68,11 @@ class replica_engine(object):
         """
             Class constructor.
         """
+        if os.geteuid()==0:
+            print ("pg_chameleon cannot be run as root")
+            sys.exit(10)
+
+
         self.catalog_version = '2.0.7'
         self.upgradable_version = '1.7'
         self.lst_yes= ['yes',  'Yes', 'y', 'Y']
