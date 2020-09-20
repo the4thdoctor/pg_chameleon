@@ -10,12 +10,12 @@ package_data = {'pg_chameleon': ['configuration/config-example.yml','sql/upgrade
 
 setup(
     name="pg_chameleon",
-    version="2.0.14",
+    version="2.0.15",
     description="MySQL to PostgreSQL replica and migration",
     long_description=readme(),
     author = "Federico Campoli",
     author_email = "the4thdoctor.gallifrey@gmail.com",
-    maintainer = "Federico Campoli", 
+    maintainer = "Federico Campoli",
     maintainer_email = "the4thdoctor.gallifrey@gmail.com",
     url="https://github.com/the4thdoctor/pg_chameleon/",
     license="BSD License",
@@ -46,23 +46,23 @@ setup(
         "pg_chameleon.lib.sql_util"
     ],
     scripts=[
-        "scripts/chameleon.py", 
+        "scripts/chameleon.py",
         "scripts/chameleon"
     ],
     install_requires=[
-        'PyMySQL<0.10.0', 
-        'argparse>=1.2.1', 
-        'mysql-replication>=0.15', 
-        'psycopg2-binary>=2.8.3', 
-        'PyYAML>=5.1.2', 
-        'tabulate>=0.8.1', 
-        'daemonize>=2.4.7', 
+        'PyMySQL>=0.10.0',
+        'argparse>=1.2.1',
+        'mysql-replication>=0.22',
+        'psycopg2-binary>=2.8.3',
+        'PyYAML>=5.1.2',
+        'tabulate>=0.8.1',
+        'daemonize>=2.4.7',
         'rollbar>=0.13.17'
     ],
-    include_package_data = True, 
+    include_package_data = True,
     package_data=package_data,
     packages=setuptools.find_packages(),
     python_requires='>=3.5',
     keywords='postgresql mysql replica migration database',
-    
+
 )

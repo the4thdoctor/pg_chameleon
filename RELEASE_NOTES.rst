@@ -1,5 +1,17 @@
 RELEASE NOTES
 *************************
+2.0.15
+--------------------------
+This maintenance release adds the support for reduced lock if MySQL engine is transactional, thanks to @rascalDan.
+
+The init_replica process checks whether the engine for the table is transactional and runs the initial copy within a transaction.
+The process still requires a FLUSH TABLES WITH READ LOCK but the lock is released as soon as the transaction snapshot is acquired.
+This improvement allows pg_chameleon to run agains primary databases with minimal impact during the init_replica process.
+
+The python-mysql-replication requirement is now changed to version >=0.22. This release adds support for PyMySQL >=0.10.0.
+The requirement for PyMySQL to version <0.10.0 is therefore removed from setup.py.
+
+
 2.0.14
 --------------------------
 This maintenance release improves the support for spatial datatypes.

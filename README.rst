@@ -86,6 +86,8 @@ Features
 * Daemonised init_replica process.
 * Daemonised replica process with two separated subprocess, one for the read and one for the replay.
 * Rollbar integration
+* Support for geometrical data. **Requires PostGIS on the target database.**
+* Minimal locking during init_replica for transactional engines (e.g. innodb)
 
 
 

@@ -95,7 +95,6 @@ statement = """RENAME TABLE `sakila`.`test_partition` TO `sakila`.`_test_partiti
 #statement="""ALTER TABLE foo MODIFY bar INT UNSIGNED DEFAULT NULL;"""
 #statement="""ALTER TABLE foo change bar bar INT UNSIGNED;"""
 statement="""ALTER TABLE `some_sch`.`my_great_table` CHANGE COLUMN `IMEI` `IMEI` VARCHAR(255) NULL DEFAULT NULL COMMENT 'IMEI datatype changed'"""
-
 token_sql=sql_token()
 token_sql.parse_sql(statement)
 print (token_sql.tokenised)
