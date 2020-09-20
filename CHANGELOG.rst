@@ -1,6 +1,6 @@
 changelog
 *************************
-2.0.15 - 21 September 2020
+2.0.15 - 20 September 2020
 ..........................................................
 * Support for reduced lock if MySQL engine is transactional, thanks to @rascalDan
 * setup.py now requires python-mysql-replication to version 0.22 which adds support for PyMySQL >=0.10.0
