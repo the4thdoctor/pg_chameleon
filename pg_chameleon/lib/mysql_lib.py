@@ -498,10 +498,7 @@ class mysql_source(object):
             - We should never have changed source anyway
         """
         self.logger.debug("rolling back")
-        try:
-            self.cursor_unbuffered.execute("ROLLBACK")
-        except:
-            pass
+        self.cursor_unbuffered.execute("ROLLBACK")
 
     def make_tx_snapshot(self, schema, table):
         """
@@ -688,7 +685,6 @@ class mysql_source(object):
             insert_data =  self.cursor_unbuffered.fetchall()
             self.pg_engine.insert_data(loading_schema, table, insert_data , column_list)
             num_insert +=1
-        self.disconnect_db_unbuffered()
 
 
     def print_progress (self, iteration, total, schema, table):
