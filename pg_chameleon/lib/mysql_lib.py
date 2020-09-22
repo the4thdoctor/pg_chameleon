@@ -498,7 +498,10 @@ class mysql_source(object):
             - We should never have changed source anyway
         """
         self.logger.debug("rolling back")
-        self.cursor_unbuffered.execute("ROLLBACK")
+        try:
+            self.cursor_unbuffered.execute("ROLLBACK")
+        except:
+            pass
 
     def make_tx_snapshot(self, schema, table):
         """
