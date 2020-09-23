@@ -1,5 +1,9 @@
 changelog
 *************************
+2.0.16 - 23 September 2020
+..........................................................
+* Fix for issue #126 init_replica failure with tables on transactional engine and invalid data
+
 2.0.15 - 20 September 2020
 ..........................................................
 * Support for reduced lock if MySQL engine is transactional, thanks to @rascalDan
