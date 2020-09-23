@@ -1,5 +1,11 @@
 RELEASE NOTES
 *************************
+2.0.16
+--------------------------
+This maintenance release fix a crash in init_replica caused by an early disconnection during the fallback on insert.
+This caused the end of transaction to crash aborting the init_replica entirely.
+
+
 2.0.15
 --------------------------
 This maintenance release adds the support for reduced lock if MySQL engine is transactional, thanks to @rascalDan.
@@ -11,6 +17,7 @@ This improvement allows pg_chameleon to run agains primary databases with minima
 The python-mysql-replication requirement is now changed to version >=0.22. This release adds support for PyMySQL >=0.10.0.
 The requirement for PyMySQL to version <0.10.0 is therefore removed from setup.py.
 
+From this version pg_chameleon refuse to run as root.
 
 2.0.14
 --------------------------

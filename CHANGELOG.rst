@@ -9,6 +9,7 @@ changelog
 * Support for reduced lock if MySQL engine is transactional, thanks to @rascalDan
 * setup.py now requires python-mysql-replication to version 0.22 which adds support for PyMySQL >=0.10.0
 * removed PyMySQL requirement <0.10.0 from setup.py
+* prevent pg_chameleon to run as root
 
 2.0.14 - 26 July 2020
 ..........................................................
