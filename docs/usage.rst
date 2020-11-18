@@ -6,7 +6,7 @@ Command line reference
 
 .. code-block:: bash
 
-    chameleon command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] [ --rollbar-level ] ] [ --version ] [ --full ]
+    chameleon command [ [ --config ] [ --source ] [ --schema ]  [ --tables ] [--logid] [ --debug ] [ --rollbar-level ] ] [ --version ] [ --full ] [ --allow-root ]
 
 .. csv-table:: Options
    :header: "Option", "Description", "Default","Example"
@@ -20,6 +20,7 @@ Command line reference
    ``--version``,Displays the package version., N/A, ``--version``
    ``--rollbar-level``, Sets the maximum level for the messages to be sent  to rolllbar. Accepted values: "critical" "error" "warning" "info", ``info`` ,``--rollbar-level error``
    ``--full``,Runs a VACUUM FULL  on the log tables when the run_maintenance is executed, N/A,``--full``
+   ``--allow-root``,Allow pg_chameleon to be run as root user, N/A,``--allow-root``
 
 
 .. csv-table:: Command list reference

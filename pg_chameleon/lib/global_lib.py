@@ -68,8 +68,8 @@ class replica_engine(object):
         """
             Class constructor.
         """
-        if os.geteuid()==0:
-            print ("pg_chameleon cannot be run as root")
+        if os.geteuid()==0 and not args.allow_root :
+            print ("pg_chameleon cannot be run as root, supply the `--allow-root` flag to disable this check.")
             sys.exit(10)
 
 

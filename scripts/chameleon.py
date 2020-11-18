@@ -38,6 +38,7 @@ version_help = """Displays pg_chameleon's installed  version."""
 rollbar_help = """Overrides the level for messages to be sent to rolllbar. One of: "critical", "error", "warning", "info". The Default is "info" """
 full_help = """When specified with run_maintenance the switch performs a vacuum full instead of a normal vacuum. """
 truncate_help = """Truncate the existing tables instead of replacing them."""
+allow_root_help = """Allows pg_chameleon to be run as root user"""
 
 parser = argparse.ArgumentParser(description='Command line for pg_chameleon.',  add_help=True)
 parser.add_argument('command', type=str, help=command_help)
@@ -50,6 +51,7 @@ parser.add_argument('--debug', default=False, required=False, help=debug_help, a
 parser.add_argument('--version', action='version', help=version_help,version='{version}'.format(version=__version__))
 parser.add_argument('--rollbar-level', type=str, default="info", required=False, help=rollbar_help)
 parser.add_argument('--full', default=False, required=False, help=full_help, action='store_true')
+parser.add_argument('--allow-root', default=False, required=False, help=allow_root_help, action='store_true')
 args = parser.parse_args()
 
 

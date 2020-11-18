@@ -1,5 +1,9 @@
 changelog
 *************************
+2.x.y - Date
+..........................................................
+* Support command line flag to allow pg_chameleon to run as root
+
 2.0.16 - 23 September 2020
 ..........................................................
 * Fix for issue #126 init_replica failure with tables on transactional engine and invalid data
