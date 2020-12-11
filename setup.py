@@ -54,7 +54,7 @@ setup(
         'argparse>=1.2.1',
         'mysql-replication>=0.22',
         'psycopg2-binary>=2.8.3',
-        'PyYAML>=5.1.2',
+        'PyYAML>=3.13',
         'tabulate>=0.8.1',
         'daemonize>=2.4.7',
         'rollbar>=0.13.17'

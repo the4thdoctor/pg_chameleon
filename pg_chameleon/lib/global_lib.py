@@ -14,7 +14,7 @@ from logging.handlers  import TimedRotatingFileHandler
 from daemonize import Daemonize
 import multiprocessing as mp
 import traceback
-
+from pkg_resources import get_distribution
 class rollbar_notifier(object):
     """
         This class is used to send messages to rollbar whether the key and environment variables are set
@@ -216,7 +216,11 @@ class replica_engine(object):
             sys.exit()
 
         config_file = open(self.config_file, 'r')
-        self.config = yaml.load(config_file.read(), Loader=yaml.FullLoader)
+        pyyml=str(get_distribution('PyYAML')).split(' ')[1]
+        if pyyml<='3.13':
+            self.config = yaml.load(config_file.read())
+        else:
+            self.config = yaml.load(config_file.read(), Loader=yaml.FullLoader)
         config_file.close()
 
 
