@@ -41,12 +41,20 @@ class mysql_source(object):
             The method check if the mysql configuration is compatible with the replica requirements.
             If all the configuration requirements are met then the return value is True.
             Otherwise is false.
-            The parameters checked are
-            log_bin - ON if the binary log is enabled
+            The parameters checked are:
+            log_bin - ON if the binary log is enabled if we are on a vanilla mysql
             binlog_format - must be ROW , otherwise the replica won't get the data
             binlog_row_image - must be FULL, otherwise the row image will be incomplete
 
+            The method checks the function AURORA_VERSION() and if the query doesn't error then skips the log_bin parameter check.
         """
+        sql_aurora = """select AURORA_VERSION() ver;"""
+        try:
+            self.cursor_buffered.execute(sql_log_bin)
+            skip_log_bin_check = True
+        except:
+            skip_log_bin_check = False
+
         if self.gtid_enable:
             sql_log_bin = """SHOW GLOBAL VARIABLES LIKE 'gtid_mode';"""
             self.cursor_buffered.execute(sql_log_bin)
@@ -90,7 +98,7 @@ class mysql_source(object):
         else:
             binlog_row_image = 'FULL'
 
-        if log_bin.upper() == 'ON' and binlog_format.upper() == 'ROW' and binlog_row_image.upper() == 'FULL':
+        if (log_bin.upper() == 'ON' or skip_log_bin_check) and binlog_format.upper() == 'ROW' and binlog_row_image.upper() == 'FULL':
             self.replica_possible = True
         else:
             self.replica_possible = False
