@@ -50,7 +50,7 @@ class mysql_source(object):
         """
         sql_aurora = """select AURORA_VERSION() ver;"""
         try:
-            self.cursor_buffered.execute(sql_log_bin)
+            self.cursor_buffered.execute(sql_aurora)
             skip_log_bin_check = True
         except:
             skip_log_bin_check = False
