@@ -771,6 +771,7 @@ class mysql_source(object):
                         self.pg_engine.collect_idx_cons(destination_schema,table)
                         self.logger.info("Removing constraints and indices from the destination table  %s.%s" %(destination_schema, table) )
                         self.pg_engine.cleanup_idx_cons(destination_schema,table)
+                        self.logger.info("Truncating the table  %s.%s" %(destination_schema, table) )
                         self.pg_engine.truncate_table(destination_schema,table)
                         master_status = self.copy_data(schema, table)
                     else:
@@ -778,6 +779,7 @@ class mysql_source(object):
                         table_pkey = self.__create_indices(schema, table)
                     self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
                     if self.keep_existing_schema:
+                        #input("Press Enter to continue...")
                         self.logger.info("Adding constraint and indices to the destination table  %s.%s" %(destination_schema, table) )
                         self.pg_engine.create_idx_cons(destination_schema,table)
                 except:

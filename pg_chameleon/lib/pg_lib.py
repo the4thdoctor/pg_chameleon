@@ -600,6 +600,7 @@ class pg_engine(object):
             {'version': '2.0.5',  'script': '204_to_205.sql'},
             {'version': '2.0.6',  'script': '205_to_206.sql'},
             {'version': '2.0.7',  'script': '206_to_207.sql'},
+            {'version': '2.0.8',  'script': '207_to_208.sql'},
         ]
 
 
@@ -3560,7 +3561,6 @@ class pg_engine(object):
         idx_drop=self.pgsql_cur.fetchall()
         self.pgsql_cur.execute(sql_get_pk_drop,(schema,table,))
         pk_drop=self.pgsql_cur.fetchall()
-
         for fk in fk_drop:
             self.logger.info("Dropping the foreign key {}".format(fk[0],))
             try:
@@ -3572,13 +3572,14 @@ class pg_engine(object):
             try:
                 self.pgsql_cur.execute(idx[1])
             except:
-                pass
+                raise
         for pk in pk_drop:
             self.logger.info("Dropping the primary key {}".format(pk[0],))
             try:
                 self.pgsql_cur.execute(pk[1])
             except:
                 pass
+
     def __create_foreign_keys(self):
         """
             The method creates the foreign keys previously dropped using the data stored in sch_chameleon.t_fkeys.
@@ -3673,12 +3674,12 @@ class pg_engine(object):
                 vip.t_sql_drop,
                 vip.t_sql_create
             FROM
-                sch_chameleon.v_idx_pkeys vip
+                sch_chameleon.v_idx_cons vip
 
             WHERE
                 vip.v_schema_name =%s
                 AND vip.v_table_name =%s
-            AND NOT vip.b_idx_pkey
+            AND vip.v_constraint_type='i'
             ON CONFLICT (v_schema_name,v_table_name,v_index_name)
             DO
             UPDATE SET t_index_drop=EXCLUDED.t_index_drop,t_index_create=EXCLUDED.t_index_create
@@ -3700,14 +3701,41 @@ class pg_engine(object):
                 vip.t_sql_drop,
                 vip.t_sql_create
             FROM
-                sch_chameleon.v_idx_pkeys vip
+                sch_chameleon.v_idx_cons vip
             WHERE
                 vip.v_schema_name =%s
                 AND vip.v_table_name =%s
-            AND vip.b_idx_pkey
+            AND vip.v_constraint_type='p'
             ON CONFLICT (v_schema_name,v_table_name)
             DO
             UPDATE SET v_index_name = EXCLUDED.v_index_name,t_pkey_drop=EXCLUDED.t_pkey_drop,t_pkey_create=EXCLUDED.t_pkey_create;
+
+        """
+
+        sql_ukey = """
+            INSERT INTO sch_chameleon.t_ukeys
+            (
+                    v_schema_name,
+                    v_table_name,
+                    v_index_name,
+                    t_ukey_drop,
+                    t_ukey_create
+            )
+            SELECT
+                vip.v_schema_name,
+                vip.v_table_name,
+                vip.v_index_name,
+                vip.t_sql_drop,
+                vip.t_sql_create
+            FROM
+                sch_chameleon.v_idx_cons vip
+            WHERE
+                vip.v_schema_name =%s
+                AND vip.v_table_name =%s
+            AND vip.v_constraint_type='u'
+            ON CONFLICT (v_schema_name,v_table_name,v_index_name)
+            DO
+            UPDATE SET v_index_name = EXCLUDED.v_index_name,t_ukey_drop=EXCLUDED.t_ukey_drop,t_ukey_create=EXCLUDED.t_ukey_create;
 
         """
 
@@ -3744,8 +3772,13 @@ class pg_engine(object):
             UPDATE SET v_constraint_name = EXCLUDED.v_constraint_name,t_fkey_drop=EXCLUDED.t_fkey_drop,t_fkey_create=EXCLUDED.t_fkey_create,t_fkey_validate=EXCLUDED.t_fkey_validate;
             ;
         """
+        self.logger.info("Collecting indices for the table %s.%s" % (schema, table,))
         self.pgsql_cur.execute(sql_index,(schema,table,))
+        self.logger.info("Collecting the primary key for the table %s.%s" % (schema, table,))
         self.pgsql_cur.execute(sql_pkey,(schema,table,))
+        self.logger.info("Collecting unique constraints for the table %s.%s" % (schema, table,))
+        self.pgsql_cur.execute(sql_ukey,(schema,table,))
+        self.logger.info("Collecting foreign keys for the table %s.%s" % (schema, table,))
         self.pgsql_cur.execute(sql_fkeys,(schema,table,schema,table,schema,table,))
 
     def __validate_fkeys(self):

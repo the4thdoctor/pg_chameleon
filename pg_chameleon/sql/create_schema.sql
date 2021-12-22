@@ -19,11 +19,11 @@ CREATE TYPE sch_chameleon.ty_replay_status
         v_table_error character varying[]
     );
     
---TABLES/INDICES	
+--TABLES/INDICES  
 
 CREATE TABLE sch_chameleon.t_error_log
 (
-    i_id_log			bigserial,
+    i_id_log      bigserial,
     i_id_batch bigint NOT NULL,
     i_id_source bigint NOT NULL,
     v_table_name character varying(100) NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE sch_chameleon.t_error_log
     t_table_pkey text NOT NULL,
     t_binlog_name text NOT NULL,
     i_binlog_position bigint NOT NULL,
-    ts_error	timestamp without time zone,
+    ts_error  timestamp without time zone,
     t_sql text,
     t_error_message text,
     CONSTRAINT pk_t_error_log PRIMARY KEY (i_id_log)
@@ -41,9 +41,9 @@ CREATE TABLE sch_chameleon.t_error_log
 
 CREATE TABLE sch_chameleon.t_sources
 (
-    i_id_source			bigserial,
-    t_source				text NOT NULL,
-    jsb_schema_mappings	jsonb NOT NULL,
+    i_id_source     bigserial,
+    t_source        text NOT NULL,
+    jsb_schema_mappings jsonb NOT NULL,
     enm_status sch_chameleon.en_src_status NOT NULL DEFAULT 'ready',
     t_binlog_name text,
     i_binlog_position bigint,
@@ -59,9 +59,9 @@ CREATE TABLE sch_chameleon.t_sources
 
 CREATE TABLE sch_chameleon.t_last_received
 (
-    i_id_source			bigserial,
-    b_paused 			boolean NOT NULL DEFAULT FALSE,
-    ts_last_received 		timestamp without time zone,
+    i_id_source     bigserial,
+    b_paused      boolean NOT NULL DEFAULT FALSE,
+    ts_last_received    timestamp without time zone,
     CONSTRAINT pk_t_last_received PRIMARY KEY (i_id_source),
     CONSTRAINT fk_last_received_id_source FOREIGN KEY (i_id_source) 
     REFERENCES  sch_chameleon.t_sources(i_id_source)
@@ -71,8 +71,8 @@ CREATE TABLE sch_chameleon.t_last_received
 
 CREATE TABLE sch_chameleon.t_last_replayed
 (
-    i_id_source			bigserial,
-    b_paused 			boolean NOT NULL DEFAULT FALSE,
+    i_id_source     bigserial,
+    b_paused      boolean NOT NULL DEFAULT FALSE,
     ts_last_replayed timestamp without time zone,
     CONSTRAINT pk_t_last_replayed PRIMARY KEY (i_id_source),
     CONSTRAINT fk_last_replayed_id_source FOREIGN KEY (i_id_source) 
@@ -157,12 +157,12 @@ CREATE UNIQUE INDEX idx_t_replica_tables_table_schema
 
 CREATE TABLE sch_chameleon.t_discarded_rows
 (
-    i_id_row		bigserial,
-    i_id_batch	bigint NOT NULL,
-    ts_discard	timestamp with time zone NOT NULL DEFAULT clock_timestamp(),
+    i_id_row    bigserial,
+    i_id_batch  bigint NOT NULL,
+    ts_discard  timestamp with time zone NOT NULL DEFAULT clock_timestamp(),
     v_table_name character varying(100) NOT NULL,
         v_schema_name character varying(100) NOT NULL,
-    t_row_data	text,
+    t_row_data  text,
     CONSTRAINT pk_t_discarded_rows PRIMARY KEY (i_id_row)
 )
 ;
@@ -184,8 +184,8 @@ ALTER TABLE sch_chameleon.t_replica_tables
 
 CREATE TABLE sch_chameleon.t_batch_events
 (
-    i_id_batch	bigint NOT NULL,
-    I_id_event	bigint[] NOT NULL,
+    i_id_batch  bigint NOT NULL,
+    I_id_event  bigint[] NOT NULL,
     CONSTRAINT pk_t_batch_id_events PRIMARY KEY (i_id_batch)
 )
 ;
@@ -198,7 +198,7 @@ ALTER TABLE sch_chameleon.t_batch_events
 
 CREATE TABLE sch_chameleon.t_indexes
     (
-        i_id_index	bigserial,
+        i_id_index  bigserial,
         v_schema_name varchar NOT NULL,
         v_table_name varchar NOT NULL,
         v_index_name varchar NOT NULL,
@@ -210,7 +210,7 @@ CREATE TABLE sch_chameleon.t_indexes
 
 CREATE TABLE sch_chameleon.t_pkeys
     (
-        i_id_pkey	bigserial,
+        i_id_pkey bigserial,
         v_schema_name varchar NOT NULL,
         v_table_name varchar NOT NULL,
         v_index_name varchar NOT NULL,
@@ -220,9 +220,21 @@ CREATE TABLE sch_chameleon.t_pkeys
     );
 CREATE UNIQUE INDEX idx_t_pkeys_table_schema ON sch_chameleon.t_pkeys USING btree(v_schema_name,v_table_name);
 
+CREATE TABLE sch_chameleon.t_ukeys
+    (
+        i_id_ukey bigserial,
+        v_schema_name varchar NOT NULL,
+        v_table_name varchar NOT NULL,
+        v_index_name varchar NOT NULL,
+        t_ukey_drop text NULL,
+        t_ukey_create text NULL,
+        CONSTRAINT pk_t_ukeys PRIMARY KEY (i_id_ukey)
+    );
+CREATE UNIQUE INDEX idx_t_ukeys_table_schema ON sch_chameleon.t_ukeys USING btree(v_schema_name,v_table_name,v_index_name);
+
 CREATE TABLE sch_chameleon.t_fkeys
     (
-        i_id_fkey	bigserial,
+        i_id_fkey bigserial,
         v_schema_name varchar NOT NULL,
         v_table_name varchar NOT NULL,
         v_constraint_name varchar NOT NULL,
@@ -278,30 +290,30 @@ CREATE OR REPLACE FUNCTION sch_chameleon.fn_replay_mysql(integer,integer,boolean
 RETURNS sch_chameleon.ty_replay_status AS
 $BODY$
     DECLARE
-        p_i_max_events		ALIAS FOR $1;
-        p_i_id_source		ALIAS FOR $2;
-        p_b_exit_on_error	ALIAS FOR $3;
-        v_ty_status		sch_chameleon.ty_replay_status;
-        v_r_statements		record;
-        v_i_id_batch		bigint;
-        v_v_log_table		text;
-        v_t_ddl			text;
-        v_t_main_sql		text;
-        v_t_delete_sql		text;
-        v_i_replayed		integer;
-        v_i_skipped		integer;
-        v_i_ddl			integer;
-        v_i_evt_replay		bigint[];
-        v_i_evt_queue		bigint[];
-        v_ts_evt_source		timestamp without time zone;
-        v_tab_enabled		boolean;
+        p_i_max_events    ALIAS FOR $1;
+        p_i_id_source   ALIAS FOR $2;
+        p_b_exit_on_error ALIAS FOR $3;
+        v_ty_status   sch_chameleon.ty_replay_status;
+        v_r_statements    record;
+        v_i_id_batch    bigint;
+        v_v_log_table   text;
+        v_t_ddl     text;
+        v_t_main_sql    text;
+        v_t_delete_sql    text;
+        v_i_replayed    integer;
+        v_i_skipped   integer;
+        v_i_ddl     integer;
+        v_i_evt_replay    bigint[];
+        v_i_evt_queue   bigint[];
+        v_ts_evt_source   timestamp without time zone;
+        v_tab_enabled   boolean;
 
     BEGIN
         v_i_replayed:=0;
         v_i_ddl:=0;
         v_i_skipped:=0;
         v_ty_status.b_continue:=FALSE;
-        v_ty_status.b_error:=FALSE;		
+        v_ty_status.b_error:=FALSE;   
         RAISE DEBUG 'Searching batches to replay for source id: %', p_i_id_source;
         v_i_id_batch:= (
             SELECT 
@@ -313,9 +325,9 @@ $BODY$
                     evt.i_id_batch=bat.i_id_batch
             WHERE 
                     bat.b_started 
-                AND	bat.b_processed 
-                AND	NOT bat.b_replayed
-                AND	bat.i_id_source=p_i_id_source
+                AND bat.b_processed 
+                AND NOT bat.b_replayed
+                AND bat.i_id_source=p_i_id_source
             ORDER BY 
                 bat.ts_created 
             LIMIT 1
@@ -362,11 +374,11 @@ $BODY$
         v_ts_evt_source:=(
             SELECT 
                 to_timestamp(i_my_event_time)
-            FROM	
+            FROM  
                 sch_chameleon.t_log_replica
             WHERE
                     i_id_event=v_i_evt_replay[array_length(v_i_evt_replay,1)]
-                AND	i_id_batch=v_i_id_batch
+                AND i_id_batch=v_i_id_batch
         );
         
         RAISE DEBUG 'Generating the main loop sql';
@@ -439,7 +451,7 @@ $BODY$
                                                 pk.jsb_event_before->>v_table_pkey
                                             ELSE
                                                 pk.jsb_event_after->>v_table_pkey
-                                        END 	
+                                        END   
                                 
                                     )
                             END
@@ -489,10 +501,10 @@ $BODY$
                             INNER JOIN sch_chameleon.t_replica_tables tab
                                 ON 
                                         tab.v_table_name=log.v_table_name
-                                    AND	tab.v_schema_name=log.v_schema_name
+                                    AND tab.v_schema_name=log.v_schema_name
                         WHERE
                                 tab.b_replica_enabled
-                            AND	i_id_event = ANY(%L)
+                            AND i_id_event = ANY(%L)
                         
                     ) dec
                     GROUP BY 
@@ -523,7 +535,7 @@ $BODY$
             ) par
             ORDER BY 
                 i_id_event ASC
-            ;		
+            ;   
         ',v_v_log_table,v_i_evt_replay);
         RAISE DEBUG '%',v_t_main_sql;
         FOR v_r_statements IN EXECUTE v_t_main_sql
@@ -586,15 +598,15 @@ $BODY$
                             b_replica_enabled=FALSE
                     WHERE
                             v_schema_name=v_r_statements.v_schema_name
-                        AND	v_table_name=v_r_statements.v_table_name
+                        AND v_table_name=v_r_statements.v_table_name
                     ;
 
                     RAISE NOTICE 'Deleting the log entries for the table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
                     DELETE FROM sch_chameleon.t_log_replica  log
                     WHERE
                             v_table_name=v_r_statements.v_table_name
-                        AND	v_schema_name=v_r_statements.v_schema_name
-                        AND 	i_id_batch=v_i_id_batch
+                        AND v_schema_name=v_r_statements.v_schema_name
+                        AND   i_id_batch=v_i_id_batch
                     ;
                 END IF;
             END;
@@ -604,7 +616,7 @@ $BODY$
             UPDATE sch_chameleon.t_last_replayed
                 SET
                     ts_last_replayed=v_ts_evt_source
-            WHERE 	
+            WHERE   
                 i_id_source=p_i_id_source
             ;
         END IF;
@@ -656,7 +668,7 @@ $BODY$
             DELETE FROM sch_chameleon.t_log_replica
             WHERE
                     i_id_batch=v_i_id_batch
-                AND 	i_id_event=ANY(v_i_evt_replay) 
+                AND   i_id_event=ANY(v_i_evt_replay) 
             ;
             v_ty_status.b_continue:=TRUE;
             RETURN v_ty_status;
@@ -671,9 +683,9 @@ $BODY$
                     evt.i_id_batch=bat.i_id_batch
             WHERE 
                     bat.b_started 
-                AND	bat.b_processed 
-                AND	NOT bat.b_replayed
-                AND	bat.i_id_source=p_i_id_source
+                AND bat.b_processed 
+                AND NOT bat.b_replayed
+                AND bat.i_id_source=p_i_id_source
             ORDER BY 
                 bat.ts_created 
             LIMIT 1
@@ -703,7 +715,7 @@ $BODY$
     SELECT
         CASE
             WHEN $1=array[0,0]::TEXT[]
-            THEN $2	
+            THEN $2 
             WHEN (string_to_array($1[1],'.'))[2]::integer>(string_to_array($2[1],'.'))[2]::integer --$1[1]>$2[1]
             THEN $2
             WHEN $1[1]=$2[1] and $1[2]::integer>=$2[2]::integer
@@ -721,7 +733,7 @@ $BODY$
     SELECT
         CASE
             WHEN $1=array[0,0]::TEXT[]
-            THEN $2	
+            THEN $2 
             WHEN (string_to_array($2[1],'.'))[2]::integer>(string_to_array($1[1],'.'))[2]::integer
             THEN $2
             WHEN (string_to_array($2[1],'.'))[2]::integer<(string_to_array($1[1] ,'.'))[2]::integer
@@ -778,20 +790,20 @@ CREATE AGGREGATE sch_chameleon.binlog_min(text[])
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-    SELECT '2.0.7'::TEXT t_version
+    SELECT '2.0.8'::TEXT t_version
 ;
 
-CREATE OR REPLACE VIEW sch_chameleon.v_idx_pkeys
+CREATE OR REPLACE VIEW sch_chameleon.v_idx_cons
 AS
 SELECT
-    oid_conid IS NOT NULL AS b_idx_pkey,
-    CASE WHEN oid_conid IS NULL
+    COALESCE(v_constraint_type,'i') v_constraint_type,
+    CASE WHEN v_constraint_type IS NULL
     THEN
         format('DROP INDEX %I.%I;',v_schema_name,v_index_name)
     ELSE
          format('ALTER TABLE %I.%I DROP CONSTRAINT %I;',v_schema_name,v_table_name,v_index_name)
     END AS t_sql_drop,
-    CASE WHEN oid_conid IS NULL
+    CASE WHEN v_constraint_type IS NULL
     THEN
         format('%s %s; SET default_tablespace=DEFAULT;',
                 CASE WHEN v_index_tablespace IS NOT NULL
@@ -824,7 +836,8 @@ FROM
         idx.indexdef AS v_index_def,
         pg_get_constraintdef(con.oid_conid) AS v_constraint_def,
         idx.tablespace AS v_index_tablespace,
-        con.oid_conid
+        con.oid_conid,
+        v_constraint_type
 
     FROM
         pg_indexes idx
@@ -842,7 +855,7 @@ FROM
                 ON tab.oid= con.conrelid
                 INNER JOIN pg_namespace sch
                 ON sch."oid" = tab.relnamespace
-            WHERE con.contype='p'
+            WHERE con.contype IN ('p','u')
         ) con
         ON
                 con.v_table_name=idx.tablename
