@@ -40,7 +40,6 @@ Operating system: Linux, FreeBSD, OpenBSD
 Python: CPython 3.5+ 
 
 * `PyMySQL <https://pypi.python.org/pypi/PyMySQL>`_ 
-* `argparse <https://pypi.python.org/pypi/argparse>`_
 * `mysql-replication <https://pypi.python.org/pypi/mysql-replication>`_
 * `psycopg2 <https://pypi.python.org/pypi/psycopg2>`_
 * `PyYAML <https://pypi.python.org/pypi/PyYAML>`_
