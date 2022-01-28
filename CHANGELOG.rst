@@ -1,6 +1,8 @@
 changelog
 *************************
+
 2.0.17 - XX January 2022
+..........................................................
 * Remove argparse from the requirements
 * Add the collect for unique constraints when keep_existing_schema is Yes
 * Fix wrong order in copy data/create indices when keep_existing_schema is No
