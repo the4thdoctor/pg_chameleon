@@ -25,8 +25,6 @@ pg_chameleon  2.0 `is available on pypi <https://pypi.org/project/pg_chameleon/>
 
 The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents_v2/index.html>`_ 
 
-Live chat `available on gitter <https://gitter.im/pg_chameleon/Lobby>`_
-
 Please submit your `bug reports on GitHub <https://github.com/the4thdoctor/pg_chameleon>`_.
 
 
@@ -55,12 +53,14 @@ Optionals for building documentation
 
 Origin database
 .................................
-MySQL: 5.5+
+
+MySQL 5.5+
+Aurora MySQL 5.7+
 
 Destination database
 ..............................
-PostgreSQL: 9.5+
 
+PostgreSQL 9.5+
 
 Example scenarios 
 ..............................
