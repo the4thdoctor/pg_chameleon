@@ -55,6 +55,7 @@ Origin database
 .................................
 
 MySQL 5.5+
+
 Aurora MySQL 5.7+
 
 Destination database
