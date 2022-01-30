@@ -116,6 +116,7 @@ RPM PGDG
 ..............................
 
 pg_chameleon is included in the PGDG RMP repository thanks to Devrim.
+
 Please follow the instructions on  `https://www.postgresql.org/download/linux/redhat/ <https://www.postgresql.org/download/linux/redhat/>`_ 
 
 openSUSE Build Service
