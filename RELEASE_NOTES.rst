@@ -7,11 +7,13 @@ This maintenance release adds the following bugfix.
 Fix the wrong order in copy data/create indices when keep_existing_schema is **No**.
 
 Previously the indices were created before the data was loaded into the target schema with great performance degradation.
+
 This fix applies only if the parameter keep_existing_schema is set to **No**. 
 
 Add the collect for unique constraints when keep_existing_schema is **Yes**. 
 
 Previously the unique constraint were not collected or dropped if defined as constraints instead of indices.
+
 This fix applies only if the parameter keep_existing_schema is set to **Yes**. 
 
 This release adds the following changes:
@@ -20,8 +22,9 @@ This release adds the following changes:
 * Remove check for log_bin when we replicate from Aurora MySQL
 * Manage different the different behaviour in pyyaml to allow pg_chameleon to be installed as rpm in centos 7 via pgdg repository
 
-This release works with Aurora MySQL. However Aurora 5.6 segfaults when FLUSH TABLES WITH READ LOCK is issued.
-The replica is tested on Aurora 5.7.
+This release works with Aurora MySQL. However Aurora MySQL 5.6 segfaults when FLUSH TABLES WITH READ LOCK is issued.
+
+The replica is tested on Aurora MySQL 5.7.
 
 This release requires a replica catalogue upgrade, therefore is very important to follow the upgrade instructions provided below.
 
