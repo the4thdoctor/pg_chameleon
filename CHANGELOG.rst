@@ -1,11 +1,11 @@
 changelog
 *************************
 
-2.0.17 - XX January 2022
+2.0.17 - 30January 2022
 ..........................................................
 * Remove argparse from the requirements
-* Add the collect for unique constraints when keep_existing_schema is Yes
-* Fix wrong order in copy data/create indices when keep_existing_schema is No
+* Add the collect for unique constraints when keep_existing_schema is **Yes**
+* Fix wrong order in copy data/create indices when keep_existing_schema is **No**
 * Remove check for log_bin we are replicating from Aurora MySQL
 * Manage different the different behaviour in pyyaml to allow pg_chameleon to be installed as rpm in centos 7
 
