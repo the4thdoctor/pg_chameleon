@@ -112,6 +112,22 @@ A second run tries to validate the foreign keys. If an error occurs it gets logg
 Setup 
 *****************
 
+RPM PGDG
+..............................
+
+pg_chameleon is included in the PGDG RMP repository thanks to Devrim.
+Please follow the instructions on `https://www.postgresql.org/download/linux/redhat/ https://www.postgresql.org/download/linux/redhat/>`_ 
+
+ openSUSE Build Service
+..............................
+
+pg_chameleon is available on the  `openSUSE build Service https://build.opensuse.org/package/show/server:database:postgresql/pg_chameleon>`_ 
+
+Currently all releases are supported except SLE_12_SP5 because of unresolved dependencies.
+
+Virtual env setup 
+..............................
+
 * Create a virtual environment (e.g. python3 -m venv venv)
 * Activate the virtual environment (e.g. source venv/bin/activate)
 * Upgrade pip with **pip install pip --upgrade**
