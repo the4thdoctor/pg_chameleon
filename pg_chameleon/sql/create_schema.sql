@@ -139,8 +139,8 @@ CREATE TABLE sch_chameleon.t_replica_tables
 (
   i_id_table bigserial NOT NULL,
   i_id_source bigint NOT NULL,
-  v_table_name character varying(100) NOT NULL,
-  v_schema_name character varying(100) NOT NULL,
+  v_table_name character varying(64) NOT NULL,
+  v_schema_name character varying(64) NOT NULL,
   v_table_pkey character varying(100)[] NOT NULL,
   t_binlog_name text,
   i_binlog_position bigint,
@@ -160,8 +160,8 @@ CREATE TABLE sch_chameleon.t_discarded_rows
     i_id_row    bigserial,
     i_id_batch  bigint NOT NULL,
     ts_discard  timestamp with time zone NOT NULL DEFAULT clock_timestamp(),
-    v_table_name character varying(100) NOT NULL,
-        v_schema_name character varying(100) NOT NULL,
+    v_table_name character varying(64) NOT NULL,
+    v_schema_name character varying(64) NOT NULL,
     t_row_data  text,
     CONSTRAINT pk_t_discarded_rows PRIMARY KEY (i_id_row)
 )
@@ -199,9 +199,9 @@ ALTER TABLE sch_chameleon.t_batch_events
 CREATE TABLE sch_chameleon.t_indexes
     (
         i_id_index  bigserial,
-        v_schema_name varchar NOT NULL,
-        v_table_name varchar NOT NULL,
-        v_index_name varchar NOT NULL,
+        v_schema_name character varying(64) NOT NULL,
+        v_table_name character varying(64) NOT NULL,
+        v_index_name character varying(64) NOT NULL,
         t_index_drop text NULL,
         t_index_create text NULL,
         CONSTRAINT pk_t_indexes PRIMARY KEY (i_id_index)
@@ -211,9 +211,9 @@ CREATE TABLE sch_chameleon.t_indexes
 CREATE TABLE sch_chameleon.t_pkeys
     (
         i_id_pkey bigserial,
-        v_schema_name varchar NOT NULL,
-        v_table_name varchar NOT NULL,
-        v_index_name varchar NOT NULL,
+        v_schema_name character varying(64) NOT NULL,
+        v_table_name character varying(64) NOT NULL,
+        v_index_name character varying(64) NOT NULL,
         t_pkey_drop text NULL,
         t_pkey_create text NULL,
         CONSTRAINT pk_t_pkeys PRIMARY KEY (i_id_pkey)
@@ -223,9 +223,9 @@ CREATE UNIQUE INDEX idx_t_pkeys_table_schema ON sch_chameleon.t_pkeys USING btre
 CREATE TABLE sch_chameleon.t_ukeys
     (
         i_id_ukey bigserial,
-        v_schema_name varchar NOT NULL,
-        v_table_name varchar NOT NULL,
-        v_index_name varchar NOT NULL,
+        v_schema_name character varying(64) NOT NULL,
+        v_table_name character varying(64) NOT NULL,
+        v_index_name character varying(64) NOT NULL,
         t_ukey_drop text NULL,
         t_ukey_create text NULL,
         CONSTRAINT pk_t_ukeys PRIMARY KEY (i_id_ukey)
@@ -235,9 +235,9 @@ CREATE UNIQUE INDEX idx_t_ukeys_table_schema ON sch_chameleon.t_ukeys USING btre
 CREATE TABLE sch_chameleon.t_fkeys
     (
         i_id_fkey bigserial,
-        v_schema_name varchar NOT NULL,
-        v_table_name varchar NOT NULL,
-        v_constraint_name varchar NOT NULL,
+        v_schema_name character varying(64) NOT NULL,
+        v_table_name character varying(64) NOT NULL,
+        v_constraint_name character varying(64) NOT NULL,
         t_fkey_drop text NULL,
         t_fkey_create text NULL,
         t_fkey_validate text NULL,
