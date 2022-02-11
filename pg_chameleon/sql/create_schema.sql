@@ -790,7 +790,7 @@ CREATE AGGREGATE sch_chameleon.binlog_min(text[])
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version 
  AS
-    SELECT '2.0.8'::TEXT t_version
+    SELECT '2.0.9'::TEXT t_version
 ;
 
 CREATE OR REPLACE VIEW sch_chameleon.v_idx_cons
