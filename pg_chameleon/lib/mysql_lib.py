@@ -27,6 +27,7 @@ class mysql_source(object):
         self.schema_only = {}
         self.gtid_mode = False
         self.gtid_enable = False
+        self.copy_table_data = True
 
 
     def __del__(self):
@@ -546,6 +547,8 @@ class mysql_source(object):
             :return: the master's log coordinates for the given table
             :rtype: dictionary
         """
+        if not self.conn_buffered.open:
+            self.connect_db_buffered()
         sql_master = "SHOW MASTER STATUS;"
         self.cursor_buffered.execute(sql_master)
         master_status = self.cursor_buffered.fetchall()
@@ -775,7 +778,11 @@ class mysql_source(object):
                         self.pg_engine.truncate_table(destination_schema,table)
                         master_status = self.copy_data(schema, table)
                     else:
-                        master_status = self.copy_data(schema, table)
+                        if self.copy_table_data:
+                            master_status = self.copy_data(schema, table)
+                        else:
+                            master_status = self.get_master_coordinates()
+                        
                         table_pkey = self.__create_indices(schema, table)
                     self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
                     if self.keep_existing_schema:

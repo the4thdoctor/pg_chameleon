@@ -314,6 +314,15 @@ class replica_engine(object):
         self.pg_engine.set_source_status("stopped")
         self.pg_engine.end_maintenance()
 
+    def copy_schema(self):
+        """
+            The method calls init_replica adding a flag for skipping the data copy.
+            Useful if we want to test for schema issues or to populate the schema preventively.
+            
+        """
+        self.mysql_source.copy_table_data=False
+        self.init_replica()
+
     def init_replica(self):
         """
             The method  initialise a replica for a given source and configuration.
@@ -349,7 +358,7 @@ class replica_engine(object):
                 foreground = True
             else:
                 foreground = False
-                print("Init replica process for source %s started." % (self.args.source))
+                print("Process for source %s started." % (self.args.source))
             keep_fds = [self.logger_fds]
             init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
             self.logger.info("Initialising the replica for source %s" % self.args.source)
@@ -369,7 +378,7 @@ class replica_engine(object):
                 foreground = True
             else:
                 foreground = False
-                print("Init replica process for source %s started." % (self.args.source))
+                print("Process for source %s started." % (self.args.source))
             keep_fds = [self.logger_fds]
             init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
             self.logger.info("Initialising the replica for source %s" % self.args.source)
