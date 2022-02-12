@@ -729,12 +729,21 @@ class mysql_source(object):
         self.connect_db_buffered()
         self.logger.debug("Creating indices on table %s.%s " % (schema, table))
         sql_index = """
+            
             SELECT
-                index_name as index_name,
-                non_unique as non_unique,
-                GROUP_CONCAT(column_name ORDER BY seq_in_index) as index_columns
+            CASE WHEN index_name='PRIMARY'
+            THEN 
+                index_name
+            WHEN (SELECT count(1) FROM information_schema.statistics s WHERE s.index_name=t.index_name)>1
+            THEN
+                concat(substring(index_name,1,length(index_name)-5),'_',SUBSTRING(md5(uuid()),1,4))
+            ELSE
+                index_name
+            END AS index_name,
+            non_unique as non_unique,
+            GROUP_CONCAT(column_name ORDER BY seq_in_index) as index_columns
             FROM
-                information_schema.statistics
+                information_schema.statistics t
             WHERE
                     table_schema=%s
                 AND 	table_name=%s
@@ -745,6 +754,7 @@ class mysql_source(object):
                 index_name
             ;
         """
+        
         self.cursor_buffered.execute(sql_index, (schema, table))
         index_data = self.cursor_buffered.fetchall()
         table_pkey = self.pg_engine.create_indices(loading_schema, table, index_data)

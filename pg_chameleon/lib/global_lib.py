@@ -322,6 +322,8 @@ class replica_engine(object):
         """
         self.mysql_source.copy_table_data=False
         self.init_replica()
+        self.pg_engine.fk_metadata = self.mysql_source.get_foreign_keys_metadata()
+        self.pg_engine.create_foreign_keys()
 
     def init_replica(self):
         """

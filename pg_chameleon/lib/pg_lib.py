@@ -591,7 +591,7 @@ class pg_engine(object):
         self.logger = None
         self.idx_sequence = 0
         self.lock_timeout = 0
-
+        self.keep_existing_schema=False
         self.migrations = [
             {'version': '2.0.1',  'script': '200_to_201.sql'},
             {'version': '2.0.2',  'script': '201_to_202.sql'},
@@ -732,9 +732,8 @@ class pg_engine(object):
         """
         self.connect_db()
         self.set_source_id()
-        schema_mappings = self.get_schema_mappings()
-        fk_list = []
-        fk_counter = 0
+        
+        
         sql_gen_reset = """
             SELECT
                 format('SELECT setval(%%L::regclass,(select max(%%I) FROM %%I.%%I));',
@@ -770,46 +769,55 @@ class pg_engine(object):
         except:
             raise
         if not self.keep_existing_schema:
-            for foreign_key in self.fk_metadata:
-                table_name = foreign_key["table_name"]
-                table_schema = schema_mappings[foreign_key["table_schema"]]
-                fk_name = ("%s_%s") % (foreign_key["constraint_name"][0:20] ,  str(fk_counter))
-                fk_cols = foreign_key["fk_cols"]
-                referenced_table_name = foreign_key["referenced_table_name"]
-                referenced_table_schema = schema_mappings[foreign_key["referenced_table_schema"]]
-                ref_columns = foreign_key["ref_columns"]
-                fk_list.append({'fkey_name':fk_name, 'table_name':table_name, 'table_schema':table_schema})
-                sql_fkey = ("""ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" FOREIGN KEY (%s) REFERENCES "%s"."%s" (%s) NOT VALID;""" %
-                        (
-                            table_schema,
-                            table_name,
-                            fk_name,
-                            fk_cols,
-                            referenced_table_schema,
-                            referenced_table_name,
-                            ref_columns
-                        )
-                    )
-                fk_counter+=1
-                self.logger.info("creating invalid foreign key %s on table %s.%s" % (fk_name, table_schema, table_name))
-                try:
-                    self.pgsql_cur.execute(sql_fkey)
-                except psycopg2.Error as e:
-                        self.logger.error("could not create the foreign key %s on table %s.%s" % (fk_name, table_schema, table_name))
-                        self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-                        self.logger.error("STATEMENT: %s " % (sql_fkey))
-
-
-            for fkey in fk_list:
-                self.logger.info("validating %s on table %s.%s"  % (fkey["fkey_name"], fkey["table_schema"], fkey["table_name"]))
-                sql_validate = 'ALTER TABLE "%s"."%s" VALIDATE CONSTRAINT "%s";' % (fkey["table_schema"], fkey["table_name"], fkey["fkey_name"])
-                try:
-                    self.pgsql_cur.execute(sql_validate)
-                except psycopg2.Error as e:
-                        self.logger.error("could not validate the foreign key %s on table %s" % (fkey["table_name"], fkey["fkey_name"]))
-                        self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-                        self.logger.error("STATEMENT: %s " % (sql_validate))
+            self.create_foreign_keys()
         self.drop_source()
+
+    def create_foreign_keys(self):
+        """
+            The method creates and validates the foreign keys if we are not keeping the existing schema.
+        """
+        schema_mappings = self.get_schema_mappings()
+        fk_list = []
+        fk_counter = 0
+        for foreign_key in self.fk_metadata:
+            table_name = foreign_key["table_name"]
+            table_schema = schema_mappings[foreign_key["table_schema"]]
+            fk_name = ("%s_%s") % (foreign_key["constraint_name"][0:20] ,  str(fk_counter))
+            fk_cols = foreign_key["fk_cols"]
+            referenced_table_name = foreign_key["referenced_table_name"]
+            referenced_table_schema = schema_mappings[foreign_key["referenced_table_schema"]]
+            ref_columns = foreign_key["ref_columns"]
+            fk_list.append({'fkey_name':fk_name, 'table_name':table_name, 'table_schema':table_schema})
+            sql_fkey = ("""ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" FOREIGN KEY (%s) REFERENCES "%s"."%s" (%s) NOT VALID;""" %
+                    (
+                        table_schema,
+                        table_name,
+                        fk_name,
+                        fk_cols,
+                        referenced_table_schema,
+                        referenced_table_name,
+                        ref_columns
+                    )
+                )
+            fk_counter+=1
+            self.logger.info("creating invalid foreign key %s on table %s.%s" % (fk_name, table_schema, table_name))
+            try:
+                self.pgsql_cur.execute(sql_fkey)
+            except psycopg2.Error as e:
+                    self.logger.error("could not create the foreign key %s on table %s.%s" % (fk_name, table_schema, table_name))
+                    self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+                    self.logger.error("STATEMENT: %s " % (sql_fkey))
+
+
+        for fkey in fk_list:
+            self.logger.info("validating %s on table %s.%s"  % (fkey["fkey_name"], fkey["table_schema"], fkey["table_name"]))
+            sql_validate = 'ALTER TABLE "%s"."%s" VALIDATE CONSTRAINT "%s";' % (fkey["table_schema"], fkey["table_name"], fkey["fkey_name"])
+            try:
+                self.pgsql_cur.execute(sql_validate)
+            except psycopg2.Error as e:
+                    self.logger.error("could not validate the foreign key %s on table %s" % (fkey["table_name"], fkey["fkey_name"]))
+                    self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+                    self.logger.error("STATEMENT: %s " % (sql_validate))
 
     def get_inconsistent_tables(self):
         """
@@ -3360,46 +3368,46 @@ class pg_engine(object):
             The method removes the index and keys definitions collected for the source
         """
         sql_clean_idx = """
-            DELETE FROM sch_chameleon.t_indexes 
-            WHERE 
-                (v_schema_name,v_table_name) 
-            IN 
+            DELETE FROM sch_chameleon.t_indexes
+            WHERE
+                (v_schema_name,v_table_name)
+            IN
                 (
-                    SELECT 
+                    SELECT
                         v_schema_name,
-                        v_table_name 
-                    FROM 
-                        sch_chameleon.t_replica_tables 
+                        v_table_name
+                    FROM
+                        sch_chameleon.t_replica_tables
                     WHERE i_id_source =%s
                 )
             ;
         """
         sql_clean_pkeys = """
-            DELETE FROM sch_chameleon.t_pkeys 
-            WHERE 
-                (v_schema_name,v_table_name) 
-            IN 
+            DELETE FROM sch_chameleon.t_pkeys
+            WHERE
+                (v_schema_name,v_table_name)
+            IN
                 (
-                    SELECT 
+                    SELECT
                         v_schema_name,
-                        v_table_name 
-                    FROM 
-                        sch_chameleon.t_replica_tables 
+                        v_table_name
+                    FROM
+                        sch_chameleon.t_replica_tables
                     WHERE i_id_source =%s
                 )
             ;
         """
         sql_clean_fkeys = """
-            DELETE FROM sch_chameleon.t_fkeys 
-            WHERE 
-                (v_schema_name,v_table_name) 
-            IN 
+            DELETE FROM sch_chameleon.t_fkeys
+            WHERE
+                (v_schema_name,v_table_name)
+            IN
                 (
-                    SELECT 
+                    SELECT
                         v_schema_name,
-                        v_table_name 
-                    FROM 
-                        sch_chameleon.t_replica_tables 
+                        v_table_name
+                    FROM
+                        sch_chameleon.t_replica_tables
                     WHERE i_id_source =%s
                 )
             ;
@@ -3986,7 +3994,7 @@ class pg_engine(object):
 
     def create_indices(self, schema, table, index_data):
         """
-            The method loops odver the list index_data and creates the indices on the table
+            The method loops over the list index_data and creates the indices on the table
             specified with schema and table parameters.
             The method assumes there is a database connection active.
 
@@ -4006,8 +4014,8 @@ class pg_engine(object):
                 index_columns = ['"%s"' % column.strip() for column in idx_col]
                 non_unique = index["non_unique"]
                 if indx =='PRIMARY':
-                    pkey_name = "pk_%s_%s_%s" % (table[0:10],table_timestamp,  self.idx_sequence)
-                    pkey_def = 'ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" PRIMARY KEY (%s) ;' % (schema, table, pkey_name, ','.join(index_columns))
+                    pkey_name = "pk_%s" % (table)    
+                    pkey_def = 'ALTER TABLE "%s"."%s" ADD PRIMARY KEY (%s) ;' % (schema, table,  ','.join(index_columns))
                     idx_ddl[pkey_name] = pkey_def
                     table_primary = idx_col
                 else:
@@ -4018,8 +4026,8 @@ class pg_engine(object):
                     else:
                         unique_key = ''
                     index_name='idx_%s_%s_%s_%s' % (indx[0:10], table[0:10], table_timestamp, self.idx_sequence)
-                    idx_def='CREATE %s INDEX "%s" ON "%s"."%s" (%s);' % (unique_key, index_name, schema, table, ','.join(index_columns) )
-                    idx_ddl[index_name] = idx_def
+                    idx_def='CREATE %s INDEX "%s" ON "%s"."%s" (%s);' % (unique_key, indx, schema, table, ','.join(index_columns) )
+                    idx_ddl[indx] = idx_def
                 self.idx_sequence+=1
         for index in idx_ddl:
             self.logger.info("Building index %s on %s.%s" % (index, schema, table))
