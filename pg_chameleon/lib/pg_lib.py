@@ -782,13 +782,15 @@ class pg_engine(object):
         for foreign_key in self.fk_metadata:
             table_name = foreign_key["table_name"]
             table_schema = schema_mappings[foreign_key["table_schema"]]
-            fk_name = ("%s_%s") % (foreign_key["constraint_name"][0:20] ,  str(fk_counter))
+            fk_name = foreign_key["constraint_name"]
             fk_cols = foreign_key["fk_cols"]
             referenced_table_name = foreign_key["referenced_table_name"]
             referenced_table_schema = schema_mappings[foreign_key["referenced_table_schema"]]
             ref_columns = foreign_key["ref_columns"]
+            on_update = foreign_key["on_update"]
+            on_delete = foreign_key["on_delete"]
             fk_list.append({'fkey_name':fk_name, 'table_name':table_name, 'table_schema':table_schema})
-            sql_fkey = ("""ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" FOREIGN KEY (%s) REFERENCES "%s"."%s" (%s) NOT VALID;""" %
+            sql_fkey = ("""ALTER TABLE "%s"."%s" ADD CONSTRAINT "%s" FOREIGN KEY (%s) REFERENCES "%s"."%s" (%s) %s %s  NOT VALID;""" %
                     (
                         table_schema,
                         table_name,
@@ -796,7 +798,9 @@ class pg_engine(object):
                         fk_cols,
                         referenced_table_schema,
                         referenced_table_name,
-                        ref_columns
+                        ref_columns,
+                        on_update,
+                        on_delete
                     )
                 )
             fk_counter+=1

@@ -374,25 +374,51 @@ class mysql_source(object):
         self.logger.info("retrieving foreign keys metadata for schemas %s" % schema_replica)
         sql_fkeys = """
             SELECT
-                table_name as table_name,
-                table_schema as table_schema,
-                constraint_name as constraint_name,
-                referenced_table_name as referenced_table_name,
-                referenced_table_schema as referenced_table_schema,
-                GROUP_CONCAT(concat('"',column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as fk_cols,
-                GROUP_CONCAT(concat('"',REFERENCED_COLUMN_NAME,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as ref_columns
+                kc.table_name as table_name,
+                kc.table_schema as table_schema,
+                CASE WHEN (
+                                SELECT
+                                    count(1)
+                                FROM
+                                    information_schema.referential_constraints r
+                                WHERE
+                                        rc.constraint_name=r.constraint_name
+                                    AND  rc.constraint_schema=r.constraint_schema
+                            )>1
+                THEN
+                    concat(substring(kc.constraint_name,1,59),'_',SUBSTRING(md5(uuid()),1,4))
+                ELSE
+                    kc.constraint_name
+                END as constraint_name,
+                kc.referenced_table_name as referenced_table_name,
+                kc.referenced_table_schema as referenced_table_schema,
+                group_concat(concat('"',kc.column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as fk_cols,
+                group_concat(concat('"',kc.referenced_column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as ref_columns,
+                concat('ON DELETE ',rc.delete_rule) AS on_delete,
+                concat('ON UPDATE ',rc.update_rule) AS on_update
             FROM
-                information_schema.key_column_usage
+                information_schema.key_column_usage kc
+                INNER JOIN information_schema.referential_constraints rc
+                ON
+                        rc.table_name=kc.table_name
+                    AND rc.constraint_schema=kc.table_schema
+                    AND rc.constraint_name=kc.constraint_name
             WHERE
-                    table_schema in (%s)
-                AND referenced_table_name IS NOT NULL
-                AND referenced_table_schema in (%s)
+                    kc.table_schema in (%s)
+                AND kc.referenced_table_name IS NOT NULL
+                AND kc.referenced_table_schema in (%s)
             GROUP BY
-                table_name,
-                constraint_name,
-                referenced_table_name
+                kc.table_name,
+                kc.constraint_name,
+                kc.referenced_table_name,
+                kc.table_schema,
+                kc.referenced_table_schema,
+                rc.delete_rule,
+                rc.update_rule,
+                rc.constraint_name,
+                rc.constraint_schema
             ORDER BY
-                table_name
+                kc.table_name
             ;
 
         """ % (schema_replica, schema_replica)
@@ -729,14 +755,22 @@ class mysql_source(object):
         self.connect_db_buffered()
         self.logger.debug("Creating indices on table %s.%s " % (schema, table))
         sql_index = """
-            
+
             SELECT
             CASE WHEN index_name='PRIMARY'
-            THEN 
-                index_name
-            WHEN (SELECT count(1) FROM information_schema.statistics s WHERE s.index_name=t.index_name)>1
             THEN
-                concat(substring(index_name,1,length(index_name)-5),'_',SUBSTRING(md5(uuid()),1,4))
+                index_name
+            WHEN (
+                    SELECT
+                        count(1)
+                    FROM
+                        information_schema.statistics s
+                    WHERE
+                             s.index_name=t.index_name
+                        AND  s.table_schema=t.table_schema
+                )>1
+            THEN
+                concat(substring(index_name,1,59),'_',SUBSTRING(md5(uuid()),1,4))
             ELSE
                 index_name
             END AS index_name,
@@ -754,7 +788,7 @@ class mysql_source(object):
                 index_name
             ;
         """
-        
+
         self.cursor_buffered.execute(sql_index, (schema, table))
         index_data = self.cursor_buffered.fetchall()
         table_pkey = self.pg_engine.create_indices(loading_schema, table, index_data)
@@ -792,7 +826,7 @@ class mysql_source(object):
                             master_status = self.copy_data(schema, table)
                         else:
                             master_status = self.get_master_coordinates()
-                        
+
                         table_pkey = self.__create_indices(schema, table)
                     self.pg_engine.store_table(destination_schema, table, table_pkey, master_status)
                     if self.keep_existing_schema:
