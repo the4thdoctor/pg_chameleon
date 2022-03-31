@@ -6,7 +6,8 @@ CREATE TABLE test (
   last_update TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY  (id),
   KEY idx_actor_last_name (value2)
-)ENGINE=InnoDB DEFAULT CHARSET=utf8;
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 INSERT INTO test (value1,value2)
 VALUES
 ('hello','dave'),

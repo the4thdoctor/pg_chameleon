@@ -45,6 +45,7 @@ Command line reference
     ``enable_replica``, Enables the replica for the given source changing the source status to stopped. It's useful if the replica crashes., ``--config`` ``--source``
     ``run_maintenance``, Runs a VACUUM on the log tables for the given source. If  is specified then the maintenance runs a VACUUM FULL, ``--config`` ``--source`` ``--full``
     ``stop_all_replicas``, Stops all the running sources within the target postgresql database., ``--config``
+    ``copy_schema``, Stops all the running sources within the target postgresql database., ``--config``
 
 
 Example
