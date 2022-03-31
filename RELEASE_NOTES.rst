@@ -1,5 +1,32 @@
 RELEASE NOTES
 *************************
+2.0.18
+--------------------------
+This maintenance release adds the following bugfix and improvements.
+
+Adds a new method `copy_schema` to copy only the schema without the data (EXPERIMENTAL).
+
+Adds the support for the **ON DELETE** and **ON UPDATE** clause when creating the foreign keys in PostgreSQL with `detach_replica` 
+and `copy_schema`.
+
+When running `init_replica` or `copy_schema` the names for the indices and foreign keys are preserved.
+Only if there is any duplicate name then pg_chameleon will ensure that the names on PostgreSQL are unique within the same schema.
+
+Adds a workaround for a regression introduced in **mysql-replication** by forcing the version to be lesser than 0.26.
+
+
+Change the data type for the identifiers stored into the replica schema to varchar(64)
+
+This release requires a replica catalogue upgrade, therefore is very important to follow the upgrade instructions provided below.
+
+* If working via ssh is suggested to use screen or tmux for the upgrade
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>``
+* Take a backup of the schema ``sch_chameleon`` with pg_dump as a good measure.
+* Install the upgrade with ``pip install pg_chameleon --upgrade``
+* Check if the version is upgraded with ``chameleon --version``
+* Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
+* Start all the replicas.
+
 2.0.17
 --------------------------
 This maintenance release adds the following bugfix.

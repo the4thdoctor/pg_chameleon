@@ -1,7 +1,14 @@
 changelog
 *************************
+2.0.18 - 31 March 2022
+..........................................................
+* Support the ON DELETE and ON UPDATE clause when creating the foreign keys in PostgreSQL
+* change logic for index and foreign key names by managing only duplicates within same schema
+* use mysql-replication<0.26 as new versions crash when receiving queries
+* add copy_schema method for copying only the schema without data (EXPERIMENTAL)
+* change type for identifiers in replica schema to varchar(64)
 
-2.0.17 - 30January 2022
+2.0.17 - 30 January 2022
 ..........................................................
 * Remove argparse from the requirements
 * Add the collect for unique constraints when keep_existing_schema is **Yes**
