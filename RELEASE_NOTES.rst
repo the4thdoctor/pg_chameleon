@@ -12,7 +12,7 @@ and `copy_schema`.
 When running `init_replica` or `copy_schema` the names for the indices and foreign keys are preserved.
 Only if there is any duplicate name then pg_chameleon will ensure that the names on PostgreSQL are unique within the same schema.
 
-Adds a workaround for a regression introduced in **mysql-replication** by forcing the version to be lesser than 0.26.
+Adds a workaround for a regression introduced in **mysql-replication** by forcing the version to be lesser than 0.27.
 
 
 Change the data type for the identifiers stored into the replica schema to varchar(64)

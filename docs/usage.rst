@@ -36,6 +36,7 @@ Command line reference
     ``add_source``, Adds a new source to the replica catalogue, ``--config`` ``--source``
     ``drop_source``, Remove an existing source from the replica catalogue, ``--config`` ``--source``
     ``init_replica``, Initialise the replica for an existing source , ``--config`` ``--source``
+    ``copy_schema``, Copy only the schema from mysql to PostgreSQL., ``--config`` ``--source``
     ``update_schema_mappings``,Update the schema mappings stored in the replica catalogue using the data from the configuration file. , ``--config`` ``--source``
     ``refresh_schema``, Synchronise all the tables for a given schema within an already initialised source. , ``--config`` ``--source`` ``--schema``
     ``sync_tables``, Synchronise one or more tables within an already initialised source.  The switch ``--tables`` accepts the special name ``disabled`` to resync all the tables with replica disabled., ``--config`` ``--source`` ``--tables``
@@ -45,7 +46,6 @@ Command line reference
     ``enable_replica``, Enables the replica for the given source changing the source status to stopped. It's useful if the replica crashes., ``--config`` ``--source``
     ``run_maintenance``, Runs a VACUUM on the log tables for the given source. If  is specified then the maintenance runs a VACUUM FULL, ``--config`` ``--source`` ``--full``
     ``stop_all_replicas``, Stops all the running sources within the target postgresql database., ``--config``
-    ``copy_schema``, Stops all the running sources within the target postgresql database., ``--config``
 
 
 Example
