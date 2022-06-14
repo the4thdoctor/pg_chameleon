@@ -97,9 +97,12 @@ sources:
 # the dictionary fillfactor is used to set the fillfactor for tables that are expected to work with large updates
 # The key name defines the fillfactor level (The allowed values range is 10 to 100)
 # If set to "*" the fillfactor applies to all tables in the replicated schema
+# default defines the default fillfactor to apply to any table not listed in the key
+# If the table appears in multiple fillfactors only the last occurrence will apply
 fillfactor:
-  default: "100"
   "30":
     tables: 
       - "foo.bar"
+  "40":
+    tables: 
       - "foo.foobar"
