@@ -2404,9 +2404,28 @@ class pg_engine(object):
         table_ddl["table"] = (ddl_head+def_columns+ddl_tail)
         return table_ddl
 
+    def __get_fill_factor(self, schema, table_name):
+        """
+            The method builds the optional fillfactor clause for the table if listed in the dictionary fillfactor
+            :param schema: the schema where the table belongs
+            :param table_name: the table name
+            :return: the fillfactor string
+            :rtype: string
+        """
+        fillfactor = ""
+        if self.fillfactor:
+            value = [ k for k in self.fillfactor if "{}.{}".format(schema,table_name) in self.fillfactor[k]["tables"]]
+            if len(value) > 0:
+                print (self.fillfactor)
+                print(schema,table_name)
+                value.reverse()
+                fillfactor = "WITH (fillfactor={})".format(value[0])
+        return fillfactor
+ 
+        
 
 
-    def __build_create_table_mysql(self, table_metadata,table_name,  schema, temporary_schema=True):
+    def __build_create_table_mysql(self, table_metadata ,table_name,  schema, temporary_schema=True):
         """
             The method builds the create table statement with any enumeration associated using the mysql's metadata.
             The returned value is a dictionary with the optional enumeration's ddl and the create table without indices or primary keys.
@@ -2415,16 +2434,17 @@ class pg_engine(object):
 
             :param table_metadata: the column dictionary extracted from the source's information_schema or builty by the sql_parser class
             :param table_name: the table name
-            :param destination_schema: the schema where the table belongs
+            :param schema: the schema where the table belongs
             :return: a dictionary with the optional create statements for enumerations and the create table
             :rtype: dictionary
         """
+
         if temporary_schema:
             destination_schema = self.schema_loading[schema]["loading"]
         else:
             destination_schema = schema
         ddl_head = 'CREATE TABLE "%s"."%s" (' % (destination_schema, table_name)
-        ddl_tail = ");"
+        ddl_tail = "){};".format(self.__get_fill_factor(schema, table_name))
         ddl_columns = []
         ddl_enum=[]
         table_ddl = {}

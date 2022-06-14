@@ -120,6 +120,9 @@ class replica_engine(object):
         self.pg_engine.type_override = self.config["type_override"]
         self.pg_engine.sources = self.config["sources"]
         self.pg_engine.notifier = self.notifier
+        self.pg_engine.fillfactor = self.config["fillfactor"]
+        
+
 
         #mysql_source instance initialisation
         self.mysql_source = mysql_source()
@@ -162,7 +165,7 @@ class replica_engine(object):
             source_count = self.pg_engine.check_source()
             self.pg_engine.disconnect_db()
             if source_count == 0:
-                print("FATAL, The source %s is not registered. Please add it add_source" % (self.args.source))
+                print("FATAL, The source %s is not registered. Please add it with the command add_source" % (self.args.source))
                 sys.exit()
 
 
@@ -223,6 +226,13 @@ class replica_engine(object):
             self.config = yaml.load(config_file.read(), Loader=yaml.FullLoader)
         config_file.close()
 
+        #managing default values for optional keys
+        if "fillfactor" not in self.config:
+            self.config["fillfactor"] = None
+            
+        if "type_override" not in self.config:
+            self.config["type_override"] = None
+            
 
 
     def show_sources(self):

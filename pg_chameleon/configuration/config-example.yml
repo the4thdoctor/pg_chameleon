@@ -93,3 +93,13 @@ sources:
       copy_mode: 'file'
       out_dir: /tmp
       type: pgsql
+
+# the dictionary fillfactor is used to set the fillfactor for tables that are expected to work with large updates
+# The key name defines the fillfactor level (The allowed values range is 10 to 100)
+# If set to "*" the fillfactor applies to all tables in the replicated schema
+fillfactor:
+  default: "100"
+  "30":
+    tables: 
+      - "foo.bar"
+      - "foo.foobar"
