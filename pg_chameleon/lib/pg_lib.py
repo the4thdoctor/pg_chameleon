@@ -2407,7 +2407,7 @@ class pg_engine(object):
     def __get_fill_factor(self, schema, table_name):
         """
             The method builds the optional fillfactor clause for the table if listed in the dictionary fillfactor
-            :param schema: the schema where the table belongs
+            :param schema: the schema where the table belongs if the table is listed multiple times the last fillfactor value is applied
             :param table_name: the table name
             :return: the fillfactor string
             :rtype: string
@@ -2416,10 +2416,8 @@ class pg_engine(object):
         if self.fillfactor:
             value = [ k for k in self.fillfactor if "{}.{}".format(schema,table_name) in self.fillfactor[k]["tables"]]
             if len(value) > 0:
-                print (self.fillfactor)
-                print(schema,table_name)
-                value.reverse()
-                fillfactor = "WITH (fillfactor={})".format(value[0])
+                # we use the last occurrence of the table's fillfactor
+                fillfactor = "WITH (fillfactor={})".format(value[-1])
         return fillfactor
  
         
@@ -3959,6 +3957,7 @@ class pg_engine(object):
                     self.logger.error(self.pgsql_cur.mogrify(sql_head,data_row))
             except ValueError:
                 self.logger.warning("character mismatch when inserting the data, trying to cleanup the row data")
+                self.logger.error(data_row)
                 cleanup_data_row = []
                 for item in data_row:
                     if item:

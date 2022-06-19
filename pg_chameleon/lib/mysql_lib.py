@@ -392,8 +392,8 @@ class mysql_source(object):
                 END as constraint_name,
                 kc.referenced_table_name as referenced_table_name,
                 kc.referenced_table_schema as referenced_table_schema,
-                group_concat(concat('"',kc.column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as fk_cols,
-                group_concat(concat('"',kc.referenced_column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as ref_columns,
+                group_concat(DISTINCT concat('"',kc.column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as fk_cols,
+                group_concat(DISTINCT concat('"',kc.referenced_column_name,'"') ORDER BY POSITION_IN_UNIQUE_CONSTRAINT) as ref_columns,
                 concat('ON DELETE ',rc.delete_rule) AS on_delete,
                 concat('ON UPDATE ',rc.update_rule) AS on_update
             FROM
