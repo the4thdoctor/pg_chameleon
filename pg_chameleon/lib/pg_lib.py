@@ -100,11 +100,11 @@ class pgsql_source(object):
         if self.source_conn:
             strconn = "dbname=%(database)s user=%(user)s host=%(host)s password=%(password)s port=%(port)s connect_timeout=%(connect_timeout)s"  % self.source_conn
             pgsql_conn = psycopg2.connect(strconn)
-            pgsql_conn .set_client_encoding(self.source_conn["charset"])
+            pgsql_conn.set_client_encoding(self.source_conn["charset"])
             if dict_cursor:
-                pgsql_cur = pgsql_conn .cursor(cursor_factory=RealDictCursor)
+                pgsql_cur = pgsql_conn.cursor(cursor_factory=RealDictCursor)
             else:
-                pgsql_cur = pgsql_conn .cursor()
+                pgsql_cur = pgsql_conn.cursor()
             self.logger.debug("Changing the autocommit flag to %s" % auto_commit)
             pgsql_conn.set_session(autocommit=auto_commit)
 
