@@ -8,7 +8,7 @@
         :target: https://github.com/the4thdoctor/pg_chameleon/stargazers
 	
 .. image:: https://img.shields.io/badge/license-BSD-blue.svg   
-        :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/master/LICENSE
+        :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/main/LICENSE.txt
 
 .. image:: https://img.shields.io/github/release/the4thdoctor/pg_chameleon
 		:target: https://github.com/the4thdoctor/pg_chameleon/releases
@@ -23,7 +23,7 @@ A pl/pgsql function decodes the jsonb values and replays the changes against the
     
 pg_chameleon  2.0 `is available on pypi <https://pypi.org/project/pg_chameleon/>`_  
 
-The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents_v2/index.html>`_ 
+The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`
 
 Please submit your `bug reports on GitHub <https://github.com/the4thdoctor/pg_chameleon>`_.
 
