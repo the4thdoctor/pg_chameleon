@@ -155,5 +155,5 @@ Inside the directory there are three subdirectories.
 * logs is where the replica logs are saved if log_dest is file. It can be changed in the configuration file
 
 You should  use config-example.yaml as template for the other configuration files. 
-Check the `configuration file reference <http://www.pgchameleon.org/documents_v2/configuration_file.html>`_   for an overview.
+Check the `configuration file reference <http://www.pgchameleon.org/documents/configuration_file.html>`_   for an overview.
 
