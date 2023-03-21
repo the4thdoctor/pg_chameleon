@@ -23,7 +23,7 @@ A pl/pgsql function decodes the jsonb values and replays the changes against the
     
 pg_chameleon  2.0 `is available on pypi <https://pypi.org/project/pg_chameleon/>`_  
 
-The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`
+The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`_
 
 Please submit your `bug reports on GitHub <https://github.com/the4thdoctor/pg_chameleon>`_.
 
