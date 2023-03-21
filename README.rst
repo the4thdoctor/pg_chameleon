@@ -8,7 +8,7 @@
         :target: https://github.com/the4thdoctor/pg_chameleon/stargazers
 	
 .. image:: https://img.shields.io/badge/license-BSD-blue.svg   
-        :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/master/LICENSE
+        :target: https://raw.githubusercontent.com/the4thdoctor/pg_chameleon/main/LICENSE.txt
 
 .. image:: https://img.shields.io/github/release/the4thdoctor/pg_chameleon
 		:target: https://github.com/the4thdoctor/pg_chameleon/releases
