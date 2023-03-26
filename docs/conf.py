@@ -57,7 +57,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'pg_chameleon'
-copyright = u'2016-2022 Federico Campoli'
+copyright = u'2016-2023 Federico Campoli'
 author = u'Federico Campoli'
 
 # The version info for the project you're documenting, acts as replacement for
