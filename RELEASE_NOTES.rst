@@ -1,5 +1,20 @@
 RELEASE NOTES
 *************************
+2.0.19
+--------------------------
+This maintenance release adds the following bugfix and improvements.
+
+Merge pull request #144 adding mysql-replication support for PyMySQL>0.10.0 was introduced in v0.22
+Adds support for fillfactor when running init_replica, it's now possible to specify the fillfactor for the tables when running init_replica.
+Useful to mitigate bloat in advance when replicating/migrating from MySQL.
+
+Improve logging on discarded rows, now the discarded row image is displayed in the log.
+
+Add distinct on group concat when collecting foreign keys metadata to avoid duplicate fields in the foreign key definition.
+
+Use mysql-replication>=0.31, this fix the crash when replicating from MariaDB introduced in  mysql-replication 0.27
+
+
 2.0.18
 --------------------------
 This maintenance release adds the following bugfix and improvements.

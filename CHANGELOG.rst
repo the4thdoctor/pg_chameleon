@@ -2,8 +2,11 @@ changelog
 *************************
 2.0.19 - XX March 2023
 ..........................................................
+* Merge pull request #144, mysql-replication support for PyMySQL>0.10.0 was introduced in v0.22
+* add support for fillfactor when running init_replica
+* improve logging on discarded rows
+* add distinct on group concat when collecting foreign keys
 * use mysql-replication>=0.31, fix for crash when replicating from MariaDB
-
 
 2.0.18 - 31 March 2022
 ..........................................................
