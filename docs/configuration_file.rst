@@ -181,7 +181,7 @@ When ``keep_existing_schema`` is set to Yes the parameter ``grant_select_to`` ha
 PostgreSQL source type (EXPERIMENTAL)
 ================================================================
 
-pg_chameleon 2.0 have an experimental support for the postgresql source type.
+pg_chameleon 2.0 has an experimental support for the postgresql source type.
 When set to ``pgsql`` the system expects a postgresql source database rather a mysql.
 The following limitations apply.
 
@@ -197,5 +197,18 @@ The following limitations apply.
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 69-95
+   :emphasize-lines: 7,16,25,27
+   :linenos:
+
+Fillfactor
+================================================================
+The dictionary fillfactor is used to set the fillfactor for tables that are expected to work with large updates.
+The key name defines the fillfactor level (The allowed values range is 10 to 100).
+If key name is set to "*" then the fillfactor applies to all tables in the replicated schema.
+If the table appears multiple times, then only the last matched value will be applied
+
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
+   :language: yaml
+   :lines: 101-107
    :emphasize-lines: 7,16,25,27
    :linenos:
