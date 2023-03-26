@@ -1,6 +1,6 @@
 changelog
 *************************
-2.0.19 - XX March 2023
+2.0.19 - 25 March 2023
 ..........................................................
 * Merge pull request #144, mysql-replication support for PyMySQL>0.10.0 was introduced in v0.22
 * add support for fillfactor when running init_replica

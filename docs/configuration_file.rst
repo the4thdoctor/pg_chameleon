@@ -210,5 +210,4 @@ If the table appears multiple times, then only the last matched value will be ap
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
    :lines: 101-107
-   :emphasize-lines: 7,16,25,27
    :linenos:
