@@ -1,5 +1,10 @@
 changelog
 *************************
+2.0.19 - XX March 2023
+..........................................................
+* use mysql-replication>=0.31, fix for crash when replicating from MariaDB
+
+
 2.0.18 - 31 March 2022
 ..........................................................
 * Support the ON DELETE and ON UPDATE clause when creating the foreign keys in PostgreSQL
