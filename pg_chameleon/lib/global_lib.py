@@ -168,20 +168,6 @@ class replica_engine(object):
                 print("FATAL, The source %s is not registered. Please add it with the command add_source" % (self.args.source))
                 sys.exit()
 
-
-
-
-    def terminate_replica(self, signal, frame):
-        """
-            Stops gracefully the replica.
-        """
-        self.logger.info("Caught stop replica signal terminating daemons and ending the replica process.")
-        self.read_daemon.terminate()
-        self.replay_daemon.terminate()
-        self.pg_engine.connect_db()
-        self.pg_engine.set_source_status("stopped")
-        sys.exit(0)
-
     def set_configuration_files(self):
         """
             The method loops the list self.conf_dirs creating them only if they are missing.
@@ -206,6 +192,16 @@ class replica_engine(object):
         else:
             print ("copying configuration  example in %s" % self.local_conf_example)
             copy(self.global_conf_example, self.local_conf_example)
+
+    def __set_conf_permissions(self,  cham_dir):
+        """
+            The method sets the permissions of the configuration directory to 700
+
+            :param cham_dir: the chameleon configuration directory to fix
+        """
+        if os.path.isdir(cham_dir):
+            os.chmod(cham_dir, 0o700)
+
 
     def load_config(self):
         """
@@ -234,28 +230,6 @@ class replica_engine(object):
             self.config["type_override"] = None
             
 
-
-    def show_sources(self):
-        """
-            The method shows the sources available in the configuration file.
-        """
-        for item in self.config["sources"]:
-            print("\n")
-            print (tabulate([], headers=["Source %s" % item]))
-            tab_headers = ['Parameter', 'Value']
-            tab_body = []
-            source = self.config["sources"][item]
-            config_list = [param for param in source if param not in ['db_conn']]
-            connection_list = [param for param  in source["db_conn"] if param not in ['password']]
-            for parameter in config_list:
-                tab_row = [parameter, source[parameter]]
-                tab_body.append(tab_row)
-            for param in connection_list:
-                tab_row = [param, source["db_conn"][param]]
-                tab_body.append(tab_row)
-
-            print(tabulate(tab_body, headers=tab_headers))
-
     def show_config(self):
         """
             The method loads the current configuration and displays the status in tabular output
@@ -276,46 +250,194 @@ class replica_engine(object):
         print(tabulate(tab_body, headers=tab_headers))
         self.show_sources()
 
-    def create_replica_schema(self):
+    def show_errors(self):
         """
-            The method creates the replica schema in the destination database.
+            displays the error log entries if any.
+            If the source the error log is filtered for this source only.
         """
-        self.logger.info("Trying to create replica schema")
-        self.pg_engine.create_replica_schema()
+        log_id = self.args.logid
+        self.pg_engine.source = self.args.source
+        log_error_data = self.pg_engine.get_log_data(log_id)
+        if log_error_data:
+            if log_id != "*":
+                tab_body = []
+                log_line = log_error_data[0]
+                tab_body.append(['Log id', log_line[0]])
+                tab_body.append(['Source name', log_line[1]])
+                tab_body.append(['ID Batch', log_line[2]])
+                tab_body.append(['Table', log_line[3]])
+                tab_body.append(['Schema', log_line[4]])
+                tab_body.append(['Error timestamp', log_line[5]])
+                tab_body.append(['SQL executed', log_line[6]])
+                tab_body.append(['Error message', log_line[7]])
+                print(tabulate(tab_body, tablefmt="simple"))
+            else:
+                tab_headers = ['Log id',  'Source name', 'ID Batch',  'Table', 'Schema' ,  'Error timestamp']
+                tab_body = []
+                for log_line in log_error_data:
+                    log_id = log_line[0]
+                    id_batch = log_line[1]
+                    source_name = log_line[2]
+                    table_name = log_line[3]
+                    schema_name = log_line[4]
+                    error_timestamp = log_line[5]
+                    tab_row = [log_id, id_batch,source_name, table_name,   schema_name, error_timestamp]
+                    tab_body.append(tab_row)
+                print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
+        else:
+            print('There are no errors in the log')
 
-    def drop_replica_schema(self):
+    def show_status(self):
         """
-            The method removes the replica schema from the destination database.
+            list the replica status from the replica catalogue.
+            If the source is specified gives some extra details on the source status.
         """
-        self.logger.info("Dropping the replica schema")
-        self.pg_engine.drop_replica_schema()
+        self.pg_engine.auto_maintenance = "disabled"
+        if self.args.source != "*":
+            if "auto_maintenance" in  self.config["sources"][self.args.source]:
+                self.pg_engine.auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
 
-    def add_source(self):
+        self.pg_engine.source = self.args.source
+        configuration_data = self.pg_engine.get_status()
+        configuration_status = configuration_data[0]
+        schema_mappings = configuration_data[1]
+        table_status = configuration_data[2]
+        replica_counters = configuration_data[3]
+        tab_headers = ['Source id',  'Source name', 'Type',  'Status', 'Consistent' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
+        tab_body = []
+        for status in configuration_status:
+            source_id = status[0]
+            source_name = status[1]
+            source_status = status[2]
+            read_lag = status[3]
+            last_read = status[4]
+            replay_lag = status[5]
+            last_replay = status[6]
+            consistent = status[7]
+            source_type = status[8]
+            last_maintenance = status[9]
+            next_maintenance = status[10]
+            tab_row = [source_id, source_name, source_type,   source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
+            tab_body.append(tab_row)
+        print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
+        if schema_mappings:
+            print('\n== Schema mappings ==')
+            tab_headers = ['Origin schema',  'Destination schema']
+            tab_body = []
+            for mapping in schema_mappings:
+                origin_schema =  mapping[0]
+                destination_schema=  mapping[1]
+                tab_row = [origin_schema, destination_schema]
+                tab_body.append(tab_row)
+            print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
+        if table_status:
+            print('\n== Replica status ==')
+            #tab_headers = ['',  '',  '']
+            tab_body = []
+            tables_no_replica = table_status[0]
+            tab_row = ['Tables not replicated', tables_no_replica[1]]
+            tab_body.append(tab_row)
+            tables_with_replica = table_status[1]
+            tab_row = ['Tables replicated', tables_with_replica[1]]
+            tab_body.append(tab_row)
+            tables_all= table_status[2]
+            tab_row = ['All tables', tables_all[1]]
+            tab_body.append(tab_row)
+            tab_row = ['Last maintenance', last_maintenance]
+            tab_body.append(tab_row)
+            tab_row = ['Next maintenance', next_maintenance]
+            tab_body.append(tab_row)
+            if replica_counters:
+                tab_row = ['Replayed rows', replica_counters[0]]
+                tab_body.append(tab_row)
+                tab_row = ['Replayed DDL', replica_counters[2]]
+                tab_body.append(tab_row)
+                tab_row = ['Skipped rows', replica_counters[1]]
+                tab_body.append(tab_row)
+            print(tabulate(tab_body, tablefmt="simple"))
+            if tables_no_replica[2]:
+                print('\n== Tables with replica disabled ==')
+                print("\n".join(tables_no_replica[2]))
+
+    def run_maintenance(self):
         """
-            The method adds a new replication source. A pre existence check is performed
+            The method runs a maintenance process on the target postgresql database specified in the given source.
         """
+        maintenance_pid = os.path.expanduser('%s/%s_maintenance.pid' % (self.config["pid_dir"],self.args.source))
         if self.args.source == "*":
             print("You must specify a source name with the argument --source")
         else:
-            self.logger.info("Trying to add a new source")
-            self.pg_engine.add_source()
+            if self.args.debug:
+                self.pg_engine.run_maintenance()
+            else:
+                if self.config["log_dest"]  == 'stdout':
+                    foreground = True
+                else:
+                    self.logger.info("Starting the maintenance on the source %s" % (self.args.source, ))
+                    foreground = False
+                    print("Starting the maintenance process for source %s" % (self.args.source))
+                    keep_fds = [self.logger_fds]
 
-    def drop_source(self):
+                    app_name = "%s_maintenance" % self.args.source
+                    maintenance_daemon = Daemonize(app=app_name, pid=maintenance_pid, action=self.pg_engine.run_maintenance, foreground=foreground , keep_fds=keep_fds)
+                    try:
+                        maintenance_daemon.start()
+                    except:
+                        print("The  maintenance process is already started. Aborting the command.")
+
+    def __init_logger(self, logger_name):
         """
-            The method removes a replication source from the catalogue.
+        The method initialise a new logger object using the configuration parameters.
+        The formatter is different if the debug option is enabler or not.
+        The method returns a new logger object and sets the logger's file descriptor in the class variable
+        logger_fds, used when the process is demonised.
+
+        :param logger_name: the name of the logger used to build the file name and get the correct logger
+        :return: list with logger and file descriptor
+        :rtype: list
+
         """
-        if self.args.source == "*":
-            print("You must specify a source name with the argument --source")
+        log_dir = self.config["log_dir"]
+        log_level = self.config["log_level"]
+        log_dest = self.config["log_dest"]
+        log_days_keep = self.config["log_days_keep"]
+        config_name = self.args.config
+        source_name = self.args.source
+        debug_mode = self.args.debug
+        if source_name == '*':
+            log_name = "%s_general" % (config_name)
+        elif  logger_name == "global":
+            log_name = "%s_%s" % (config_name, source_name)
         else:
-            drp_msg = 'Dropping the source %s will remove drop any replica reference.\n Are you sure? YES/No\n'  % self.args.source
-            drop_src = input(drp_msg)
-            if drop_src == 'YES':
-                self.logger.info("Trying to remove the source")
-                self.pg_engine.drop_source()
-            elif drop_src in  self.lst_yes:
-                print('Please type YES all uppercase to confirm')
+            log_name = "%s_%s_%s" % (config_name, source_name, logger_name)
 
+        log_file = os.path.expanduser('%s/%s.log' % (log_dir,log_name))
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+        if debug_mode:
+            str_format = "%(asctime)s %(processName)s %(levelname)s %(filename)s (%(lineno)s): %(message)s"
+        else:
+            str_format = "%(asctime)s %(processName)s %(levelname)s: %(message)s"
+        formatter = logging.Formatter(str_format, "%Y-%m-%d %H:%M:%S")
 
+        if log_dest=='stdout' or debug_mode:
+            fh=logging.StreamHandler(sys.stdout)
+
+        elif log_dest=='file':
+            fh = TimedRotatingFileHandler(log_file, when="d",interval=1,backupCount=log_days_keep)
+
+        if log_level=='debug' or debug_mode:
+            fh.setLevel(logging.DEBUG)
+        elif log_level=='info':
+            fh.setLevel(logging.INFO)
+
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+        logger_fds = fh.stream.fileno()
+        return [logger, logger_fds]
+
+    
     def enable_replica(self):
         """
             The method  resets the source status to stopped and disables any leftover maintenance mode
@@ -323,17 +445,6 @@ class replica_engine(object):
         self.pg_engine.connect_db()
         self.pg_engine.set_source_status("stopped")
         self.pg_engine.end_maintenance()
-
-    def copy_schema(self):
-        """
-            The method calls init_replica adding a flag for skipping the data copy.
-            Useful if we want to test for schema issues or to populate the schema preventively.
-            
-        """
-        self.mysql_source.copy_table_data=False
-        self.init_replica()
-        self.pg_engine.fk_metadata = self.mysql_source.get_foreign_keys_metadata()
-        self.pg_engine.create_foreign_keys()
 
     def init_replica(self):
         """
@@ -397,112 +508,47 @@ class replica_engine(object):
             init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.pgsql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
             init_daemon.start()
 
-
-    def refresh_schema(self):
+    def start_replica(self):
         """
-            The method  reload the data from a source and only for a specified schema.
-            Is compulsory to specify a source name and an origin's schema name.
-            The schema mappings are honoured by the procedure automatically.
-        """
-        if self.args.source == "*":
-            print("You must specify a source name using the argument --source")
-        elif self.args.schema == "*":
-            print("You must specify an origin's schema name using the argument --schema")
-        else:
-            self.__stop_replica()
-            if self.args.debug:
-                self.mysql_source.refresh_schema()
-            else:
-                if self.config["log_dest"]  == 'stdout':
-                    foreground = True
-                else:
-                    foreground = False
-                    print("Sync tables process for source %s started." % (self.args.source))
-                keep_fds = [self.logger_fds]
-                init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
-                self.logger.info("The tables %s within source %s will be synced." % (self.args.tables, self.args.source))
-                sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.refresh_schema, foreground=foreground , keep_fds=keep_fds)
-                sync_daemon .start()
-
-
-    def sync_tables(self):
-        """
-            The method  reload the data from a source only for specified tables.
-            Is compulsory to specify a source name and at least one table name when running this method.
-            Multiple tables are allowed if comma separated.
-        """
-        if self.args.source == "*":
-            print("You must specify a source name using the argument --source")
-        elif self.args.tables == "*":
-            print("You must specify one or more tables, in the form schema.table, separated by comma using the argument --tables")
-        else:
-            self.__stop_replica()
-            if self.args.debug:
-                self.mysql_source.sync_tables()
-            else:
-                if self.config["log_dest"]  == 'stdout':
-                    foreground = True
-                else:
-                    foreground = False
-                    print("Sync tables process for source %s started." % (self.args.source))
-                keep_fds = [self.logger_fds]
-                init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
-                self.logger.info("The tables %s within source %s will be synced." % (self.args.tables, self.args.source))
-                sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.sync_tables, foreground=foreground , keep_fds=keep_fds)
-                sync_daemon .start()
-
-    def __stop_all_active_sources(self):
-        """
-            The method stops all the active sources within the target PostgreSQL database.
-        """
-        active_source = self.pg_engine.get_active_sources()
-        for source in active_source:
-            self.source = source[0]
-            self.__stop_replica()
-
-    def upgrade_replica_schema(self):
-        """
-            The method upgrades an existing replica catalogue to the newer version.
-            If the catalogue is from the previous version
-        """
-        catalog_version = self.pg_engine.get_catalog_version()
-        if catalog_version == self.catalog_version:
-            print("The replica catalogue is already up to date.")
-            sys.exit()
-        else:
-            if catalog_version == self.upgradable_version:
-                upg_msg = 'Upgrading the catalogue %s to the version %s.\n Are you sure? YES/No\n'  %  (catalog_version, self.catalog_version)
-                upg_cat = input(upg_msg)
-                if upg_cat == 'YES':
-                    self.logger.info("Performing the upgrade")
-                    self.pg_engine.upgrade_catalogue_v1()
-                elif upg_cat in  self.lst_yes:
-                    print('Please type YES all uppercase to confirm')
-            elif catalog_version.split('.')[0] == '2' and catalog_version.split('.')[1] == '0':
-                print('Stopping all the active sources.')
-                self.__stop_all_active_sources()
-                print('Upgrading the replica catalogue. ')
-                self.pg_engine.upgrade_catalogue_v20()
-            else:
-                print('Wrong starting version. Expected %s, got %s' % (catalog_version, self.upgradable_version))
-                sys.exit()
-
-
-    def update_schema_mappings(self):
-        """
-            The method updates the schema mappings for the given source.
-            The schema mappings is a configuration parameter but is stored in the replica
-            catalogue when the source is added. If any change is made on the configuration file this method
-            should be called to update the system catalogue as well. The pg_engine method checks for any conflict before running
-            the update on the tables t_sources and t_replica_tables.
+            The method starts a new replica process.
             Is compulsory to specify a source name when running this method.
         """
-        if self.args.source == "*":
-            print("You must specify a source name with the argument --source")
-        else:
-            self.__stop_replica()
-            self.pg_engine.update_schema_mappings()
 
+        replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+
+        if self.args.source == "*":
+            print("You must specify a source name using the argument --source")
+        else:
+            self.pg_engine.connect_db()
+            self.logger.info("Checking if the replica for source %s is stopped " % (self.args.source))
+            replica_status = self.pg_engine.get_replica_status()
+            if replica_status in ['syncing', 'running', 'initialising']:
+                print("The replica process is already started or is syncing. Aborting the command.")
+            elif replica_status == 'error':
+                print("The replica process is in error state.")
+                print("You may need to check the replica status first. To enable it run the following command.")
+                print("chameleon.py enable_replica --config %s --source %s " % (self.args.config, self.args.source))
+
+            else:
+                self.logger.info("Cleaning not processed batches for source %s" % (self.args.source))
+                self.pg_engine.clean_not_processed_batches()
+                self.pg_engine.disconnect_db()
+                if self.args.debug:
+                    self.__run_replica()
+                else:
+                    if self.config["log_dest"]  == 'stdout':
+                        foreground = True
+                    else:
+                        foreground = False
+                        print("Starting the replica process for source %s" % (self.args.source))
+
+                    keep_fds = [self.logger_fds]
+                    app_name = "%s_replica" % self.args.source
+                    replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.__run_replica, foreground=foreground , keep_fds=keep_fds)
+                    try:
+                        replica_daemon.start()
+                    except:
+                        print("The replica process is already started. Aborting the command.")
 
     def read_replica(self, queue, log_read):
         """
@@ -623,48 +669,6 @@ class replica_engine(object):
 
         self.logger.info("Replica process for source %s ended" % (self.args.source))
 
-    def start_replica(self):
-        """
-            The method starts a new replica process.
-            Is compulsory to specify a source name when running this method.
-        """
-
-        replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
-
-        if self.args.source == "*":
-            print("You must specify a source name using the argument --source")
-        else:
-            self.pg_engine.connect_db()
-            self.logger.info("Checking if the replica for source %s is stopped " % (self.args.source))
-            replica_status = self.pg_engine.get_replica_status()
-            if replica_status in ['syncing', 'running', 'initialising']:
-                print("The replica process is already started or is syncing. Aborting the command.")
-            elif replica_status == 'error':
-                print("The replica process is in error state.")
-                print("You may need to check the replica status first. To enable it run the following command.")
-                print("chameleon.py enable_replica --config %s --source %s " % (self.args.config, self.args.source))
-
-            else:
-                self.logger.info("Cleaning not processed batches for source %s" % (self.args.source))
-                self.pg_engine.clean_not_processed_batches()
-                self.pg_engine.disconnect_db()
-                if self.args.debug:
-                    self.__run_replica()
-                else:
-                    if self.config["log_dest"]  == 'stdout':
-                        foreground = True
-                    else:
-                        foreground = False
-                        print("Starting the replica process for source %s" % (self.args.source))
-
-                    keep_fds = [self.logger_fds]
-                    app_name = "%s_replica" % self.args.source
-                    replica_daemon = Daemonize(app=app_name, pid=replica_pid, action=self.__run_replica, foreground=foreground , keep_fds=keep_fds)
-                    try:
-                        replica_daemon.start()
-                    except:
-                        print("The replica process is already started. Aborting the command.")
-
 
     def __stop_replica(self):
         """
@@ -688,14 +692,6 @@ class replica_engine(object):
             except:
                 print("An error occurred when trying to signal the replica process")
 
-    def __set_conf_permissions(self,  cham_dir):
-        """
-            The method sets the permissions of the configuration directory to 700
-
-            :param cham_dir: the chameleon configuration directory to fix
-        """
-        if os.path.isdir(cham_dir):
-            os.chmod(cham_dir, 0o700)
 
 
     def stop_replica(self):
@@ -710,114 +706,6 @@ class replica_engine(object):
         """
         self.__stop_all_active_sources()
 
-    def show_errors(self):
-        """
-            displays the error log entries if any.
-            If the source the error log is filtered for this source only.
-        """
-        log_id = self.args.logid
-        self.pg_engine.source = self.args.source
-        log_error_data = self.pg_engine.get_log_data(log_id)
-        if log_error_data:
-            if log_id != "*":
-                tab_body = []
-                log_line = log_error_data[0]
-                tab_body.append(['Log id', log_line[0]])
-                tab_body.append(['Source name', log_line[1]])
-                tab_body.append(['ID Batch', log_line[2]])
-                tab_body.append(['Table', log_line[3]])
-                tab_body.append(['Schema', log_line[4]])
-                tab_body.append(['Error timestamp', log_line[5]])
-                tab_body.append(['SQL executed', log_line[6]])
-                tab_body.append(['Error message', log_line[7]])
-                print(tabulate(tab_body, tablefmt="simple"))
-            else:
-                tab_headers = ['Log id',  'Source name', 'ID Batch',  'Table', 'Schema' ,  'Error timestamp']
-                tab_body = []
-                for log_line in log_error_data:
-                    log_id = log_line[0]
-                    id_batch = log_line[1]
-                    source_name = log_line[2]
-                    table_name = log_line[3]
-                    schema_name = log_line[4]
-                    error_timestamp = log_line[5]
-                    tab_row = [log_id, id_batch,source_name, table_name,   schema_name, error_timestamp]
-                    tab_body.append(tab_row)
-                print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
-        else:
-            print('There are no errors in the log')
-
-    def show_status(self):
-        """
-            list the replica status from the replica catalogue.
-            If the source is specified gives some extra details on the source status.
-        """
-        self.pg_engine.auto_maintenance = "disabled"
-        if self.args.source != "*":
-            if "auto_maintenance" in  self.config["sources"][self.args.source]:
-                self.pg_engine.auto_maintenance = self.config["sources"][self.args.source]["auto_maintenance"]
-
-        self.pg_engine.source = self.args.source
-        configuration_data = self.pg_engine.get_status()
-        configuration_status = configuration_data[0]
-        schema_mappings = configuration_data[1]
-        table_status = configuration_data[2]
-        replica_counters = configuration_data[3]
-        tab_headers = ['Source id',  'Source name', 'Type',  'Status', 'Consistent' ,  'Read lag',  'Last read',  'Replay lag' , 'Last replay']
-        tab_body = []
-        for status in configuration_status:
-            source_id = status[0]
-            source_name = status[1]
-            source_status = status[2]
-            read_lag = status[3]
-            last_read = status[4]
-            replay_lag = status[5]
-            last_replay = status[6]
-            consistent = status[7]
-            source_type = status[8]
-            last_maintenance = status[9]
-            next_maintenance = status[10]
-            tab_row = [source_id, source_name, source_type,   source_status, consistent,  read_lag, last_read,  replay_lag, last_replay]
-            tab_body.append(tab_row)
-        print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
-        if schema_mappings:
-            print('\n== Schema mappings ==')
-            tab_headers = ['Origin schema',  'Destination schema']
-            tab_body = []
-            for mapping in schema_mappings:
-                origin_schema =  mapping[0]
-                destination_schema=  mapping[1]
-                tab_row = [origin_schema, destination_schema]
-                tab_body.append(tab_row)
-            print(tabulate(tab_body, headers=tab_headers, tablefmt="simple"))
-        if table_status:
-            print('\n== Replica status ==')
-            #tab_headers = ['',  '',  '']
-            tab_body = []
-            tables_no_replica = table_status[0]
-            tab_row = ['Tables not replicated', tables_no_replica[1]]
-            tab_body.append(tab_row)
-            tables_with_replica = table_status[1]
-            tab_row = ['Tables replicated', tables_with_replica[1]]
-            tab_body.append(tab_row)
-            tables_all= table_status[2]
-            tab_row = ['All tables', tables_all[1]]
-            tab_body.append(tab_row)
-            tab_row = ['Last maintenance', last_maintenance]
-            tab_body.append(tab_row)
-            tab_row = ['Next maintenance', next_maintenance]
-            tab_body.append(tab_row)
-            if replica_counters:
-                tab_row = ['Replayed rows', replica_counters[0]]
-                tab_body.append(tab_row)
-                tab_row = ['Replayed DDL', replica_counters[2]]
-                tab_body.append(tab_row)
-                tab_row = ['Skipped rows', replica_counters[1]]
-                tab_body.append(tab_row)
-            print(tabulate(tab_body, tablefmt="simple"))
-            if tables_no_replica[2]:
-                print('\n== Tables with replica disabled ==')
-                print("\n".join(tables_no_replica[2]))
 
     def detach_replica(self):
         """
@@ -847,80 +735,200 @@ class replica_engine(object):
             elif drop_src in self.lst_yes:
                 print('Please type YES all uppercase to confirm')
 
-    def run_maintenance(self):
+
+    def terminate_replica(self, signal, frame):
         """
-            The method runs a maintenance process on the target postgresql database specified in the given source.
+            Stops gracefully the replica.
         """
-        maintenance_pid = os.path.expanduser('%s/%s_maintenance.pid' % (self.config["pid_dir"],self.args.source))
+        self.logger.info("Caught stop replica signal terminating daemons and ending the replica process.")
+        self.read_daemon.terminate()
+        self.replay_daemon.terminate()
+        self.pg_engine.connect_db()
+        self.pg_engine.set_source_status("stopped")
+        sys.exit(0)
+
+
+    def create_replica_schema(self):
+        """
+            The method creates the replica schema in the destination database.
+        """
+        self.logger.info("Trying to create replica schema")
+        self.pg_engine.create_replica_schema()
+
+    def copy_schema(self):
+        """
+            The method calls init_replica adding a flag for skipping the data copy.
+            Useful if we want to test for schema issues or to populate the schema preventively.
+            
+        """
+        self.mysql_source.copy_table_data=False
+        self.init_replica()
+        self.pg_engine.fk_metadata = self.mysql_source.get_foreign_keys_metadata()
+        self.pg_engine.create_foreign_keys()
+
+
+
+    def refresh_schema(self):
+        """
+            The method  reload the data from a source and only for a specified schema.
+            Is compulsory to specify a source name and an origin's schema name.
+            The schema mappings are honoured by the procedure automatically.
+        """
         if self.args.source == "*":
-            print("You must specify a source name with the argument --source")
+            print("You must specify a source name using the argument --source")
+        elif self.args.schema == "*":
+            print("You must specify an origin's schema name using the argument --schema")
         else:
+            self.__stop_replica()
             if self.args.debug:
-                self.pg_engine.run_maintenance()
+                self.mysql_source.refresh_schema()
             else:
                 if self.config["log_dest"]  == 'stdout':
                     foreground = True
                 else:
-                    self.logger.info("Starting the maintenance on the source %s" % (self.args.source, ))
                     foreground = False
-                    print("Starting the maintenance process for source %s" % (self.args.source))
-                    keep_fds = [self.logger_fds]
+                    print("Sync tables process for source %s started." % (self.args.source))
+                keep_fds = [self.logger_fds]
+                init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+                self.logger.info("The tables %s within source %s will be synced." % (self.args.tables, self.args.source))
+                sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.refresh_schema, foreground=foreground , keep_fds=keep_fds)
+                sync_daemon .start()
 
-                    app_name = "%s_maintenance" % self.args.source
-                    maintenance_daemon = Daemonize(app=app_name, pid=maintenance_pid, action=self.pg_engine.run_maintenance, foreground=foreground , keep_fds=keep_fds)
-                    try:
-                        maintenance_daemon.start()
-                    except:
-                        print("The  maintenance process is already started. Aborting the command.")
-
-    def __init_logger(self, logger_name):
+    def upgrade_replica_schema(self):
         """
-        The method initialise a new logger object using the configuration parameters.
-        The formatter is different if the debug option is enabler or not.
-        The method returns a new logger object and sets the logger's file descriptor in the class variable
-        logger_fds, used when the process is demonised.
-
-        :param logger_name: the name of the logger used to build the file name and get the correct logger
-        :return: list with logger and file descriptor
-        :rtype: list
-
+            The method upgrades an existing replica catalogue to the newer version.
+            If the catalogue is from the previous version
         """
-        log_dir = self.config["log_dir"]
-        log_level = self.config["log_level"]
-        log_dest = self.config["log_dest"]
-        log_days_keep = self.config["log_days_keep"]
-        config_name = self.args.config
-        source_name = self.args.source
-        debug_mode = self.args.debug
-        if source_name == '*':
-            log_name = "%s_general" % (config_name)
-        elif  logger_name == "global":
-            log_name = "%s_%s" % (config_name, source_name)
+        catalog_version = self.pg_engine.get_catalog_version()
+        if catalog_version == self.catalog_version:
+            print("The replica catalogue is already up to date.")
+            sys.exit()
         else:
-            log_name = "%s_%s_%s" % (config_name, source_name, logger_name)
+            if catalog_version == self.upgradable_version:
+                upg_msg = 'Upgrading the catalogue %s to the version %s.\n Are you sure? YES/No\n'  %  (catalog_version, self.catalog_version)
+                upg_cat = input(upg_msg)
+                if upg_cat == 'YES':
+                    self.logger.info("Performing the upgrade")
+                    self.pg_engine.upgrade_catalogue_v1()
+                elif upg_cat in  self.lst_yes:
+                    print('Please type YES all uppercase to confirm')
+            elif catalog_version.split('.')[0] == '2' and catalog_version.split('.')[1] == '0':
+                print('Stopping all the active sources.')
+                self.__stop_all_active_sources()
+                print('Upgrading the replica catalogue. ')
+                self.pg_engine.upgrade_catalogue_v20()
+            else:
+                print('Wrong starting version. Expected %s, got %s' % (catalog_version, self.upgradable_version))
+                sys.exit()
 
-        log_file = os.path.expanduser('%s/%s.log' % (log_dir,log_name))
-        logger = logging.getLogger(logger_name)
-        logger.setLevel(logging.DEBUG)
-        logger.propagate = False
-        if debug_mode:
-            str_format = "%(asctime)s %(processName)s %(levelname)s %(filename)s (%(lineno)s): %(message)s"
+
+    def update_schema_mappings(self):
+        """
+            The method updates the schema mappings for the given source.
+            The schema mappings is a configuration parameter but is stored in the replica
+            catalogue when the source is added. If any change is made on the configuration file this method
+            should be called to update the system catalogue as well. The pg_engine method checks for any conflict before running
+            the update on the tables t_sources and t_replica_tables.
+            Is compulsory to specify a source name when running this method.
+        """
+        if self.args.source == "*":
+            print("You must specify a source name with the argument --source")
         else:
-            str_format = "%(asctime)s %(processName)s %(levelname)s: %(message)s"
-        formatter = logging.Formatter(str_format, "%Y-%m-%d %H:%M:%S")
+            self.__stop_replica()
+            self.pg_engine.update_schema_mappings()            
 
-        if log_dest=='stdout' or debug_mode:
-            fh=logging.StreamHandler(sys.stdout)
+    def drop_replica_schema(self):
+        """
+            The method removes the replica schema from the destination database.
+        """
+        self.logger.info("Dropping the replica schema")
+        self.pg_engine.drop_replica_schema()
 
-        elif log_dest=='file':
-            fh = TimedRotatingFileHandler(log_file, when="d",interval=1,backupCount=log_days_keep)
+    def show_sources(self):
+        """
+            The method shows the sources available in the configuration file.
+        """
+        for item in self.config["sources"]:
+            print("\n")
+            print (tabulate([], headers=["Source %s" % item]))
+            tab_headers = ['Parameter', 'Value']
+            tab_body = []
+            source = self.config["sources"][item]
+            config_list = [param for param in source if param not in ['db_conn']]
+            connection_list = [param for param  in source["db_conn"] if param not in ['password']]
+            for parameter in config_list:
+                tab_row = [parameter, source[parameter]]
+                tab_body.append(tab_row)
+            for param in connection_list:
+                tab_row = [param, source["db_conn"][param]]
+                tab_body.append(tab_row)
 
-        if log_level=='debug' or debug_mode:
-            fh.setLevel(logging.DEBUG)
-        elif log_level=='info':
-            fh.setLevel(logging.INFO)
+            print(tabulate(tab_body, headers=tab_headers))
 
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-        logger_fds = fh.stream.fileno()
-        return [logger, logger_fds]
+    def add_source(self):
+        """
+            The method adds a new replication source. A pre existence check is performed
+        """
+        if self.args.source == "*":
+            print("You must specify a source name with the argument --source")
+        else:
+            self.logger.info("Trying to add a new source")
+            self.pg_engine.add_source()
+
+    def drop_source(self):
+        """
+            The method removes a replication source from the catalogue.
+        """
+        if self.args.source == "*":
+            print("You must specify a source name with the argument --source")
+        else:
+            drp_msg = 'Dropping the source %s will remove drop any replica reference.\n Are you sure? YES/No\n'  % self.args.source
+            drop_src = input(drp_msg)
+            if drop_src == 'YES':
+                self.logger.info("Trying to remove the source")
+                self.pg_engine.drop_source()
+            elif drop_src in  self.lst_yes:
+                print('Please type YES all uppercase to confirm')
+
+
+    def __stop_all_active_sources(self):
+        """
+            The method stops all the active sources within the target PostgreSQL database.
+        """
+        active_source = self.pg_engine.get_active_sources()
+        for source in active_source:
+            self.source = source[0]
+            self.__stop_replica()
+
+
+    def sync_tables(self):
+        """
+            The method  reload the data from a source only for specified tables.
+            Is compulsory to specify a source name and at least one table name when running this method.
+            Multiple tables are allowed if comma separated.
+        """
+        if self.args.source == "*":
+            print("You must specify a source name using the argument --source")
+        elif self.args.tables == "*":
+            print("You must specify one or more tables, in the form schema.table, separated by comma using the argument --tables")
+        else:
+            self.__stop_replica()
+            if self.args.debug:
+                self.mysql_source.sync_tables()
+            else:
+                if self.config["log_dest"]  == 'stdout':
+                    foreground = True
+                else:
+                    foreground = False
+                    print("Sync tables process for source %s started." % (self.args.source))
+                keep_fds = [self.logger_fds]
+                init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+                self.logger.info("The tables %s within source %s will be synced." % (self.args.tables, self.args.source))
+                sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.sync_tables, foreground=foreground , keep_fds=keep_fds)
+                sync_daemon .start()
+
+
+    
+
+
+    
