@@ -56,7 +56,8 @@ setup(
         'PyYAML>=3.13',
         'tabulate>=0.8.1',
         'daemonize>=2.4.7',
-        'rollbar>=0.13.17'
+        'rollbar>=0.13.17',
+        'parsy>=2.1'
     ],
     include_package_data = True,
     package_data=package_data,

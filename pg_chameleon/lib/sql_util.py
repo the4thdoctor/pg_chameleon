@@ -1,5 +1,97 @@
 import re
 
+from parsy import alt, any_char, digit, seq, string, regex, whitespace
+
+
+def ci_string(s):
+    return string(s, transform=lambda x: x.upper())
+
+
+def optional_space_around(s):
+    return whitespace.optional() >> s << whitespace.optional()
+
+
+pgsql_identifier = regex("\w+")
+mysql_identifier = string("`") >> regex(r"[\w\s]+") << string("`")
+identifier = pgsql_identifier | mysql_identifier
+
+lparen = string("(")
+rparen = string(")")
+semicolon = string(";")
+comma_sep = whitespace.optional() >> string(",") << whitespace.optional()
+sql_string = string("'") >> any_char.until(string("'")).concat() << string("'")
+
+ci_word = regex("\w+", flags=re.IGNORECASE)
+
+not_null = seq(ci_string("NOT"), whitespace, ci_string("NULL")).result("NOT NULL")
+extra = ci_word.sep_by(whitespace)
+ignored_by_column_def = alt(
+    ci_string("UNIQUE"),
+    seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")),
+    ci_string("CONSTRAINT"),
+    ci_string("INDEX"),
+    seq(ci_string("FOREIGN"), whitespace, ci_string("KEY"))
+)
+
+def post_process_column_definition(column_name, data_type, dimensions, enum_list, extras):
+    col_dict = dict(column_name=column_name, data_type=data_type)
+
+    col_dict["is_nullable"] = "NO" if "NOT NULL" in extras else "YES"
+    col_dict["extra"] = "auto_increment" if "AUTO_INCREMENT" in extras else ""
+
+    if dimensions:
+        col_dict["numeric_precision"] = col_dict["character_maximum_length"] = dimensions[0] # str
+        col_dict["numeric_scale"] = dimensions[1] if len(dimensions) > 1 else 0 # str or int
+    elif enum_list:
+        col_dict["enum_list"] = "( %s )" % ", ".join(map(lambda x: f"'{x}'", enum_list))
+
+    if dimensions:
+        col_dict["column_type"] = "%s(%s)" % (data_type, ", ".join(dimensions))
+    elif enum_list:
+        col_dict["column_type"] = "%s(%s)" % (data_type, ", ".join(map(lambda x: f"'{x}'", enum_list)))
+    else:
+        col_dict["column_type"] = data_type
+
+    return col_dict
+
+
+# col_dic:
+#  column_name: str
+#  data_type: str
+#  is_nullable: enum "YES"|"NO"
+#  enum_list: maybe str
+#  character_maximum_length: maybe str
+#  numeric_precision: maybe str
+#  numeric_scale: maybe str | int (defaults to 0)
+#  extra: str
+#  column_type: str
+column_definition = seq(
+    column_name=identifier,
+    data_type=whitespace >> ci_word.map(lambda x: x.lower()),
+    __precision_or_varying=(
+        whitespace >>
+        (ci_string("PRECISION") | ci_string("VARYING"))
+    ).optional(),
+    dimensions=(
+        optional_space_around(lparen) >>
+        digit.many().concat().sep_by(optional_space_around(string(",") | string("|")))
+        << optional_space_around(rparen)
+    ).optional(),
+    enum_list=(
+        optional_space_around(lparen) >>
+        sql_string.sep_by(optional_space_around(string(",") | string("|")))
+        << optional_space_around(rparen)
+    ).optional(),
+    extras=(
+        whitespace >> alt(
+            seq(ci_string("NOT"), whitespace, ci_string("NULL")).result("NOT NULL"),
+            # ignored_by_column_def,
+            regex(r"[\w_]+"),
+        ).sep_by(whitespace)
+    ).optional(default=[]),
+).combine_dict(post_process_column_definition)
+
+
 class sql_token(object):
     """
     The class tokenises the sql statements captured by mysql_engine.
@@ -38,7 +130,6 @@ class sql_token(object):
         self.m_inline_pkeys=re.compile(r'(.*?)\bPRIMARY\b\s*\bKEY\b,', re.IGNORECASE)
 
         #re for fields
-        self.m_field=re.compile(r'(?:`)?(\w*)(?:`)?\s*(?:`)?(\w*\s*(?:precision|varying)?)(?:`)?\s*((\(\s*\d*\s*\)|\(\s*\d*\s*,\s*\d*\s*\))?)', re.IGNORECASE)
         self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
         self.m_pars=re.compile(r'(\((:?.*?)\))', re.IGNORECASE)
         self.m_dimension=re.compile(r'(\(.*?\))', re.IGNORECASE)
@@ -86,48 +177,11 @@ class sql_token(object):
             :return: col_dic the column dictionary
             :rtype: dictionary
         """
-        colmatch = self.m_field.search(col_def)
-        dimmatch = self.m_dimension.search(col_def)
-        col_dic={}
-        dimensions = None
-        if colmatch:
-            col_dic["column_name"]=colmatch.group(1).strip("`").strip()
-            col_dic["data_type"]=colmatch.group(2).lower().strip()
-            col_dic["is_nullable"]="YES"
-            if dimmatch:
-                dimensions = dimmatch.group(1).replace('|', ',').replace('(', '').replace(')', '').strip()
-                enum_list = dimmatch.group(1).replace('|', ',').strip()
-                numeric_dims = dimensions.split(',')
-                numeric_precision = numeric_dims[0].strip()
-                try:
-                    numeric_scale = numeric_dims[1].strip()
-                except:
-                    numeric_scale = 0
-
-                col_dic["enum_list"] = enum_list
-                col_dic["character_maximum_length"] = dimensions
-                col_dic["numeric_precision"]=numeric_precision
-                col_dic["numeric_scale"]=numeric_scale
-            nullcons=self.m_nulls.search(col_def)
-            autoinc=self.m_autoinc.search(col_def)
-            pkey_list=self.pkey_cols
-
-            col_dic["is_nullable"]="YES"
-            if col_dic["column_name"] in pkey_list or col_dic["column_name"] in self.ukey_cols:
-                col_dic["is_nullable"]="NO"
-            elif nullcons:
-                #pkey_list=[cln.strip() for cln in pkey_list]
-                if nullcons.group(0)=="NOT NULL":
-                    col_dic["is_nullable"]="NO"
-
-            if autoinc:
-                col_dic["extra"]="auto_increment"
-            else :
-                col_dic["extra"]=""
-            if dimensions:
-                col_dic["column_type"] = "%s(%s)" % (col_dic["data_type"], dimensions)
-            else:
-                col_dic["column_type"] = "%s" % (col_dic["data_type"])
+        col_dic = column_definition.optional(default={}).parse(col_def)
+        if (col_dic and
+                (col_dic["column_name"] in self.pkey_cols or
+                 col_dic["column_name"] in self.ukey_cols)):
+            col_dic["is_nullable"]="NO"
 
         return col_dic
 
