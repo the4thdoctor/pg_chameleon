@@ -33,8 +33,7 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Database :: Database Engines/Servers",
         "Topic :: Other/Nonlisted Topic"
     ],
@@ -62,7 +61,7 @@ setup(
     include_package_data = True,
     package_data=package_data,
     packages=setuptools.find_packages(),
-    python_requires='>=3.5',
+    python_requires='>=3.7',
     keywords='postgresql mysql replica migration database',
 
 )
