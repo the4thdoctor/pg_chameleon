@@ -4,11 +4,26 @@ from parsy import alt, any_char, digit, seq, string, regex, whitespace
 
 
 def ci_string(s):
+    """
+    This function creates a case-insensitive parser for a string
+
+    :param s: the string to make a case-insensitive parser for.
+    :return: case-insensitive parser for string s
+    :rtype: parsy.Parser
+    """
     return string(s.upper(), transform=lambda x: x.upper()).result(s)
 
 
-def optional_space_around(s):
-    return whitespace.optional() >> s << whitespace.optional()
+def optional_space_around(p):
+    """
+    This function creates extends an existing parser with optional whitespace
+    around it. Whitespace is stripped from the parser's result.
+
+    :param p: the parser to extend
+    :return: a new parser with optional whitespace around it
+    :rtype: parsy.Parser
+    """
+    return whitespace.optional() >> p << whitespace.optional()
 
 
 pgsql_identifier = regex("\w+")
@@ -34,6 +49,21 @@ ignored_by_column_def = alt(
 )
 
 def post_process_column_definition(column_name, data_type, dimensions, enum_list, extras):
+    """
+    This function does some operations on the parts identified by the column_definition parser
+    to make it according to the expected col_dic format. This includes extracting dimensions,
+    separating different constraints into their own key, etc.
+
+    The arguments accepted are the ones parsed by the column_definition parser.
+
+    :param column_name: column_name as parsed by the column definition parser
+    :param data_type: data_type as parsed by the column definition parser
+    :param dimensions: the numeric dimensions defined as part of the column type
+    :param enum_list: the enum list defined as part of the column type
+    :param extras: other modifiers to the column
+    :returns: column dictionary which conforms to the col_dic format
+    :rtype: dictionary
+    """
     col_dict = dict(column_name=column_name, data_type=data_type)
 
     col_dict["is_nullable"] = "NO" if "NOT NULL" in extras else "YES"
