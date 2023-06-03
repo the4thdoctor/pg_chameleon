@@ -4,7 +4,7 @@ from parsy import alt, any_char, digit, seq, string, regex, whitespace
 
 
 def ci_string(s):
-    return string(s, transform=lambda x: x.upper())
+    return string(s.upper(), transform=lambda x: x.upper()).result(s)
 
 
 def optional_space_around(s):
