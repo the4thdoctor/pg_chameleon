@@ -16,7 +16,7 @@ def ci_string(s):
 
 def optional_space_around(p):
     """
-    This function creates extends an existing parser with optional whitespace
+    This function extends an existing parser with optional whitespace
     around it. Whitespace is stripped from the parser's result.
 
     :param p: the parser to extend
@@ -50,9 +50,22 @@ ignored_by_column_def = alt(
 
 def post_process_column_definition(column_name, data_type, dimensions, enum_list, extras):
     """
-    This function does some operations on the parts identified by the column_definition parser
-    to make it according to the expected col_dic format. This includes extracting dimensions,
-    separating different constraints into their own key, etc.
+    This function does uses the parts identified by the column_definition parser
+    and builds a dictionary in the col_dic format. It adds fields that are not identified
+    directly by the parser.
+
+    ```
+    col_dic format:
+      column_name: str
+      data_type: str
+      is_nullable: enum "YES"|"NO"
+      enum_list: maybe str
+      character_maximum_length: maybe str
+      numeric_precision: maybe str
+      numeric_scale: maybe str | int (defaults to 0)
+      extra: str
+      column_type: str
+    ```
 
     The arguments accepted are the ones parsed by the column_definition parser.
 
@@ -85,16 +98,6 @@ def post_process_column_definition(column_name, data_type, dimensions, enum_list
     return col_dict
 
 
-# col_dic:
-#  column_name: str
-#  data_type: str
-#  is_nullable: enum "YES"|"NO"
-#  enum_list: maybe str
-#  character_maximum_length: maybe str
-#  numeric_precision: maybe str
-#  numeric_scale: maybe str | int (defaults to 0)
-#  extra: str
-#  column_type: str
 column_definition = seq(
     column_name=identifier,
     data_type=whitespace >> ci_word.map(lambda x: x.lower()),
