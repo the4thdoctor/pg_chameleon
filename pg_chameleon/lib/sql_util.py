@@ -1,6 +1,6 @@
 import re
 
-from parsy import alt, any_char, digit, seq, string, regex, whitespace
+from parsy import alt, any_char, digit, eof, seq, string, success, regex, whitespace
 
 
 def ci_string(s):
@@ -26,7 +26,7 @@ def optional_space_around(p):
     return whitespace.optional() >> p << whitespace.optional()
 
 
-pgsql_identifier = regex("\w+")
+pgsql_identifier = regex(r"\w+")
 mysql_identifier = string("`") >> regex(r"[\w\s]+") << string("`")
 identifier = pgsql_identifier | mysql_identifier
 
@@ -34,69 +34,92 @@ lparen = string("(")
 rparen = string(")")
 semicolon = string(";")
 comma_sep = whitespace.optional() >> string(",") << whitespace.optional()
-sql_string = string("'") >> any_char.until(string("'")).concat() << string("'")
+sql_string = (
+    # single-quoted string
+    (string("'") >> (string(r"\'") | any_char).until(string("'")).concat() << string("'")) |
+    # double-quoted string
+    (string('"') >> (string(r'\"') | any_char).until(string('"')).concat() << string('"'))
+)
 
-ci_word = regex("\w+", flags=re.IGNORECASE)
+ci_word = regex(r"\w+", flags=re.IGNORECASE)
 
 not_null = seq(ci_string("NOT"), whitespace, ci_string("NULL")).result("NOT NULL")
 extra = ci_word.sep_by(whitespace)
 ignored_by_column_def = alt(
     ci_string("UNIQUE"),
-    seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")),
+    seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY KEY"),
     ci_string("CONSTRAINT"),
     ci_string("INDEX"),
-    seq(ci_string("FOREIGN"), whitespace, ci_string("KEY"))
+    seq(ci_string("FOREIGN"), whitespace, ci_string("KEY")).result("FOREIGN KEY")
 )
 
-def post_process_column_definition(column_name, data_type, dimensions, enum_list, extras):
-    """
-    This function does uses the parts identified by the column_definition parser
-    and builds a dictionary in the col_dic format. It adds fields that are not identified
-    directly by the parser.
 
-    ```
-    col_dic format:
-      column_name: str
-      data_type: str
-      is_nullable: enum "YES"|"NO"
-      enum_list: maybe str
-      character_maximum_length: maybe str
-      numeric_precision: maybe str
-      numeric_scale: maybe str | int (defaults to 0)
-      extra: str
-      column_type: str
-    ```
+pk_keyword = seq(ci_string("PRIMARY"), whitespace, ci_string("KEY"))
 
-    The arguments accepted are the ones parsed by the column_definition parser.
+# special pkey definition which can be composite. Like:
+# `CONSTRAINT pk_id PRIMARY KEY (id)` or `PRIMARY KEY (id1, id2)`
+pk_definition = seq(
+    __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
+    index_name=pk_keyword.result("PRIMARY"),
+    index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+    non_unique=success(0),
+).combine_dict(dict)
 
-    :param column_name: column_name as parsed by the column definition parser
-    :param data_type: data_type as parsed by the column definition parser
-    :param dimensions: the numeric dimensions defined as part of the column type
-    :param enum_list: the enum list defined as part of the column type
-    :param extras: other modifiers to the column
-    :returns: column dictionary which conforms to the col_dic format
-    :rtype: dictionary
-    """
-    col_dict = dict(column_name=column_name, data_type=data_type)
+# inline pk definition `COLUMN_NAME type other_inline_things PRIMARY KEY other_inline_things`
+inline_pk_definition = seq(
+    index_columns=identifier.map(lambda s: [s]),
+    __extras=(whitespace >> regex(r"[\w_]+")).until(whitespace >> pk_keyword),
+    index_name=(whitespace >> pk_keyword).result("PRIMARY"),
+    __more_extras=(whitespace >> regex(r"[\w_]+")).many(),
+    non_unique=success(0),
+).combine_dict(dict)
 
-    col_dict["is_nullable"] = "NO" if "NOT NULL" in extras else "YES"
-    col_dict["extra"] = "auto_increment" if "AUTO_INCREMENT" in extras else ""
+# note: does not catch inline 'unique' 
+# [CONSTRAINT uk_xyz] UNIQUE [KEY | INDEX] (column1, column2)
+uk_definition = seq(
+    __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
+    index_name=ci_string("UNIQUE").result("UNIQUE"),
+    __key_or_index_keyword=(whitespace >> (ci_string("INDEX") | ci_string("KEY"))).optional(),
+    index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+    non_unique=success(0),
+).combine_dict(dict)
 
-    if dimensions:
-        col_dict["numeric_precision"] = col_dict["character_maximum_length"] = dimensions[0] # str
-        col_dict["numeric_scale"] = dimensions[1] if len(dimensions) > 1 else 0 # str or int
-    elif enum_list:
-        col_dict["enum_list"] = "( %s )" % ", ".join(map(lambda x: f"'{x}'", enum_list))
+idx_definition = seq(
+    index_name=(ci_string("INDEX") | ci_string("KEY")).result("INDEX"),
+    __optional_idx_name=(whitespace >> identifier).optional(),
+    index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+    non_unique=success(1),
+).combine_dict(dict)
 
-    if dimensions:
-        col_dict["column_type"] = "%s(%s)" % (data_type, ", ".join(dimensions))
-    elif enum_list:
-        col_dict["column_type"] = "%s(%s)" % (data_type, ", ".join(map(lambda x: f"'{x}'", enum_list)))
-    else:
-        col_dict["column_type"] = data_type
+fkey_definition = seq(
+    __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
+    index_name=(ci_string("FOREIGN") >> whitespace >> ci_string("KEY")).result("FOREIGN"),
+    index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+    __references=whitespace.optional() >> ci_string("REFERENCES"),
+    __other_table_name=whitespace.optional() >> identifier,
+    __other_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+    __on_delete_or_update=seq(
+        whitespace, ci_string("ON"), whitespace, ci_string("UPDATE") | ci_string("DELETE"),
+        whitespace, ci_string("CASCADE") | ci_string("RESTRICT"),
+    ).many(),
+    non_unique=success(1)
+).combine_dict(dict)
 
-    return col_dict
+other_key_definition = seq(
+    __idx_type=((ci_string("UNIQUE") | ci_string("FULLTEXT")) << whitespace).optional(),
+    index_name=(ci_string("INDEX") | ci_string("KEY")).result("OTHER"),
+    __idx_name=whitespace >> identifier,
+    index_columns=whitespace >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+    non_unique=success(1),  # not correct, but it isn't used anywhere
+).combine_dict(dict)
 
+any_key_definition = alt(
+    pk_definition,
+    uk_definition,
+    idx_definition,
+    fkey_definition,
+    other_key_definition
+)
 
 column_definition = seq(
     column_name=identifier,
@@ -118,11 +141,27 @@ column_definition = seq(
     extras=(
         whitespace >> alt(
             seq(ci_string("NOT"), whitespace, ci_string("NULL")).result("NOT NULL"),
-            # ignored_by_column_def,
-            regex(r"[\w_]+"),
+            seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY KEY"),
+            ci_word,
         ).sep_by(whitespace)
     ).optional(default=[]),
-).combine_dict(post_process_column_definition)
+).combine_dict(dict)
+
+create_table_statement = seq(
+    command=(ci_string("CREATE") >> whitespace >> ci_string("TABLE")).result("CREATE TABLE"),
+    __if_not_exists=seq(
+        whitespace, ci_string("IF"),
+        whitespace, ci_string("NOT").optional(),
+        whitespace, ci_string("EXISTS")
+    ).optional(),
+    name=whitespace >> identifier,
+    inner=whitespace.optional() >> lparen >> (
+        optional_space_around(
+            any_key_definition.tag("index") | column_definition.tag("column")
+        ).sep_by(string(","))
+    ) << rparen,
+    __rest=any_char.many(),
+).combine_dict(dict)
 
 
 class sql_token(object):
@@ -136,8 +175,8 @@ class sql_token(object):
     CREATE TABLE
     ALTER TABLE
 
-    The regular expression m_fkeys is used to remove any foreign key definition from the sql statement
-    as we don't enforce any foreign key on the PostgreSQL replication.
+    The method post_process_key_definition ignores any foreign key definition from the
+    sql statement as we don't enforce any foreign key on the PostgreSQL replication.
     """
     def __init__(self):
         """
@@ -150,27 +189,10 @@ class sql_token(object):
 
         #re for rename items
         self.m_rename_items = re.compile(r'(?:.*?\.)?(.*)\s*TO\s*(?:.*?\.)?(.*)(?:;)?', re.IGNORECASE)
-        #re for column definitions
-        self.m_columns=re.compile(r'\((.*)\)', re.IGNORECASE)
-        self.m_inner=re.compile(r'\((.*)\)', re.IGNORECASE)
-
-        #re for keys and indices
-        self.m_pkeys=re.compile(r',\s*(?:CONSTRAINT)?\s*`?\w*`?\s*PRIMARY\s*KEY\s*\((.*?)\)\s?', re.IGNORECASE)
-        self.m_ukeys=re.compile(r',\s*UNIQUE\s*KEY\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
-        self.m_keys=re.compile(r',\s*(?:UNIQUE|FULLTEXT)?\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((?:.*?)\)\s*', re.IGNORECASE)
-        self.m_idx=re.compile(r',\s*(?:KEY|INDEX)\s*`?\w*`?\s*\((.*?)\)\s*', re.IGNORECASE)
-        self.m_fkeys=re.compile(r',\s*(?:CONSTRAINT)?\s*`?\w*`?\s*FOREIGN\s*KEY(?:\(?.*\(??)(?:\s*REFERENCES\s*`?\w*`)?(?:ON\s*(?:DELETE|UPDATE)\s*(?:RESTRICT|CASCADE)\s*)?', re.IGNORECASE)
-        self.m_inline_pkeys=re.compile(r'(.*?)\bPRIMARY\b\s*\bKEY\b,', re.IGNORECASE)
 
         #re for fields
         self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
-        self.m_pars=re.compile(r'(\((:?.*?)\))', re.IGNORECASE)
         self.m_dimension=re.compile(r'(\(.*?\))', re.IGNORECASE)
-        self.m_fields=re.compile(r'(.*?),', re.IGNORECASE)
-
-        #re for column constraint and auto incremental
-        self.m_nulls=re.compile(r'(NOT)?\s*(NULL)', re.IGNORECASE)
-        self.m_autoinc=re.compile(r'(AUTO_INCREMENT)', re.IGNORECASE)
 
         #re for query type
         self.m_rename_table = re.compile(r'(RENAME\s*TABLE)\s*(.*)', re.IGNORECASE)
@@ -195,29 +217,6 @@ class sql_token(object):
         self.tokenised=[]
         self.query_list=[]
 
-    def parse_column(self, col_def):
-        """
-            This method parses the column definition searching for the name, the data type and the
-            dimensions.
-            If there's a match the dictionary is built with the keys
-            column_name, the column name
-            data_type, the column's data type
-            is nullable, the value is set always to yes except if the column is primary key ( column name present in key_cols)
-            enum_list,character_maximum_length,numeric_precision are the dimensions associated with the data type.
-            The auto increment is set if there's a match for the auto increment specification.s
-
-            :param col_def: The column definition
-            :return: col_dic the column dictionary
-            :rtype: dictionary
-        """
-        col_dic = column_definition.optional(default={}).parse(col_def)
-        if (col_dic and
-                (col_dic["column_name"] in self.pkey_cols or
-                 col_dic["column_name"] in self.ukey_cols)):
-            col_dic["is_nullable"]="NO"
-
-        return col_dic
-
     def quote_cols(self, cols):
         """
             The method adds the " quotes to the column names.
@@ -235,125 +234,114 @@ class sql_token(object):
         quoted_cols = ",".join(idx_cols)
         return quoted_cols
 
-
-    def build_key_dic(self, inner_stat, table_name):
+    def _post_process_key_definition(
+        self, index_name, index_columns, non_unique, table_name, idx_counter
+    ):
         """
-            The method matches and tokenise the primary key and index/key definitions in the create table's inner statement.
+            This function builds a new key_dic by overwriting the index_name if necessary and by
+            discarding indices that are to be ignored (foreign key, fulltext, etc.). This discarding
+            is done by returning a None value instead of the key_dic.
 
-            As the primary key can be defined as column or table constraint there is an initial match attempt with the regexp m_inline_pkeys.
-            If the match is successful then the primary key dictionary is built from the match data.
-            Otherwise the primary key dictionary is built using the eventual table key definition.
+            ```
+            key_dic format:
+                index_name: str
+                index_columns: list[str]
+                non_unique: int 0|1
+            ```
 
-            The method search for primary keys keys and indices defined in the inner_stat.
-            The index name PRIMARY is used to tell pg_engine we are building a primary key.
-            Otherwise the index name is built using the format (uk)idx_tablename[0:20] + counter.
-            If there's a match for a primary key the composing columns are saved into pkey_cols.
-
-            The tablename limitation is required as PostgreSQL enforces a strict limit for the identifier name's lenght.
-
-            Each key dictionary have three keys.
-            index_name, the index name or PRIMARY
-            index_columns, a list with the column names
-            non_unique, follows the MySQL's information schema convention and marks an index if is unique or not.
-
-            When the dictionary is built is appended to idx_list and finally returned to the calling method parse_create_table.s
-
-
-            :param inner_stat: The statement within the round brackets in CREATE TABLE
-            :param table_name: The table name
-            :return: idx_list the list of dictionary with the index definitions
-            :rtype: list
+            :param index_name: The kind of index. One of PRIMARY, UNIQUE, INDEX, FOREIGN, OTHER
+            :param index_columns: The columns covered by this index
+            :param non_unique: Whether this index must enforce unique check or not
+            :param table_name: The name of the table that is used to create a new index name
+            :param idx_counter: An index counter that is used to create a new index name
+            :return: The transformed key dic or None
+            :rtype: dictionary | None
         """
-        key_dic={}
-        idx_list=[]
-        idx_counter=0
-        inner_stat= "%s," % inner_stat.strip()
+        if index_name in {"FOREIGN", "OTHER"}:
+            return None
+        elif index_name == "PRIMARY":
+            return dict(index_name=index_name, index_columns=index_columns, non_unique=0)
+        elif index_name == "UNIQUE":
+            return dict(
+                index_name=f"ukidx_{table_name[0:20]}_{idx_counter}",
+                index_columns=index_columns,
+                non_unique=0,
+            )
+        elif index_name == "INDEX":
+            return dict(
+                index_name=f"idx_{table_name[0:20]}_{idx_counter}",
+                index_columns=index_columns,
+                non_unique=1,
+            )
+        else:
+            raise Exception(f"Unknown index name: {index_name}")
 
-
-        pk_match =  self.m_inline_pkeys.match(inner_stat)
-        pkey=self.m_pkeys.findall(inner_stat)
-
-        ukey=self.m_ukeys.findall(inner_stat)
-        idx=self.m_idx.findall(inner_stat)
-
-        if pk_match:
-            key_dic["index_name"] = 'PRIMARY'
-            index_columns = ((pk_match.group(1).strip().split()[0]).replace('`', '')).split(',')
-            idx_cols = [(column.strip().split()[0]).replace('`', '') for column in index_columns if column.strip() != '']
-            key_dic["index_columns"] = idx_cols
-            key_dic["non_unique"]=0
-            self.pkey_cols = idx_cols
-            idx_list.append(dict(list(key_dic.items())))
-            key_dic={}
-        elif pkey:
-            key_dic["index_name"]='PRIMARY'
-            index_columns = pkey[0].strip().split(',')
-            idx_cols = [(column.strip().split()[0]).replace('`', '') for column in index_columns if column.strip() != '']
-            key_dic["index_columns"] = idx_cols
-            key_dic["non_unique"]=0
-            self.pkey_cols = idx_cols
-            idx_list.append(dict(list(key_dic.items())))
-            key_dic = {}
-        if ukey:
-            for cols in ukey:
-                key_dic["index_name"] = 'ukidx_'+table_name[0:20]+'_'+str(idx_counter)
-                cols = cols.replace('`', '')
-                index_columns = cols.strip().split(',')
-                idx_cols = [(column.strip().split()[0]).replace('`', '') for column in index_columns if column.strip() != '']
-                key_dic["index_columns"] = idx_cols
-                key_dic["non_unique"]=0
-                idx_list.append(dict(list(key_dic.items())))
-                key_dic={}
-                idx_counter+=1
-                self.ukey_cols = self.ukey_cols+[column for column in idx_cols if column not in self.ukey_cols]
-        if idx:
-            for cols in idx:
-                key_dic["index_name"]='idx_'+table_name[0:20]+'_'+str(idx_counter)
-                cols = cols.replace('`', '')
-                index_columns = cols.strip().split(',')
-                idx_cols = [(column.strip().split()[0]).replace('`', '') for column in index_columns if column.strip() != '']
-                key_dic["index_columns"] = idx_cols
-
-                key_dic["non_unique"]=1
-                idx_list.append(dict(list(key_dic.items())))
-                key_dic={}
-                idx_counter+=1
-        return idx_list
-
-    def build_column_dic(self, inner_stat):
+    def _post_process_column_definition(
+            self, column_name, data_type, dimensions, enum_list, extras
+    ):
         """
-            The method builds a list of dictionaries with the column definitions.
+            This function does uses the parts identified by the column_definition parser
+            and builds a dictionary in the col_dic format. It adds fields that are not identified
+            directly by the parser.
 
-            The regular expression m_fields is used to find all the column occurrences and, for each occurrence,
-            the method parse_column is called.
-            If parse_column returns a dictionary, this is appended to the list col_parse.
+            ```
+            col_dic format:
+              column_name: str
+              data_type: str
+              is_nullable: enum "YES"|"NO"
+              enum_list: maybe str
+              character_maximum_length: maybe str
+              numeric_precision: maybe str
+              numeric_scale: maybe str | int (defaults to 0)
+              extra: str
+              column_type: str
+            ```
 
-            :param inner_stat: The statement within the round brackets in CREATE TABLE
-            :return: cols_parse the list of dictionary with the column definitions
-            :rtype: list
+            The arguments accepted are the ones parsed by the column_definition parser.
+
+            :param column_name: column_name as parsed by the column definition parser
+            :param data_type: data_type as parsed by the column definition parser
+            :param dimensions: the numeric dimensions defined as part of the column type
+            :param enum_list: the enum list defined as part of the column type
+            :param extras: other modifiers to the column
+            :return: column dictionary which conforms to the col_dic format
+            :rtype: dictionary
         """
-        column_list=self.m_fields.findall(inner_stat)
-        cols_parse=[]
-        for col_def in column_list:
-            col_def=col_def.strip()
-            col_dic=self.parse_column(col_def)
-            if col_dic:
-                cols_parse.append(col_dic)
-        return cols_parse
+        col_dict = dict(column_name=column_name, data_type=data_type)
 
+        col_dict["is_nullable"] = "NO" if "NOT NULL" in extras else "YES"
+        col_dict["extra"] = "auto_increment" if "AUTO_INCREMENT" in extras else ""
+
+        if dimensions:
+            col_dict["numeric_precision"] = col_dict["character_maximum_length"] = dimensions[0] # str
+            col_dict["numeric_scale"] = dimensions[1] if len(dimensions) > 1 else 0 # str or int
+        elif enum_list:
+            col_dict["enum_list"] = "( %s )" % ", ".join(map(lambda x: f"'{x}'", enum_list))
+
+        if dimensions:
+            col_dict["column_type"] = "%s(%s)" % (data_type, ", ".join(dimensions))
+        elif enum_list:
+            col_dict["column_type"] = "%s(%s)" % (data_type, ", ".join(map(lambda x: f"'{x}'", enum_list)))
+        else:
+            col_dict["column_type"] = data_type
+
+        return col_dict
 
     def parse_create_table(self, sql_create, table_name):
         """
             The method parse and generates a dictionary from the CREATE TABLE statement.
-            The regular expression m_inner is used to match the statement within the round brackets.
 
-            This inner_stat is then cleaned from the primary keys, keys indices and foreign keys in order to get
-            the column list.
-            The indices are stored in the dictionary key "indices" using the method build_key_dic.
-            The regular expression m_pars is used for finding and replacing all the commas with the | symbol within the round brackets
-            present in the columns list.
-            At the column list is also appended a comma as required by the regepx used in build_column_dic.
-            The build_column_dic method is then executed and the return value is stored in the dictionary key "columns"
+            The part of statement inside round brackets is parsed for column and index
+            definitions. Index and column definitions are separated and processed one by one.
+            First, indices are processed and added to self.pkey_cols and self.ukey_cols.
+            Then columns are parsed and pkey_cols is modified if an inline primary key had been
+            set.
+
+            The indices are stored in the dictionary key "indices" as a list of dictionaries. Each
+            key_dic has a fixed set of keys, as returned by _post_process_key_definition.
+
+            The columns are stored in the dictionary key "columns" as a list of dictionaries. Each
+            col_dic has a fixed set of keys, as returned by _post_process_column_definition.
 
             :param sql_create: The sql string with the CREATE TABLE statement
             :param table_name: The table name
@@ -361,21 +349,55 @@ class sql_token(object):
             :rtype: dictionary
         """
 
-        m_inner = self.m_inner.search(sql_create)
-        inner_stat = m_inner.group(1).strip()
-        table_dic = {}
+        table_dic = create_table_statement.parse(sql_create)
+        columns_and_indices = table_dic.pop("inner")
 
-        column_list = self.m_pkeys.sub( '', inner_stat)
-        column_list = self.m_keys.sub( '', column_list)
-        column_list = self.m_idx.sub( '', column_list)
-        column_list = self.m_fkeys.sub( '', column_list)
-        table_dic["indices"] = self.build_key_dic(inner_stat, table_name)
-        mpars  =self.m_pars.findall(column_list)
-        for match in mpars:
-            new_group=str(match[0]).replace(',', '|')
-            column_list=column_list.replace(match[0], new_group)
-        column_list=column_list+","
-        table_dic["columns"]=self.build_column_dic(column_list)
+        columns, indices = [], []
+        for col_or_idx in columns_and_indices:
+            tag, value = col_or_idx
+            if tag == "column":
+                columns.append(value)
+            elif tag == "index":
+                indices.append(value)
+            else:
+                raise Exception(f"unknown tag: {tag}")
+
+        table_dic["columns"], table_dic["indices"] = [], []
+
+        # post-process indices
+        for raw_key_dic in indices:
+            key_dic = self._post_process_key_definition(
+                **raw_key_dic,
+                table_name=table_dic["name"],
+                idx_counter=len(table_dic["indices"])
+            )
+            if key_dic:
+                table_dic["indices"].append(key_dic)
+
+                # update self.pkey_cols or self.ukey_cols
+                if key_dic["index_name"] == "PRIMARY":
+                    self.pkey_cols = list(key_dic["index_columns"])
+                elif raw_key_dic["index_name"] == "UNIQUE":
+                    self.ukey_cols += [col_name for col_name in key_dic["index_columns"]]
+
+        # post-process columns
+        for raw_col_dic in columns:
+            col_dic = self._post_process_column_definition(**raw_col_dic)
+            if col_dic:
+                # check for inline primary key definition
+                if "PRIMARY KEY" in raw_col_dic["extras"]:
+                    table_dic["indices"].append(dict(
+                        index_name="PRIMARY", index_columns=[col_dic["column_name"]], non_unique=0
+                    ))
+                    self.pkey_cols = [col_dic["column_name"]]
+
+                # must be non-nullable if column is ukey or pkey
+                if (col_dic["column_name"] in self.pkey_cols or
+                        col_dic["column_name"] in self.ukey_cols):
+                    col_dic["is_nullable"] = "NO"
+
+                table_dic["columns"].append(col_dic)
+
         return table_dic
 
     def parse_alter_table(self, malter_table):
