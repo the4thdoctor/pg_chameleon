@@ -260,7 +260,7 @@ class sql_token(object):
         if index_name in {"FOREIGN", "OTHER"}:
             return None
         elif index_name == "PRIMARY":
-            return dict(index_name=index_name, index_columns=index_columns, non_unique=0)
+            return dict(index_name="PRIMARY", index_columns=index_columns, non_unique=0)
         elif index_name == "UNIQUE":
             return dict(
                 index_name=f"ukidx_{table_name[0:20]}_{idx_counter}",
