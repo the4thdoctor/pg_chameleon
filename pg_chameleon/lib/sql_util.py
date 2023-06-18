@@ -151,7 +151,7 @@ create_table_statement = seq(
     command=(ci_string("CREATE") >> whitespace >> ci_string("TABLE")).result("CREATE TABLE"),
     __if_not_exists=seq(
         whitespace, ci_string("IF"),
-        whitespace, ci_string("NOT").optional(),
+        whitespace, ci_string("NOT"),
         whitespace, ci_string("EXISTS")
     ).optional(),
     name=whitespace >> identifier,
