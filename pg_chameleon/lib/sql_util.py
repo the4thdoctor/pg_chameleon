@@ -41,18 +41,7 @@ sql_string = (
     (string('"') >> (string(r'\"') | any_char).until(string('"')).concat() << string('"'))
 )
 
-ci_word = regex(r"\w+", flags=re.IGNORECASE)
-
-not_null = seq(ci_string("NOT"), whitespace, ci_string("NULL")).result("NOT NULL")
-extra = ci_word.sep_by(whitespace)
-ignored_by_column_def = alt(
-    ci_string("UNIQUE"),
-    seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY KEY"),
-    ci_string("CONSTRAINT"),
-    ci_string("INDEX"),
-    seq(ci_string("FOREIGN"), whitespace, ci_string("KEY")).result("FOREIGN KEY")
-)
-
+ci_word = regex(r"\w+")
 
 pk_keyword = seq(ci_string("PRIMARY"), whitespace, ci_string("KEY"))
 
@@ -139,9 +128,14 @@ column_definition = seq(
         << optional_space_around(rparen)
     ).optional(),
     extras=(
-        whitespace >> alt(
+        whitespace.optional() >> alt(
             seq(ci_string("NOT"), whitespace, ci_string("NULL")).result("NOT NULL"),
             seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY KEY"),
+            seq(
+                ci_string("DEFAULT").result("DEFAULT"),
+                whitespace >> (sql_string.map(lambda x: f"'{x}'") | ci_word)
+            ),
+            identifier,
             ci_word,
         ).sep_by(whitespace)
     ).optional(default=[]),
@@ -163,6 +157,146 @@ create_table_statement = seq(
     __rest=any_char.many(),
 ).combine_dict(dict)
 
+alter_rename_table_statement = seq(
+    command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("RENAME TABLE"),
+    name=whitespace >> identifier,
+    __rename=whitespace >> ci_string("RENAME"),
+    __to=(whitespace >> ci_string("TO")).optional(),
+    new_name=whitespace >> identifier,
+).combine_dict(dict)
+
+rename_table_item = seq(
+    command=success("RENAME TABLE"),
+    __from_schema=(identifier >> string(".")).optional(),
+    name=identifier,
+    __to=whitespace >> ci_string("TO"),
+    __to_schema=(whitespace >> identifier >> string(".")).optional(),
+    new_name=identifier,
+).combine_dict(dict)
+
+# returns list, not dict!
+rename_table_statement = (
+    ci_string("RENAME") >> whitespace >> ci_string("TABLE") >>
+    optional_space_around(rename_table_item).sep_by(string(","))
+).combine_dict(dict)
+
+alter_index_statement = seq(
+    command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER INDEX"),
+    name=whitespace >> identifier,
+    action=whitespace >> (ci_string("ADD") | ci_string("DROP")),
+    __unique=(whitespace >> ci_string("UNIQUE")).optional(),
+    __index=whitespace >> ci_string("INDEX"),
+    __rest=any_char.many(),
+).combine_dict(dict)
+
+drop_table_statement = seq(
+    command=seq(ci_string("DROP"), whitespace, ci_string("TABLE")).result("DROP TABLE"),
+    __if_exists=seq(whitespace, ci_string("IF"), whitespace, ci_string("EXISTS")).optional(),
+    name=whitespace >> identifier,
+).combine_dict(dict)
+
+drop_primary_key_statement = seq(
+    command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("DROP PRIMARY KEY"),
+    name=whitespace >> identifier,
+    __drop_pk=whitespace >> seq(
+        ci_string("DROP"), whitespace, ci_string("PRIMARY"), whitespace, ci_string("KEY")
+    )
+).combine_dict(dict)
+
+truncate_table_statement = seq(
+    command=ci_string("TRUNCATE"),
+    __table=(whitespace >> ci_string("TABLE")).optional(),
+    __space=whitespace,
+    __schema=(identifier << string(".")).optional(),
+    name=identifier,
+).combine_dict(dict)
+
+alter_table_drop = seq(
+    command=ci_string("DROP"),
+    __column=(whitespace >> ci_string("COLUMN")).optional(),
+    name=whitespace >> identifier,
+).combine_dict(dict)
+
+column_definition_in_alter_table = column_definition.combine_dict(
+    lambda column_name, data_type, dimensions, enum_list, extras, **k: {
+        "name": column_name,
+        "type": data_type,
+        "dimension": (
+            ", ".join(dimensions) if dimensions else
+            ", ".join(map(lambda x: f"'{x}'", enum_list)) if enum_list else
+            0
+        ),
+        "default": (
+            next(
+                (extra[1] for extra in extras
+                if isinstance(extra, list) and extra[0] == "DEFAULT"),
+                None
+            )
+        )
+    }
+).map(
+    lambda d: dict(
+        d,
+        data_type=d["type"],
+        column_type="%s(%s)" % (d["type"], d["dimension"]) if d["dimension"] else d["type"]
+    )
+)
+
+alter_table_add = seq(
+    command=ci_string("ADD"),
+    __column=(whitespace >> ci_string("COLUMN")).optional(),
+    col_def=whitespace >> column_definition_in_alter_table
+).combine_dict(
+    lambda command, col_def: dict(command=command, **col_def)
+)
+
+alter_table_change = seq(
+    command=ci_string("CHANGE"),
+    __column=(whitespace >> ci_string("COLUMN")).optional(),
+    old=whitespace >> identifier,
+    col_def=whitespace >> column_definition_in_alter_table,
+).combine_dict(
+    lambda command, old, col_def: dict(
+        command=command,
+        old=old,
+        new=col_def["name"],
+        **col_def,
+    )
+).combine_dict(dict)
+
+alter_table_modify = seq(
+    command=ci_string("MODIFY"),
+    __column=(whitespace >> ci_string("COLUMN")).optional(),
+    col_def=whitespace >> column_definition_in_alter_table,
+).combine_dict(
+    lambda command, col_def: dict(command=command, **col_def)
+)
+
+alter_table_ignored = seq(
+    ci_string("ADD") | ci_string("DROP") | ci_string("CHANGE") | ci_string("MODIFY"),
+    whitespace >> alt(
+        ci_string("INDEX"), ci_string("KEY"), ci_string("CONSTRAINT"), ci_string("CHECK"),
+        ci_string("UNIQUE"), seq(ci_string("FOREIGN"), whitespace, ci_string("KEY")),
+        seq(ci_string("PRIMARY"), whitespace, ci_string("KEY"))
+    ),
+    any_char.until(string(",") | eof).concat(),
+).result(None)
+
+alter_table_statement = seq(
+    command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER TABLE"),
+    __space=whitespace,
+    __schema=seq(identifier, string(".")).optional(),
+    name=identifier,
+    alter_cmd=optional_space_around(
+        alt(
+            alter_table_ignored,
+            alter_table_drop,
+            alter_table_add,
+            alter_table_change,
+            alter_table_modify,
+        )
+    ).sep_by(string(",")).map(lambda ls: [x for x in ls if x]),  # remove none values
+).combine_dict(dict)
 
 class sql_token(object):
     """
@@ -187,28 +321,18 @@ class sql_token(object):
         self.pkey_cols = []
         self.ukey_cols = []
 
-        #re for rename items
-        self.m_rename_items = re.compile(r'(?:.*?\.)?(.*)\s*TO\s*(?:.*?\.)?(.*)(?:;)?', re.IGNORECASE)
-
-        #re for fields
-        self.m_dbl_dgt=re.compile(r'((\(\s?\d+\s?),(\s?\d+\s?\)))',re.IGNORECASE)
-        self.m_dimension=re.compile(r'(\(.*?\))', re.IGNORECASE)
-
-        #re for query type
-        self.m_rename_table = re.compile(r'(RENAME\s*TABLE)\s*(.*)', re.IGNORECASE)
-        self.m_alter_rename_table = re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+(?:RENAME)\s+(?:TO)?\s+(.*)', re.IGNORECASE)
-        self.m_create_table = re.compile(r'(CREATE\s*TABLE)\s*(?:IF\s*NOT\s*EXISTS)?\s*(?:(?:`)?(?:\w*)(?:`)?\.)?(?:`)?(\w*)(?:`)?', re.IGNORECASE)
-        self.m_drop_table = re.compile(r'(DROP\s*TABLE)\s*(?:IF\s*EXISTS)?\s*(?:`)?(\w*)(?:`)?', re.IGNORECASE)
-        self.m_truncate_table = re.compile(r'(TRUNCATE)\s*(?:TABLE)?\s*(?:(?:`)?(\w*)(?:`)?)(?:.)?(?:`)?(\w*)(?:`)?', re.IGNORECASE)
-        self.m_alter_index = re.compile(r'(?:(ALTER\s+?TABLE)\s+(`?\b.*?\b`?))\s+((?:ADD|DROP)\s+(?:UNIQUE)?\s*?(?:INDEX).*,?)', re.IGNORECASE)
-        self.m_alter_table = re.compile(r'(?:(ALTER\s+?TABLE)\s+(?:`?\b.*?\b`\.?)?(`?\b.*?\b`?))\s+((?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?.*,?)', re.IGNORECASE)
-        self.m_alter_list = re.compile(r'((?:\b(?:ADD|DROP|CHANGE|MODIFY)\b\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
-        self.m_alter_column = re.compile(r'\(?\s*`?(\w*)`?\s*(\w*(?:\s*\w*)?)\s*(?:\((.*?)\))?\)?', re.IGNORECASE)
-        self.m_default_value = re.compile(r"(\bDEFAULT\b)\s*('?\w*'?)\s*", re.IGNORECASE)
-        self.m_alter_change = re.compile(r'\s*`?(\w*)`?\s*`?(\w*)`?\s*(\w*)\s*(?:\((.*?)\))?', re.IGNORECASE)
-        self.m_drop_primary = re.compile(r'(?:(?:ALTER\s+?TABLE)\s+(`?\b.*?\b`?)\s+(DROP\s+PRIMARY\s+KEY))', re.IGNORECASE)
-        #self.m_modify = re.compile(r'((?:(?:ADD|DROP|CHANGE|MODIFY)\s+(?:\bCOLUMN\b)?))(.*?,)', re.IGNORECASE)
-        self.m_ignore_keywords = re.compile(r'(CONSTRAINT)|(PRIMARY)|(INDEX)|(KEY)|(UNIQUE)|(FOREIGN\s*KEY)', re.IGNORECASE)
+        self.sql_parser = optional_space_around(
+            alt(
+                alter_rename_table_statement,
+                rename_table_statement,
+                create_table_statement.map(self._post_process_create_table),
+                drop_table_statement,
+                truncate_table_statement,
+                drop_primary_key_statement,
+                alter_index_statement,
+                alter_table_statement,
+            ).optional()
+        )
 
     def reset_lists(self):
         """
@@ -327,7 +451,7 @@ class sql_token(object):
 
         return col_dict
 
-    def parse_create_table(self, sql_create, table_name):
+    def _post_process_create_table(self, table_dic):
         """
             The method parse and generates a dictionary from the CREATE TABLE statement.
 
@@ -344,12 +468,10 @@ class sql_token(object):
             col_dic has a fixed set of keys, as returned by _post_process_column_definition.
 
             :param sql_create: The sql string with the CREATE TABLE statement
-            :param table_name: The table name
             :return: table_dic the table dictionary tokenised from the CREATE TABLE
             :rtype: dictionary
         """
 
-        table_dic = create_table_statement.parse(sql_create)
         columns_and_indices = table_dic.pop("inner")
 
         columns, indices = [], []
@@ -400,135 +522,6 @@ class sql_token(object):
 
         return table_dic
 
-    def parse_alter_table(self, malter_table):
-        """
-            The method parses the alter table match.
-            As alter table can be composed of multiple commands the original statement (group 0 of the match object)
-            is searched with the regexp m_alter_list.
-            For each element in returned by findall the first word is evaluated as command. The parse alter table
-            manages the following commands.
-            DROP,ADD,CHANGE,MODIFY.
-
-            Each command build a dictionary alter_dic with at leaset the keys command and name defined.
-            Those keys are respectively the commant itself and the attribute name affected by the command.
-
-            ADD defines the keys type and dimension. If type is enum then the dimension key stores the enumeration list.
-
-            CHANGE defines the key command and then runs a match with m_alter_change. If the match is successful
-            the following keys are defined.
-
-            old is the old previous field name
-            new is the new field name
-            type is the new data type
-            dimension the field's dimensions or the enum list if type is enum
-
-            MODIFY works similarly to CHANGE except that the field is not renamed.
-            In that case we have only the keys type and dimension defined along with name and command.s
-
-            The class's regular expression self.m_ignore_keywords is used to skip the CONSTRAINT,INDEX and PRIMARY and FOREIGN KEY KEYWORDS in the
-            alter command.
-
-            :param malter_table: The match object returned by the match method against tha alter table statement.
-            :return: stat_dic the alter table dictionary tokenised from the match object.
-            :rtype: dictionary
-        """
-        stat_dic={}
-        alter_cmd=[]
-        alter_stat=malter_table.group(0) + ','
-        stat_dic["command"]=malter_table.group(1).upper().strip()
-        stat_dic["name"]=malter_table.group(2).strip().strip('`')
-        dim_groups=self.m_dimension.findall(alter_stat)
-
-        for dim_group in dim_groups:
-            alter_stat=alter_stat.replace(dim_group, dim_group.replace(',','|'))
-
-        alter_list=self.m_alter_list.findall(alter_stat)
-        for alter_item in alter_list:
-            alter_dic={}
-            m_ignore_item = self.m_ignore_keywords.search(alter_item[1])
-
-            if not m_ignore_item:
-                command = (alter_item[0].split())[0].upper().strip()
-                if command == 'DROP':
-                    alter_dic["command"] = command
-                    alter_dic["name"] = alter_item[1].strip().strip(',').replace('`', '').strip()
-                elif command == 'ADD':
-                    alter_string = alter_item[1].strip()
-
-                    alter_column=self.m_alter_column.search(alter_string)
-                    default_value = self.m_default_value.search(alter_string)
-                    if alter_column:
-
-                        column_type = alter_column.group(2).lower().strip()
-
-                        alter_dic["command"] = command
-                        # this is a lesser horrible hack, still needs to be improved
-                        alter_dic["name"] = alter_column.group(1).strip().strip('`')
-                        alter_dic["type"] = column_type.split(' ')[0]
-                        try:
-                            alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
-                        except:
-                            alter_dic["dimension"]=0
-                        if default_value:
-                            alter_dic["default"] = default_value.group(2)
-                        else:
-                            alter_dic["default"] = None
-
-                elif command == 'CHANGE':
-                    alter_dic["command"] = command
-                    alter_column = self.m_alter_change.search(alter_item[1].strip())
-                    if alter_column:
-                        alter_dic["command"] = command
-                        alter_dic["old"] = alter_column.group(1).strip().strip('`')
-                        alter_dic["new"] = alter_column.group(2).strip().strip('`')
-                        alter_dic["type"] = alter_column.group(3).strip().strip('`').lower()
-                        alter_dic["name"] = alter_column.group(1).strip().strip('`')
-                        try:
-                            alter_dic["dimension"]=alter_column.group(4).replace('|', ',').strip()
-                        except:
-                            alter_dic["dimension"]=0
-
-                elif command == 'MODIFY':
-                    alter_string = alter_item[1].strip()
-
-                    alter_column = self.m_alter_column.search(alter_string)
-                    if alter_column:
-                        alter_dic["command"] = command
-                        alter_dic["name"] = alter_column.group(1).strip().strip('`')
-                        # this is a lesser horrible hack, still needs to be improved
-                        column_type = alter_column.group(2).lower().strip()
-                        alter_dic["type"] = column_type.split(' ')[0]
-                        try:
-                            alter_dic["dimension"]=alter_column.group(3).replace('|', ',').strip()
-                        except:
-                            alter_dic["dimension"] = 0
-                if command != 'DROP':
-                    alter_dic["data_type"] = alter_dic["type"]
-                    if alter_dic["dimension"] == 0:
-                        alter_dic["column_type"] = alter_dic["type"]
-                    else:
-                        alter_dic["column_type"] = "%s(%s)" % (alter_dic["type"], alter_dic["dimension"])
-                alter_cmd.append(alter_dic)
-            stat_dic["alter_cmd"]=alter_cmd
-        return stat_dic
-
-    def parse_rename_table(self, rename_statement):
-        """
-            The method parses the rename statements storing in a list the
-            old and the new table name.
-
-            :param rename_statement: The statement string without the RENAME TABLE
-            :return: rename_list, a list with the old/new table names inside
-            :rtype: list
-
-        """
-        rename_list = []
-        for rename in rename_statement.split(','):
-            mrename_items = self.m_rename_items.search(rename.strip())
-            if mrename_items:
-                rename_list.append([item.strip().replace('`', '') for item in mrename_items.groups()])
-        return rename_list
-
     def parse_sql(self, sql_string):
         """
             The method cleans and parses the sql string
@@ -557,69 +550,15 @@ class sql_token(object):
 
             :param sql_string: The sql string with the sql statements.
         """
-        statements=sql_string.split(';')
+        sql_string_cleanup = re.sub(r'/\*.*?\*/', '', sql_string, re.DOTALL)
+        sql_string_cleanup = re.sub(r'--.*?\n', '', sql_string_cleanup)
+        statements = sql_string_cleanup.split(';')
+
         for statement in statements:
-            stat_dic={}
-            stat_cleanup=re.sub(r'/\*.*?\*/', '', statement, re.DOTALL)
-            stat_cleanup=re.sub(r'--.*?\n', '', stat_cleanup)
-            stat_cleanup=re.sub(r'[\b)\b]', ' ) ', stat_cleanup)
-            stat_cleanup=re.sub(r'[\b(\b]', ' ( ', stat_cleanup)
-            stat_cleanup=re.sub(r'[\b,\b]', ', ', stat_cleanup)
-            stat_cleanup=stat_cleanup.replace('\n', ' ')
-            stat_cleanup = re.sub("\([\w*\s*]\)", " ",  stat_cleanup)
-            stat_cleanup = stat_cleanup.strip()
-            malter_rename = self.m_alter_rename_table.match(stat_cleanup)
-            mrename_table = self.m_rename_table.match(stat_cleanup)
-            mcreate_table = self.m_create_table.match(stat_cleanup)
-            mdrop_table = self.m_drop_table.match(stat_cleanup)
-            malter_table = self.m_alter_table.match(stat_cleanup)
-            malter_index = self.m_alter_index.match(stat_cleanup)
-            mdrop_primary = self.m_drop_primary.match(stat_cleanup)
-            mtruncate_table = self.m_truncate_table.match(stat_cleanup)
-            if malter_rename:
-                stat_dic["command"] = "RENAME TABLE"
-                stat_dic["name"] = malter_rename.group(2)
-                stat_dic["new_name"] = malter_rename.group(3)
+            stat_dic = self.sql_parser.parse(statement)
+            if isinstance(stat_dic, dict) and stat_dic != {}:
                 self.tokenised.append(stat_dic)
-                stat_dic = {}
-            elif mrename_table:
-                rename_list = self.parse_rename_table(mrename_table.group(2))
-                for rename_table in rename_list:
-                    stat_dic["command"] = "RENAME TABLE"
-                    stat_dic["name"] = rename_table[0]
-                    stat_dic["new_name"] = rename_table[1]
-                    self.tokenised.append(stat_dic)
-                    stat_dic = {}
-
-            elif mcreate_table:
-                command=' '.join(mcreate_table.group(1).split()).upper().strip()
-                stat_dic["command"]=command
-                stat_dic["name"]=mcreate_table.group(2)
-                create_parsed=self.parse_create_table(stat_cleanup, stat_dic["name"])
-                stat_dic["columns"]=create_parsed["columns"]
-                stat_dic["indices"]=create_parsed["indices"]
-            elif mdrop_table:
-                command=' '.join(mdrop_table.group(1).split()).upper().strip()
-                stat_dic["command"]=command
-                stat_dic["name"]=mdrop_table.group(2)
-            elif mtruncate_table:
-                command=' '.join(mtruncate_table.group(1).split()).upper().strip()
-                stat_dic["command"]=command
-                if mtruncate_table.group(3) == '':
-                    stat_dic["name"]=mtruncate_table.group(2)
-                else:
-                    stat_dic["name"]=mtruncate_table.group(3)
-            elif mdrop_primary:
-                stat_dic["command"]="DROP PRIMARY KEY"
-                stat_dic["name"]=mdrop_primary.group(1).strip().strip(',').replace('`', '').strip()
-            elif malter_index:
-                pass
-            elif malter_table:
-                stat_dic=self.parse_alter_table(malter_table)
-                if len(stat_dic["alter_cmd"]) == 0:
-                    stat_dic = {}
-
-            if stat_dic!={}:
-                self.tokenised.append(stat_dic)
-
-
+            elif isinstance(stat_dic, list):
+                for d in stat_dic:
+                    if isinstance(d, dict) and stat_dic != {}:
+                        self.tokenised.append(stat_dic)
