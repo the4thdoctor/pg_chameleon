@@ -43,261 +43,6 @@ sql_string = (
 
 ci_word = regex(r"\w+")
 
-pk_keyword = seq(ci_string("PRIMARY"), whitespace, ci_string("KEY"))
-
-# special pkey definition which can be composite. Like:
-# `CONSTRAINT pk_id PRIMARY KEY (id)` or `PRIMARY KEY (id1, id2)`
-pk_definition = seq(
-    __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
-    index_name=pk_keyword.result("PRIMARY"),
-    index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
-    non_unique=success(0),
-).combine_dict(dict)
-
-# inline pk definition `COLUMN_NAME type other_inline_things PRIMARY KEY other_inline_things`
-inline_pk_definition = seq(
-    index_columns=identifier.map(lambda s: [s]),
-    __extras=(whitespace >> regex(r"[\w_]+")).until(whitespace >> pk_keyword),
-    index_name=(whitespace >> pk_keyword).result("PRIMARY"),
-    __more_extras=(whitespace >> regex(r"[\w_]+")).many(),
-    non_unique=success(0),
-).combine_dict(dict)
-
-# note: does not catch inline 'unique' 
-# [CONSTRAINT uk_xyz] UNIQUE [KEY | INDEX] (column1, column2)
-uk_definition = seq(
-    __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
-    index_name=ci_string("UNIQUE").result("UNIQUE"),
-    __key_or_index_keyword=(whitespace >> (ci_string("INDEX") | ci_string("KEY"))).optional(),
-    index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
-    non_unique=success(0),
-).combine_dict(dict)
-
-idx_definition = seq(
-    index_name=(ci_string("INDEX") | ci_string("KEY")).result("INDEX"),
-    __optional_idx_name=(whitespace >> identifier).optional(),
-    index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
-    non_unique=success(1),
-).combine_dict(dict)
-
-fkey_definition = seq(
-    __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
-    index_name=(ci_string("FOREIGN") >> whitespace >> ci_string("KEY")).result("FOREIGN"),
-    index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
-    __references=whitespace.optional() >> ci_string("REFERENCES"),
-    __other_table_name=whitespace.optional() >> identifier,
-    __other_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
-    __on_delete_or_update=seq(
-        whitespace, ci_string("ON"), whitespace, ci_string("UPDATE") | ci_string("DELETE"),
-        whitespace, ci_string("CASCADE") | ci_string("RESTRICT"),
-    ).many(),
-    non_unique=success(1)
-).combine_dict(dict)
-
-other_key_definition = seq(
-    __idx_type=((ci_string("UNIQUE") | ci_string("FULLTEXT")) << whitespace).optional(),
-    index_name=(ci_string("INDEX") | ci_string("KEY")).result("OTHER"),
-    __idx_name=whitespace >> identifier,
-    index_columns=whitespace >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
-    non_unique=success(1),  # not correct, but it isn't used anywhere
-).combine_dict(dict)
-
-any_key_definition = alt(
-    pk_definition,
-    uk_definition,
-    idx_definition,
-    fkey_definition,
-    other_key_definition
-)
-
-column_definition = seq(
-    column_name=identifier,
-    data_type=whitespace >> ci_word.map(lambda x: x.lower()),
-    __precision_or_varying=(
-        whitespace >>
-        (ci_string("PRECISION") | ci_string("VARYING"))
-    ).optional(),
-    dimensions=(
-        optional_space_around(lparen) >>
-        digit.many().concat().sep_by(optional_space_around(string(",") | string("|")))
-        << optional_space_around(rparen)
-    ).optional(),
-    enum_list=(
-        optional_space_around(lparen) >>
-        sql_string.sep_by(optional_space_around(string(",") | string("|")))
-        << optional_space_around(rparen)
-    ).optional(),
-    extras=(
-        whitespace.optional() >> alt(
-            seq(ci_string("NOT"), whitespace, ci_string("NULL")).result("NOT NULL"),
-            seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY KEY"),
-            seq(
-                ci_string("DEFAULT").result("DEFAULT"),
-                whitespace >> (sql_string.map(lambda x: f"'{x}'") | ci_word)
-            ),
-            identifier,
-            ci_word,
-        ).sep_by(whitespace)
-    ).optional(default=[]),
-).combine_dict(dict)
-
-create_table_statement = seq(
-    command=(ci_string("CREATE") >> whitespace >> ci_string("TABLE")).result("CREATE TABLE"),
-    __if_not_exists=seq(
-        whitespace, ci_string("IF"),
-        whitespace, ci_string("NOT"),
-        whitespace, ci_string("EXISTS")
-    ).optional(),
-    name=whitespace >> identifier,
-    inner=whitespace.optional() >> lparen >> (
-        optional_space_around(
-            any_key_definition.tag("index") | column_definition.tag("column")
-        ).sep_by(string(","))
-    ) << rparen,
-    __rest=any_char.many(),
-).combine_dict(dict)
-
-alter_rename_table_statement = seq(
-    command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("RENAME TABLE"),
-    name=whitespace >> identifier,
-    __rename=whitespace >> ci_string("RENAME"),
-    __to=(whitespace >> ci_string("TO")).optional(),
-    new_name=whitespace >> identifier,
-).combine_dict(dict)
-
-rename_table_item = seq(
-    command=success("RENAME TABLE"),
-    __from_schema=(identifier >> string(".")).optional(),
-    name=identifier,
-    __to=whitespace >> ci_string("TO"),
-    __to_schema=(whitespace >> identifier >> string(".")).optional(),
-    new_name=identifier,
-).combine_dict(dict)
-
-# returns list, not dict!
-rename_table_statement = (
-    ci_string("RENAME") >> whitespace >> ci_string("TABLE") >>
-    optional_space_around(rename_table_item).sep_by(string(","))
-).combine_dict(dict)
-
-alter_index_statement = seq(
-    command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER INDEX"),
-    name=whitespace >> identifier,
-    action=whitespace >> (ci_string("ADD") | ci_string("DROP")),
-    __unique=(whitespace >> ci_string("UNIQUE")).optional(),
-    __index=whitespace >> ci_string("INDEX"),
-    __rest=any_char.many(),
-).combine_dict(dict)
-
-drop_table_statement = seq(
-    command=seq(ci_string("DROP"), whitespace, ci_string("TABLE")).result("DROP TABLE"),
-    __if_exists=seq(whitespace, ci_string("IF"), whitespace, ci_string("EXISTS")).optional(),
-    name=whitespace >> identifier,
-).combine_dict(dict)
-
-drop_primary_key_statement = seq(
-    command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("DROP PRIMARY KEY"),
-    name=whitespace >> identifier,
-    __drop_pk=whitespace >> seq(
-        ci_string("DROP"), whitespace, ci_string("PRIMARY"), whitespace, ci_string("KEY")
-    )
-).combine_dict(dict)
-
-truncate_table_statement = seq(
-    command=ci_string("TRUNCATE"),
-    __table=(whitespace >> ci_string("TABLE")).optional(),
-    __space=whitespace,
-    __schema=(identifier << string(".")).optional(),
-    name=identifier,
-).combine_dict(dict)
-
-alter_table_drop = seq(
-    command=ci_string("DROP"),
-    __column=(whitespace >> ci_string("COLUMN")).optional(),
-    name=whitespace >> identifier,
-).combine_dict(dict)
-
-column_definition_in_alter_table = column_definition.combine_dict(
-    lambda column_name, data_type, dimensions, enum_list, extras, **k: {
-        "name": column_name,
-        "type": data_type,
-        "dimension": (
-            ", ".join(dimensions) if dimensions else
-            ", ".join(map(lambda x: f"'{x}'", enum_list)) if enum_list else
-            0
-        ),
-        "default": (
-            next(
-                (extra[1] for extra in extras
-                if isinstance(extra, list) and extra[0] == "DEFAULT"),
-                None
-            )
-        )
-    }
-).map(
-    lambda d: dict(
-        d,
-        data_type=d["type"],
-        column_type="%s(%s)" % (d["type"], d["dimension"]) if d["dimension"] else d["type"]
-    )
-)
-
-alter_table_add = seq(
-    command=ci_string("ADD"),
-    __column=(whitespace >> ci_string("COLUMN")).optional(),
-    col_def=whitespace >> column_definition_in_alter_table
-).combine_dict(
-    lambda command, col_def: dict(command=command, **col_def)
-)
-
-alter_table_change = seq(
-    command=ci_string("CHANGE"),
-    __column=(whitespace >> ci_string("COLUMN")).optional(),
-    old=whitespace >> identifier,
-    col_def=whitespace >> column_definition_in_alter_table,
-).combine_dict(
-    lambda command, old, col_def: dict(
-        command=command,
-        old=old,
-        new=col_def["name"],
-        **col_def,
-    )
-).combine_dict(dict)
-
-alter_table_modify = seq(
-    command=ci_string("MODIFY"),
-    __column=(whitespace >> ci_string("COLUMN")).optional(),
-    col_def=whitespace >> column_definition_in_alter_table,
-).combine_dict(
-    lambda command, col_def: dict(command=command, **col_def)
-)
-
-alter_table_ignored = seq(
-    ci_string("ADD") | ci_string("DROP") | ci_string("CHANGE") | ci_string("MODIFY"),
-    whitespace >> alt(
-        ci_string("INDEX"), ci_string("KEY"), ci_string("CONSTRAINT"), ci_string("CHECK"),
-        ci_string("UNIQUE"), seq(ci_string("FOREIGN"), whitespace, ci_string("KEY")),
-        seq(ci_string("PRIMARY"), whitespace, ci_string("KEY"))
-    ),
-    any_char.until(string(",") | eof).concat(),
-).result(None)
-
-alter_table_statement = seq(
-    command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER TABLE"),
-    __space=whitespace,
-    __schema=seq(identifier, string(".")).optional(),
-    name=identifier,
-    alter_cmd=optional_space_around(
-        alt(
-            alter_table_ignored,
-            alter_table_drop,
-            alter_table_add,
-            alter_table_change,
-            alter_table_modify,
-        )
-    ).sep_by(string(",")).map(lambda ls: [x for x in ls if x]),  # remove none values
-).combine_dict(dict)
-
 class sql_token(object):
     """
     The class tokenises the sql statements captured by mysql_engine.
@@ -312,6 +57,250 @@ class sql_token(object):
     The method post_process_key_definition ignores any foreign key definition from the
     sql statement as we don't enforce any foreign key on the PostgreSQL replication.
     """
+
+    # `CONSTRAINT pk_id PRIMARY KEY (id)` or `PRIMARY KEY (id1, id2)`
+    pk_definition = seq(
+        __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
+        index_name=seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY"),
+        index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        non_unique=success(0),
+    ).combine_dict(dict)
+
+    # [CONSTRAINT uk_xyz] UNIQUE [KEY | INDEX] (column1, column2)
+    uk_definition = seq(
+        __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
+        index_name=ci_string("UNIQUE").result("UNIQUE"),
+        __key_or_index_keyword=(whitespace >> (ci_string("INDEX") | ci_string("KEY"))).optional(),
+        index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        non_unique=success(0),
+    ).combine_dict(dict)
+
+    # [INDEX | KEY] idx_name (column_name, [...column_name])
+    idx_definition = seq(
+        index_name=(ci_string("INDEX") | ci_string("KEY")).result("INDEX"),
+        __optional_idx_name=(whitespace >> identifier).optional(),
+        index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        non_unique=success(1),
+    ).combine_dict(dict)
+
+    fkey_definition = seq(
+        __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
+        index_name=(ci_string("FOREIGN") >> whitespace >> ci_string("KEY")).result("FOREIGN"),
+        index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        __references=whitespace.optional() >> ci_string("REFERENCES"),
+        __other_table_name=whitespace.optional() >> identifier,
+        __other_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        __on_delete_or_update=seq(
+            whitespace, ci_string("ON"), whitespace, ci_string("UPDATE") | ci_string("DELETE"),
+            whitespace, ci_string("CASCADE") | ci_string("RESTRICT"),
+        ).many(),
+        non_unique=success(1)
+    ).combine_dict(dict)
+
+    other_key_definition = seq(
+        __idx_type=((ci_string("UNIQUE") | ci_string("FULLTEXT")) << whitespace).optional(),
+        index_name=(ci_string("INDEX") | ci_string("KEY")).result("OTHER"),
+        __idx_name=whitespace >> identifier,
+        index_columns=whitespace >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        non_unique=success(1),  # not correct, but it isn't used anywhere
+    ).combine_dict(dict)
+
+    any_key_definition = alt(
+        pk_definition,
+        uk_definition,
+        idx_definition,
+        fkey_definition,
+        other_key_definition
+    )
+
+    column_definition = seq(
+        column_name=identifier,
+        data_type=whitespace >> ci_word.map(lambda x: x.lower()),
+        __precision_or_varying=(
+            whitespace >>
+            (ci_string("PRECISION") | ci_string("VARYING"))
+        ).optional(),
+        dimensions=(
+            optional_space_around(lparen) >>
+            digit.many().concat().sep_by(optional_space_around(string(",") | string("|")))
+            << optional_space_around(rparen)
+        ).optional(),
+        enum_list=(
+            optional_space_around(lparen) >>
+            sql_string.sep_by(optional_space_around(string(",") | string("|")))
+            << optional_space_around(rparen)
+        ).optional(),
+        extras=(
+            whitespace.optional() >> alt(
+                seq(ci_string("NOT"), whitespace, ci_string("NULL")).result("NOT NULL"),
+                seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY KEY"),
+                seq(
+                    ci_string("DEFAULT").result("DEFAULT"),
+                    whitespace >> (sql_string.map(lambda x: f"'{x}'") | ci_word)
+                ),
+                identifier,
+                ci_word,
+            ).sep_by(whitespace)
+        ).optional(default=[]),
+    ).combine_dict(dict)
+
+    create_table_statement = seq(
+        command=(ci_string("CREATE") >> whitespace >> ci_string("TABLE")).result("CREATE TABLE"),
+        __if_not_exists=seq(
+            whitespace, ci_string("IF"),
+            whitespace, ci_string("NOT"),
+            whitespace, ci_string("EXISTS")
+        ).optional(),
+        name=whitespace >> identifier,
+        inner=whitespace.optional() >> lparen >> (
+            optional_space_around(
+                any_key_definition.tag("index") | column_definition.tag("column")
+            ).sep_by(string(","))
+        ) << rparen,
+        __rest=any_char.many(),
+    ).combine_dict(dict)
+
+    alter_rename_table_statement = seq(
+        command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("RENAME TABLE"),
+        name=whitespace >> identifier,
+        __rename=whitespace >> ci_string("RENAME"),
+        __to=(whitespace >> ci_string("TO")).optional(),
+        new_name=whitespace >> identifier,
+    ).combine_dict(dict)
+
+    rename_table_item = seq(
+        command=success("RENAME TABLE"),
+        __from_schema=(identifier >> string(".")).optional(),
+        name=identifier,
+        __to=whitespace >> ci_string("TO"),
+        __to_schema=(whitespace >> identifier >> string(".")).optional(),
+        new_name=identifier,
+    ).combine_dict(dict)
+
+    # returns list, not dict!
+    rename_table_statement = (
+        ci_string("RENAME") >> whitespace >> ci_string("TABLE") >>
+        optional_space_around(rename_table_item).sep_by(string(","))
+    ).combine_dict(dict)
+
+    alter_index_statement = seq(
+        command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER INDEX"),
+        name=whitespace >> identifier,
+        action=whitespace >> (ci_string("ADD") | ci_string("DROP")),
+        __unique=(whitespace >> ci_string("UNIQUE")).optional(),
+        __index=whitespace >> ci_string("INDEX"),
+        __rest=any_char.many(),
+    ).combine_dict(dict)
+
+    drop_table_statement = seq(
+        command=seq(ci_string("DROP"), whitespace, ci_string("TABLE")).result("DROP TABLE"),
+        __if_exists=seq(whitespace, ci_string("IF"), whitespace, ci_string("EXISTS")).optional(),
+        name=whitespace >> identifier,
+    ).combine_dict(dict)
+
+    drop_primary_key_statement = seq(
+        command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("DROP PRIMARY KEY"),
+        name=whitespace >> identifier,
+        __drop_pk=whitespace >> seq(
+            ci_string("DROP"), whitespace, ci_string("PRIMARY"), whitespace, ci_string("KEY")
+        )
+    ).combine_dict(dict)
+
+    truncate_table_statement = seq(
+        command=ci_string("TRUNCATE"),
+        __table=(whitespace >> ci_string("TABLE")).optional(),
+        __space=whitespace,
+        __schema=(identifier << string(".")).optional(),
+        name=identifier,
+    ).combine_dict(dict)
+
+    alter_table_drop = seq(
+        command=ci_string("DROP"),
+        __column=(whitespace >> ci_string("COLUMN")).optional(),
+        name=whitespace >> identifier,
+    ).combine_dict(dict)
+
+    column_definition_in_alter_table = column_definition.combine_dict(
+        lambda column_name, data_type, dimensions, enum_list, extras, **k: {
+            "name": column_name,
+            "type": data_type,
+            "dimension": (
+                ", ".join(dimensions) if dimensions else
+                ", ".join(map(lambda x: f"'{x}'", enum_list)) if enum_list else
+                0
+            ),
+            "default": (
+                next(
+                    (extra[1] for extra in extras
+                    if isinstance(extra, list) and extra[0] == "DEFAULT"),
+                    None
+                )
+            )
+        }
+    ).map(
+        lambda d: dict(
+            d,
+            data_type=d["type"],
+            column_type="%s(%s)" % (d["type"], d["dimension"]) if d["dimension"] else d["type"]
+        )
+    )
+
+    alter_table_add = seq(
+        command=ci_string("ADD"),
+        __column=(whitespace >> ci_string("COLUMN")).optional(),
+        col_def=whitespace >> column_definition_in_alter_table
+    ).combine_dict(
+        lambda command, col_def: dict(command=command, **col_def)
+    )
+
+    alter_table_change = seq(
+        command=ci_string("CHANGE"),
+        __column=(whitespace >> ci_string("COLUMN")).optional(),
+        old=whitespace >> identifier,
+        col_def=whitespace >> column_definition_in_alter_table,
+    ).combine_dict(
+        lambda command, old, col_def: dict(
+            command=command,
+            old=old,
+            new=col_def["name"],
+            **col_def,
+        )
+    ).combine_dict(dict)
+
+    alter_table_modify = seq(
+        command=ci_string("MODIFY"),
+        __column=(whitespace >> ci_string("COLUMN")).optional(),
+        col_def=whitespace >> column_definition_in_alter_table,
+    ).combine_dict(
+        lambda command, col_def: dict(command=command, **col_def)
+    )
+
+    alter_table_ignored = seq(
+        ci_string("ADD") | ci_string("DROP") | ci_string("CHANGE") | ci_string("MODIFY"),
+        whitespace >> alt(
+            ci_string("INDEX"), ci_string("KEY"), ci_string("CONSTRAINT"), ci_string("CHECK"),
+            ci_string("UNIQUE"), seq(ci_string("FOREIGN"), whitespace, ci_string("KEY")),
+            seq(ci_string("PRIMARY"), whitespace, ci_string("KEY"))
+        ),
+        any_char.until(string(",") | eof).concat(),
+    ).result(None)
+
+    alter_table_statement = seq(
+        command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER TABLE"),
+        __space=whitespace,
+        __schema=seq(identifier, string(".")).optional(),
+        name=identifier,
+        alter_cmd=optional_space_around(
+            alt(
+                alter_table_ignored,
+                alter_table_drop,
+                alter_table_add,
+                alter_table_change,
+                alter_table_modify,
+            )
+        ).sep_by(string(",")).map(lambda ls: [x for x in ls if x]),  # remove none values
+    ).combine_dict(dict)
+
     def __init__(self):
         """
             Class constructor the regular expressions are compiled and the token lists are initialised.
@@ -321,16 +310,22 @@ class sql_token(object):
         self.pkey_cols = []
         self.ukey_cols = []
 
+        # supported statements
+        # RENAME TABLE
+        # CREATE TABLE
+        # DROP [TABLE]
+        # TRUNCATE [TABLE]
+        # ALTER TABLE
         self.sql_parser = optional_space_around(
             alt(
-                alter_rename_table_statement,
-                rename_table_statement,
-                create_table_statement.map(self._post_process_create_table),
-                drop_table_statement,
-                truncate_table_statement,
-                drop_primary_key_statement,
-                alter_index_statement,
-                alter_table_statement,
+                self.alter_rename_table_statement,
+                self.rename_table_statement,
+                self.create_table_statement.map(self._post_process_create_table),
+                self.drop_table_statement,
+                self.truncate_table_statement,
+                self.drop_primary_key_statement,
+                self.alter_index_statement,
+                self.alter_table_statement,
             ).optional()
         )
 
@@ -524,13 +519,16 @@ class sql_token(object):
 
     def parse_sql(self, sql_string):
         """
-            The method cleans and parses the sql string
-            A regular expression replaces all the default value definitions with a space.
-            Then the statements are split in a list using the statement separator;
+            The method removes comments from the sql string and parses it.
+            The statements are split in a list using the statement separator ;
 
-            For each statement a set of regular expressions remove the comments, single and multi line.
-            Parenthesis are surrounded by spaces and commas are rewritten in order to get at least one space after the comma.
-            The statement is then put on a single line and stripped.
+            For each statement, the sql parser tries to parse it with
+            a set of specific statement parsers. If any supported statement
+            is found, it is parsed and returned as a non-empty dict or
+            a list of dicts by the parser.
+
+            Look at self.sql_parser for the different statements that are
+            supported by the parser.
 
             Different match are performed on the statement.
             RENAME TABLE
@@ -541,8 +539,8 @@ class sql_token(object):
             DROP PRIMARY KEY
             TRUNCATE TABLE
 
-            The match which is successful determines the parsing of the rest of the statement.
-            Each parse builds a dictionary with at least two keys "name" and "command".
+            Each successful parse builds a dictionary with at least two
+            keys "name" and "command".
 
             Each statement parse comes with specific addictional keys.
 
