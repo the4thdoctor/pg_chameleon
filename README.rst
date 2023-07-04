@@ -35,7 +35,7 @@ Replica host
 ..............................
 
 Operating system: Linux, FreeBSD, OpenBSD
-Python: CPython 3.5+ 
+Python: CPython 3.7+
 
 * `PyMySQL <https://pypi.python.org/pypi/PyMySQL>`_ 
 * `mysql-replication <https://pypi.python.org/pypi/mysql-replication>`_
@@ -100,7 +100,7 @@ The replica requires the tables to have a primary or unique key. Tables without 
 The copy_max_memory is just an estimate. The average rows size is extracted from mysql's informations schema and can be outdated.
 If the copy process fails for memory error check the failing table's row length and the number of rows for each slice. 
 
-Python 3 is supported only from version 3.5 as required by mysql-replication .
+Python 3 is supported only from version 3.7 as required by the parser library *parsy*.
 
 The lag is determined using the last received event timestamp and the postgresql timestamp. If the mysql is read only the lag will increase because
 no replica event is coming in. 
