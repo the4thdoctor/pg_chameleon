@@ -58,7 +58,7 @@ class sql_token(object):
     sql statement as we don't enforce any foreign key on the PostgreSQL replication.
     """
 
-    # `CONSTRAINT pk_id PRIMARY KEY (id)` or `PRIMARY KEY (id1, id2)`
+    # [CONSTRAINT pk_id] PRIMARY KEY (column_name, ...)
     pk_definition = seq(
         __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
         index_name=seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY"),
@@ -66,7 +66,7 @@ class sql_token(object):
         non_unique=success(0),
     ).combine_dict(dict)
 
-    # [CONSTRAINT uk_xyz] UNIQUE [KEY | INDEX] (column1, column2)
+    # [CONSTRAINT uk_xyz] UNIQUE [{KEY | INDEX}] (column_name, ...)
     uk_definition = seq(
         __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
         index_name=ci_string("UNIQUE").result("UNIQUE"),
@@ -75,7 +75,7 @@ class sql_token(object):
         non_unique=success(0),
     ).combine_dict(dict)
 
-    # [INDEX | KEY] idx_name (column_name, [...column_name])
+    # {INDEX | KEY} [idx_name] (column_name, ...)
     idx_definition = seq(
         index_name=(ci_string("INDEX") | ci_string("KEY")).result("INDEX"),
         __optional_idx_name=(whitespace >> identifier).optional(),
@@ -83,6 +83,8 @@ class sql_token(object):
         non_unique=success(1),
     ).combine_dict(dict)
 
+    # [CONSTRAINT fk_id] FOREIGN KEY REFERENCES table_name (column_name, ...)
+    # [ON {UPDATE | DELETE} {CASCADE | RESTRICT}]
     fkey_definition = seq(
         __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
         index_name=(ci_string("FOREIGN") >> whitespace >> ci_string("KEY")).result("FOREIGN"),
@@ -97,6 +99,7 @@ class sql_token(object):
         non_unique=success(1)
     ).combine_dict(dict)
 
+    # [UNIQUE | FULLTEXT] {INDEX | KEY} idx_name (column_name, ...)
     other_key_definition = seq(
         __idx_type=((ci_string("UNIQUE") | ci_string("FULLTEXT")) << whitespace).optional(),
         index_name=(ci_string("INDEX") | ci_string("KEY")).result("OTHER"),
@@ -113,6 +116,8 @@ class sql_token(object):
         other_key_definition
     )
 
+    # column_name type [PRECISION | VARYING] [(numeric_dimension, ...)] [('enum_list', ...)]
+    # [NOT NULL] [PRIMARY KEY] [DEFAULT {'string' | literal} ] [ignored extras ...]
     column_definition = seq(
         column_name=identifier,
         data_type=whitespace >> ci_word.map(lambda x: x.lower()),
@@ -144,6 +149,7 @@ class sql_token(object):
         ).optional(default=[]),
     ).combine_dict(dict)
 
+    # CREATE TABLE [IF NOT EXISTS] table_name (key_definition | column_definition, ...) [anything extra]
     create_table_statement = seq(
         command=(ci_string("CREATE") >> whitespace >> ci_string("TABLE")).result("CREATE TABLE"),
         __if_not_exists=seq(
@@ -160,6 +166,7 @@ class sql_token(object):
         __rest=any_char.many(),
     ).combine_dict(dict)
 
+    # ALTER TABLE table_name RENAME [TO] new_name
     alter_rename_table_statement = seq(
         command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("RENAME TABLE"),
         name=whitespace >> identifier,
@@ -168,6 +175,7 @@ class sql_token(object):
         new_name=whitespace >> identifier,
     ).combine_dict(dict)
 
+    # [schema_identifier.]table_name TO [new_schema_identifier.]new_name
     rename_table_item = seq(
         command=success("RENAME TABLE"),
         __from_schema=(identifier >> string(".")).optional(),
@@ -177,12 +185,14 @@ class sql_token(object):
         new_name=identifier,
     ).combine_dict(dict)
 
+    # RENAME TABLE ( [old_schema.]old_name TO [new_schema.]new_name )
     # returns list, not dict!
     rename_table_statement = (
         ci_string("RENAME") >> whitespace >> ci_string("TABLE") >>
         optional_space_around(rename_table_item).sep_by(string(","))
     ).combine_dict(dict)
 
+    # ALTER TABLE table_name {ADD | DROP} [UNIQUE] INDEX [... rest]
     alter_index_statement = seq(
         command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER INDEX"),
         name=whitespace >> identifier,
@@ -192,12 +202,14 @@ class sql_token(object):
         __rest=any_char.many(),
     ).combine_dict(dict)
 
+    # DROP TABLE [IF EXISTS] table_name
     drop_table_statement = seq(
         command=seq(ci_string("DROP"), whitespace, ci_string("TABLE")).result("DROP TABLE"),
         __if_exists=seq(whitespace, ci_string("IF"), whitespace, ci_string("EXISTS")).optional(),
         name=whitespace >> identifier,
     ).combine_dict(dict)
 
+    # ALTER TABLE table_name DROP PRIMARY KEY
     drop_primary_key_statement = seq(
         command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("DROP PRIMARY KEY"),
         name=whitespace >> identifier,
@@ -206,6 +218,7 @@ class sql_token(object):
         )
     ).combine_dict(dict)
 
+    # TRUNCATE [TABLE] [schema_name.]table_name
     truncate_table_statement = seq(
         command=ci_string("TRUNCATE"),
         __table=(whitespace >> ci_string("TABLE")).optional(),
@@ -214,12 +227,15 @@ class sql_token(object):
         name=identifier,
     ).combine_dict(dict)
 
+    # DROP [COLUMN] column_name
     alter_table_drop = seq(
         command=ci_string("DROP"),
         __column=(whitespace >> ci_string("COLUMN")).optional(),
         name=whitespace >> identifier,
     ).combine_dict(dict)
 
+    # post processes a parsed column definition
+    # when it occurs in an ALTER TABLE statement
     column_definition_in_alter_table = column_definition.combine_dict(
         lambda column_name, data_type, dimensions, enum_list, extras, **k: {
             "name": column_name,
@@ -245,6 +261,7 @@ class sql_token(object):
         )
     )
 
+    # ADD [COLUMN] column_definition
     alter_table_add = seq(
         command=ci_string("ADD"),
         __column=(whitespace >> ci_string("COLUMN")).optional(),
@@ -253,6 +270,7 @@ class sql_token(object):
         lambda command, col_def: dict(command=command, **col_def)
     )
 
+    # CHANGE [COLUMN] column_name column_definition
     alter_table_change = seq(
         command=ci_string("CHANGE"),
         __column=(whitespace >> ci_string("COLUMN")).optional(),
@@ -267,6 +285,7 @@ class sql_token(object):
         )
     ).combine_dict(dict)
 
+    # MODIFY [COLUMN] column_definition
     alter_table_modify = seq(
         command=ci_string("MODIFY"),
         __column=(whitespace >> ci_string("COLUMN")).optional(),
@@ -275,6 +294,7 @@ class sql_token(object):
         lambda command, col_def: dict(command=command, **col_def)
     )
 
+    # [ADD | DROP | CHANGE | MODIFY] {INDEX | KEY | CONSTRAINT | CHECK | UNIQUE | FOREIGN KEY | PRIMARY KEY}
     alter_table_ignored = seq(
         ci_string("ADD") | ci_string("DROP") | ci_string("CHANGE") | ci_string("MODIFY"),
         whitespace >> alt(
@@ -285,6 +305,7 @@ class sql_token(object):
         any_char.until(string(",") | eof).concat(),
     ).result(None)
 
+    # ALTER TABLE [schema_name.]table_name (alter_table_subcommand, ...)
     alter_table_statement = seq(
         command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER TABLE"),
         __space=whitespace,
