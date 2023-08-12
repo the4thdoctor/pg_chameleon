@@ -306,7 +306,7 @@ class sql_token(object):
         any_char.until(string(",") | eof).concat(),
     ).result(None)
 
-    # ALTER TABLE [schema_name.]table_name (alter_table_subcommand, ...)
+    # ALTER TABLE [schema_name.]table_name alter_table_subcommand, ...
     alter_table_statement = seq(
         command=seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER TABLE"),
         __space=whitespace,
@@ -322,6 +322,23 @@ class sql_token(object):
             )
         ).sep_by(string(",")).map(lambda ls: [x for x in ls if x]),  # remove none values
     ).combine_dict(dict)
+
+    # CREATE [UNIQUE] INDEX index_name ON table_name (column_name, ...)
+    create_index_statement = seq(
+        command=ci_string("CREATE").result("CREATE INDEX"),
+        non_unique=(whitespace >> ci_string("UNIQUE")).result(0).optional(default=1),
+        __index=whitespace >> ci_string("INDEX"),
+        index_name=whitespace >> identifier,
+        __on=whitespace >> ci_string("ON"),
+        __space=whitespace,
+        __schema=seq(identifier, string(".")).optional(),
+        name=identifier,
+        index_columns=optional_space_around(
+            lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        ),
+    ).combine_dict(
+        lambda command, name, **key_dic: dict(command=command, name=name, indices=[key_dic])
+    )
 
     def __init__(self):
         """
@@ -346,6 +363,7 @@ class sql_token(object):
                 self.drop_table_statement,
                 self.truncate_table_statement,
                 self.drop_primary_key_statement,
+                self.create_index_statement,
                 self.alter_index_statement,
                 self.alter_table_statement,
             ).optional()
