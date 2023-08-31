@@ -1,6 +1,6 @@
 import re
 
-from parsy import alt, any_char, digit, eof, seq, string, success, regex, whitespace
+from parsy import alt, any_char, digit, eof, forward_declaration, seq, string, success, regex, whitespace
 
 
 def ci_string(s):
@@ -26,9 +26,23 @@ def optional_space_around(p):
     return whitespace.optional() >> p << whitespace.optional()
 
 
+def parentheses_around(p):
+    """
+    This function extends an existing parser with parentheses
+    around it. The captured parentheses and adjacent whitespace
+    are discarded.
+
+    :param p: the parser to extend
+    :return: a new parser with parenthesis around the old parser
+    :rtype: parsy.Parser
+    """
+    return optional_space_around(lparen) >> p << optional_space_around(rparen)
+
+
 pgsql_identifier = regex(r"\w+")
 mysql_identifier = string("`") >> regex(r"[\w\s]+") << string("`")
 identifier = pgsql_identifier | mysql_identifier
+number = digit.many().concat()
 
 lparen = string("(")
 rparen = string(")")
@@ -58,11 +72,46 @@ class sql_token(object):
     sql statement as we don't enforce any foreign key on the PostgreSQL replication.
     """
 
+    # for parsing complex index definitions
+    # forward_declaration is like lazy initialisation
+    inline_expr = forward_declaration()
+    simple_expr = regex(r"[^\(\)]+")
+    group_expr = seq(optional_space_around(lparen), inline_expr.many().concat(), optional_space_around(rparen)).concat()
+    inline_expr.become(group_expr | simple_expr)
+
+    # { column_name | column_name(n) | (FUNCTION(column_name)) }
+    key_part = alt(
+        # column_name(80)
+        seq(
+            identifier,
+            optional_space_around(lparen), number, optional_space_around(rparen),
+        ).concat().tag("partial"),
+
+        # column_name
+        identifier.tag("column"),
+
+        # functional
+        inline_expr.tag("functional"),
+    )
+
+    key_part_group = key_part.sep_by(comma_sep).map(
+        lambda tagged_list: {
+            "tags": [tag for (tag, _value) in tagged_list],
+            "values": [value for (_tag, value) in tagged_list],
+        }
+    ).combine_dict(
+        lambda tags, values: {
+            "is_functional": "functional" in tags,
+            "is_partial": "partial" in tags,
+            "index_columns": values,
+        }
+    )
+
     # [CONSTRAINT pk_id] PRIMARY KEY (column_name, ...)
     pk_definition = seq(
         __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
         index_name=seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY"),
-        index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        index_columns=parentheses_around(key_part.sep_by(comma_sep)),
         non_unique=success(0),
     ).combine_dict(dict)
 
@@ -71,7 +120,7 @@ class sql_token(object):
         __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
         index_name=ci_string("UNIQUE").result("UNIQUE"),
         __key_or_index_keyword=(whitespace >> (ci_string("INDEX") | ci_string("KEY"))).optional(),
-        index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        index_columns=parentheses_around(key_part.sep_by(comma_sep)),
         non_unique=success(0),
     ).combine_dict(dict)
 
@@ -79,7 +128,7 @@ class sql_token(object):
     idx_definition = seq(
         index_name=(ci_string("INDEX") | ci_string("KEY")).result("INDEX"),
         __optional_idx_name=(whitespace >> identifier).optional(),
-        index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        index_columns=parentheses_around(key_part.sep_by(comma_sep)),
         non_unique=success(1),
     ).combine_dict(dict)
 
@@ -88,10 +137,10 @@ class sql_token(object):
     fkey_definition = seq(
         __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
         index_name=(ci_string("FOREIGN") >> whitespace >> ci_string("KEY")).result("FOREIGN"),
-        index_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        index_columns=parentheses_around(key_part.sep_by(comma_sep)),
         __references=whitespace.optional() >> ci_string("REFERENCES"),
         __other_table_name=whitespace.optional() >> identifier,
-        __other_columns=whitespace.optional() >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
+        __other_columns=parentheses_around(key_part.sep_by(comma_sep)),
         __on_delete_or_update=seq(
             whitespace, ci_string("ON"), whitespace, ci_string("UPDATE") | ci_string("DELETE"),
             whitespace, ci_string("CASCADE") | ci_string("RESTRICT"),
@@ -99,13 +148,15 @@ class sql_token(object):
         non_unique=success(1)
     ).combine_dict(dict)
 
-    # [UNIQUE | FULLTEXT] {INDEX | KEY} idx_name (column_name, ...)
+    # [SPATIAL | FULLTEXT] {INDEX | KEY} idx_name (column_name, ...)
     other_key_definition = seq(
-        __idx_type=((ci_string("UNIQUE") | ci_string("FULLTEXT")) << whitespace).optional(),
-        index_name=(ci_string("INDEX") | ci_string("KEY")).result("OTHER"),
+        is_spatial=ci_string("SPATIAL").result(True).optional(default=False),
+        is_fulltext=ci_string("FULLTEXT").result(True).optional(default=False),
+        __index_or_key=(whitespace >> (ci_string("INDEX") | ci_string("KEY"))).optional(),
         __idx_name=whitespace >> identifier,
-        index_columns=whitespace >> lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
-        non_unique=success(1),  # not correct, but it isn't used anywhere
+        index_columns=parentheses_around(key_part.sep_by(comma_sep)),
+        index_name=success("OTHER"),
+        non_unique=success(1),
     ).combine_dict(dict)
 
     any_key_definition = alt(
@@ -114,6 +165,18 @@ class sql_token(object):
         idx_definition,
         fkey_definition,
         other_key_definition
+    ).combine_dict(
+        lambda index_columns, **kwargs: {
+            "key_part_tags": [tag for (tag, _value) in index_columns],
+            "index_columns": [value for (_tag, value) in index_columns],
+            **kwargs,
+        }
+    ).combine_dict(
+        lambda key_part_tags, **kwargs: {
+            "is_functional": "functional" in key_part_tags,
+            "is_partial": "partial" in key_part_tags,
+            **kwargs,
+        }
     )
 
     # column_name type [PRECISION | VARYING] [(numeric_dimension, ...)] [('enum_list', ...)]
@@ -127,7 +190,7 @@ class sql_token(object):
         ).optional(),
         dimensions=(
             optional_space_around(lparen) >>
-            digit.many().concat().sep_by(optional_space_around(string(",") | string("|")))
+            number.sep_by(optional_space_around(string(",") | string("|")))
             << optional_space_around(rparen)
         ).optional(),
         enum_list=(
@@ -228,13 +291,6 @@ class sql_token(object):
         name=identifier,
     ).combine_dict(dict)
 
-    # DROP [COLUMN] column_name
-    alter_table_drop = seq(
-        command=ci_string("DROP"),
-        __column=(whitespace >> ci_string("COLUMN")).optional(),
-        name=whitespace >> identifier,
-    ).combine_dict(dict)
-
     # post processes a parsed column definition
     # when it occurs in an ALTER TABLE statement
     column_definition_in_alter_table = column_definition.combine_dict(
@@ -286,6 +342,13 @@ class sql_token(object):
         )
     ).combine_dict(dict)
 
+    # DROP [COLUMN] column_name
+    alter_table_drop = seq(
+        command=ci_string("DROP"),
+        __column=(whitespace >> ci_string("COLUMN")).optional(),
+        name=whitespace >> identifier,
+    ).combine_dict(dict)
+
     # MODIFY [COLUMN] column_definition
     alter_table_modify = seq(
         command=ci_string("MODIFY"),
@@ -327,15 +390,17 @@ class sql_token(object):
     create_index_statement = seq(
         command=ci_string("CREATE").result("CREATE INDEX"),
         non_unique=(whitespace >> ci_string("UNIQUE")).result(0).optional(default=1),
+        is_fulltext=(whitespace >> ci_string("FULLTEXT")).result(True).optional(default=False),
+        is_spatial=(whitespace >> ci_string("SPATIAL")).result(True).optional(default=False),
         __index=whitespace >> ci_string("INDEX"),
         index_name=whitespace >> identifier,
         __on=whitespace >> ci_string("ON"),
         __space=whitespace,
         __schema=seq(identifier, string(".")).optional(),
         name=identifier,
-        index_columns=optional_space_around(
-            lparen >> optional_space_around(identifier).sep_by(string(",")) << rparen,
-        ),
+        key_parts=parentheses_around(key_part_group),
+    ).combine_dict(
+        lambda key_parts, **rest: {**key_parts, **rest}
     ).combine_dict(
         lambda command, name, **key_dic: dict(command=command, name=name, indices=[key_dic])
     )
