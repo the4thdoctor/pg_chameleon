@@ -379,6 +379,14 @@ class sql_token(object):
         lambda command, col_def: dict(command=command, **col_def)
     )
 
+    # ADD {INDEX | KEY} [index_name] [USING {BTREE | HASH}] (key_part, ...)
+    alter_table_add_index = seq(
+        command=ci_string("ADD").result("ADD INDEX"),
+        key_dic=whitespace >> any_key_definition,
+    ).combine_dict(
+        lambda command, key_dic: dict(command=command, **key_dic)
+    )
+
     # [ADD | DROP | CHANGE | MODIFY] {INDEX | KEY | CONSTRAINT | CHECK | UNIQUE | FOREIGN KEY | PRIMARY KEY}
     alter_table_ignored = seq(
         ci_string("ADD") | ci_string("DROP") | ci_string("CHANGE") | ci_string("MODIFY"),
@@ -398,6 +406,7 @@ class sql_token(object):
         name=identifier,
         alter_cmd=optional_space_around(
             alt(
+                alter_table_add_index,
                 alter_table_ignored,
                 alter_table_drop,
                 alter_table_add,
@@ -409,7 +418,7 @@ class sql_token(object):
 
     # CREATE [UNIQUE] INDEX index_name ON table_name (column_name, ...)
     create_index_statement = seq(
-        command=ci_string("CREATE").result("CREATE INDEX"),
+        command=ci_string("CREATE").result("ADD INDEX"),
         non_unique=(whitespace >> ci_string("UNIQUE")).result(0).optional(default=1),
         is_fulltext=(whitespace >> ci_string("FULLTEXT")).result(True).optional(default=False),
         is_spatial=(whitespace >> ci_string("SPATIAL")).result(True).optional(default=False),
@@ -426,7 +435,11 @@ class sql_token(object):
     ).combine_dict(
         lambda key_parts, **rest: {**key_parts, **rest}
     ).combine_dict(
-        lambda command, name, **key_dic: dict(command=command, name=name, indices=[key_dic])
+        lambda command, name, **key_dic: {
+            "command": "ALTER TABLE",
+            "name": name,
+            "alter_cmd": [{"command": command, **key_dic}],
+        }
     )
 
     def __init__(self):
