@@ -1312,7 +1312,6 @@ class pg_engine(object):
             CREATE TABLE
             ALTER TABLE
             DROP PRIMARY KEY
-            CREATE INDEX
 
             :param token: A dictionary with the tokenised sql statement
             :param destination_schema: The ddl destination schema mapped from the mysql corresponding schema
@@ -1348,9 +1347,6 @@ class pg_engine(object):
                     query=""" DROP TABLE IF EXISTS "%s"."%s";""" % (destination_schema, token["name"])
                 elif token["command"] == "TRUNCATE":
                     query=""" TRUNCATE TABLE "%s"."%s" CASCADE;""" % (destination_schema, token["name"])
-                elif token["command"] == "CREATE INDEX":
-                    table_name, index_data = token["name"], token["indices"]
-                    query=self.build_create_index(destination_schema, token["name"], index_data)
                 elif token["command"] == "ALTER TABLE":
                     query=self.build_alter_table(destination_schema, token)
                 elif token["command"] == "DROP PRIMARY KEY":
