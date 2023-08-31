@@ -276,17 +276,6 @@ class sql_token(object):
         optional_space_around(rename_table_item).sep_by(string(","))
     ).combine_dict(dict)
 
-    # NOTE: ignored
-    # ALTER TABLE table_name {ADD | DROP} [UNIQUE] INDEX [... rest]
-    alter_index_statement = seq(
-        seq(ci_string("ALTER"), whitespace, ci_string("TABLE")).result("ALTER INDEX"),
-        whitespace >> identifier,
-        whitespace >> (ci_string("ADD") | ci_string("DROP")),
-        (whitespace >> ci_string("UNIQUE")).optional(),
-        whitespace >> ci_string("INDEX"),
-        any_char.many(),
-    ).result(None)
-
     # DROP TABLE [IF EXISTS] table_name
     drop_table_statement = seq(
         command=seq(ci_string("DROP"), whitespace, ci_string("TABLE")).result("DROP TABLE"),
@@ -466,7 +455,6 @@ class sql_token(object):
                 self.truncate_table_statement,
                 self.drop_primary_key_statement,
                 self.create_index_statement,
-                self.alter_index_statement,
                 self.alter_table_statement,
             ).optional()
         )
