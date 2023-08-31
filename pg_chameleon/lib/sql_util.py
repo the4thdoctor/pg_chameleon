@@ -113,6 +113,8 @@ class sql_token(object):
         index_name=seq(ci_string("PRIMARY"), whitespace, ci_string("KEY")).result("PRIMARY"),
         index_columns=parentheses_around(key_part.sep_by(comma_sep)),
         non_unique=success(0),
+        is_fulltext=success(False),
+        is_spatial=success(False),
     ).combine_dict(dict)
 
     # [CONSTRAINT uk_xyz] UNIQUE [{KEY | INDEX}] (column_name, ...)
@@ -120,17 +122,28 @@ class sql_token(object):
         __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
         index_name=ci_string("UNIQUE").result("UNIQUE"),
         __key_or_index_keyword=(whitespace >> (ci_string("INDEX") | ci_string("KEY"))).optional(),
+        __optional_idx_name=(whitespace >> identifier).optional(),
+        index_type=(
+            whitespace >> ci_string("USING") >> (ci_string("BTREE") | ci_string("HASH"))
+        ).optional(),
         index_columns=parentheses_around(key_part.sep_by(comma_sep)),
         non_unique=success(0),
+        is_fulltext=success(False),
+        is_spatial=success(False),
     ).combine_dict(dict)
 
     # {INDEX | KEY} [idx_name] (column_name, ...)
     idx_definition = seq(
         index_name=(ci_string("INDEX") | ci_string("KEY")).result("INDEX"),
         __optional_idx_name=(whitespace >> identifier).optional(),
+        index_type=(
+            whitespace >> ci_string("USING") >> (ci_string("BTREE") | ci_string("HASH"))
+        ).optional(),
         index_columns=parentheses_around(key_part.sep_by(comma_sep)),
         non_unique=success(1),
-    ).combine_dict(dict)
+        is_fulltext=success(False),
+        is_spatial=success(False),
+    )
 
     # [CONSTRAINT fk_id] FOREIGN KEY REFERENCES table_name (column_name, ...)
     # [ON {UPDATE | DELETE} {CASCADE | RESTRICT}]
@@ -145,19 +158,27 @@ class sql_token(object):
             whitespace, ci_string("ON"), whitespace, ci_string("UPDATE") | ci_string("DELETE"),
             whitespace, ci_string("CASCADE") | ci_string("RESTRICT"),
         ).many(),
-        non_unique=success(1)
+        non_unique=success(1),
+        is_fulltext=success(False),
+        is_spatial=success(False),
     ).combine_dict(dict)
 
-    # [SPATIAL | FULLTEXT] {INDEX | KEY} idx_name (column_name, ...)
+    # {SPATIAL | FULLTEXT} {INDEX | KEY} idx_name (column_name, ...)
     other_key_definition = seq(
-        is_spatial=ci_string("SPATIAL").result(True).optional(default=False),
-        is_fulltext=ci_string("FULLTEXT").result(True).optional(default=False),
+        __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
+        index_name=whitespace >> (ci_string("SPATIAL") | ci_string("FULLTEXT")),
         __index_or_key=(whitespace >> (ci_string("INDEX") | ci_string("KEY"))).optional(),
         __idx_name=whitespace >> identifier,
         index_columns=parentheses_around(key_part.sep_by(comma_sep)),
-        index_name=success("OTHER"),
         non_unique=success(1),
-    ).combine_dict(dict)
+    ).combine_dict(
+        lambda index_name, **rest: {
+            "is_spatial": index_name.upper() == "SPATIAL",
+            "is_fulltext": index_name.upper() == "FULLTEXT",
+            "index_name": "OTHER",
+            **rest,
+        }
+    )
 
     any_key_definition = alt(
         pk_definition,
@@ -394,6 +415,9 @@ class sql_token(object):
         is_spatial=(whitespace >> ci_string("SPATIAL")).result(True).optional(default=False),
         __index=whitespace >> ci_string("INDEX"),
         index_name=whitespace >> identifier,
+        index_type=(
+            optional_space_around(ci_string("USING")) >> (ci_string("BTREE") | ci_string("HASH"))
+        ).optional(),
         __on=whitespace >> ci_string("ON"),
         __space=whitespace,
         __schema=seq(identifier, string(".")).optional(),
