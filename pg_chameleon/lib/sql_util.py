@@ -266,7 +266,7 @@ class sql_token(object):
         name=identifier,
         __to=whitespace >> ci_string("TO"),
         __to_schema=(whitespace >> identifier >> string(".")).optional(),
-        new_name=identifier,
+        new_name=whitespace >> identifier,
     ).combine_dict(dict)
 
     # RENAME TABLE ( [old_schema.]old_name TO [new_schema.]new_name )
@@ -376,6 +376,14 @@ class sql_token(object):
         lambda command, key_dic: dict(command=command, **key_dic)
     )
 
+    # RENAME {INDEX | KEY} old_index_name TO new_index_name
+    alter_table_rename_index = seq(
+        command=seq(ci_string("RENAME"), whitespace, ci_string("INDEX") | ci_string("KEY")).result("RENAME INDEX"),
+        index_name=whitespace >> identifier,
+        __to=whitespace >> ci_string("TO"),
+        new_index_name=whitespace >> identifier,
+    ).combine_dict(dict)
+
     # [ADD | DROP | CHANGE | MODIFY] {INDEX | KEY | CONSTRAINT | CHECK | UNIQUE | FOREIGN KEY | PRIMARY KEY}
     alter_table_ignored = seq(
         ci_string("ADD") | ci_string("DROP") | ci_string("CHANGE") | ci_string("MODIFY"),
@@ -396,13 +404,14 @@ class sql_token(object):
         alter_cmd=optional_space_around(
             alt(
                 alter_table_add_index,
+                alter_table_rename_index,
                 alter_table_ignored,
                 alter_table_drop,
                 alter_table_add,
                 alter_table_change,
                 alter_table_modify,
-            )
-        ).sep_by(string(",")).map(lambda ls: [x for x in ls if x]),  # remove none values
+            ).sep_by(comma_sep, min=1).map(lambda ls: [x for x in ls if x])
+        )
     ).combine_dict(dict)
 
     # CREATE [UNIQUE] INDEX index_name ON table_name (column_name, ...)
@@ -448,7 +457,6 @@ class sql_token(object):
         # ALTER TABLE
         self.sql_parser = optional_space_around(
             alt(
-                self.alter_rename_table_statement,
                 self.rename_table_statement,
                 self.create_table_statement.map(self._post_process_create_table),
                 self.drop_table_statement,
@@ -456,6 +464,7 @@ class sql_token(object):
                 self.drop_primary_key_statement,
                 self.create_index_statement,
                 self.alter_table_statement,
+                self.alter_rename_table_statement,
             ).optional()
         )
 
