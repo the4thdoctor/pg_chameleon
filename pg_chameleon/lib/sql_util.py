@@ -274,7 +274,7 @@ class sql_token(object):
     rename_table_statement = (
         ci_string("RENAME") >> whitespace >> ci_string("TABLE") >>
         optional_space_around(rename_table_item).sep_by(string(","))
-    ).combine_dict(dict)
+    )
 
     # DROP TABLE [IF EXISTS] table_name
     drop_table_statement = seq(
