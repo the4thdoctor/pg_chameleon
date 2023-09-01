@@ -384,6 +384,12 @@ class sql_token(object):
         new_index_name=whitespace >> identifier,
     ).combine_dict(dict)
 
+    # DROP {INDEX | KEY} index_name
+    alter_table_drop_index = seq(
+        command=seq(ci_string("DROP"), whitespace, ci_string("INDEX") | ci_string("KEY")).result("DROP INDEX"),
+        index_name=whitespace >> identifier,
+    )
+
     # [ADD | DROP | CHANGE | MODIFY] {INDEX | KEY | CONSTRAINT | CHECK | UNIQUE | FOREIGN KEY | PRIMARY KEY}
     alter_table_ignored = seq(
         ci_string("ADD") | ci_string("DROP") | ci_string("CHANGE") | ci_string("MODIFY"),
@@ -405,6 +411,7 @@ class sql_token(object):
             alt(
                 alter_table_add_index,
                 alter_table_rename_index,
+                alter_table_drop_index,
                 alter_table_ignored,
                 alter_table_drop,
                 alter_table_add,
@@ -440,6 +447,21 @@ class sql_token(object):
         }
     )
 
+    # DROP INDEX index_name ON table_name
+    # equivalent to ALTER TABLE ... DROP INDEX ...
+    drop_index_statement = seq(
+        __drop_index=seq(ci_string("DROP"), whitespace, ci_string("INDEX")),
+        index_name=whitespace >> identifier,
+        __on=whitespace >> ci_string("ON"),
+        name=whitespace >> identifier,
+    ).combine_dict(
+        lambda name, index_name: {
+            "command": "ALTER TABLE",
+            "name": name,
+            "alter_cmd": [{"command": "DROP INDEX", "index_name": index_name}],
+        }
+    )
+
     def __init__(self):
         """
             Class constructor the regular expressions are compiled and the token lists are initialised.
@@ -463,6 +485,7 @@ class sql_token(object):
                 self.truncate_table_statement,
                 self.drop_primary_key_statement,
                 self.create_index_statement,
+                self.drop_index_statement,
                 self.alter_table_statement,
                 self.alter_rename_table_statement,
             ).optional()
