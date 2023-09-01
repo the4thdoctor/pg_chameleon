@@ -474,9 +474,11 @@ class sql_token(object):
         # supported statements
         # RENAME TABLE
         # CREATE TABLE
-        # DROP [TABLE]
-        # TRUNCATE [TABLE]
+        # DROP TABLE
+        # TRUNCATE TABLE
         # ALTER TABLE
+        # CREATE INDEX
+        # DROP INDEX
         self.sql_parser = optional_space_around(
             alt(
                 self.rename_table_statement,
