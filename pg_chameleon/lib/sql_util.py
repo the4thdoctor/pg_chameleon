@@ -270,8 +270,8 @@ class sql_token(object):
         __from_schema=(identifier >> string(".")).optional(),
         name=identifier,
         __to=whitespace >> ci_string("TO"),
-        __to_schema=(whitespace >> identifier >> string(".")).optional(),
-        new_name=whitespace >> identifier,
+        __to_schema=whitespace >> (identifier >> string(".")).optional(),
+        new_name=identifier,
     ).combine_dict(dict)
 
     # RENAME TABLE ( [old_schema.]old_name TO [new_schema.]new_name )
@@ -749,10 +749,9 @@ class sql_token(object):
         """
         sql_string_cleanup = re.sub(r'/\*.*?\*/', '', sql_string, re.DOTALL)
         sql_string_cleanup = re.sub(r'--.*?\n', '', sql_string_cleanup)
-        statements = sql_string_cleanup.split(';')
 
-        for statement in statements:
-            stat_dic = self.sql_parser.parse(statement)
+        multiple_sql_parser = self.sql_parser.sep_by(optional_space_around(string(";")))
+        for stat_dic in multiple_sql_parser.parse(sql_string_cleanup):
             if isinstance(stat_dic, dict) and stat_dic != {}:
                 self.tokenised.append(stat_dic)
             elif isinstance(stat_dic, list):
