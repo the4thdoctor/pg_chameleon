@@ -535,7 +535,13 @@ class sql_token(object):
         return quoted_cols
 
     def _post_process_key_definition(
-        self, index_name, index_columns, non_unique, table_name, idx_counter
+        self,
+        index_name,
+        index_columns,
+        non_unique,
+        table_name,
+        idx_counter,
+        **tags,
     ):
         """
             This function builds a new key_dic by overwriting the index_name if necessary and by
@@ -554,24 +560,32 @@ class sql_token(object):
             :param non_unique: Whether this index must enforce unique check or not
             :param table_name: The name of the table that is used to create a new index name
             :param idx_counter: An index counter that is used to create a new index name
+            :param tags: Flags such as is_functional, is_partial, is_fulltext, etc.
             :return: The transformed key dic or None
             :rtype: dictionary | None
         """
         if index_name in {"FOREIGN", "OTHER"}:
             return None
         elif index_name == "PRIMARY":
-            return dict(index_name="PRIMARY", index_columns=index_columns, non_unique=0)
+            return dict(
+                index_name="PRIMARY",
+                index_columns=index_columns,
+                non_unique=0,
+                **tags,
+            )
         elif index_name == "UNIQUE":
             return dict(
                 index_name=f"ukidx_{table_name[0:20]}_{idx_counter}",
                 index_columns=index_columns,
                 non_unique=0,
+                **tags,
             )
         elif index_name == "INDEX":
             return dict(
                 index_name=f"idx_{table_name[0:20]}_{idx_counter}",
                 index_columns=index_columns,
                 non_unique=1,
+                **tags,
             )
         else:
             raise Exception(f"Unknown index name: {index_name}")
