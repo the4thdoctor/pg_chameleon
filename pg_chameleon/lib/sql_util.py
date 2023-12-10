@@ -166,7 +166,7 @@ class sql_token(object):
     # {SPATIAL | FULLTEXT} {INDEX | KEY} idx_name (column_name, ...)
     other_key_definition = seq(
         __constraint=(ci_string("CONSTRAINT") >> whitespace >> identifier >> whitespace).optional(),
-        index_name=whitespace >> (ci_string("SPATIAL") | ci_string("FULLTEXT")),
+        index_name=whitespace.optional() >> (ci_string("SPATIAL") | ci_string("FULLTEXT")),
         __index_or_key=(whitespace >> (ci_string("INDEX") | ci_string("KEY"))).optional(),
         __idx_name=whitespace >> identifier,
         index_columns=parentheses_around(key_part.sep_by(comma_sep)),
