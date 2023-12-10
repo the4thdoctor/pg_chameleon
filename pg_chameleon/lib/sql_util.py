@@ -337,6 +337,15 @@ class sql_token(object):
         lambda command, col_def: dict(command=command, **col_def)
     )
 
+    # ADD [COLUMN] (column_definition, ...)
+    alter_table_add_multiple = seq(
+        command=ci_string("ADD").result("ADD MULTIPLE"),
+        __column=(whitespace >> ci_string("COLUMN")).optional(),
+        col_defs=whitespace >> parentheses_around(
+            column_definition_in_alter_table.sep_by(optional_space_around(string(",")))
+        ),
+    ).combine_dict(dict)
+
     # CHANGE [COLUMN] column_name column_definition
     alter_table_change = seq(
         command=ci_string("CHANGE"),
@@ -415,6 +424,7 @@ class sql_token(object):
                 alter_table_ignored,
                 alter_table_drop,
                 alter_table_add,
+                alter_table_add_multiple,
                 alter_table_change,
                 alter_table_modify,
             ).sep_by(comma_sep, min=1).map(lambda ls: [x for x in ls if x])
@@ -488,7 +498,7 @@ class sql_token(object):
                 self.drop_primary_key_statement,
                 self.create_index_statement,
                 self.drop_index_statement,
-                self.alter_table_statement,
+                self.alter_table_statement.map(self._post_process_alter_table),
                 self.alter_rename_table_statement,
             ).optional()
         )
@@ -680,6 +690,24 @@ class sql_token(object):
                 table_dic["columns"].append(col_dic)
 
         return table_dic
+
+    def _post_process_alter_table(self, alter_table_dic):
+        """
+        Post process alter table statement's parsed result to make it
+        compatible with the expected result type.
+        """
+        # make a copy of alter_cmd list so we can
+        # modify the original list freely
+        alter_cmds = list(alter_table_dic["alter_cmd"])
+
+        for cmd in alter_cmds:
+            if cmd["command"] == "ADD MULTIPLE":
+                alter_table_dic["alter_cmd"].remove(cmd)
+                alter_table_dic["alter_cmd"].extend([
+                    dict(command="ADD", **col_def)
+                    for col_def in cmd["col_defs"]
+                ])
+        return alter_table_dic
 
     def parse_sql(self, sql_string):
         """
