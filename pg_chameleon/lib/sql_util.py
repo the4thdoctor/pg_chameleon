@@ -231,6 +231,7 @@ class sql_token(object):
                     ci_string("DEFAULT").result("DEFAULT"),
                     whitespace >> (sql_string.map(lambda x: f"'{x}'") | ci_word)
                 ),
+                seq(ci_string("COMMENT"), whitespace, sql_string).result("COMMENT"),
                 identifier,
                 ci_word,
             ).sep_by(whitespace)
