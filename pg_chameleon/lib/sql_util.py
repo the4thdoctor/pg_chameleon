@@ -47,7 +47,7 @@ number = digit.many().concat()
 lparen = string("(")
 rparen = string(")")
 semicolon = string(";")
-comma_sep = whitespace.optional() >> string(",") << whitespace.optional()
+comma_sep = optional_space_around(string(","))
 sql_string = (
     # single-quoted string
     (string("'") >> (string(r"\'") | any_char).until(string("'")).concat() << string("'")) |
@@ -211,12 +211,16 @@ class sql_token(object):
         ).optional(),
         dimensions=(
             optional_space_around(lparen) >>
-            number.sep_by(optional_space_around(string(",") | string("|")))
+            number.sep_by(
+                comma_sep | optional_space_around(string("|"))
+            )
             << optional_space_around(rparen)
         ).optional(),
         enum_list=(
             optional_space_around(lparen) >>
-            sql_string.sep_by(optional_space_around(string(",") | string("|")))
+            sql_string.sep_by(
+                comma_sep | optional_space_around(string("|"))
+            )
             << optional_space_around(rparen)
         ).optional(),
         extras=(
@@ -341,8 +345,10 @@ class sql_token(object):
     alter_table_add_multiple = seq(
         command=ci_string("ADD").result("ADD MULTIPLE"),
         __column=(whitespace >> ci_string("COLUMN")).optional(),
-        col_defs=whitespace >> parentheses_around(
-            column_definition_in_alter_table.sep_by(optional_space_around(string(",")))
+        col_defs=optional_space_around(
+            parentheses_around(
+                column_definition_in_alter_table.sep_by(comma_sep)
+            )
         ),
     ).combine_dict(dict)
 
