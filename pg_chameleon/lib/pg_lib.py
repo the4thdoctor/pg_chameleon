@@ -1347,7 +1347,6 @@ class pg_engine(object):
                     query=""" DROP TABLE IF EXISTS "%s"."%s";""" % (destination_schema, token["name"])
                 elif token["command"] == "TRUNCATE":
                     query=""" TRUNCATE TABLE "%s"."%s" CASCADE;""" % (destination_schema, token["name"])
-
                 elif token["command"] == "ALTER TABLE":
                     query=self.build_alter_table(destination_schema, token)
                 elif token["command"] == "DROP PRIMARY KEY":
