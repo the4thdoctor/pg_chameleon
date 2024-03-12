@@ -588,7 +588,10 @@ class replica_engine(object):
                 self.logger.debug("Replica process for source %s is running" % (self.args.source))
                 self.pg_engine.cleanup_replayed_batches()
             else:
-                stack_trace = queue.get()
+                try:
+                    stack_trace = queue.get_nowait()
+                except:
+                    stack_trace = 'Stack trace not available'
                 self.logger.error("Read process alive: %s - Replay process alive: %s" % (read_alive, replay_alive, ))
                 self.logger.error("Stack trace: %s" % (stack_trace, ))
                 if read_alive:
