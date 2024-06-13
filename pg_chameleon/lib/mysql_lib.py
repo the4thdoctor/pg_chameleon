@@ -1366,6 +1366,9 @@ class mysql_source(object):
 
                     sql_tokeniser.reset_lists()
                 if close_batch:
+                    if len(group_insert) > 0:
+                        self.logger.debug("writing the remaining %s row events when the statement event occurs" % (len(group_insert),))
+                        self.pg_engine.write_batch(group_insert)
                     my_stream.close()
                     return [master_data, close_batch]
             else:
