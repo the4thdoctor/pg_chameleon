@@ -786,6 +786,7 @@ class mysql_source(object):
                 table_name,
                 non_unique,
                 index_name
+            HAVING SUM(sub_part IS NOT NULL) = 0
             ;
         """
 
