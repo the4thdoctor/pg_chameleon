@@ -33,7 +33,6 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Topic :: Database :: Database Engines/Servers",
         "Topic :: Other/Nonlisted Topic"
     ],
@@ -56,7 +55,9 @@ setuptools.setup(
         'tabulate>=0.8.1',
         'daemonize>=2.4.7',
         'rollbar>=0.13.17',
-        'parsy>=2.1'
+        'parsy>=2.1',
+        'Sphinx>=7.4.7'
+
     ],
     include_package_data = True,
     package_data=package_data,
