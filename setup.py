@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from setuptools import setup, setuptools
+import setuptools
 
 def readme():
     with open('README.rst') as f:
@@ -8,10 +8,10 @@ def readme():
 
 package_data = {'pg_chameleon': ['configuration/config-example.yml','sql/upgrade/*.sql','sql/drop_schema.sql','sql/create_schema.sql', 'LICENSE.txt']}
 
-setup(
-    name="pg_chameleon",
-    version="2.0.19",
-    description="MySQL to PostgreSQL replica and migration",
+setuptools.setup(
+     name="pg_chameleon",
+     version="2.0.19",
+     description="MySQL to PostgreSQL replica and migration",
     long_description=readme(),
     author = "Federico Campoli",
     author_email = "the4thdoctor.gallifrey@gmail.com",
