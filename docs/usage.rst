@@ -91,13 +91,17 @@ In MySQL create a user for the replica.
 
 Add the configuration for the replica to my.cnf. It requires a MySQL restart.
 
-.. code-block:: none
+
+
+.. code-block:: ini
 
     binlog_format= ROW
     binlog_row_image=FULL
     log-bin = mysql-bin
     server-id = 1
     expire_logs_days = 10
+    # MARIADB 10.5.0+ OR MYSQL 8.0.14+ versions
+    binlog_row_metadata = FULL
 
 
 
