@@ -1,7 +1,7 @@
 changelog
 *************************
 
-2.0.20 - TBD
+2.0.20 - XX January 2025
 ..........................................................
 * Merge the SQL library improvements built by @nikochiko  for the `Google Summer of Code 2023 <https://summerofcode.withgoogle.com/archive/2023/projects/VnzdAl4z>`_
 * Fix setup.py for newer python versions as per patch provided by @darix in Issue #172

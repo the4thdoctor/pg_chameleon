@@ -602,7 +602,7 @@ class pg_engine(object):
             {'version': '2.0.7',  'script': '206_to_207.sql'},
             {'version': '2.0.8',  'script': '207_to_208.sql'},
             {'version': '2.0.9',  'script': '208_to_209.sql'},
-            
+
         ]
 
 
