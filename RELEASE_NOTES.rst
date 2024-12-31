@@ -3,8 +3,20 @@ RELEASE NOTES
 
 2.0.20
 --------------------------
-This maintenance release adds the following bugfix and improvements.
+This long past due maintenance release adds the following bugfix and improvements.
 
+Merge the new SQL library built by @nikochiko  for the `Google Summer of Code 2023 <https://summerofcode.withgoogle.com/archive/2023/projects/VnzdAl4z>`_ .
+
+The setup.py is now fixed for working with newer python versions thanks to @darix.
+
+Merged PR:
+
+* PR #169 provided by @Jamal-B Fix read and replay daemons death detection if the multiprocessing queue is empty
+* PR #171 provided by @JasonLiu1567 fix issue #111 Data lost when exceed batch size
+* PR #173 provided by @acarapetis Ignore MySQL indices with prefix key parts.
+  Btree indices on prefix keys (e.g. col_name(5) meaning the first 5 characters of "col_name") were previously
+  being replicated as indices on the full column causing errors in the case of columns with values were too wide to fit
+  in indices. As PostgreSQL doesn't have such indices then they are now ignored.
 
 2.0.19
 --------------------------
