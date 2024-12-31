@@ -1,5 +1,11 @@
 RELEASE NOTES
 *************************
+
+2.0.20
+--------------------------
+This maintenance release adds the following bugfix and improvements.
+
+
 2.0.19
 --------------------------
 This maintenance release adds the following bugfix and improvements.
