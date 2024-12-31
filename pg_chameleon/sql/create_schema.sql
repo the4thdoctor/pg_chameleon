@@ -313,78 +313,78 @@ $BODY$
         v_i_ddl:=0;
         v_i_skipped:=0;
         v_ty_status.b_continue:=FALSE;
-        v_ty_status.b_error:=FALSE;
+        v_ty_status.b_error:=FALSE;   
         RAISE DEBUG 'Searching batches to replay for source id: %', p_i_id_source;
         v_i_id_batch:= (
-            SELECT
-                bat.i_id_batch
-            FROM
+            SELECT 
+                bat.i_id_batch 
+            FROM 
                 sch_chameleon.t_replica_batch bat
                 INNER JOIN  sch_chameleon.t_batch_events evt
                 ON
                     evt.i_id_batch=bat.i_id_batch
-            WHERE
-                    bat.b_started
-                AND bat.b_processed
+            WHERE 
+                    bat.b_started 
+                AND bat.b_processed 
                 AND NOT bat.b_replayed
                 AND bat.i_id_source=p_i_id_source
-            ORDER BY
-                bat.ts_created
+            ORDER BY 
+                bat.ts_created 
             LIMIT 1
             )
         ;
 
         v_v_log_table:=(
-            SELECT
+            SELECT 
                 v_log_table
-            FROM
-                sch_chameleon.t_replica_batch
-            WHERE
+            FROM 
+                sch_chameleon.t_replica_batch 
+            WHERE 
                 i_id_batch=v_i_id_batch
             )
         ;
-        IF v_i_id_batch IS NULL
+        IF v_i_id_batch IS NULL 
         THEN
             RAISE DEBUG 'There are no batches available for replay';
             RETURN v_ty_status;
         END IF;
-
+        
         RAISE DEBUG 'Found id_batch %, data in log table %', v_i_id_batch,v_v_log_table;
         RAISE DEBUG 'Building a list of event id with max length %...', p_i_max_events;
         v_i_evt_replay:=(
-            SELECT
-                i_id_event[1:p_i_max_events]
-            FROM
-                sch_chameleon.t_batch_events
-            WHERE
+            SELECT 
+                i_id_event[1:p_i_max_events] 
+            FROM 
+                sch_chameleon.t_batch_events 
+            WHERE 
                 i_id_batch=v_i_id_batch
         );
-
-
+        
+        
         v_i_evt_queue:=(
-            SELECT
-                i_id_event[p_i_max_events+1:array_length(i_id_event,1)]
-            FROM
-                sch_chameleon.t_batch_events
-            WHERE
+            SELECT 
+                i_id_event[p_i_max_events+1:array_length(i_id_event,1)] 
+            FROM 
+                sch_chameleon.t_batch_events 
+            WHERE 
                 i_id_batch=v_i_id_batch
         );
-
+        
         RAISE DEBUG 'Finding the last executed event''s timestamp...';
         v_ts_evt_source:=(
-            SELECT
+            SELECT 
                 to_timestamp(i_my_event_time)
-            FROM
+            FROM  
                 sch_chameleon.t_log_replica
             WHERE
                     i_id_event=v_i_evt_replay[array_length(v_i_evt_replay,1)]
                 AND i_id_batch=v_i_id_batch
         );
-
+        
         RAISE DEBUG 'Generating the main loop sql';
 
         v_t_main_sql:=format('
-            SELECT
+            SELECT 
                 i_id_event AS i_id_event,
                 enm_binlog_event,
                 (enm_binlog_event=''ddl'')::integer as i_ddl,
@@ -396,7 +396,7 @@ $BODY$
                 t_pk_data,
                 CASE
                     WHEN enm_binlog_event = ''ddl''
-                    THEN
+                    THEN 
                         t_query
                     WHEN enm_binlog_event = ''insert''
                     THEN
@@ -405,7 +405,7 @@ $BODY$
                             v_schema_name,
                             v_table_name,
                             t_dec_data
-
+                            
                         )
                     WHEN enm_binlog_event = ''update''
                     THEN
@@ -424,11 +424,11 @@ $BODY$
                             v_table_name,
                             t_pk_data
                         )
-
+                    
                 END AS t_sql
-            FROM
+            FROM 
             (
-                SELECT
+                SELECT 
                     pk.i_id_event,
                     pk.v_table_name,
                     pk.v_schema_name,
@@ -438,10 +438,28 @@ $BODY$
                     pk.t_query as t_query,
                     pk.ts_event_datetime,
                     pk.t_dec_data,
-                    pk.t_pk_data
+                    string_agg(DISTINCT 
+                            CASE
+                                WHEN pk.v_table_pkey IS NOT NULL
+                                THEN
+                                    format(
+                                        ''%%I=%%L'',
+                                        pk.v_table_pkey,
+                                        CASE 
+                                            WHEN pk.enm_binlog_event = ''update''
+                                            THEN
+                                                pk.jsb_event_before->>v_table_pkey
+                                            ELSE
+                                                pk.jsb_event_after->>v_table_pkey
+                                        END   
+                                
+                                    )
+                            END
+                    ,'' AND '') as  t_pk_data
+                    
                 FROM
                 (
-                    SELECT
+                    SELECT 
                         dec.i_id_event,
                         dec.v_table_name,
                         dec.v_schema_name,
@@ -450,47 +468,46 @@ $BODY$
                         dec.i_binlog_position,
                         dec.t_query as t_query,
                         dec.ts_event_datetime,
-                        CASE WHEN dec.enm_binlog_event = ''insert''
-                            THEN format(''(%%s) VALUES (%%s)'',string_agg(format(''%%I'',dec.t_column_key),'',''),string_agg(format(''%%L'',dec.t_column_value),'',''))
+                        CASE
+                            WHEN dec.enm_binlog_event = ''insert''
+                            THEN
+                            format(''(%%s) VALUES (%%s)'',string_agg(format(''%%I'',dec.t_column),'',''),string_agg(format(''%%L'',dec.jsb_event_after->>t_column),'',''))
                             WHEN dec.enm_binlog_event = ''update''
-                            THEN string_agg(format(''%%I=%%L'',dec.t_column_key,dec.t_column_value),'','')
+                            THEN
+                                string_agg(format(''%%I=%%L'',dec.t_column,dec.jsb_event_after->>t_column),'','')
+                            
                         END AS t_dec_data,
-                        string_agg(DISTINCT CASE WHEN dec.v_table_pkey IS NOT NULL AND dec.t_column_key = ANY(dec.v_table_pkey)
-                                            THEN format(''%%I=%%L'', dec.t_column_key, CASE WHEN dec.enm_binlog_event = ''update''
-                                                                                     THEN dec.jsb_event_before->>dec.t_column_key
-                                                                                     ELSE dec.t_column_value
-                                                                                     END)
-                                            END
-                                  , '' AND '') t_pk_data,
+                        unnest(v_table_pkey) as v_table_pkey,
+                        dec.jsb_event_after,
                         dec.jsb_event_before
-
-                    FROM
+                        
+                    FROM 
                     (
-                        SELECT
+                        SELECT 
                             log.i_id_event,
                             log.v_table_name,
                             log.v_schema_name,
                             log.enm_binlog_event,
                             log.t_binlog_name,
                             log.i_binlog_position,
-                            (jsonb_each_text(coalesce(log.jsb_event_after,''{"foo":"bar"}''::jsonb))).key AS t_column_key,
-                            (jsonb_each_text(coalesce(log.jsb_event_after,''{"foo":"bar"}''::jsonb))).value AS t_column_value,
+                            coalesce(log.jsb_event_after,''{"foo":"bar"}''::jsonb) as jsb_event_after,
+                            (jsonb_each_text(coalesce(log.jsb_event_after,''{"foo":"bar"}''::jsonb))).key AS t_column,
                             log.jsb_event_before,
                             log.t_query as t_query,
                             log.ts_event_datetime,
                             v_table_pkey
-                        FROM
+                        FROM 
                             sch_chameleon.%I log
                             INNER JOIN sch_chameleon.t_replica_tables tab
-                                ON
+                                ON 
                                         tab.v_table_name=log.v_table_name
                                     AND tab.v_schema_name=log.v_schema_name
                         WHERE
                                 tab.b_replica_enabled
                             AND i_id_event = ANY(%L)
-
+                        
                     ) dec
-                    GROUP BY
+                    GROUP BY 
                         dec.i_id_event,
                         dec.v_table_name,
                         dec.v_schema_name,
@@ -499,9 +516,11 @@ $BODY$
                         dec.ts_event_datetime,
                         dec.t_binlog_name,
                         dec.i_binlog_position,
+                        dec.v_table_pkey,
+                        dec.jsb_event_after,
                         dec.jsb_event_before
                     ) pk
-                GROUP BY
+                GROUP BY 
                     pk.i_id_event,
                     pk.v_table_name,
                     pk.v_schema_name,
@@ -510,24 +529,24 @@ $BODY$
                     pk.i_binlog_position,
                     pk.t_query,
                     pk.ts_event_datetime,
-                    pk.t_dec_data,
-                    pk.t_pk_data
-
+                    pk.t_dec_data
+                
+                    
             ) par
-            ORDER BY
+            ORDER BY 
                 i_id_event ASC
-            ;
+            ;   
         ',v_v_log_table,v_i_evt_replay);
         RAISE DEBUG '%',v_t_main_sql;
         FOR v_r_statements IN EXECUTE v_t_main_sql
         LOOP
-
+            
             BEGIN
                 EXECUTE v_r_statements.t_sql;
                 v_i_ddl:=v_i_ddl+v_r_statements.i_ddl;
                 v_i_replayed:=v_i_replayed+v_r_statements.i_replay;
-
-
+                
+                
             EXCEPTION
                 WHEN OTHERS
                 THEN
@@ -539,31 +558,31 @@ $BODY$
                 RAISE NOTICE 'Adding error log entry for table %.% ',v_r_statements.v_schema_name,v_r_statements.v_table_name;
                 INSERT INTO sch_chameleon.t_error_log
                             (
-                                i_id_batch,
+                                i_id_batch, 
                                 i_id_source,
-                                v_schema_name,
-                                v_table_name,
-                                t_table_pkey,
-                                t_binlog_name,
-                                i_binlog_position,
-                                ts_error,
+                                v_schema_name, 
+                                v_table_name, 
+                                t_table_pkey, 
+                                t_binlog_name, 
+                                i_binlog_position, 
+                                ts_error, 
                                 t_sql,
                                 t_error_message
                             )
-                            SELECT
-                                i_id_batch,
+                            SELECT 
+                                i_id_batch, 
                                 p_i_id_source,
-                                v_schema_name,
-                                v_table_name,
-                                v_r_statements.t_pk_data as t_table_pkey,
-                                t_binlog_name,
-                                i_binlog_position,
-                                clock_timestamp(),
+                                v_schema_name, 
+                                v_table_name, 
+                                v_r_statements.t_pk_data as t_table_pkey, 
+                                t_binlog_name, 
+                                i_binlog_position, 
+                                clock_timestamp(), 
                                 quote_literal(v_r_statements.t_sql) as t_sql,
                                 format('%s - %s',SQLSTATE, SQLERRM) as t_error_message
                             FROM
                                 sch_chameleon.t_log_replica  log
-                            WHERE
+                            WHERE 
                                 log.i_id_event=v_r_statements.i_id_event
                         ;
                 IF p_b_exit_on_error
@@ -572,10 +591,10 @@ $BODY$
                     v_ty_status.b_error:=TRUE;
                     RETURN v_ty_status;
                 ELSE
-
+                
                     RAISE NOTICE 'Statement %', v_r_statements.t_sql;
-                    UPDATE sch_chameleon.t_replica_tables
-                        SET
+                    UPDATE sch_chameleon.t_replica_tables 
+                        SET 
                             b_replica_enabled=FALSE
                     WHERE
                             v_schema_name=v_r_statements.v_schema_name
@@ -597,7 +616,7 @@ $BODY$
             UPDATE sch_chameleon.t_last_replayed
                 SET
                     ts_last_replayed=v_ts_evt_source
-            WHERE
+            WHERE   
                 i_id_source=p_i_id_source
             ;
         END IF;
@@ -607,16 +626,16 @@ $BODY$
             WHERE
                     i_id_batch=v_i_id_batch
             ;
-
+                
             GET DIAGNOSTICS v_i_skipped = ROW_COUNT;
             RAISE DEBUG 'SKIPPED ROWS: % ',v_i_skipped;
 
-            UPDATE ONLY sch_chameleon.t_replica_batch
-            SET
+            UPDATE ONLY sch_chameleon.t_replica_batch  
+            SET 
                 b_replayed=True,
                 i_skipped=v_i_skipped,
                 ts_replayed=clock_timestamp()
-
+                
             WHERE
                 i_id_batch=v_i_id_batch
             ;
@@ -628,13 +647,13 @@ $BODY$
 
             v_ty_status.b_continue:=FALSE;
         ELSE
-            UPDATE ONLY sch_chameleon.t_replica_batch
-            SET
+            UPDATE ONLY sch_chameleon.t_replica_batch  
+            SET 
                 i_ddl=coalesce(i_ddl,0)+v_i_ddl,
                 i_replayed=coalesce(i_replayed,0)+v_i_replayed,
                 i_skipped=v_i_skipped,
                 ts_replayed=clock_timestamp()
-
+                
             WHERE
                 i_id_batch=v_i_id_batch
             ;
@@ -649,42 +668,42 @@ $BODY$
             DELETE FROM sch_chameleon.t_log_replica
             WHERE
                     i_id_batch=v_i_id_batch
-                AND   i_id_event=ANY(v_i_evt_replay)
+                AND   i_id_event=ANY(v_i_evt_replay) 
             ;
             v_ty_status.b_continue:=TRUE;
             RETURN v_ty_status;
         END IF;
         v_i_id_batch:= (
-            SELECT
-                bat.i_id_batch
-            FROM
+            SELECT 
+                bat.i_id_batch 
+            FROM 
                 sch_chameleon.t_replica_batch bat
                 INNER JOIN  sch_chameleon.t_batch_events evt
                 ON
                     evt.i_id_batch=bat.i_id_batch
-            WHERE
-                    bat.b_started
-                AND bat.b_processed
+            WHERE 
+                    bat.b_started 
+                AND bat.b_processed 
                 AND NOT bat.b_replayed
                 AND bat.i_id_source=p_i_id_source
-            ORDER BY
-                bat.ts_created
+            ORDER BY 
+                bat.ts_created 
             LIMIT 1
             )
         ;
-
+        
         IF v_i_id_batch IS NOT NULL
         THEN
             v_ty_status.b_continue:=TRUE;
         END IF;
-
-
+        
+        
         RETURN v_ty_status;
 
-
-
+        
+        
     END;
-
+    
 $BODY$
 LANGUAGE plpgsql;
 
