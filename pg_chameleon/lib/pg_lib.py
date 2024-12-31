@@ -602,7 +602,7 @@ class pg_engine(object):
             {'version': '2.0.7',  'script': '206_to_207.sql'},
             {'version': '2.0.8',  'script': '207_to_208.sql'},
             {'version': '2.0.9',  'script': '208_to_209.sql'},
-            {'version': '2.0.10', 'script': '209_to_2010.sql'},
+            
         ]
 
 
@@ -733,8 +733,8 @@ class pg_engine(object):
         """
         self.connect_db()
         self.set_source_id()
-        
-        
+
+
         sql_gen_reset = """
             SELECT
                 format('SELECT setval(%%L::regclass,(select max(%%I) FROM %%I.%%I));',
@@ -2419,8 +2419,8 @@ class pg_engine(object):
                 # we use the last occurrence of the table's fillfactor
                 fillfactor = "WITH (fillfactor={})".format(value[-1])
         return fillfactor
- 
-        
+
+
 
 
     def __build_create_table_mysql(self, table_metadata ,table_name,  schema, temporary_schema=True):
@@ -4037,7 +4037,7 @@ class pg_engine(object):
                 index_columns = ['"%s"' % column.strip() for column in idx_col]
                 non_unique = index["non_unique"]
                 if indx =='PRIMARY':
-                    pkey_name = "pk_%s" % (table)    
+                    pkey_name = "pk_%s" % (table)
                     pkey_def = 'ALTER TABLE "%s"."%s" ADD PRIMARY KEY (%s) ;' % (schema, table,  ','.join(index_columns))
                     idx_ddl[pkey_name] = pkey_def
                     table_primary = idx_col
