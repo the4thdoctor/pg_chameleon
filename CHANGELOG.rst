@@ -1,13 +1,14 @@
 changelog
 *************************
 
-2.0.20 - XX January 2025
+2.0.20 - 01 January 2025
 ..........................................................
 * Merge the SQL library improvements built by @nikochiko  for the `Google Summer of Code 2023 <https://summerofcode.withgoogle.com/archive/2023/projects/VnzdAl4z>`_
 * Fix setup.py for newer python versions as per patch provided by @darix in Issue #172
 * Merge PR #169 provided by @Jamal-B Fix read and replay daemons death detection
 * Merge PR #171 provided by @JasonLiu1567 fix issue #111
 * Merge PR #173 provided by @acarapetis Ignore MySQL indices with prefix key parts
+* DEPRECATION of rollbar support
 
 2.0.19 - 25 March 2023
 ..........................................................
