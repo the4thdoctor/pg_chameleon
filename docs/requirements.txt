@@ -75,7 +75,6 @@ panflute==2.3.0
 pathlib2==2.3.6
 pathspec==0.12.1
 pbr==5.8.0
--e git+ssh://git@github.com/the4thdoctor/pg_chameleon.git@b587bb05ce20dee391932b3a6d33af3186f94042#egg=pg_chameleon
 Pillow==8.4.0
 pluggy==1.5.0
 plumbum==1.8.2
