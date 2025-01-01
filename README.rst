@@ -23,7 +23,7 @@ A pl/pgsql function decodes the jsonb values and replays the changes against the
 
 pg_chameleon  2.0 `is available on pypi <https://pypi.org/project/pg_chameleon/>`_
 
-The documentation `is available on pgchameleon.org <http://www.pgchameleon.org/documents/index.html>`_
+The documentation `is available on read the docs <https://pg-chameleon.readthedocs.io/en/main/>`_
 
 Please submit your `bug reports on GitHub <https://github.com/the4thdoctor/pg_chameleon>`_.
 
@@ -44,9 +44,6 @@ Python: CPython 3.7+
 * `tabulate <https://pypi.python.org/pypi/tabulate>`_
 * `rollbar <https://pypi.python.org/pypi/rollbar>`_
 * `daemonize <https://pypi.python.org/pypi/daemonize>`_
-
-Optionals for building documentation
-
 * `sphinx <http://www.sphinx-doc.org/en/stable/>`_
 * `sphinx-autobuild <https://github.com/GaretJax/sphinx-autobuild>`_
 
