@@ -73,7 +73,7 @@ class replica_engine(object):
             sys.exit(10)
 
 
-        self.catalog_version = '2.0.9'
+        self.catalog_version = '2.0.10'
         self.upgradable_version = '1.7'
         self.lst_yes= ['yes',  'Yes', 'y', 'Y']
         python_lib=os.path.dirname(os.path.realpath(__file__))
@@ -121,7 +121,7 @@ class replica_engine(object):
         self.pg_engine.sources = self.config["sources"]
         self.pg_engine.notifier = self.notifier
         self.pg_engine.fillfactor = self.config["fillfactor"]
-        
+
 
 
         #mysql_source instance initialisation
@@ -229,10 +229,10 @@ class replica_engine(object):
         #managing default values for optional keys
         if "fillfactor" not in self.config:
             self.config["fillfactor"] = None
-            
+
         if "type_override" not in self.config:
             self.config["type_override"] = None
-            
+
 
 
     def show_sources(self):
@@ -328,7 +328,7 @@ class replica_engine(object):
         """
             The method calls init_replica adding a flag for skipping the data copy.
             Useful if we want to test for schema issues or to populate the schema preventively.
-            
+
         """
         self.mysql_source.copy_table_data=False
         self.init_replica()
