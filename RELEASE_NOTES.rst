@@ -1,6 +1,22 @@
 RELEASE NOTES
 *************************
 
+2.0.21
+--------------------------
+* PR #163 provided by @bukem providing an optimization of the procedure for applying changes to Postgresql
+
+
+This release requires a replica catalogue upgrade, therefore is very important to follow the upgrade instructions provided below.
+
+* If working via ssh is suggested to use screen or tmux for the upgrade
+* Stop all the replica processes with ``chameleon stop_all_replicas --config <your_config>``
+* Take a backup of the schema ``sch_chameleon`` with pg_dump as a good measure.
+* Install the upgrade with ``pip install pg_chameleon --upgrade``
+* Check if the version is upgraded with ``chameleon --version``
+* Upgrade  the replica schema with the command ``chameleon upgrade_replica_schema --config <your_config>``
+* Start all the replicas.
+
+
 2.0.20
 --------------------------
 This long past due maintenance release adds the following bugfix and improvements.

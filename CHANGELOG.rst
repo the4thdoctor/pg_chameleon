@@ -1,6 +1,10 @@
 changelog
 *************************
 
+2.0.21 - XX January 2025
+..........................................................
+* PR #163 provided by @bukem providing an optimization of the procedure for applying changes to Postgresql
+
 2.0.20 - 01 January 2025
 ..........................................................
 * Merge the SQL library improvements built by @nikochiko  for the `Google Summer of Code 2023 <https://summerofcode.withgoogle.com/archive/2023/projects/VnzdAl4z>`_
