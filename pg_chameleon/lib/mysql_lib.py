@@ -120,6 +120,8 @@ class mysql_source(object):
         db_conn["port"] = int(db_conn["port"])
         db_conn["connect_timeout"] = int(db_conn["connect_timeout"])
 
+
+
         self.conn_buffered=pymysql.connect(
             host = db_conn["host"],
             user = db_conn["user"],
@@ -132,6 +134,9 @@ class mysql_source(object):
         self.charset = db_conn["charset"]
         self.cursor_buffered = self.conn_buffered.cursor()
         self.cursor_buffered_fallback = self.conn_buffered.cursor()
+        self.cursor_buffered.execute('SET SESSION   net_read_timeout = %s;',(self.__net_read_timeout,))
+        self.cursor_buffered_fallback.execute('SET SESSION   net_read_timeout = %s;', (self.__net_read_timeout,))
+
 
     def disconnect_db_buffered(self):
         """
@@ -163,7 +168,7 @@ class mysql_source(object):
         )
         self.charset = db_conn["charset"]
         self.cursor_unbuffered = self.conn_unbuffered.cursor()
-
+        self.cursor_unbuffered.execute('SET SESSION   net_read_timeout = %s;', (self.__net_read_timeout,))
 
     def disconnect_db_unbuffered(self):
         """
@@ -919,6 +924,7 @@ class mysql_source(object):
         self.copy_mode = self.source_config["copy_mode"]
         self.pg_engine.lock_timeout = self.source_config["lock_timeout"]
         self.pg_engine.grant_select_to = self.source_config["grant_select_to"]
+        self.__net_read_timeout = self.source_config.get('net_read_timeout', '600')
         if "keep_existing_schema" in self.sources[self.source]:
             self.keep_existing_schema = self.sources[self.source]["keep_existing_schema"]
         else:

@@ -65,6 +65,7 @@ sources:
         - delphis_mediterranea  # skips deletes on schema delphis_mediterranea
       update:
     keep_existing_schema: No
+    net_read_timeout: 600
 
   pgsql:
     db_conn:
@@ -100,8 +101,8 @@ sources:
 # If the table appears in multiple fillfactors then only the last matched value will be applied
 fillfactor:
   "30":
-    tables: 
+    tables:
       - "foo.bar"
   "40":
-    tables: 
+    tables:
       - "foo.foobar"
