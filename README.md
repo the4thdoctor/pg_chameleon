@@ -1,3 +1,19 @@
+| Repository | Issues| Stars| Release | Forks |
+|------------|-------|------|---------|-------|
+| Github     |![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/the4thdoctor/pg_chameleon?style=plastic)|![GitHub Repo stars](https://img.shields.io/github/stars/the4thdoctor/pg_chameleon?style=plastic)| ![GitHub Release](https://img.shields.io/github/v/release/the4thdoctor/pg_chameleon?style=plastic)|![GitHub forks](https://img.shields.io/github/forks/the4thdoctor/pg_chameleon?style=plastic)
+|
+|
+| Codeberg   |![Codeberg Issues](https://img.shields.io/gitea/issues/open/the4thdoctor/pg_chameleon?gitea_url=https%3A%2F%2Fcodeberg.org&style=plastic)|![Gitea Stars](https://img.shields.io/gitea/stars/the4thdoctor/pg_chameleon?gitea_url=https%3A%2F%2Fcodeberg.org&style=plastic)|           ![Gitea Release](https://img.shields.io/gitea/v/release/the4thdoctor/pg_chameleon?gitea_url=https%3A%2F%2Fcodeberg.org&style=plastic)|![Gitea Forks](https://img.shields.io/gitea/forks/the4thdoctor/pg_chameleon?gitea_url=https%3A%2F%2Fcodeberg.org&style=plastic)
+|
+
+
+## PyPI
+* ![PyPI - Downloads](https://img.shields.io/pypi/dm/pg_chameleon?style=plastic)
+* ![PyPI - Version](https://img.shields.io/pypi/v/pg_chameleon?style=plastic)
+* ![PyPI - License](https://img.shields.io/pypi/l/pg_chameleon?style=plastic)
+
+
+
 
 
 
