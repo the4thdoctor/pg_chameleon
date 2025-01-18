@@ -169,6 +169,12 @@ class replica_engine(object):
                 sys.exit()
 
 
+    def count_replica_schema(self):
+        """
+           Returns the count of the replica schema from the destination database
+        """
+        self.pg_engine.connect_db()
+        return self.pg_engine.check_replica_schema()[0]
 
 
     def terminate_replica(self, signal, frame):

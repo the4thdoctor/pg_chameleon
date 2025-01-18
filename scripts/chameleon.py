@@ -62,3 +62,11 @@ else:
     except AttributeError:
         print("ERROR - Invalid command" )
         print(command_help)
+    except Exception as exception:
+        if type(exception).__name__ == "UndefinedTable":
+            if replica.count_replica_schema() == 0:
+                print("ERROR - Could not find the replica schema. Did you run the command create_replica_schema?")
+            else:
+                raise exception
+        else:
+            raise exception
