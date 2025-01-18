@@ -702,7 +702,6 @@ $BODY$
 $BODY$
 LANGUAGE plpgsql;
 
-
 --CUSTOM AGGREGATES
 CREATE OR REPLACE FUNCTION  sch_chameleon.fn_binlog_min(text[],text[])
 RETURNS text[] AS
@@ -785,7 +784,7 @@ CREATE AGGREGATE sch_chameleon.binlog_min(text[])
 --VIEWS
 CREATE OR REPLACE VIEW sch_chameleon.v_version
  AS
-    SELECT '2.0.9'::TEXT t_version
+    SELECT '2.0.10'::TEXT t_version
 ;
 
 CREATE OR REPLACE VIEW sch_chameleon.v_idx_cons
@@ -874,7 +873,7 @@ SELECT
 FROM
 (
 SELECT
-    tab.relname AS v_table_referenced, dec.jsb_event_before
+    tab.relname AS v_table_referenced,
     sch.nspname AS v_schema_referenced,
     pg_get_constraintdef(con.oid) AS v_fk_definition,
     tabref.relname AS v_table_referencing,
