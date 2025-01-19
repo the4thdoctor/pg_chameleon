@@ -134,7 +134,7 @@ class replica_engine(object):
         self.mysql_source.sources = self.config["sources"]
         self.mysql_source.type_override = self.config["type_override"]
         self.mysql_source.notifier = self.notifier
-
+        self.mysql_source.net_read_timeout = int(self.mysql_source.sources[self.mysql_source.source].get('net_read_timeout', '600'))
 
         #pgsql_source instance initialisation
         self.pgsql_source = pgsql_source()
