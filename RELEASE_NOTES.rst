@@ -4,7 +4,8 @@ RELEASE NOTES
 2.0.21
 --------------------------
 * PR #163 provided by @bukem providing an optimization of the procedure for applying changes to Postgresql
-
+* Fix for issue #170. Now if the replica schema is not present on the target database it will display an hint instead of an exception
+* Fix incorrect placement of the new parameter **net_read_timeout**. Now it's set as an instance variable from global_lib.py. The previous configuration may cause a crash of the replica process.
 
 This release requires a replica catalogue upgrade, therefore is very important to follow the upgrade instructions provided below.
 
