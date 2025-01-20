@@ -3,14 +3,14 @@
 import setuptools
 
 def readme():
-    with open('README.md') as f:
+    with open('README.rst') as f:
         return f.read()
 
 package_data = {'pg_chameleon': ['configuration/config-example.yml','sql/upgrade/*.sql','sql/drop_schema.sql','sql/create_schema.sql', 'LICENSE.txt']}
 
 setuptools.setup(
      name="pg_chameleon",
-     version="3.0DEV",
+     version="2.0.21",
      description="MySQL to PostgreSQL replica and migration",
     long_description=readme(),
     author = "Federico Campoli",
@@ -18,7 +18,7 @@ setuptools.setup(
     maintainer = "Federico Campoli",
     maintainer_email = "thedoctor@pgdba.org",
     url="https://codeberg.org/the4thdoctor/pg_chameleon",
-    license="PostgreSQL License",
+    license="BSD License",
     platforms=[
         "linux"
     ],
@@ -50,20 +50,19 @@ setuptools.setup(
     install_requires=[
         'PyMySQL>=0.10.0',
         'mysql-replication>=0.31',
-        'psycopg>=3.2.3',
+        'psycopg2-binary>=2.8.3',
         'PyYAML>=3.13',
         'tabulate>=0.8.1',
         'daemonize>=2.4.7',
+        'rollbar>=0.13.17',
         'parsy>=2.1',
-        'Sphinx>=7.4.7',
-        'myst-parser>=3.0.1'
-
+        'Sphinx>=7.4.7'
 
     ],
     include_package_data = True,
     package_data=package_data,
     packages=setuptools.find_packages(),
-    python_requires='>=3.9',
+    python_requires='>=3.7',
     keywords='postgresql mysql replica migration database',
 
 )
