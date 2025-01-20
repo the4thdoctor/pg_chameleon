@@ -10,14 +10,14 @@ package_data = {'pg_chameleon': ['configuration/config-example.yml','sql/upgrade
 
 setuptools.setup(
      name="pg_chameleon",
-     version="2.0.20",
+     version="2.0.21",
      description="MySQL to PostgreSQL replica and migration",
     long_description=readme(),
     author = "Federico Campoli",
     author_email = "thedoctor@pgdba.org",
     maintainer = "Federico Campoli",
     maintainer_email = "thedoctor@pgdba.org",
-    url="https://github.com/the4thdoctor/pg_chameleon/",
+    url="https://codeberg.org/the4thdoctor/pg_chameleon",
     license="BSD License",
     platforms=[
         "linux"
