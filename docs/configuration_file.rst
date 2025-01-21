@@ -74,7 +74,7 @@ Database connection
 
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
-   :lines: 30-67
+   :lines: 30-68
    :emphasize-lines: 3-9
    :linenos:
 
@@ -86,7 +86,7 @@ Schema mappings
 
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
-   :lines: 30-67
+   :lines: 30-68
    :emphasize-lines: 10-11
    :linenos:
 
@@ -98,7 +98,7 @@ Limit and skip tables
 
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
-   :lines: 30-67
+   :lines: 30-68
    :emphasize-lines: 12-15
    :linenos:
 
@@ -112,7 +112,7 @@ Grant select to option
 
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
-   :lines: 30-67
+   :lines: 30-68
    :emphasize-lines: 16-17
    :linenos:
 
@@ -128,7 +128,7 @@ Source configuration parameters
 
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
-   :lines: 30-67
+   :lines: 30-68
    :emphasize-lines: 18-31
    :linenos:
 
@@ -152,7 +152,7 @@ Skip events configuration
 
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
-   :lines: 30-67
+   :lines: 30-68
    :emphasize-lines: 32-37
    :linenos:
 
@@ -165,7 +165,7 @@ Keep existing schema
 
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
-   :lines: 30-67
+   :lines: 30-68
    :emphasize-lines: 38-38
    :linenos:
 
@@ -177,6 +177,20 @@ Instead the existing tables are truncated and the data is reloaded.
 A REINDEX TABLE is executed in order to have the indices in good shape after the reload.
 
 When ``keep_existing_schema`` is set to Yes the parameter ``grant_select_to`` have no effect.
+
+net_read_timeout
+====================================
+
+.. literalinclude:: ../pg_chameleon/configuration/config-example.yml
+   :language: yaml
+   :lines: 30-68
+   :emphasize-lines: 39-39
+   :linenos:
+
+Configures for the session the net_read_timeout.
+Useful if the table copy during init replica fails on slow networks.
+
+It defaults to 600 seconds.
 
 PostgreSQL source type (EXPERIMENTAL)
 ================================================================
@@ -196,7 +210,7 @@ The following limitations apply.
 
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
-   :lines: 69-95
+   :lines: 69-96
    :emphasize-lines: 7,16,25,27
    :linenos:
 
@@ -209,5 +223,5 @@ If the table appears multiple times, then only the last matched value will be ap
 
 .. literalinclude:: ../pg_chameleon/configuration/config-example.yml
    :language: yaml
-   :lines: 101-107
+   :lines: 101-108
    :linenos:
