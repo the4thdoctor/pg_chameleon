@@ -134,9 +134,11 @@ class replica_engine(object):
         self.mysql_source.sources = self.config["sources"]
         self.mysql_source.type_override = self.config["type_override"]
         self.mysql_source.notifier = self.notifier
-        self.mysql_source.net_read_timeout = int(self.mysql_source.sources[self.mysql_source.source].get('net_read_timeout', '600'))
-
-        #pgsql_source instance initialisation
+        try:
+            self.mysql_source.net_read_timeout = int(self.mysql_source.sources[self.mysql_source.source].get('net_read_timeout', '600'))
+        except:
+            self.mysql_source.net_read_timeout = 600
+            #pgsql_source instance initialisation
         self.pgsql_source = pgsql_source()
         self.pgsql_source.source = self.args.source
         self.pgsql_source.tables = self.args.tables
@@ -162,10 +164,16 @@ class replica_engine(object):
 
         if self.args.source != '*' and self.args.command != 'add_source':
             self.pg_engine.connect_db()
-            source_count = self.pg_engine.check_source()
-            self.pg_engine.disconnect_db()
+            try:
+                source_count = self.pg_engine.check_source()
+            except Exception as e:
+                if type(e).__name__ == "UndefinedTable" and self.count_replica_schema() ==  0:
+                    print("ERROR - Could not find the replica schema. Did you run the command create_replica_schema?")
+                self.pg_engine.disconnect_db()
+                sys.exit()
             if source_count == 0:
                 print("FATAL, The source %s is not registered. Please add it with the command add_source" % (self.args.source))
+                self.pg_engine.disconnect_db()
                 sys.exit()
 
 
