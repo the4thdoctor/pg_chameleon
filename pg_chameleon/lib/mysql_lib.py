@@ -17,7 +17,7 @@ class mysql_source(object):
             Class constructor, the method sets the class variables and configure the
             operating parameters from the args provided t the class.
         """
-        self.statement_skip = ['BEGIN', 'COMMIT']
+        self.statement_skip = ('BEGIN', 'COMMIT', 'SAVEPOINT')
         self.schema_tables = {}
         self.schema_mappings = {}
         self.schema_loading = {}
@@ -1325,7 +1325,7 @@ class mysql_source(object):
                 except:
                     schema_query = binlogevent.schema
 
-                if binlogevent.query.strip().upper() not in self.statement_skip and schema_query in self.schema_mappings:
+                if not binlogevent.query.strip().upper().startswith(self.statement_skip) and schema_query in self.schema_mappings:
                     close_batch=True
                     destination_schema = self.schema_mappings[schema_query]
                     log_position = binlogevent.packet.log_pos
