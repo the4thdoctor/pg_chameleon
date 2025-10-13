@@ -225,7 +225,7 @@ class replica_engine(object):
         """
             The method loads the configuration from the file specified in the args.config parameter.
         """
-        local_confdir = "%s/.pg_chameleon/configuration/" % os.path.expanduser('~')
+        local_confdir = "%s/.pg_chameleon/configuration" % os.path.expanduser('~')
         self.config_file = '%s/%s.yml'%(local_confdir, self.args.config)
 
         if not os.path.isfile(self.config_file):
