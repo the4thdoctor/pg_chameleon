@@ -76,24 +76,24 @@ sources:
       database: "db_replica"
       charset: 'utf8'
       connect_timeout: 10
-      schema_mappings:
-        loxodonta_africana: elephas_maximus
-      limit_tables:
-        - loxodonta_africana.foo
-      skip_tables:
-        - loxodonta_africana.bar
-      copy_max_memory: "300M"
-      grant_select_to:
-        - usr_readonly
-      lock_timeout: "10s"
-      my_server_id: 100
-      replica_batch_size: 3000
-      replay_max_rows: 10000
-      sleep_loop: 5
-      batch_retention: '1 day'
-      copy_mode: 'file'
-      out_dir: /tmp
-      type: pgsql
+    schema_mappings:
+      loxodonta_africana: elephas_maximus
+    limit_tables:
+      - loxodonta_africana.foo
+    skip_tables:
+      - loxodonta_africana.bar
+    copy_max_memory: "300M"
+    grant_select_to:
+      - usr_readonly
+    lock_timeout: "10s"
+    my_server_id: 100
+    replica_batch_size: 3000
+    replay_max_rows: 10000
+    sleep_loop: 5
+    batch_retention: '1 day'
+    copy_mode: 'file'
+    out_dir: /tmp
+    type: pgsql
 
 # the dictionary fillfactor is used to set the fillfactor for tables that are expected to work with large updates
 # The key name defines the fillfactor level (The allowed values range is 10 to 100)
