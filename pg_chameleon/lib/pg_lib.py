@@ -407,7 +407,7 @@ class pgsql_source(object):
                     THEN
                         format('ALTER TABLE %%I ADD CONSTRAINT %%I %%s ;',tab.relname,con.conname,pg_get_constraintdef(con.oid))
                     ELSE
-                        format('%%s ;',regexp_replace(pg_get_indexdef(idx.oid), '("?\w+"?\.)', ''))
+                        format('%%s ;',regexp_replace(pg_get_indexdef(idx.oid), '("?\\w+"?\\.)', ''))
                 END AS ddl_text,
                 CASE
                     WHEN con.conname IS NOT NULL
