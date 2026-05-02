@@ -1,6 +1,25 @@
 RELEASE NOTES
 *************************
 
+2.0.22
+--------------------------
+* pg_chameleon/lib/global_lib.py
+- Removed from distutils.sysconfig import get_python_lib (module removed in Python 3.12, was unused)
+- Replaced from pkg_resources import get_distribution with from importlib.metadata import version as pkg_version
+- Updated the PyYAML version check from str(get_distribution('PyYAML')).split(' ')[1] to pkg_version('PyYAML')
+
+* pg_chameleon/lib/pg_lib.py
+- Removed from distutils.sysconfig import get_python_lib (unused import)
+- Fixed '("?\w+"?\.) → '("?\\w+"?\\.) — invalid escape sequence that is a SyntaxWarning in 3.12 and will be a
+SyntaxError in future versions
+
+* scripts/chameleon.py
+- Replaced the try/except pkg_resources fallback block with a direct from importlib.metadata import version
+(available since Python 3.8, no need for the fallback)
+
+* setup.py
+- Updated python_requires='>=3.7' → python_requires='>=3.12'
+
 2.0.21
 --------------------------
 * PR #163 provided by @bukem providing an optimization of the procedure for applying changes to Postgresql

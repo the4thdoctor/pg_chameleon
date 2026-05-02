@@ -62,7 +62,7 @@ setuptools.setup(
     include_package_data = True,
     package_data=package_data,
     packages=setuptools.find_packages(),
-    python_requires='>=3.7',
+    python_requires='>=3.12',
     keywords='postgresql mysql replica migration database',
 
 )

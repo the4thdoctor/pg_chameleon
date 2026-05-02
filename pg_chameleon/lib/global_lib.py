@@ -6,7 +6,6 @@ import sys
 import time
 import signal
 from shutil import copy
-from distutils.sysconfig import get_python_lib
 from tabulate import tabulate
 from pg_chameleon import pg_engine, mysql_source, pgsql_source
 import logging
@@ -14,7 +13,7 @@ from logging.handlers  import TimedRotatingFileHandler
 from daemonize import Daemonize
 import multiprocessing as mp
 import traceback
-from pkg_resources import get_distribution
+from importlib.metadata import version as pkg_version
 class rollbar_notifier(object):
     """
         This class is used to send messages to rollbar whether the key and environment variables are set
@@ -233,7 +232,7 @@ class replica_engine(object):
             sys.exit()
 
         config_file = open(self.config_file, 'r')
-        pyyml=str(get_distribution('PyYAML')).split(' ')[1]
+        pyyml=pkg_version('PyYAML')
         if pyyml<='3.13':
             self.config = yaml.load(config_file.read())
         else:
