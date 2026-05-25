@@ -3445,22 +3445,25 @@ class pg_engine(object):
 
             :param master_status: the master data with the binlogfile and the log position
         """
-        master_data = master_status[0]
-        binlog_name = master_data["File"]
-        binlog_position = master_data["Position"]
-        sql_set  = """
-            UPDATE sch_chameleon.t_sources
-                SET
-                    b_consistent=%s,
-                    t_binlog_name=%s,
-                    i_binlog_position=%s
-            WHERE
-                i_id_source=%s
-            ;
+        if len(master_status)>0:
+            master_data = master_status[0]
+            binlog_name = master_data["File"]
+            binlog_position = master_data["Position"]
+            sql_set  = """
+                UPDATE sch_chameleon.t_sources
+                    SET
+                        b_consistent=%s,
+                        t_binlog_name=%s,
+                        i_binlog_position=%s
+                WHERE
+                    i_id_source=%s
+                ;
 
-        """
-        self.pgsql_cur.execute(sql_set, (consistent, binlog_name, binlog_position, self.i_id_source, ))
-        self.logger.info("Set high watermark for source: %s" %(self.source, ) )
+            """
+            self.pgsql_cur.execute(sql_set, (consistent, binlog_name, binlog_position, self.i_id_source, ))
+            self.logger.info("Set high watermark for source: %s" %(self.source, ) )
+        else:
+            self.logger.info("Master status is missing. Can't set the high watermark for source: %s" % (self.source,))
 
 
     def save_master_status(self, master_status):
@@ -3472,69 +3475,72 @@ class pg_engine(object):
             :return: the batch id or none if no batch has been created
             :rtype: integer
         """
+
         next_batch_id = None
-        master_data = master_status[0]
-        binlog_name = master_data["File"]
-        binlog_position = master_data["Position"]
-        log_table = self.swap_source_log_table()
-        if "Executed_Gtid_Set" in master_data:
-            executed_gtid_set = master_data["Executed_Gtid_Set"]
-        else:
-            executed_gtid_set = None
-        try:
-            event_time = master_data["Time"]
-        except:
-            event_time = None
+        if len(master_status) > 0:
+            master_data = master_status[0]
+            binlog_name = master_data["File"]
+            binlog_position = master_data["Position"]
+            log_table = self.swap_source_log_table()
+            if "Executed_Gtid_Set" in master_data:
+                executed_gtid_set = master_data["Executed_Gtid_Set"]
+            else:
+                executed_gtid_set = None
+            try:
+                event_time = master_data["Time"]
+            except:
+                event_time = None
 
-        sql_master = """
-            INSERT INTO sch_chameleon.t_replica_batch
-                (
-                    i_id_source,
-                    t_binlog_name,
-                    i_binlog_position,
-                    t_gtid_set,
-                    v_log_table
-                )
-            VALUES
-                (
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    %s
-                )
-            RETURNING i_id_batch
+            sql_master = """
+                INSERT INTO sch_chameleon.t_replica_batch
+                    (
+                        i_id_source,
+                        t_binlog_name,
+                        i_binlog_position,
+                        t_gtid_set,
+                        v_log_table
+                    )
+                VALUES
+                    (
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s
+                    )
+                RETURNING i_id_batch
+                ;
+            """
+
+            sql_last_update = """
+                UPDATE
+                    sch_chameleon.t_last_received
+                SET
+                    ts_last_received=to_timestamp(%s)
+                WHERE
+                    i_id_source=%s
+                RETURNING ts_last_received
             ;
-        """
+            """
 
-        sql_last_update = """
-            UPDATE
-                sch_chameleon.t_last_received
-            SET
-                ts_last_received=to_timestamp(%s)
-            WHERE
-                i_id_source=%s
-            RETURNING ts_last_received
-        ;
-        """
+            try:
+                self.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position, executed_gtid_set, log_table))
+                results =self.pgsql_cur.fetchone()
+                next_batch_id=results[0]
+                self.pgsql_cur.execute(sql_last_update, (event_time, self.i_id_source, ))
+                results = self.pgsql_cur.fetchone()
+                db_event_time = results[0]
+                self.logger.info("Saved master data for source: %s" %(self.source, ) )
+                self.logger.debug("Binlog file: %s" % (binlog_name, ))
+                self.logger.debug("Binlog position:%s" % (binlog_position, ))
+                self.logger.debug("Last event: %s" % (db_event_time, ))
+                self.logger.debug("Next log table name: %s" % ( log_table, ))
 
-        try:
-            self.pgsql_cur.execute(sql_master, (self.i_id_source, binlog_name, binlog_position, executed_gtid_set, log_table))
-            results =self.pgsql_cur.fetchone()
-            next_batch_id=results[0]
-            self.pgsql_cur.execute(sql_last_update, (event_time, self.i_id_source, ))
-            results = self.pgsql_cur.fetchone()
-            db_event_time = results[0]
-            self.logger.info("Saved master data for source: %s" %(self.source, ) )
-            self.logger.debug("Binlog file: %s" % (binlog_name, ))
-            self.logger.debug("Binlog position:%s" % (binlog_position, ))
-            self.logger.debug("Last event: %s" % (db_event_time, ))
-            self.logger.debug("Next log table name: %s" % ( log_table, ))
-
-        except psycopg2.Error as e:
-                    self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
-                    self.logger.error(self.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position, executed_gtid_set, log_table)))
-
+            except psycopg2.Error as e:
+                        self.logger.error("SQLCODE: %s SQLERROR: %s" % (e.pgcode, e.pgerror))
+                        self.logger.error(self.pgsql_cur.mogrify(sql_master, (self.i_id_source, binlog_name, binlog_position, executed_gtid_set, log_table)))
+        else:
+            self.logger.info("Master status is missing. Can't configure the source %s for replica." % (self.source,))
         return next_batch_id
 
     def reindex_table(self, schema, table):
