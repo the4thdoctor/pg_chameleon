@@ -645,7 +645,7 @@ class replica_engine(object):
             Is compulsory to specify a source name when running this method.
         """
 
-        replica_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
+        replica_pid = os.path.expanduser('%s/%s_%s.pid' % (self.config["pid_dir"],self.args.config,self.args.source))
 
         if self.args.source == "*":
             print("You must specify a source name using the argument --source")
