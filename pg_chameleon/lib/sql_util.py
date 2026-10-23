@@ -479,6 +479,20 @@ class sql_token(object):
         }
     )
 
+    # In new versions of MariaDB, CREATE DATABASE <schema> emits a QueryEvent with the
+    # schema set, meaning it reaches this parser. We just ignore it.
+    backtick_quoted = (
+        string("`")
+        >> (string("``") | any_char).until(string("`"))
+        << string("`")
+    )
+    create_database_ignored = seq(
+        regex(r"(?i:CREATE\s+(?:OR\s+REPLACE\s+)?(?:DATABASE|SCHEMA))\b"),
+        whitespace,
+        # slurp until end of statement:
+        (sql_string | backtick_quoted | regex(r"""[^;"'`]""")).until(semicolon | eof),
+    ).result(None)
+
     def __init__(self):
         """
             Class constructor the regular expressions are compiled and the token lists are initialised.
@@ -507,6 +521,7 @@ class sql_token(object):
                 self.drop_index_statement,
                 self.alter_table_statement.map(self._post_process_alter_table),
                 self.alter_rename_table_statement,
+                self.create_database_ignored,
             ).optional()
         )
 
