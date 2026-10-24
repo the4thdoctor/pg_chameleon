@@ -1,0 +1,24 @@
+services:
+  db:
+    build:
+      context: .
+      args:
+        PG_VERSION: "18"
+        MARIADB_VERSION: "11.8"
+    image: pg_chameleon-db:rocky10
+    container_name: pgchameleon-db
+    environment:
+      POSTGRES_PASSWORD: postgres
+      MARIADB_ROOT_PASSWORD: mariadb
+    ports:
+      - "5432:5432"
+      - "3306:3306"
+    volumes:
+      - pgdata:/var/lib/pgsql
+      - mysqldata:/var/lib/mysql
+    command: ["--log-bin=mysql-bin", "--binlog-format=ROW", "--binlog-row-image=FULL", "--server-id=1"]
+    stop_grace_period: 30s
+
+volumes:
+  pgdata:
+  mysqldata:
