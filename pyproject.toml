@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pg_chameleon"
+version = "3.0DEV"
+description = "MySQL to PostgreSQL replica and migration"
+readme = "README.md"
+license = "PostgreSQL"
+authors = [
+    { name = "Federico Campoli", email = "thedoctor@pgdba.org" },
+]
+maintainers = [
+    { name = "Federico Campoli", email = "thedoctor@pgdba.org" },
+]
+requires-python = ">=3.12"
+keywords = ["postgresql", "mysql", "replica", "migration", "database"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: BSD",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Database :: Database Engines/Servers",
+    "Topic :: Other/Nonlisted Topic",
+]
+dependencies = [
+    "PyMySQL>=0.10.0",
+    "mysql-replication>=0.31",
+    "psycopg-binary>=3.2.3",
+    "PyYAML>=6",
+    "tabulate>=0.8.1",
+    "daemonize>=2.4.7",
+    "parsy>=2.1",
+    "Sphinx>=7.4.7",
+    "myst-parser>=3.0.1",
+]
+
+[project.urls]
+Homepage = "https://codeberg.org/the4thdoctor/pg_chameleon"
+
+[tool.setuptools]
+platforms = ["linux"]
+include-package-data = true
+py-modules = [
+    "pg_chameleon.__init__",
+    "pg_chameleon.lib.global_lib",
+    "pg_chameleon.lib.mysql_lib",
+    "pg_chameleon.lib.pg_lib",
+    "pg_chameleon.lib.sql_util",
+]
+script-files = [
+    "scripts/chameleon.py",
+    "scripts/chameleon",
+]
+
+[tool.setuptools.packages.find]
+include = ["pg_chameleon*"]
+
+[tool.setuptools.package-data]
+pg_chameleon = [
+    "configuration/config-example.yml",
+    "sql/upgrade/*.sql",
+    "sql/drop_schema.sql",
+    "sql/create_schema.sql",
+    "LICENSE.txt",
+]
