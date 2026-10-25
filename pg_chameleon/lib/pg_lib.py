@@ -1,5 +1,5 @@
 import io
-import psycopg2
+import psycopg
 from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
 import sys

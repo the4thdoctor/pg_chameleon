@@ -50,8 +50,8 @@ setuptools.setup(
     install_requires=[
         'PyMySQL>=0.10.0',
         'mysql-replication>=0.31',
-        'psycopg>=3.2.3',
-        'PyYAML>=3.13',
+        'psycopg-binary>=3.2.3',
+        'PyYAML>=6',
         'tabulate>=0.8.1',
         'daemonize>=2.4.7',
         'parsy>=2.1',
