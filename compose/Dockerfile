@@ -22,15 +22,23 @@ RUN dnf -y install \
       postgresql${PG_VERSION}-contrib \
       MariaDB-server MariaDB-client \
       procps-ng hostname \
+      python3 python3-PyMySQL \
  && dnf clean all \
  # the RPM ships a pre-initialised datadir; empty it so entrypoint.sh initialises the volume
  && rm -rf /var/lib/mysql/*
 
+# Mariadb timeseries database
+RUN mkdir -p /usr/share/timeseries_mariadb
+COPY timeseries_mariadb_schema.sql /usr/share/timeseries_mariadb
+COPY load_timeseries.py /usr/local/bin/load_timeseries.py
+
+
+
 # Sakila sample database, loaded into MariaDB on first start
-RUN mkdir -p /usr/share/sakila \
- && curl -fsSL https://downloads.mysql.com/docs/sakila-db.tar.gz \
-    | tar xz -C /usr/share/sakila --strip-components=1 \
- && ls /usr/share/sakila/sakila-schema.sql /usr/share/sakila/sakila-data.sql
+#RUN mkdir -p /usr/share/sakila \
+# && curl -fsSL https://downloads.mysql.com/docs/sakila-db.tar.gz \
+#    | tar xz -C /usr/share/sakila --strip-components=1 \
+# && ls /usr/share/sakila/sakila-schema.sql /usr/share/sakila/sakila-data.sql
 
 ENV PGVERSION=${PG_VERSION} \
     PGDATA=/var/lib/pgsql/${PG_VERSION}/data \

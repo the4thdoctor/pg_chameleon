@@ -3,7 +3,8 @@ set -euo pipefail
 
 : "${POSTGRES_PASSWORD:=postgres}"
 : "${MARIADB_ROOT_PASSWORD:=mariadb}"
-: "${LOAD_SAKILA:=1}"
+#: "${$LOAD_SAKILA:=1}"
+#: "${$LOAD_TIMESERIES:=1}"
 
 # --- PostgreSQL ---
 if [ ! -s "$PGDATA/PG_VERSION" ]; then
@@ -27,10 +28,11 @@ if [ ! -d /var/lib/mysql/mysql ]; then
                 ALTER USER 'root'@'localhost' IDENTIFIED BY '$MARIADB_ROOT_PASSWORD'; \
                 CREATE USER 'root'@'%' IDENTIFIED BY '$MARIADB_ROOT_PASSWORD'; \
                 GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION;"
-    if [ "$LOAD_SAKILA" = "1" ]; then
-        mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" < /usr/share/sakila/sakila-schema.sql
-        mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" < /usr/share/sakila/sakila-data.sql
-    fi
+    python3 /usr/local/bin/load_timeseries.py /usr/share/timeseries_mariadb/timeseries_mariadb_schema.sql --scale "${TIMESERIES_SCALE:-1}" --password "$MARIADB_ROOT_PASSWORD"
+#     if [ "$LOAD_SAKILA" = "1" ]; then
+#        mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" < /usr/share/sakila/sakila-schema.sql
+#        mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" < /usr/share/sakila/sakila-data.sql
+#    fi
     mariadb-admin -uroot -p"$MARIADB_ROOT_PASSWORD" shutdown
     wait "$tmp" || true
 fi

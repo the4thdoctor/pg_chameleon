@@ -20,7 +20,7 @@ Both servers run in the same container, started by `entrypoint.sh`.
 
 ```bash
 cd compose
-docker compose up --build -d
+docker compose up --build -ddocker compose up --build -d
 docker compose logs -f db
 ```
 
