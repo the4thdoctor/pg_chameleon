@@ -1,7 +1,7 @@
 ---
 # global settings
-pid_dir: '~/.pg_chameleon/pid/'
-log_dir: '~/.pg_chameleon/logs/'
+pid_dir: '~/.config/pg_chameleon/pid/'
+log_dir: '~/.config/pg_chameleon/logs/'
 log_dest: file
 log_level: info
 log_days_keep: 10
@@ -18,14 +18,9 @@ type_override:
       - "*"
 
 
-# postgres  destination connection
+# postgres  destination connection in the form of any accepted connection string
 pg_conn:
-  host: "localhost"
-  port: "5432"
-  user: "usr_replica"
-  password: "never_commit_password"
-  database: "db_replica"
-  charset: "utf8"
+
 
 sources:
   mysql:

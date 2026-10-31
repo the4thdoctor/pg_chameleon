@@ -2,6 +2,7 @@ import os, os.path
 import sys
 from shutil import copy
 from pg_chameleon import yaml_lib
+from pg_chameleon import pgsql_lib
 class replica_engine(object):
     """
         This class is wraps the the mysql and postgresql engines in order to perform the various activities required for the replica.
@@ -45,8 +46,11 @@ class replica_engine(object):
         if args.config_file and os.path.isfile(args.config_file):
             self.config_file = args.config_file
         else:
-
+            self.config_file = '%s/default.yml' % local_conf
         self.__yaml_lib = yaml_lib(self.config_file)
+        # print(self.__yaml_lib.config)
+
+
 
 
     def __set_configuration_files(self):
