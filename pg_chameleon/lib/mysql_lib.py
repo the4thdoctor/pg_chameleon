@@ -581,10 +581,27 @@ class mysql_source(object):
         """
         if not self.conn_buffered.open:
             self.connect_db_buffered()
-        sql_master = "SHOW MASTER STATUS;"
+        sql_master = self.get_master_status_sql(self.conn_buffered.get_server_info())
         self.cursor_buffered.execute(sql_master)
         master_status = self.cursor_buffered.fetchall()
         return master_status
+
+    @staticmethod
+    def get_master_status_sql(server_version):
+        """
+            The method returns the statement that reads the binary log coordinates.
+            MySQL 8.4 removed SHOW MASTER STATUS. SHOW BINARY LOG STATUS replaces it, with the same columns.
+            MariaDB keeps SHOW MASTER STATUS.
+
+            :param server_version: the server version string, for example 8.4.9 or 10.6.12-MariaDB
+            :return: the statement to run
+            :rtype: string
+        """
+        if "mariadb" not in server_version.lower():
+            version_match = re.match(r"(\d+)\.(\d+)", server_version)
+            if version_match and (int(version_match.group(1)), int(version_match.group(2))) >= (8, 4):
+                return "SHOW BINARY LOG STATUS;"
+        return "SHOW MASTER STATUS;"
 
     def copy_data(self, schema, table):
         """
