@@ -388,6 +388,7 @@ class replica_engine(object):
             keep_fds = [self.logger_fds]
             init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
             self.logger.info("Initialising the replica for source %s" % self.args.source)
+            self.pg_engine.disconnect_db()
             init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.mysql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
             init_daemon.start()
 
@@ -408,6 +409,7 @@ class replica_engine(object):
             keep_fds = [self.logger_fds]
             init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
             self.logger.info("Initialising the replica for source %s" % self.args.source)
+            self.pg_engine.disconnect_db()
             init_daemon = Daemonize(app="init_replica", pid=init_pid, action=self.pgsql_source.init_replica, foreground=foreground , keep_fds=keep_fds)
             init_daemon.start()
 
@@ -435,6 +437,7 @@ class replica_engine(object):
                 keep_fds = [self.logger_fds]
                 init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
                 self.logger.info("The tables %s within source %s will be synced." % (self.args.tables, self.args.source))
+                self.pg_engine.disconnect_db()
                 sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.refresh_schema, foreground=foreground , keep_fds=keep_fds)
                 sync_daemon .start()
 
@@ -462,6 +465,7 @@ class replica_engine(object):
                 keep_fds = [self.logger_fds]
                 init_pid = os.path.expanduser('%s/%s.pid' % (self.config["pid_dir"],self.args.source))
                 self.logger.info("The tables %s within source %s will be synced." % (self.args.tables, self.args.source))
+                self.pg_engine.disconnect_db()
                 sync_daemon = Daemonize(app="sync_tables", pid=init_pid, action=self.mysql_source.sync_tables, foreground=foreground , keep_fds=keep_fds)
                 sync_daemon .start()
 
@@ -692,18 +696,20 @@ class replica_engine(object):
         if os.path.isfile(replica_pid):
             try:
                 file_pid=open(replica_pid,'r')
-                pid=file_pid.read()
+                pid=int(file_pid.read())
                 file_pid.close()
-                os.kill(int(pid),2)
+                os.kill(pid,2)
                 print("Requesting the replica for source %s to stop" % (self.source))
-                while True:
-                    try:
-                        os.kill(int(pid),0)
-                    except:
-                        break
+                # ponytail: fixed 60 s wait, raise it if a clean stop ever takes longer
+                for _ in range(60):
+                    os.kill(pid,0)
+                    time.sleep(1)
+                print("Process %s did not stop in 60 s. Aborting. Read it with: ps -p %s" % (pid, pid))
+                sys.exit(1)
+            except ProcessLookupError:
                 print("The replica process is stopped")
-            except:
-                print("An error occurred when trying to signal the replica process")
+            except ValueError:
+                print("The pid file %s holds no pid. No process to stop." % replica_pid)
 
     def __set_conf_permissions(self,  cham_dir):
         """
@@ -884,6 +890,7 @@ class replica_engine(object):
                     keep_fds = [self.logger_fds]
 
                     app_name = "%s_maintenance" % self.args.source
+                    self.pg_engine.disconnect_db()
                     maintenance_daemon = Daemonize(app=app_name, pid=maintenance_pid, action=self.pg_engine.run_maintenance, foreground=foreground , keep_fds=keep_fds)
                     try:
                         maintenance_daemon.start()
