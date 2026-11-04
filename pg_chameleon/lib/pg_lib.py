@@ -3680,7 +3680,8 @@ class pg_engine(object):
 
         for idx in idx_create:
             self.logger.info("Creating the index {}".format(idx[0],))
-            self.pgsql_cur.execute(idx[1])
+            # pg_get_indexdef() emits ON ONLY for partitioned tables, which would skip the partitions
+            self.pgsql_cur.execute(idx[1].replace(' ON ONLY ', ' ON ', 1))
 
 
 
